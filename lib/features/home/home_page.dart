@@ -180,40 +180,39 @@ class _HomePageState extends State<HomePage> {
             final isMedium = screenSize == ScreenSize.medium;
 
             return Stack(
-        children: [
-          // Main Scrollable Content
-          SingleChildScrollView(
+              children: [
+                // Main Scrollable Content
+                SingleChildScrollView(
                   padding: EdgeInsets.only(
                     bottom: ResponsiveBreakpoints.isCompact(context)
                         ? 120
                         : (isMedium ? 80 : 0),
                   ),
                   child: ResponsiveContainer(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
                         // 1. Top App Bar
                         _buildTopAppBar(context, primaryTextColor, screenSize),
 
-                // 2. Search Bar
-                _buildSearchBar(
-                  searchBgColor,
-                  searchBorderColor,
-                  primaryTextColor,
-                  secondaryTextColor,
+                        // 2. Search Bar
+                        _buildSearchBar(
+                          searchBgColor,
+                          searchBorderColor,
+                          primaryTextColor,
+                          secondaryTextColor,
                           screenSize,
                         ),
 
                         // 2.5. University Branding Header
-                        if (_selectedUniversity != null &&
-                            !_isLoadingUniversity)
+                        if (_selectedUniversity != null && !_isLoadingUniversity)
                           _buildUniversityHeader(
                             context,
                             primaryTextColor,
                             screenSize,
-                ),
+                          ),
 
-                // 3. Chips (Categories)
+                        // 3. Chips (Categories)
                         _buildChipsRow(screenSize),
 
                         // 4. Promotions Section
@@ -273,10 +272,10 @@ class _HomePageState extends State<HomePage> {
 
                 // Bottom Navigation Bar (for compact and medium screens)
                 if (ResponsiveBreakpoints.isCompact(context) || isMedium)
-          Positioned(
-            bottom: 0,
-            left: 0,
-            right: 0,
+                  Positioned(
+                    bottom: 0,
+                    left: 0,
+                    right: 0,
                     child: _buildBottomNavBar(isDarkMode, isMedium),
                   ),
               ],
