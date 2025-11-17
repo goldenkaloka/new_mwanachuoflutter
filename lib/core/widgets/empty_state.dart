@@ -34,14 +34,14 @@ class EmptyState extends StatelessWidget {
   final Widget? customIcon;
 
   const EmptyState({
-    Key? key,
+    super.key,
     required this.type,
     this.title,
     this.subtitle,
     this.actionLabel,
     this.onAction,
     this.customIcon,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

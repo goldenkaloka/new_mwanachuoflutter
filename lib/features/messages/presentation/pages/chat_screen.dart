@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
+import 'package:mwanachuo/core/utils/time_formatter.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
 import 'package:mwanachuo/features/messages/domain/entities/message_entity.dart';
-import 'package:intl/intl.dart';
 
 // --- CHAT SCREEN WIDGET ---
 
@@ -66,6 +67,7 @@ class _ChatScreenView extends StatefulWidget {
 class _ChatScreenViewState extends State<_ChatScreenView>
     with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
+  final ImagePicker _imagePicker = ImagePicker();
   String? _recipientName;
   String? _recipientAvatar;
   bool _recipientIsOnline = false;
@@ -163,28 +165,10 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   }
 
   String _getOnlineStatus() {
-    if (_recipientIsOnline) {
-      return 'Online';
-    } else if (_recipientLastSeen != null) {
-      // Convert to local time to avoid timezone issues
-      final localLastSeen = _recipientLastSeen!.toLocal();
-      final now = DateTime.now();
-      final difference = now.difference(localLastSeen);
-
-      // Handle negative differences (future times due to sync issues)
-      if (difference.isNegative || difference.inMinutes < 1) {
-        return 'Just now';
-      } else if (difference.inMinutes < 60) {
-        return 'Last seen ${difference.inMinutes}m ago';
-      } else if (difference.inHours < 24) {
-        return 'Last seen ${difference.inHours}h ago';
-      } else if (difference.inDays < 7) {
-        return 'Last seen ${difference.inDays}d ago';
-      } else {
-        return 'Last seen ${DateFormat('MMM d').format(localLastSeen)}';
-      }
-    }
-    return 'Offline';
+    return TimeFormatter.formatOnlineStatus(
+      isOnline: _recipientIsOnline,
+      lastSeenAt: _recipientLastSeen,
+    );
   }
 
   void _sendMessage() {
@@ -196,6 +180,120 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     );
 
     _messageController.clear();
+  }
+
+  Future<void> _pickAndUploadImage() async {
+    try {
+      // Pick image from gallery
+      final XFile? image = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (image == null) return;
+
+      // Show uploading indicator
+      if (!mounted) return;
+      
+      // Upload image via bloc
+      context.read<MessageBloc>().add(
+        UploadImageEvent(filePath: image.path),
+      );
+
+      LoggerService.info('Image selected for upload: ${image.path}');
+    } catch (e) {
+      LoggerService.error('Failed to pick image', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick image: $e'),
+            backgroundColor: kErrorColor,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _takePhoto() async {
+    try {
+      // Take photo with camera
+      final XFile? photo = await _imagePicker.pickImage(
+        source: ImageSource.camera,
+        maxWidth: 1920,
+        maxHeight: 1920,
+        imageQuality: 85,
+      );
+
+      if (photo == null) return;
+
+      // Show uploading indicator
+      if (!mounted) return;
+      
+      // Upload image via bloc
+      context.read<MessageBloc>().add(
+        UploadImageEvent(filePath: photo.path),
+      );
+
+      LoggerService.info('Photo captured for upload: ${photo.path}');
+    } catch (e) {
+      LoggerService.error('Failed to take photo', e);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to take photo: $e'),
+            backgroundColor: kErrorColor,
+          ),
+        );
+      }
+    }
+  }
+
+  void _showAttachmentOptions() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (BuildContext context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        return Container(
+          decoration: BoxDecoration(
+            color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(20),
+            ),
+          ),
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: kPrimaryColor,
+                  child: Icon(Icons.photo_library, color: kBackgroundColorDark),
+                ),
+                title: const Text('Gallery'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _pickAndUploadImage();
+                },
+              ),
+              ListTile(
+                leading: CircleAvatar(
+                  backgroundColor: kPrimaryColor.withValues(alpha: 0.8),
+                  child: const Icon(Icons.camera_alt, color: kBackgroundColorDark),
+                ),
+                title: const Text('Camera'),
+                onTap: () {
+                  Navigator.pop(context);
+                  _takePhoto();
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -444,39 +542,93 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
         constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.75,
+          maxWidth: MediaQuery.of(context).size.width * 0.80, // WhatsApp uses 80%
         ),
         decoration: BoxDecoration(
+          // WhatsApp colors: sent = light green, received = white/dark grey
           color: isSent
-              ? kPrimaryColor
-              : (isDarkMode ? Colors.grey[800] : Colors.grey[200]),
-          borderRadius: BorderRadius.circular(16),
+              ? (isDarkMode 
+                  ? const Color(0xFF005C4B) // Dark mode sent (dark teal)
+                  : const Color(0xFFDCF8C6)) // Light mode sent (light green)
+              : (isDarkMode 
+                  ? const Color(0xFF262D31) // Dark mode received (dark grey)
+                  : Colors.white), // Light mode received (white)
+          borderRadius: BorderRadius.circular(8), // WhatsApp uses 8dp
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              message.content,
-              style: GoogleFonts.plusJakartaSans(
-                color: isSent
-                    ? kBackgroundColorDark
-                    : (isDarkMode ? Colors.white : Colors.black87),
-                fontSize: 14,
+            // Display image if available
+            if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: Image.network(
+                  message.imageUrl!,
+                  fit: BoxFit.cover,
+                  width: double.infinity,
+                  loadingBuilder: (context, child, loadingProgress) {
+                    if (loadingProgress == null) return child;
+                    return Container(
+                      height: 200,
+                      color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                      child: Center(
+                        child: CircularProgressIndicator(
+                          value: loadingProgress.expectedTotalBytes != null
+                              ? loadingProgress.cumulativeBytesLoaded /
+                                  loadingProgress.expectedTotalBytes!
+                              : null,
+                          color: kPrimaryColor,
+                        ),
+                      ),
+                    );
+                  },
+                  errorBuilder: (context, error, stackTrace) {
+                    return Container(
+                      height: 200,
+                      color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                      child: const Center(
+                        child: Icon(Icons.broken_image, size: 48),
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
+              if (message.content.isNotEmpty) const SizedBox(height: 8),
+            ],
+            // Display text content (can be empty if it's an image-only message)
+            if (message.content.isNotEmpty)
+              Text(
+                message.content,
+                style: GoogleFonts.plusJakartaSans(
+                  // WhatsApp text colors
+                  color: isSent
+                      ? (isDarkMode 
+                          ? Colors.white // White text on dark teal
+                          : const Color(0xFF000000)) // Black text on light green
+                      : (isDarkMode 
+                          ? Colors.white // White text on dark grey
+                          : const Color(0xFF000000)), // Black text on white
+                  fontSize: 15, // WhatsApp uses slightly larger text
+                ),
+              ),
             const SizedBox(height: 4),
             Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  DateFormat('HH:mm').format(message.createdAt.toLocal()),
+                  TimeFormatter.formatMessageTime(message.createdAt),
                   style: GoogleFonts.plusJakartaSans(
+                    // WhatsApp time colors
                     color: isSent
-                        ? kBackgroundColorDark.withValues(alpha: 0.7)
-                        : (isDarkMode ? Colors.grey[400] : Colors.grey[600]),
+                        ? (isDarkMode
+                            ? Colors.white.withValues(alpha: 0.7) // Light grey on dark teal
+                            : const Color(0xFF667781)) // Grey on light green
+                        : (isDarkMode
+                            ? Colors.white.withValues(alpha: 0.6) // Light grey on dark grey
+                            : const Color(0xFF667781)), // Grey on white
                     fontSize: 11,
                   ),
                 ),
@@ -493,15 +645,14 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   }
 
   bool _isSameDay(DateTime date1, DateTime date2) {
-    return date1.year == date2.year &&
-        date1.month == date2.month &&
-        date1.day == date2.day;
+    return TimeFormatter.isSameDay(date1, date2);
   }
 
   Widget _buildMessageStatusIcon(MessageEntity message, bool isDarkMode) {
     final status = message.status;
+    // WhatsApp style: Blue for read, gray for sent/delivered
     final color = status == MessageStatus.read
-        ? kPrimaryColor // Blue for read
+        ? const Color(0xFF53BDEB) // WhatsApp blue for read receipts
         : kBackgroundColorDark.withValues(
             alpha: 0.7,
           ); // Gray for sent/delivered
@@ -520,21 +671,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   }
 
   Widget _buildDateSeparator(DateTime date, bool isDarkMode) {
-    final now = DateTime.now();
-    final today = DateTime(now.year, now.month, now.day);
-    final messageDate = DateTime(date.year, date.month, date.day);
-    final yesterday = today.subtract(const Duration(days: 1));
-
-    String dateText;
-    if (messageDate == today) {
-      dateText = 'Today';
-    } else if (messageDate == yesterday) {
-      dateText = 'Yesterday';
-    } else if (now.difference(messageDate).inDays < 7) {
-      dateText = DateFormat('EEEE').format(date); // Day name
-    } else {
-      dateText = DateFormat('MMM d, yyyy').format(date);
-    }
+    final dateText = TimeFormatter.formatDateSeparator(date);
 
     return Center(
       child: Container(
@@ -573,6 +710,16 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       ),
       child: Row(
         children: [
+          // Attachment button
+          IconButton(
+            icon: Icon(
+              Icons.attach_file,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            ),
+            onPressed: _showAttachmentOptions,
+            tooltip: 'Attach file',
+          ),
+          const SizedBox(width: 4),
           Expanded(
             child: TextField(
               controller: _messageController,

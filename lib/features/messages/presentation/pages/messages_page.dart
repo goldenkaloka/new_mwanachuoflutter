@@ -4,13 +4,13 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
+import 'package:mwanachuo/core/utils/time_formatter.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
 import 'package:mwanachuo/features/messages/domain/entities/conversation_entity.dart';
-import 'package:intl/intl.dart';
 
 class MessagesPage extends StatelessWidget {
   const MessagesPage({super.key});
@@ -453,61 +453,7 @@ class ConversationListItem extends StatelessWidget {
   });
 
   String _formatTime(DateTime? time) {
-    if (time == null) return '';
-
-    try {
-      // Ensure we're working with local time
-      final localTime = time.isUtc ? time.toLocal() : time;
-      final now = DateTime.now();
-      
-      // Calculate difference carefully
-      final difference = now.difference(localTime);
-
-      // Handle negative differences (future times due to clock sync issues)
-      if (difference.isNegative || difference.inSeconds < 30) {
-        return 'Just now';
-      }
-
-      // Less than 1 minute
-      if (difference.inMinutes < 1) {
-        return 'Just now';
-      }
-      
-      // Less than 1 hour - show minutes
-      if (difference.inMinutes < 60) {
-        return '${difference.inMinutes}m';
-      }
-      
-      // Same day - show time
-      final today = DateTime(now.year, now.month, now.day);
-      final messageDay = DateTime(localTime.year, localTime.month, localTime.day);
-      
-      if (messageDay == today) {
-        return DateFormat('HH:mm').format(localTime);
-      }
-      
-      // Yesterday
-      final yesterday = today.subtract(const Duration(days: 1));
-      if (messageDay == yesterday) {
-        return 'Yesterday';
-      }
-      
-      // Within the last week
-      if (difference.inDays < 7) {
-        return DateFormat('EEE').format(localTime); // Mon, Tue, etc.
-      }
-      
-      // This year - show date without year
-      if (localTime.year == now.year) {
-        return DateFormat('MMM d').format(localTime);
-      }
-      
-      // Different year - show full date
-      return DateFormat('MMM d, yyyy').format(localTime);
-    } catch (e) {
-      LoggerService.error('Error formatting time', e);
-      return '';
-    }
+    return TimeFormatter.formatConversationTime(time);
   }
 
   @override

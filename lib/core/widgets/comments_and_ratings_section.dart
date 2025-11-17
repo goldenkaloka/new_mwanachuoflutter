@@ -593,7 +593,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
                             decoration: BoxDecoration(
-                              color: kPrimaryColor.withOpacity(0.1),
+                              color: kPrimaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4.0),
                             ),
                             child: Text(
