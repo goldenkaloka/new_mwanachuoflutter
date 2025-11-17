@@ -89,7 +89,7 @@ const LinearGradient kDarkCardGradient = LinearGradient(
 /// Small shadow - for subtle elevation (buttons, chips)
 final List<BoxShadow> kShadowSm = [
   BoxShadow(
-    color: Colors.black.withOpacity(0.05),
+    color: Colors.black.withValues(alpha: 0.05),
     blurRadius: 4,
     offset: const Offset(0, 1),
   ),
@@ -98,7 +98,7 @@ final List<BoxShadow> kShadowSm = [
 /// Medium shadow - for cards, containers
 final List<BoxShadow> kShadowMd = [
   BoxShadow(
-    color: Colors.black.withOpacity(0.1),
+    color: Colors.black.withValues(alpha: 0.1),
     blurRadius: 8,
     offset: const Offset(0, 2),
   ),
@@ -107,7 +107,7 @@ final List<BoxShadow> kShadowMd = [
 /// Large shadow - for modals, dialogs
 final List<BoxShadow> kShadowLg = [
   BoxShadow(
-    color: Colors.black.withOpacity(0.1),
+    color: Colors.black.withValues(alpha: 0.1),
     blurRadius: 16,
     offset: const Offset(0, 4),
   ),
@@ -116,7 +116,7 @@ final List<BoxShadow> kShadowLg = [
 /// Extra large shadow - for floating elements
 final List<BoxShadow> kShadowXl = [
   BoxShadow(
-    color: Colors.black.withOpacity(0.15),
+    color: Colors.black.withValues(alpha: 0.15),
     blurRadius: 24,
     offset: const Offset(0, 8),
   ),

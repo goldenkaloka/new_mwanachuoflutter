@@ -250,14 +250,14 @@ class ProductRepositoryImpl implements ProductRepository {
         metadata: metadata,
       );
 
-      // Update product in cache (incremental update)
-      try {
-        await localDataSource.updateProductInCache(product);
-        debugPrint('✅ ProductRepository: Product updated in cache');
-      } catch (e) {
-        debugPrint('⚠️  ProductRepository: Failed to update cache - $e');
-        // Non-critical error, continue
-      }
+              // Update product in cache (incremental update)
+              try {
+                await localDataSource.updateProductInCache(product);
+                LoggerService.debug('ProductRepository: Product updated in cache');
+              } catch (e) {
+                LoggerService.warning('ProductRepository: Failed to update cache', e);
+                // Non-critical error, continue
+              }
 
       return Right(product);
     } on ServerException catch (e) {

@@ -181,12 +181,12 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
           folder: folder,
         );
         uploadedImages.add(uploaded);
-        debugPrint('✅ Successfully uploaded image ${i + 1}/${imageFiles.length}');
+        LoggerService.debug('Successfully uploaded image ${i + 1}/${imageFiles.length}');
       } catch (e) {
         // Collect error details
         final errorMessage = 'Image ${i + 1}: $e';
         errors.add(errorMessage);
-        debugPrint('❌ Failed to upload image ${i + 1}/${imageFiles.length}: $e');
+        LoggerService.warning('Failed to upload image ${i + 1}/${imageFiles.length}', e);
         // Continue uploading other images even if one fails
         continue;
       }
@@ -194,11 +194,11 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
 
     if (uploadedImages.isEmpty && imageFiles.isNotEmpty) {
       final detailedError = 'Failed to upload any images. Errors: ${errors.join(', ')}';
-      debugPrint('❌ Upload failed: $detailedError');
+      LoggerService.error('Upload failed', detailedError);
       throw ServerException(detailedError);
     }
 
-    debugPrint('✅ Upload complete: ${uploadedImages.length}/${imageFiles.length} images uploaded successfully');
+    LoggerService.info('Upload complete: ${uploadedImages.length}/${imageFiles.length} images uploaded successfully');
     return uploadedImages;
   }
 

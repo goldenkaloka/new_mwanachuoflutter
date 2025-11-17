@@ -22,12 +22,10 @@ ThemeData lightTheme() {
       primaryContainer: kPrimaryColorLight,
       secondary: kPrimaryColorDark,
       surface: kSurfaceColorLight,
-      background: kBackgroundColorLight,
       error: kErrorColor,
       onPrimary: kBackgroundColorDark,
       onSecondary: kBackgroundColorDark,
       onSurface: kTextPrimary,
-      onBackground: kTextPrimary,
       onError: Colors.white,
     ),
     
@@ -270,7 +268,7 @@ ThemeData lightTheme() {
     
     // Chip theme
     chipTheme: ChipThemeData(
-      backgroundColor: kPrimaryColorLight.withOpacity(0.2),
+      backgroundColor: kPrimaryColorLight.withValues(alpha: 0.2),
       selectedColor: kPrimaryColor,
       disabledColor: kBorderColor,
       labelStyle: GoogleFonts.plusJakartaSans(
@@ -370,12 +368,10 @@ ThemeData darkTheme() {
       primaryContainer: kPrimaryColorDark,
       secondary: kPrimaryColorLight,
       surface: kSurfaceColorDark,
-      background: kBackgroundColorDark,
       error: kErrorColor,
       onPrimary: kBackgroundColorDark,
       onSecondary: kBackgroundColorDark,
       onSurface: kTextPrimaryDark,
-      onBackground: kTextPrimaryDark,
       onError: Colors.white,
     ),
     
@@ -574,7 +570,7 @@ ThemeData darkTheme() {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(kRadiusMd),
         side: BorderSide(
-          color: kBorderColorDark.withOpacity(0.3),
+          color: kBorderColorDark.withValues(alpha: 0.3),
           width: 1,
         ),
       ),
@@ -622,7 +618,7 @@ ThemeData darkTheme() {
     
     // Chip theme
     chipTheme: ChipThemeData(
-      backgroundColor: kPrimaryColor.withOpacity(0.15),
+      backgroundColor: kPrimaryColor.withValues(alpha: 0.15),
       selectedColor: kPrimaryColor,
       disabledColor: kBorderColorDark,
       labelStyle: GoogleFonts.plusJakartaSans(
