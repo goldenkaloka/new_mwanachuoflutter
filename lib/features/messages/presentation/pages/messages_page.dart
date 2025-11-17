@@ -1,0 +1,684 @@
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
+import 'package:mwanachuo/core/utils/responsive.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
+import 'package:mwanachuo/features/messages/domain/entities/conversation_entity.dart';
+import 'package:intl/intl.dart';
+
+class MessagesPage extends StatelessWidget {
+  const MessagesPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    // Use the shared MessageBloc instance from app level
+    // Load conversations when page is first built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<MessageBloc>().add(const LoadConversationsEvent());
+    });
+
+    return const _MessagesView();
+  }
+}
+
+class _MessagesView extends StatefulWidget {
+  const _MessagesView();
+
+  @override
+  State<_MessagesView> createState() => _MessagesViewState();
+}
+
+class _MessagesViewState extends State<_MessagesView> {
+  MessageBloc? _messageBloc;
+
+  @override
+  void initState() {
+    super.initState();
+    // Start real-time listening to conversations
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        _messageBloc = context.read<MessageBloc>();
+        _messageBloc?.add(StartListeningToConversationsEvent());
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    // Stop listening when leaving the page - use saved reference
+    _messageBloc?.add(StopListeningEvent());
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final isExpanded = ResponsiveBreakpoints.isExpanded(context);
+
+    return Scaffold(
+      body: ResponsiveBuilder(
+        builder: (context, screenSize) {
+          if (isExpanded) {
+            return _buildExpandedLayout(context, isDarkMode);
+          }
+
+          return Stack(
+            children: [
+              // Conversation List
+              Padding(
+                padding: EdgeInsets.only(
+                  top: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 84.0,
+                    medium: 80.0,
+                    expanded: 0.0,
+                  ),
+                ),
+                child: ResponsiveContainer(
+                  child: _buildConversationsList(isDarkMode, screenSize),
+                ),
+              ),
+              // Sticky Top App Bar
+              _buildTopAppBar(isDarkMode, screenSize),
+              // Floating Action Button (only for compact/medium)
+              if (!isExpanded) _buildFloatingActionButton(context, screenSize),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildConversationsList(bool isDarkMode, ScreenSize screenSize) {
+    return BlocBuilder<MessageBloc, MessageState>(
+      builder: (context, state) {
+        if (state is ConversationsLoading) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const CircularProgressIndicator(color: kPrimaryColor),
+                const SizedBox(height: 16),
+                Text(
+                  'Loading conversations...',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (state is MessageError) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                const SizedBox(height: 16),
+                Text(
+                  state.message,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    context.read<MessageBloc>().add(
+                      const LoadConversationsEvent(),
+                    );
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                    foregroundColor: kBackgroundColorDark,
+                  ),
+                  child: const Text('Retry'),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (state is ConversationsLoaded) {
+          debugPrint(
+            '💬 [UI] ConversationsLoaded state received in MessagesPage',
+          );
+          debugPrint('   Total conversations: ${state.conversations.length}');
+          for (var conv in state.conversations) {
+            debugPrint('   [UI] Conversation: ${conv.otherUserName}');
+            debugPrint('      ID: ${conv.id}');
+            debugPrint('      last_message: "${conv.lastMessage ?? 'NULL'}"');
+            debugPrint('      last_message_time: ${conv.lastMessageTime}');
+            debugPrint('      unread_count: ${conv.unreadCount}');
+          }
+
+          if (state.conversations.isEmpty) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    Icons.chat_bubble_outline,
+                    size: 64,
+                    color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No conversations yet',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start browsing to connect with sellers',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }
+
+          return ListView.separated(
+            itemCount: state.conversations.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              thickness: 0,
+              indent: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 88.0,
+                medium: 96.0,
+                expanded: 104.0,
+              ),
+            ),
+            itemBuilder: (context, index) {
+              final conversation = state.conversations[index];
+              return ConversationListItem(
+                conversation: conversation,
+                isDarkMode: isDarkMode,
+                screenSize: screenSize,
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/chat',
+                    arguments: conversation.id,
+                  );
+                },
+              );
+            },
+          );
+        }
+
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildExpandedLayout(BuildContext context, bool isDarkMode) {
+    return Row(
+      children: [
+        // Left Sidebar - Conversations List
+        Container(
+          width: 400,
+          decoration: BoxDecoration(
+            color: isDarkMode ? kBackgroundColorDark : Colors.white,
+            border: Border(
+              right: BorderSide(
+                color: isDarkMode ? Colors.grey[800]! : Colors.grey[200]!,
+                width: 1,
+              ),
+            ),
+          ),
+          child: Column(
+            children: [
+              _buildTopAppBar(isDarkMode, ScreenSize.expanded),
+              Expanded(
+                child: _buildConversationsList(isDarkMode, ScreenSize.expanded),
+              ),
+            ],
+          ),
+        ),
+        // Right Side - Chat View or Empty State
+        Expanded(
+          child: Container(
+            color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(
+                    Icons.desktop_windows,
+                    size: 64,
+                    color: kPrimaryColor,
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Desktop Chat View',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                      fontSize: 18,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Click conversation to open in full screen',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDarkMode ? Colors.grey[600] : Colors.grey[500],
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopAppBar(bool isDarkMode, ScreenSize screenSize) {
+    final horizontalPadding = screenSize == ScreenSize.expanded
+        ? 16.0
+        : ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final isExpanded = screenSize == ScreenSize.expanded;
+
+    return ClipRect(
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+        child: Container(
+          height: ResponsiveBreakpoints.responsiveValue(
+            context,
+            compact: 84.0,
+            medium: 80.0,
+            expanded: 64.0,
+          ),
+          color: isDarkMode
+              ? kBackgroundColorDark.withValues(alpha: 0.8)
+              : kBackgroundColorLight.withValues(alpha: 0.8),
+          padding: EdgeInsets.fromLTRB(
+            horizontalPadding,
+            screenSize == ScreenSize.expanded ? 16.0 : 48.0,
+            horizontalPadding,
+            8.0,
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              // Back/Home Button
+              SizedBox(
+                width: 48,
+                child: IconButton(
+                  icon: Icon(
+                    isExpanded ? Icons.home : Icons.arrow_back,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                  onPressed: () {
+                    if (isExpanded) {
+                      Navigator.pushReplacementNamed(context, '/home');
+                    } else {
+                      Navigator.pop(context);
+                    }
+                  },
+                ),
+              ),
+              // Title
+              Expanded(
+                child: Text(
+                  'Messages',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: ResponsiveBreakpoints.responsiveValue(
+                      context,
+                      compact: 20.0,
+                      medium: 22.0,
+                      expanded: 20.0,
+                    ),
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+              // Search Button
+              SizedBox(
+                width: 48,
+                child: IconButton(
+                  icon: Icon(Icons.search),
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                  onPressed: () {
+                    // Handle search action
+                  },
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFloatingActionButton(
+    BuildContext context,
+    ScreenSize screenSize,
+  ) {
+    final fabPosition = ResponsiveBreakpoints.responsiveValue(
+      context,
+      compact: 24.0,
+      medium: 32.0,
+      expanded: 40.0,
+    );
+
+    return Positioned(
+      bottom: fabPosition,
+      right: fabPosition,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(9999),
+          boxShadow: [
+            BoxShadow(
+              color: kPrimaryColor.withValues(alpha: 0.3),
+              spreadRadius: 2,
+              blurRadius: 8,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () {
+            // Handle new chat action
+          },
+          backgroundColor: kPrimaryColor,
+          foregroundColor: kBackgroundColorDark,
+          label: Text(
+            'New Chat',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 17.0,
+                expanded: 18.0,
+              ),
+              fontWeight: FontWeight.bold,
+              color: kBackgroundColorDark,
+            ),
+          ),
+          icon: Icon(Icons.edit, color: kBackgroundColorDark),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(9999),
+          ),
+          elevation: 0,
+        ),
+      ),
+    );
+  }
+}
+
+class ConversationListItem extends StatelessWidget {
+  final ConversationEntity conversation;
+  final bool isDarkMode;
+  final ScreenSize screenSize;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const ConversationListItem({
+    super.key,
+    required this.conversation,
+    required this.isDarkMode,
+    required this.screenSize,
+    this.isSelected = false,
+    required this.onTap,
+  });
+
+  String _formatTime(DateTime? time) {
+    if (time == null) return '';
+
+    // Convert to local time to avoid timezone issues
+    final localTime = time.toLocal();
+    final now = DateTime.now();
+    final difference = now.difference(localTime);
+
+    // Handle negative differences (future times due to sync issues)
+    if (difference.isNegative) {
+      return 'Just now';
+    }
+
+    if (difference.inMinutes < 1) {
+      return 'Just now';
+    } else if (difference.inMinutes < 60) {
+      return '${difference.inMinutes}m ago';
+    } else if (difference.inHours < 24) {
+      return DateFormat('HH:mm').format(localTime);
+    } else if (difference.inDays == 1) {
+      return 'Yesterday';
+    } else if (difference.inDays < 7) {
+      return '${difference.inDays}d ago';
+    } else {
+      return DateFormat('MMM d').format(localTime);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final primaryTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final hasUnread = conversation.unreadCount > 0;
+    final lastMessageColor = hasUnread
+        ? (isDarkMode ? Colors.white : Colors.black87)
+        : (isDarkMode ? Colors.grey[400]! : Colors.grey[600]!);
+    final lastMessageWeight = hasUnread ? FontWeight.bold : FontWeight.normal;
+    final horizontalPadding = screenSize == ScreenSize.expanded
+        ? 16.0
+        : ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final avatarSize = ResponsiveBreakpoints.responsiveValue(
+      context,
+      compact: 56.0,
+      medium: 64.0,
+      expanded: 56.0,
+    );
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        color: isSelected
+            ? (isDarkMode
+                  ? Colors.grey[800]!.withValues(alpha: 0.5)
+                  : Colors.grey[100])
+            : Colors.transparent,
+        child: Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: horizontalPadding,
+            vertical: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 8.0,
+              medium: 12.0,
+              expanded: 12.0,
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Profile Picture with Online Indicator
+              Stack(
+                children: [
+                  Container(
+                    width: avatarSize,
+                    height: avatarSize,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: kPrimaryColor.withValues(alpha: 0.3),
+                    ),
+                    child: ClipOval(
+                      child: NetworkImageWithFallback(
+                        imageUrl: conversation.otherUserAvatar ?? '',
+                        width: avatarSize,
+                        height: avatarSize,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  ),
+                  if (conversation.isOnline)
+                    Positioned(
+                      right: 2,
+                      bottom: 2,
+                      child: Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: Colors.green,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDarkMode
+                                ? kBackgroundColorDark
+                                : Colors.white,
+                            width: 2.5,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              SizedBox(
+                width: ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 16.0,
+                  medium: 20.0,
+                  expanded: 24.0,
+                ),
+              ),
+              // Message Details
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      conversation.otherUserName,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: ResponsiveBreakpoints.responsiveValue(
+                          context,
+                          compact: 16.0,
+                          medium: 17.0,
+                          expanded: 18.0,
+                        ),
+                        fontWeight: hasUnread
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                        color: primaryTextColor,
+                      ),
+                    ),
+                    SizedBox(
+                      height: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 4.0,
+                        medium: 6.0,
+                        expanded: 8.0,
+                      ),
+                    ),
+                    Text(
+                      conversation.lastMessage ?? 'No messages yet',
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: ResponsiveBreakpoints.responsiveValue(
+                          context,
+                          compact: 14.0,
+                          medium: 15.0,
+                          expanded: 16.0,
+                        ),
+                        fontWeight: lastMessageWeight,
+                        color: lastMessageColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              // Timestamp and Unread Badge
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    _formatTime(conversation.lastMessageTime),
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 12.0,
+                        medium: 13.0,
+                        expanded: 14.0,
+                      ),
+                      fontWeight: FontWeight.normal,
+                      color: isDarkMode ? Colors.grey[400]! : Colors.grey[500]!,
+                    ),
+                  ),
+                  if (conversation.unreadCount > 0) ...[
+                    SizedBox(
+                      height: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 6.0,
+                        medium: 8.0,
+                        expanded: 10.0,
+                      ),
+                    ),
+                    Container(
+                      width: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 24.0,
+                        medium: 28.0,
+                        expanded: 32.0,
+                      ),
+                      height: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 24.0,
+                        medium: 28.0,
+                        expanded: 32.0,
+                      ),
+                      alignment: Alignment.center,
+                      decoration: BoxDecoration(
+                        color: kPrimaryColor,
+                        shape: BoxShape.circle,
+                      ),
+                      child: Text(
+                        conversation.unreadCount.toString(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: ResponsiveBreakpoints.responsiveValue(
+                            context,
+                            compact: 12.0,
+                            medium: 13.0,
+                            expanded: 14.0,
+                          ),
+                          fontWeight: FontWeight.bold,
+                          color: kBackgroundColorDark,
+                        ),
+                      ),
+                    ),
+                  ] else ...[
+                    SizedBox(
+                      height: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 30.0,
+                        medium: 36.0,
+                        expanded: 42.0,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
