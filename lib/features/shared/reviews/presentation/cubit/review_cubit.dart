@@ -49,7 +49,10 @@ class ReviewCubit extends Cubit<ReviewState> {
 
     result.fold(
       (failure) => emit(ReviewError(message: failure.message)),
-      (reviews) => emit(ReviewsLoaded(reviews: reviews)),
+      (reviews) => emit(ReviewsLoaded(
+        reviews: reviews,
+        hasMore: reviews.length == (limit ?? 10),
+      )),
     );
   }
 
@@ -83,9 +86,53 @@ class ReviewCubit extends Cubit<ReviewState> {
       (failure) => emit(ReviewError(message: failure.message)),
       (reviews) {
         statsResult.fold(
-          (failure) => emit(ReviewsLoaded(reviews: reviews)),
-          (stats) => emit(ReviewsLoaded(reviews: reviews, stats: stats)),
+          (failure) => emit(ReviewsLoaded(
+            reviews: reviews,
+            hasMore: reviews.length == (limit ?? 10),
+          )),
+          (stats) => emit(ReviewsLoaded(
+            reviews: reviews,
+            stats: stats,
+            hasMore: reviews.length == (limit ?? 10),
+          )),
         );
+      },
+    );
+  }
+
+  /// Load more reviews
+  Future<void> loadMoreReviews({
+    required String itemId,
+    required ReviewType itemType,
+    required int offset,
+    int? limit,
+  }) async {
+    final currentState = state;
+    if (currentState is! ReviewsLoaded || currentState.isLoadingMore) {
+      return;
+    }
+
+    emit(currentState.copyWith(isLoadingMore: true));
+
+    final result = await getReviews(
+      GetReviewsParams(
+        itemId: itemId,
+        itemType: itemType,
+        limit: limit ?? 10,
+        offset: offset,
+      ),
+    );
+
+    result.fold(
+      (failure) => emit(currentState.copyWith(isLoadingMore: false)),
+      (newReviews) {
+        final allReviews = [...currentState.reviews, ...newReviews];
+        emit(ReviewsLoaded(
+          reviews: allReviews,
+          stats: currentState.stats,
+          hasMore: newReviews.length == (limit ?? 10),
+          isLoadingMore: false,
+        ));
       },
     );
   }

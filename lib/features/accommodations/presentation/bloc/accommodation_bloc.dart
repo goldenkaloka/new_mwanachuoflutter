@@ -1,5 +1,5 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/create_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/delete_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/get_accommodations.dart';
@@ -40,11 +40,11 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
   ) async {
     // Prevent reloading if already loading
     if (state is AccommodationsLoading) {
-      debugPrint('⏭️  Accommodations already loading, skipping...');
+      LoggerService.debug('Accommodations already loading, skipping...');
       return;
     }
     
-    debugPrint('🏠 Loading accommodations...');
+    LoggerService.info('Loading accommodations...');
     emit(AccommodationsLoading());
 
     final result = await getAccommodations(
@@ -62,11 +62,11 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
 
     result.fold(
       (failure) {
-        debugPrint('❌ Accommodations load failed: ${failure.message}');
+        LoggerService.error('Accommodations load failed', failure.message);
         emit(AccommodationError(message: failure.message));
       },
       (accommodations) {
-        debugPrint('✅ Accommodations loaded: ${accommodations.length} items');
+        LoggerService.info('Accommodations loaded: ${accommodations.length} items');
         emit(AccommodationsLoaded(
           accommodations: accommodations,
           hasMore: accommodations.length == (event.limit ?? 20),

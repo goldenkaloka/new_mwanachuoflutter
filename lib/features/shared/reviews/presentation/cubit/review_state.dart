@@ -20,14 +20,32 @@ class ReviewsLoading extends ReviewState {}
 class ReviewsLoaded extends ReviewState {
   final List<ReviewEntity> reviews;
   final ReviewStatsEntity? stats;
+  final bool hasMore;
+  final bool isLoadingMore;
 
   const ReviewsLoaded({
     required this.reviews,
     this.stats,
+    this.hasMore = false,
+    this.isLoadingMore = false,
   });
 
+  ReviewsLoaded copyWith({
+    List<ReviewEntity>? reviews,
+    ReviewStatsEntity? stats,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
+    return ReviewsLoaded(
+      reviews: reviews ?? this.reviews,
+      stats: stats ?? this.stats,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
+
   @override
-  List<Object?> get props => [reviews, stats];
+  List<Object?> get props => [reviews, stats, hasMore, isLoadingMore];
 }
 
 /// Loading review stats

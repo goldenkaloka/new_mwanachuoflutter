@@ -13,6 +13,8 @@ import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_bloc.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_event.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_state.dart';
+import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
+import 'package:mwanachuo/features/accommodations/presentation/pages/edit_accommodation_screen.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 
 class MyListingsScreen extends StatelessWidget {
@@ -524,95 +526,217 @@ class _MyListingsViewState extends State<_MyListingsView>
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: myAccommodations.length,
-            itemBuilder: (context, index) {
-              final accommodation = myAccommodations[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                color: isDarkMode ? Colors.grey[900] : Colors.white,
-                child: ListTile(
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    '/accommodation-details',
-                    arguments: accommodation.id,
+          return BlocListener<AccommodationBloc, AccommodationState>(
+            listener: (context, state) {
+              if (state is AccommodationDeleted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Accommodation deleted successfully!'),
+                    backgroundColor: Colors.green,
                   ),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: NetworkImageWithFallback(
-                      imageUrl: accommodation.images.isNotEmpty
-                          ? accommodation.images.first
-                          : '',
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                    ),
+                );
+                // Reload accommodations
+                context.read<AccommodationBloc>().add(
+                      const LoadAccommodationsEvent(limit: 100),
+                    );
+              } else if (state is AccommodationError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
                   ),
-                  title: Text(
-                    accommodation.name,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    '\$${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType} • ${accommodation.roomType}',
-                    style: TextStyle(color: secondaryTextColor),
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                );
+              }
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: myAccommodations.length,
+              itemBuilder: (context, index) {
+                final accommodation = myAccommodations[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: isDarkMode ? Colors.grey[900] : Colors.white,
+                  child: Column(
                     children: [
-                      Container(
+                      ListTile(
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          '/accommodation-details',
+                          arguments: accommodation.id,
+                        ),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: NetworkImageWithFallback(
+                            imageUrl: accommodation.images.isNotEmpty
+                                ? accommodation.images.first
+                                : '',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        title: Text(
+                          accommodation.name,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.bold,
+                            color: primaryTextColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          'Ksh ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType} • ${accommodation.roomType}',
+                          style: TextStyle(color: secondaryTextColor),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: accommodation.isActive
+                                    ? Colors.green.withValues(alpha: 0.2)
+                                    : Colors.grey.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                accommodation.isActive ? 'Active' : 'Inactive',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: accommodation.isActive
+                                      ? Colors.green
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.visibility,
+                                    size: 12, color: secondaryTextColor),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${accommodation.viewCount}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: secondaryTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(
+                        height: 1,
+                        color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                      ),
+                      Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
-                        decoration: BoxDecoration(
-                          color: accommodation.isActive
-                              ? Colors.green.withValues(alpha: 0.2)
-                              : Colors.grey.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          accommodation.isActive ? 'Active' : 'Inactive',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color:
-                                accommodation.isActive ? Colors.green : Colors.grey,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.visibility,
-                              size: 12, color: secondaryTextColor),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${accommodation.viewCount}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: secondaryTextColor,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        _buildEditAccommodationScreen(
+                                      accommodation,
+                                    ),
+                                  ),
+                                );
+                                if (result == true) {
+                                  // Reload accommodations if edit was successful
+                                  if (context.mounted) {
+                                    context.read<AccommodationBloc>().add(
+                                          const LoadAccommodationsEvent(
+                                            limit: 100,
+                                          ),
+                                        );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text('Edit'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: kPrimaryColor,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: () => _showDeleteConfirmation(
+                                context,
+                                accommodation.id,
+                                accommodation.name,
+                              ),
+                              icon: const Icon(Icons.delete, size: 18),
+                              label: const Text('Delete'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         }
 
         return const SizedBox.shrink();
       },
+    );
+  }
+
+  Widget _buildEditAccommodationScreen(AccommodationEntity accommodation) {
+    return EditAccommodationScreen(accommodation: accommodation);
+  }
+
+  void _showDeleteConfirmation(
+    BuildContext context,
+    String accommodationId,
+    String accommodationName,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Accommodation'),
+        content: Text(
+          'Are you sure you want to delete "$accommodationName"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.read<AccommodationBloc>().add(
+                    DeleteAccommodationEvent(
+                      accommodationId: accommodationId,
+                    ),
+                  );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
     );
   }
 }

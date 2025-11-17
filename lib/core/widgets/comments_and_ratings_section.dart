@@ -439,6 +439,8 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
   ) {
     // Extract reviews from state
     final reviews = state is ReviewsLoaded ? state.reviews : <ReviewEntity>[];
+    final hasMore = state is ReviewsLoaded ? state.hasMore : false;
+    final isLoadingMore = state is ReviewsLoaded ? state.isLoadingMore : false;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -477,7 +479,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               ),
             ),
           )
-        else
+        else ...[
           ...reviews.map((review) {
             return _buildReviewItem(
               context,
@@ -488,6 +490,40 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               screenSize,
             );
           }),
+          
+          // Load More Button
+          if (hasMore) ...[
+            const SizedBox(height: 16.0),
+            Center(
+              child: isLoadingMore
+                  ? const CircularProgressIndicator()
+                  : OutlinedButton(
+                      onPressed: () {
+                        context.read<ReviewCubit>().loadMoreReviews(
+                              itemId: widget.itemId,
+                              itemType: _getReviewType(),
+                              offset: reviews.length,
+                              limit: 10,
+                            );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: kPrimaryColor,
+                        side: const BorderSide(color: kPrimaryColor),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 32,
+                          vertical: 12,
+                        ),
+                      ),
+                      child: Text(
+                        'Load More Reviews',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+            ),
+          ],
+        ],
       ],
     );
   }

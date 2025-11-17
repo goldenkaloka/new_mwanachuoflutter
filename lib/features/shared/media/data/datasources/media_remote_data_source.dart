@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
+import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/features/shared/media/data/models/media_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
@@ -70,23 +70,23 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
     int attempt = 1,
   }) async {
     try {
-      debugPrint('📤 Upload attempt $attempt/$maxRetries - bucket: $bucket, folder: $folder');
+      LoggerService.debug('Upload attempt $attempt/$maxRetries - bucket: $bucket, folder: $folder');
       
       // Generate unique file name
       final extension = path.extension(imageFile.path);
       final fileName = '${uuid.v4()}$extension';
       final filePath = folder != null ? '$folder/$fileName' : fileName;
       
-      debugPrint('📄 File path: $filePath, extension: $extension');
+      LoggerService.debug('File path: $filePath, extension: $extension');
 
       // Get file info
       final fileBytes = await imageFile.readAsBytes();
       final fileSize = fileBytes.length;
       
-      debugPrint('📊 File size: ${(fileSize / 1024).toStringAsFixed(2)} KB');
+      LoggerService.debug('File size: ${(fileSize / 1024).toStringAsFixed(2)} KB');
 
       // Upload to Supabase Storage
-      debugPrint('⬆️  Uploading to Supabase Storage...');
+      LoggerService.info('Uploading to Supabase Storage...');
       await supabaseClient.storage.from(bucket).uploadBinary(
             filePath,
             fileBytes,
@@ -96,12 +96,12 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
             ),
           );
 
-      debugPrint('✅ Upload successful on attempt $attempt!');
+      LoggerService.info('Upload successful on attempt $attempt!');
 
       // Get public URL
       final publicUrl = supabaseClient.storage.from(bucket).getPublicUrl(filePath);
       
-      debugPrint('🔗 Public URL generated: $publicUrl');
+      LoggerService.debug('Public URL generated: $publicUrl');
 
       return MediaModel.fromSupabaseUpload(
         id: fileName,
@@ -114,7 +114,7 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
       // Retry on network errors
       if (attempt < maxRetries && _isRetryableError(e)) {
         final delay = initialRetryDelay * (1 << (attempt - 1)); // Exponential backoff
-        debugPrint('⚠️  Upload failed (${e.message}), retrying in ${delay.inSeconds}s... (attempt $attempt/$maxRetries)');
+        LoggerService.warning('Upload failed (${e.message}), retrying in ${delay.inSeconds}s... (attempt $attempt/$maxRetries)');
         await Future.delayed(delay);
         return _uploadWithRetry(
           imageFile: imageFile,
@@ -123,14 +123,13 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
           attempt: attempt + 1,
         );
       }
-      debugPrint('❌ StorageException after $attempt attempts: ${e.message}');
-      debugPrint('❌ StatusCode: ${e.statusCode}');
+      LoggerService.error('StorageException after $attempt attempts', e.message);
       throw ServerException('Storage error: ${e.message} (${e.statusCode})');
     } catch (e, stackTrace) {
       // Retry on network errors
       if (attempt < maxRetries && _isNetworkError(e)) {
         final delay = initialRetryDelay * (1 << (attempt - 1)); // Exponential backoff
-        debugPrint('⚠️  Network error, retrying in ${delay.inSeconds}s... (attempt $attempt/$maxRetries)');
+        LoggerService.warning('Network error, retrying in ${delay.inSeconds}s... (attempt $attempt/$maxRetries)');
         await Future.delayed(delay);
         return _uploadWithRetry(
           imageFile: imageFile,
@@ -139,8 +138,7 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
           attempt: attempt + 1,
         );
       }
-      debugPrint('❌ Upload failed after $attempt attempts: $e');
-      debugPrint('❌ StackTrace: $stackTrace');
+      LoggerService.error('Upload failed after $attempt attempts', e, stackTrace);
       throw ServerException('Failed to upload image: $e');
     }
   }
