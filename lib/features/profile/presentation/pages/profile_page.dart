@@ -1,9 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
+import 'package:mwanachuo/core/widgets/error_state.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
@@ -64,42 +64,11 @@ class ProfilePage extends StatelessWidget {
             if (state is ProfileError) {
               return Scaffold(
                 backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
-                body: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                      const SizedBox(height: 16),
-                      Text(
-                        state.message,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: secondaryTextColor),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          context.read<ProfileBloc>().add(LoadMyProfileEvent());
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kPrimaryColor,
-                          foregroundColor: kBackgroundColorDark,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20.0), // M3 standard
-                          ),
-                          elevation: 2.0, // M3 standard elevation
-                          padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0), // M3 standard
-                          minimumSize: const Size(64, 40), // M3 minimum touch target
-                        ),
-                        child: Text(
-                          'Retry',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w600, // M3 medium weight
-                            letterSpacing: 0.1, // M3 standard tracking
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
+                body: ErrorState(
+                  message: state.message,
+                  onRetry: () {
+                    context.read<ProfileBloc>().add(LoadMyProfileEvent());
+                  },
                 ),
               );
             }

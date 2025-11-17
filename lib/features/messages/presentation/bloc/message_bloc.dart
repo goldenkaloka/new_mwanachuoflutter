@@ -382,16 +382,20 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     final maxRetries = 3;
 
     if (retryCount >= maxRetries) {
-      emit(const MessageError(
-        message: 'Failed to send message after multiple attempts',
-      ));
+      emit(
+        const MessageError(
+          message: 'Failed to send message after multiple attempts',
+        ),
+      );
       return;
     }
 
     // Exponential backoff: 2^retryCount seconds (1s, 2s, 4s)
     if (retryCount > 0) {
       final delaySeconds = (1 << retryCount); // 2^retryCount
-      debugPrint('Retrying message after ${delaySeconds}s delay (attempt ${retryCount + 1}/$maxRetries)');
+      debugPrint(
+        'Retrying message after ${delaySeconds}s delay (attempt ${retryCount + 1}/$maxRetries)',
+      );
       await Future.delayed(Duration(seconds: delaySeconds));
     }
 
