@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
-import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/core/utils/responsive.dart';
+import 'package:mwanachuo/core/widgets/app_card.dart';
+import 'package:mwanachuo/core/widgets/empty_state.dart';
+import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
@@ -59,103 +61,66 @@ class _AllProductsViewState extends State<_AllProductsView> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final crossAxisCount = ResponsiveBreakpoints.responsiveGridColumns(context);
 
     return Scaffold(
       appBar: AppBar(
         title: Text(
           'All Products',
-          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+          style: Theme.of(context).textTheme.headlineMedium,
         ),
-        backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
       ),
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
       body: BlocBuilder<ProductBloc, ProductState>(
         builder: (context, state) {
+          // Loading state - show shimmer skeleton
           if (state is ProductsLoading) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: kPrimaryColor),
-                  SizedBox(height: 16),
-                  Text('Loading products...'),
-                ],
-              ),
+            return ProductGridSkeleton(
+              itemCount: 6,
+              crossAxisCount: crossAxisCount,
             );
           }
 
+          // Error state - use new ErrorState widget
           if (state is ProductError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: secondaryTextColor),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<ProductBloc>().add(const LoadProductsEvent(limit: 50));
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      foregroundColor: kBackgroundColorDark,
-                    ),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
+            return ErrorState(
+              title: 'Failed to Load Products',
+              message: state.message,
+              onRetry: () {
+                context.read<ProductBloc>().add(const LoadProductsEvent(limit: 20));
+              },
             );
           }
 
+          // Success state
           if (state is ProductsLoaded) {
-            if (state.products.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.shopping_bag_outlined,
-                      size: 64,
-                      color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No products available',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: primaryTextColor,
-                      ),
-                    ),
-                  ],
-                ),
+            // Empty state - use new EmptyState widget
+            if (state.products.isEmpty && !state.isLoadingMore) {
+              return EmptyState(
+                type: EmptyStateType.noProducts,
+                onAction: () => Navigator.pop(context),
+                actionLabel: 'Go Back',
               );
             }
 
+            // Products grid with pagination
             return GridView.builder(
               controller: _scrollController,
-              padding: const EdgeInsets.all(16),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
+              padding: EdgeInsets.all(
+                ResponsiveBreakpoints.responsiveHorizontalPadding(context),
+              ),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: crossAxisCount,
                 childAspectRatio: 0.75,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
+                crossAxisSpacing: kSpacingLg,
+                mainAxisSpacing: kSpacingLg,
               ),
               itemCount: state.products.length + (state.isLoadingMore ? 1 : 0),
               itemBuilder: (context, index) {
                 // Show loading indicator at the bottom
                 if (index == state.products.length && state.isLoadingMore) {
-                  return Center(
+                  return const Center(
                     child: Padding(
-                      padding: const EdgeInsets.all(16.0),
+                      padding: EdgeInsets.all(kSpacingLg),
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -163,11 +128,10 @@ class _AllProductsViewState extends State<_AllProductsView> {
                             color: kPrimaryColor,
                             strokeWidth: 2,
                           ),
-                          SizedBox(height: 8),
+                          SizedBox(height: kSpacingSm),
                           Text(
                             'Loading more...',
                             style: TextStyle(
-                              color: secondaryTextColor,
                               fontSize: 12,
                             ),
                           ),
@@ -177,91 +141,21 @@ class _AllProductsViewState extends State<_AllProductsView> {
                   );
                 }
 
-                if (index >= state.products.length) return SizedBox.shrink();
+                if (index >= state.products.length) return const SizedBox.shrink();
                 
-              
+                // Use new ProductCard component
                 final product = state.products[index];
-                return GestureDetector(
+                return ProductCard(
+                  imageUrl: product.images.isNotEmpty ? product.images.first : '',
+                  title: product.title,
+                  price: 'Ksh ${product.price.toStringAsFixed(2)}',
+                  category: product.category,
+                  rating: product.rating,
+                  reviewCount: product.reviewCount,
                   onTap: () => Navigator.pushNamed(
                     context,
                     '/product-details',
                     arguments: product.id,
-                  ),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? Colors.grey[900] : Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.1),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Expanded(
-                          child: ClipRRect(
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(12),
-                            ),
-                            child: NetworkImageWithFallback(
-                              imageUrl: product.images.isNotEmpty
-                                  ? product.images.first
-                                  : '',
-                              width: double.infinity,
-                              height: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                product.title,
-                                style: TextStyle(
-                                  color: primaryTextColor,
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                '\$${product.price.toStringAsFixed(2)}',
-                                style: const TextStyle(
-                                  color: kPrimaryColor,
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              if (product.rating != null) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    const Icon(Icons.star, size: 14, color: Colors.amber),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      '${product.rating!.toStringAsFixed(1)} (${product.reviewCount})',
-                                      style: TextStyle(
-                                        color: secondaryTextColor,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
                 );
               },

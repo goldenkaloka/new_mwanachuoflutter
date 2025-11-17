@@ -5,6 +5,7 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/services/university_service.dart';
+import 'package:mwanachuo/core/widgets/app_card.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
@@ -1410,104 +1411,20 @@ class _HomePageState extends State<HomePage> {
         ),
         itemBuilder: (context, index) {
           final product = products[index];
-          return _buildProductCard(
-            product,
-            primaryTextColor,
-            secondaryTextColor,
+          return ProductCard(
+            imageUrl: product.images.isNotEmpty ? product.images.first : '',
+            title: product.title,
+            price: 'Ksh ${product.price.toStringAsFixed(2)}',
+            category: product.category,
+            rating: product.rating,
+            reviewCount: product.reviewCount,
+            onTap: () => Navigator.pushNamed(
+              context,
+              '/product-details',
+              arguments: product.id,
+            ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildProductCard(
-    ProductEntity product,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-  ) {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(
-        context,
-        '/product-details',
-        arguments: product.id,
-      ),
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.0),
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[900]
-              : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12.0),
-                ),
-                child: NetworkImageWithFallback(
-                  imageUrl: product.images.isNotEmpty
-                      ? product.images.first
-                      : '',
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.title,
-                    style: TextStyle(
-                      color: primaryTextColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${product.price.toStringAsFixed(2)}',
-                    style: TextStyle(
-                      color: kPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (product.rating != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, size: 16, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${product.rating!.toStringAsFixed(1)} (${product.reviewCount})',
-                          style: TextStyle(
-                            color: secondaryTextColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1543,104 +1460,21 @@ class _HomePageState extends State<HomePage> {
         ),
         itemBuilder: (context, index) {
           final service = services[index];
-          return _buildServiceCard(
-            service,
-            primaryTextColor,
-            secondaryTextColor,
+          return ServiceCard(
+            imageUrl: service.images.isNotEmpty ? service.images.first : '',
+            title: service.title,
+            price: 'Ksh ${service.price.toStringAsFixed(2)}',
+            priceType: service.priceType,
+            category: service.category,
+            providerName: service.providerName,
+            location: service.location,
+            onTap: () => Navigator.pushNamed(
+              context,
+              '/service-details',
+              arguments: service.id,
+            ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildServiceCard(
-    ServiceEntity service,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-  ) {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(
-        context,
-        '/service-details',
-        arguments: service.id,
-      ),
-                  child: Container(
-                    decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.0),
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[900]
-              : Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12.0),
-                    ),
-                    child: NetworkImageWithFallback(
-                  imageUrl: service.images.isNotEmpty
-                      ? service.images.first
-                      : '',
-                  width: double.infinity,
-                  height: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
-                  ),
-                ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                Text(
-                    service.title,
-                    style: TextStyle(
-                    color: primaryTextColor,
-                      fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                    '\$${service.price.toStringAsFixed(2)}',
-                    style: TextStyle(
-                    color: kPrimaryColor,
-                    fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (service.rating != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, size: 16, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${service.rating!.toStringAsFixed(1)} (${service.reviewCount})',
-                          style: TextStyle(
-                            color: secondaryTextColor,
-                            fontSize: 12,
-                  ),
-                ),
-              ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1676,104 +1510,21 @@ class _HomePageState extends State<HomePage> {
         ),
         itemBuilder: (context, index) {
           final accommodation = accommodations[index];
-          return _buildAccommodationCard(
-            accommodation,
-            primaryTextColor,
-            secondaryTextColor,
+          return AccommodationCard(
+            imageUrl: accommodation.images.isNotEmpty ? accommodation.images.first : '',
+            title: accommodation.name,
+            price: 'Ksh ${accommodation.price.toStringAsFixed(2)}',
+            priceType: accommodation.priceType,
+            location: accommodation.location,
+            bedrooms: accommodation.bedrooms,
+            bathrooms: accommodation.bathrooms,
+            onTap: () => Navigator.pushNamed(
+              context,
+              '/accommodation-details',
+              arguments: accommodation.id,
+            ),
           );
         },
-      ),
-    );
-  }
-
-  Widget _buildAccommodationCard(
-    AccommodationEntity accommodation,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-  ) {
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(
-        context,
-        '/accommodation-details',
-        arguments: accommodation.id,
-      ),
-      child: Container(
-      decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(12.0),
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[900]
-              : Colors.white,
-        boxShadow: [
-          BoxShadow(
-              color: Colors.black.withValues(alpha: 0.1),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(12.0),
-                ),
-                child: NetworkImageWithFallback(
-                  imageUrl: accommodation.images.isNotEmpty
-                      ? accommodation.images.first
-                      : '',
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    accommodation.name,
-                    style: TextStyle(
-                      color: primaryTextColor,
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '\$${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType}',
-                    style: TextStyle(
-                      color: kPrimaryColor,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  if (accommodation.rating != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        const Icon(Icons.star, size: 16, color: Colors.amber),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${accommodation.rating!.toStringAsFixed(1)} (${accommodation.reviewCount})',
-                          style: TextStyle(
-                            color: secondaryTextColor,
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
