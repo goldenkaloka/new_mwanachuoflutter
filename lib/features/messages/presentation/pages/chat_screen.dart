@@ -315,7 +315,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
             current is MessageError;
       },
       builder: (context, state) {
-        debugPrint('🔄 Messages list state: $state');
+        LoggerService.debug('Messages list state: ${state.runtimeType}');
 
         if (state is MessagesLoading) {
           return Center(
@@ -368,7 +368,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
         }
 
         if (state is MessagesLoaded) {
-          debugPrint('📨 Messages loaded: ${state.messages.length} messages');
+          LoggerService.debug('Messages loaded: ${state.messages.length} messages');
 
           if (state.messages.isEmpty) {
             return Center(
@@ -426,11 +426,11 @@ class _ChatScreenViewState extends State<_ChatScreenView>
 
         if (state is MessageSent || state is MessageSending) {
           // Keep showing previous messages while sending
-          debugPrint('⏳ Message sending/sent state - keeping previous UI');
+          LoggerService.debug('Message sending/sent state - keeping previous UI');
           return const SizedBox.shrink();
         }
 
-        debugPrint('❓ Unknown state: $state');
+        LoggerService.warning('Unknown message state: ${state.runtimeType}');
         return const SizedBox.shrink();
       },
     );
