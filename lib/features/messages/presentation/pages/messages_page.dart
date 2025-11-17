@@ -32,6 +32,10 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
   @override
   bool get wantKeepAlive => true;
 
+  // Store conversations in widget state to persist across navigation
+  List<ConversationEntity> _cachedConversations = [];
+  bool _isInitialLoad = true;
+
   @override
   void initState() {
     super.initState();
@@ -41,12 +45,15 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
         final bloc = context.read<MessageBloc>();
         final currentState = bloc.state;
         
-        // Only load if not already loaded
-        if (currentState is! ConversationsLoaded) {
+        // If we already have conversations loaded, cache them
+        if (currentState is ConversationsLoaded) {
+          LoggerService.debug('Conversations already loaded, count: ${currentState.conversations.length}');
+          _cachedConversations = currentState.conversations;
+          _isInitialLoad = false;
+        } else {
+          // Load conversations for the first time
           LoggerService.info('Loading conversations for the first time');
           bloc.add(const LoadConversationsEvent());
-        } else {
-          LoggerService.debug('Conversations already loaded, count: ${currentState.conversations.length}');
         }
         
         // Start real-time listening
@@ -104,9 +111,20 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
   }
 
   Widget _buildConversationsList(bool isDarkMode, ScreenSize screenSize) {
-    return BlocBuilder<MessageBloc, MessageState>(
+    return BlocConsumer<MessageBloc, MessageState>(
+      listener: (context, state) {
+        // Update cached conversations whenever we get new data
+        if (state is ConversationsLoaded) {
+          setState(() {
+            _cachedConversations = state.conversations;
+            _isInitialLoad = false;
+          });
+          LoggerService.debug('Updated cached conversations: ${state.conversations.length}');
+        }
+      },
       builder: (context, state) {
-        if (state is ConversationsLoading) {
+        // Show loading only on initial load
+        if (state is ConversationsLoading && _isInitialLoad) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -124,7 +142,8 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
           );
         }
 
-        if (state is MessageError) {
+        // Show error only if we don't have cached conversations
+        if (state is MessageError && _cachedConversations.isEmpty) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -156,82 +175,84 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
           );
         }
 
-        if (state is ConversationsLoaded) {
-          LoggerService.debug('ConversationsLoaded: ${state.conversations.length} conversations');
+        // Use cached conversations or newly loaded ones
+        final conversationsToShow = state is ConversationsLoaded 
+            ? state.conversations 
+            : _cachedConversations;
 
-          if (state.conversations.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.chat_bubble_outline,
-                    size: 64,
-                    color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No conversations yet',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Start browsing to connect with sellers',
-                    style: TextStyle(
-                      color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }
+        LoggerService.debug('Showing conversations: ${conversationsToShow.length} (from ${state is ConversationsLoaded ? "state" : "cache"})');
 
-          return RefreshIndicator(
-            onRefresh: () async {
-              context.read<MessageBloc>().add(
-                const LoadConversationsEvent(forceRefresh: true),
-              );
-              // Wait a bit for the refresh to complete
-              await Future.delayed(const Duration(milliseconds: 500));
-            },
-            color: kPrimaryColor,
-            child: ListView.separated(
-              physics: const AlwaysScrollableScrollPhysics(),
-              itemCount: state.conversations.length,
-              separatorBuilder: (context, index) => Divider(
-                height: 1,
-                thickness: 0,
-                indent: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 88.0,
-                  medium: 96.0,
-                  expanded: 104.0,
+        // Show empty state only if we truly have no conversations
+        if (conversationsToShow.isEmpty && !_isInitialLoad) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.chat_bubble_outline,
+                  size: 64,
+                  color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
                 ),
-              ),
-              itemBuilder: (context, index) {
-                final conversation = state.conversations[index];
-                return ConversationListItem(
-                  conversation: conversation,
-                  isDarkMode: isDarkMode,
-                  screenSize: screenSize,
-                  onTap: () {
-                    Navigator.pushNamed(
-                      context,
-                      '/chat',
-                      arguments: conversation.id,
-                    );
-                  },
-                );
-              },
+                const SizedBox(height: 16),
+                Text(
+                  'No conversations yet',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Start browsing to connect with sellers',
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+                  ),
+                ),
+              ],
             ),
           );
         }
 
-        return const SizedBox.shrink();
+        return RefreshIndicator(
+          onRefresh: () async {
+            context.read<MessageBloc>().add(
+              const LoadConversationsEvent(forceRefresh: true),
+            );
+            // Wait a bit for the refresh to complete
+            await Future.delayed(const Duration(milliseconds: 500));
+          },
+          color: kPrimaryColor,
+          child: ListView.separated(
+            physics: const AlwaysScrollableScrollPhysics(),
+            itemCount: conversationsToShow.length,
+            separatorBuilder: (context, index) => Divider(
+              height: 1,
+              thickness: 0,
+              indent: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 88.0,
+                medium: 96.0,
+                expanded: 104.0,
+              ),
+            ),
+            itemBuilder: (context, index) {
+              final conversation = conversationsToShow[index];
+              return ConversationListItem(
+                conversation: conversation,
+                isDarkMode: isDarkMode,
+                screenSize: screenSize,
+                onTap: () {
+                  Navigator.pushNamed(
+                    context,
+                    '/chat',
+                    arguments: conversation.id,
+                  );
+                },
+              );
+            },
+          ),
+        );
       },
     );
   }
