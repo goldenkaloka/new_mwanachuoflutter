@@ -18,6 +18,12 @@ abstract class ProductLocalDataSource {
   /// Get cached product
   Future<ProductModel> getCachedProduct(String productId);
 
+  /// Add product to cached list (incremental update)
+  Future<void> addProductToCache(ProductModel product);
+
+  /// Update product in cached list (incremental update)
+  Future<void> updateProductInCache(ProductModel product);
+
   /// Clear product cache
   Future<void> clearCache();
 }
@@ -85,6 +91,63 @@ class ProductLocalDataSourceImpl implements ProductLocalDataSource {
       return ProductModel.fromJson(json.decode(jsonString));
     } catch (e) {
       throw CacheException('Failed to get cached product: $e');
+    }
+  }
+
+  @override
+  Future<void> addProductToCache(ProductModel product) async {
+    try {
+      // Get current cached products
+      List<ProductModel> cachedProducts = [];
+      try {
+        cachedProducts = await getCachedProducts();
+      } catch (e) {
+        // No cached products yet, start with empty list
+      }
+
+      // Check if product already exists
+      final existingIndex = cachedProducts.indexWhere((p) => p.id == product.id);
+      if (existingIndex == -1) {
+        // Add new product at the beginning (newest first)
+        cachedProducts.insert(0, product);
+        
+        // Cache the updated list
+        await cacheProducts(cachedProducts);
+      }
+      
+      // Also cache individual product
+      await cacheProduct(product);
+    } catch (e) {
+      throw CacheException('Failed to add product to cache: $e');
+    }
+  }
+
+  @override
+  Future<void> updateProductInCache(ProductModel product) async {
+    try {
+      // Get current cached products
+      List<ProductModel> cachedProducts = [];
+      try {
+        cachedProducts = await getCachedProducts();
+      } catch (e) {
+        // No cached products, just cache the single product
+        await cacheProduct(product);
+        return;
+      }
+
+      // Find and update the product
+      final existingIndex = cachedProducts.indexWhere((p) => p.id == product.id);
+      if (existingIndex != -1) {
+        cachedProducts[existingIndex] = product;
+        
+        // Cache the updated list
+        await cacheProducts(cachedProducts);
+      }
+      
+      // Also update individual product cache
+      await cacheProduct(product);
+    } catch (e) {
+      throw CacheException('Failed to update product in cache: $e');
     }
   }
 

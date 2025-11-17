@@ -39,27 +39,35 @@ class MessagesLoaded extends MessageState {
   final List<MessageEntity> messages;
   final String conversationId;
   final bool isSending;
+  final bool hasMore;
+  final bool isLoadingMore;
 
   const MessagesLoaded({
     required this.messages,
     required this.conversationId,
     this.isSending = false,
+    this.hasMore = true,
+    this.isLoadingMore = false,
   });
 
   MessagesLoaded copyWith({
     List<MessageEntity>? messages,
     String? conversationId,
     bool? isSending,
+    bool? hasMore,
+    bool? isLoadingMore,
   }) {
     return MessagesLoaded(
       messages: messages ?? this.messages,
       conversationId: conversationId ?? this.conversationId,
       isSending: isSending ?? this.isSending,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
     );
   }
 
   @override
-  List<Object?> get props => [messages, conversationId, isSending];
+  List<Object?> get props => [messages, conversationId, isSending, hasMore, isLoadingMore];
 }
 
 class MessageSending extends MessageState {}
@@ -98,5 +106,55 @@ class MessageError extends MessageState {
 
   @override
   List<Object?> get props => [message];
+}
+
+class ImageUploading extends MessageState {}
+
+class ImageUploaded extends MessageState {
+  final String imageUrl;
+
+  const ImageUploaded({required this.imageUrl});
+
+  @override
+  List<Object?> get props => [imageUrl];
+}
+
+class SearchResultsLoaded extends MessageState {
+  final List<MessageEntity> results;
+  final String query;
+
+  const SearchResultsLoaded({
+    required this.results,
+    required this.query,
+  });
+
+  @override
+  List<Object?> get props => [results, query];
+}
+
+class TypingIndicatorState extends MessageState {
+  final String conversationId;
+  final bool isTyping;
+
+  const TypingIndicatorState({
+    required this.conversationId,
+    required this.isTyping,
+  });
+
+  @override
+  List<Object?> get props => [conversationId, isTyping];
+}
+
+class LoadingMoreMessages extends MessageState {
+  final List<MessageEntity> currentMessages;
+  final String conversationId;
+
+  const LoadingMoreMessages({
+    required this.currentMessages,
+    required this.conversationId,
+  });
+
+  @override
+  List<Object?> get props => [currentMessages, conversationId];
 }
 

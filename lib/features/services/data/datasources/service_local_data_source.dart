@@ -9,6 +9,8 @@ abstract class ServiceLocalDataSource {
   Future<List<ServiceModel>> getCachedServices();
   Future<void> cacheService(ServiceModel service);
   Future<ServiceModel> getCachedService(String serviceId);
+  Future<void> addServiceToCache(ServiceModel service);
+  Future<void> updateServiceInCache(ServiceModel service);
   Future<void> clearCache();
 }
 
@@ -68,6 +70,63 @@ class ServiceLocalDataSourceImpl implements ServiceLocalDataSource {
       return ServiceModel.fromJson(json.decode(jsonString));
     } catch (e) {
       throw CacheException('Failed to get cached service: $e');
+    }
+  }
+
+  @override
+  Future<void> addServiceToCache(ServiceModel service) async {
+    try {
+      // Get current cached services
+      List<ServiceModel> cachedServices = [];
+      try {
+        cachedServices = await getCachedServices();
+      } catch (e) {
+        // No cached services yet, start with empty list
+      }
+
+      // Check if service already exists
+      final existingIndex = cachedServices.indexWhere((s) => s.id == service.id);
+      if (existingIndex == -1) {
+        // Add new service at the beginning (newest first)
+        cachedServices.insert(0, service);
+        
+        // Cache the updated list
+        await cacheServices(cachedServices);
+      }
+      
+      // Also cache individual service
+      await cacheService(service);
+    } catch (e) {
+      throw CacheException('Failed to add service to cache: $e');
+    }
+  }
+
+  @override
+  Future<void> updateServiceInCache(ServiceModel service) async {
+    try {
+      // Get current cached services
+      List<ServiceModel> cachedServices = [];
+      try {
+        cachedServices = await getCachedServices();
+      } catch (e) {
+        // No cached services, just cache the single service
+        await cacheService(service);
+        return;
+      }
+
+      // Find and update the service
+      final existingIndex = cachedServices.indexWhere((s) => s.id == service.id);
+      if (existingIndex != -1) {
+        cachedServices[existingIndex] = service;
+        
+        // Cache the updated list
+        await cacheServices(cachedServices);
+      }
+      
+      // Also update individual service cache
+      await cacheService(service);
+    } catch (e) {
+      throw CacheException('Failed to update service in cache: $e');
     }
   }
 

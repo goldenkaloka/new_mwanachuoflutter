@@ -15,14 +15,28 @@ class AccommodationsLoading extends AccommodationState {}
 class AccommodationsLoaded extends AccommodationState {
   final List<AccommodationEntity> accommodations;
   final bool hasMore;
+  final bool isLoadingMore;
 
   const AccommodationsLoaded({
     required this.accommodations,
     this.hasMore = false,
+    this.isLoadingMore = false,
   });
 
+  AccommodationsLoaded copyWith({
+    List<AccommodationEntity>? accommodations,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
+    return AccommodationsLoaded(
+      accommodations: accommodations ?? this.accommodations,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
+
   @override
-  List<Object?> get props => [accommodations, hasMore];
+  List<Object?> get props => [accommodations, hasMore, isLoadingMore];
 }
 
 class AccommodationLoading extends AccommodationState {}
@@ -42,6 +56,17 @@ class AccommodationCreated extends AccommodationState {
   final AccommodationEntity accommodation;
 
   const AccommodationCreated({required this.accommodation});
+
+  @override
+  List<Object?> get props => [accommodation];
+}
+
+class AccommodationUpdating extends AccommodationState {}
+
+class AccommodationUpdated extends AccommodationState {
+  final AccommodationEntity accommodation;
+
+  const AccommodationUpdated({required this.accommodation});
 
   @override
   List<Object?> get props => [accommodation];

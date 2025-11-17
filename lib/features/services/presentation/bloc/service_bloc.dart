@@ -31,6 +31,7 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
     on<CreateServiceEvent>(_onCreateService);
     on<UpdateServiceEvent>(_onUpdateService);
     on<DeleteServiceEvent>(_onDeleteService);
+    on<LoadMoreServicesEvent>(_onLoadMoreServices);
   }
 
   Future<void> _onLoadServices(
@@ -178,6 +179,42 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
     result.fold(
       (failure) => emit(ServiceError(message: failure.message)),
       (_) => emit(ServiceDeleted()),
+    );
+  }
+
+  Future<void> _onLoadMoreServices(
+    LoadMoreServicesEvent event,
+    Emitter<ServiceState> emit,
+  ) async {
+    final currentState = state;
+    if (currentState is! ServicesLoaded || currentState.isLoadingMore) {
+      return;
+    }
+
+    emit(currentState.copyWith(isLoadingMore: true));
+
+    final result = await getServices(
+      GetServicesParams(
+        category: event.category,
+        universityId: event.universityId,
+        limit: 20,
+        offset: event.offset,
+      ),
+    );
+
+    result.fold(
+      (failure) => emit(currentState.copyWith(isLoadingMore: false)),
+      (newServices) {
+        final allServices = [
+          ...currentState.services,
+          ...newServices,
+        ];
+        emit(ServicesLoaded(
+          services: allServices,
+          hasMore: newServices.length == 20,
+          isLoadingMore: false,
+        ));
+      },
     );
   }
 }

@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:mwanachuo/core/constants/database_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
@@ -24,12 +25,51 @@ abstract class MessageRemoteDataSource {
   Future<void> deleteMessage(String messageId);
   Stream<MessageModel> subscribeToMessages(String conversationId);
   Stream<ConversationModel> subscribeToConversations();
+  Future<void> sendTypingIndicator({
+    required String conversationId,
+    required bool isTyping,
+  });
+  Stream<bool> subscribeToTypingIndicator(String conversationId);
+  Future<String> uploadImage(String filePath);
+  Future<List<MessageModel>> searchMessages({
+    required String query,
+    int? limit,
+  });
 }
 
 class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   final SupabaseClient supabaseClient;
 
   MessageRemoteDataSourceImpl({required this.supabaseClient});
+
+  /// Helper method to batch fetch unread message counts for multiple conversations
+  Future<Map<String, int>> _getUnreadCounts(
+    List<String> conversationIds,
+    String currentUserId,
+  ) async {
+    if (conversationIds.isEmpty) return {};
+
+    try {
+      // Batch fetch unread counts for all conversations
+      final results = await Future.wait(
+        conversationIds.map((convId) async {
+          final response = await supabaseClient
+              .from(DatabaseConstants.messagesTable)
+              .select('id')
+              .eq('conversation_id', convId)
+              .neq('sender_id', currentUserId)
+              .eq('is_read', false);
+
+          return MapEntry(convId, (response as List).length);
+        }),
+      );
+
+      return Map.fromEntries(results);
+    } catch (e) {
+      debugPrint('⚠️ Failed to fetch unread counts: $e');
+      return {};
+    }
+  }
 
   @override
   Future<List<ConversationModel>> getConversations({
@@ -41,6 +81,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       if (currentUser == null) throw ServerException('User not authenticated');
 
       // Join with users table to get online status and last seen
+      // Note: unread_count will be calculated separately due to Supabase limitations
       final response = await supabaseClient
           .from(DatabaseConstants.conversationsTable)
           .select('''
@@ -52,15 +93,16 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .order('last_message_time', ascending: false)
           .limit(limit ?? 50);
 
-      // Handle empty response gracefully
       final List<dynamic> data = response as List<dynamic>;
       if (data.isEmpty) {
-        debugPrint('📭 No conversations found');
         return [];
       }
 
-      debugPrint(
-        '📬 [GET CONVERSATIONS] Fetched ${data.length} conversations from DB',
+      // Batch fetch unread counts for all conversations
+      final conversationIds = data.map((json) => json['id'] as String).toList();
+      final unreadCounts = await _getUnreadCounts(
+        conversationIds,
+        currentUser.id,
       );
 
       return data.map((json) {
@@ -75,19 +117,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
             : null;
 
         final conversationId = json['id'] as String;
-        final lastMessage = json['last_message'] as String?;
-        final lastMessageTime = json['last_message_time'] as String?;
-        final otherUserName = isUser1 ? json['user2_name'] : json['user1_name'];
-
-        debugPrint('📥 [GET CONVERSATIONS] Conversation ID: $conversationId');
-        debugPrint('   Other user: $otherUserName');
-        debugPrint('   last_message from DB: "${lastMessage ?? 'NULL'}"');
-        debugPrint(
-          '   last_message_time from DB: ${lastMessageTime ?? 'NULL'}',
-        );
-        debugPrint('   is_online: $otherIsOnline');
-        debugPrint('   last_seen: $otherLastSeen');
-
         return ConversationModel.fromJson({
           ...json,
           'user_id': currentUser.id,
@@ -100,6 +129,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
               : json['user1_avatar'],
           'last_message': json['last_message'],
           'last_message_time': json['last_message_time'],
+          'unread_count': unreadCounts[conversationId] ?? 0,
           'is_online': otherIsOnline,
           'last_seen_at': otherLastSeen?.toIso8601String(),
         });
@@ -249,64 +279,21 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
 
       // Update conversation's last message
       final updateTime = DateTime.now().toIso8601String();
-      debugPrint('📝 [SEND MESSAGE] Updating conversation $conversationId');
-      debugPrint('   Content: "$content"');
-      debugPrint('   Time: $updateTime');
 
       try {
-        final updateResponse = await supabaseClient
+        await supabaseClient
             .from(DatabaseConstants.conversationsTable)
             .update({
               'last_message': content,
               'last_message_time': updateTime,
               'updated_at': updateTime,
             })
-            .eq('id', conversationId)
-            .select('last_message, last_message_time')
-            .single();
-
-        debugPrint('✅ [SEND MESSAGE] Conversation updated in DB:');
-        debugPrint('   last_message: "${updateResponse['last_message']}"');
-        debugPrint(
-          '   last_message_time: ${updateResponse['last_message_time']}',
-        );
-
-        // Check if update actually worked
-        if (updateResponse['last_message'] != content) {
-          debugPrint('⚠️ [SEND MESSAGE] Update returned wrong value!');
-          debugPrint('   Expected: "$content"');
-          debugPrint('   Got: "${updateResponse['last_message']}"');
-        }
+            .eq('id', conversationId);
       } on PostgrestException catch (e) {
-        debugPrint('❌ [SEND MESSAGE] Update failed: ${e.message}');
-        debugPrint('   Code: ${e.code}');
-        debugPrint('   Details: ${e.details}');
-        debugPrint('   Hint: ${e.hint}');
-        // Don't throw - message was sent successfully, just conversation update failed
-      } catch (e) {
         debugPrint(
-          '❌ [SEND MESSAGE] Unexpected error updating conversation: $e',
+          '⚠️ Failed to update conversation last message: ${e.message}',
         );
-      }
-
-      // Verify the update by fetching the conversation again
-      debugPrint('🔍 [SEND MESSAGE] Verifying update...');
-      final verifyResponse = await supabaseClient
-          .from(DatabaseConstants.conversationsTable)
-          .select('last_message, last_message_time')
-          .eq('id', conversationId)
-          .single();
-
-      debugPrint('✅ [SEND MESSAGE] Verification query result:');
-      debugPrint('   last_message: "${verifyResponse['last_message']}"');
-      debugPrint(
-        '   last_message_time: ${verifyResponse['last_message_time']}',
-      );
-
-      if (verifyResponse['last_message'] != content) {
-        debugPrint('⚠️ [SEND MESSAGE] WARNING: Update verification failed!');
-        debugPrint('   Expected: "$content"');
-        debugPrint('   Got: "${verifyResponse['last_message']}"');
+        // Don't throw - message was sent successfully, just conversation update failed
       }
 
       return MessageModel.fromJson({
@@ -369,7 +356,36 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .stream(primaryKey: ['id'])
           .eq('conversation_id', conversationId)
           .order('created_at', ascending: false)
-          .map((data) => data.map((json) => MessageModel.fromJson(json)))
+          .asyncMap((rows) async {
+            if (rows.isEmpty) return <MessageModel>[];
+
+            // Batch fetch user details for all messages to avoid N+1 queries
+            final senderIds = rows
+                .map((r) => r['sender_id'] as String)
+                .toSet()
+                .toList();
+
+            final users = await supabaseClient
+                .from('users')
+                .select('id, full_name, avatar_url')
+                .inFilter('id', senderIds);
+
+            // Create a map for quick lookup
+            final userMap = <String, Map<String, dynamic>>{};
+            for (var user in users) {
+              userMap[user['id'] as String] = user;
+            }
+
+            return rows.map((json) {
+              final senderId = json['sender_id'] as String;
+              final user = userMap[senderId];
+              return MessageModel.fromJson({
+                ...json,
+                'sender_name': user?['full_name'] ?? 'Unknown',
+                'sender_avatar': user?['avatar_url'],
+              });
+            }).toList();
+          })
           .expand((messages) => messages);
     } catch (e) {
       throw ServerException('Failed to subscribe to messages: $e');
@@ -382,17 +398,11 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       final currentUser = supabaseClient.auth.currentUser;
       if (currentUser == null) throw ServerException('User not authenticated');
 
-      debugPrint('🔴 Starting real-time subscription to conversations table');
-
       // Subscribe to conversations table with real-time updates
       return supabaseClient
           .from(DatabaseConstants.conversationsTable)
           .stream(primaryKey: ['id'])
           .asyncMap((data) async {
-            debugPrint(
-              '🔔 Real-time update received: ${data.length} conversations',
-            );
-
             // Filter conversations for current user
             final userConversations = data
                 .where(
@@ -401,6 +411,8 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
                       json['user2_id'] == currentUser.id,
                 )
                 .toList();
+
+            if (userConversations.isEmpty) return <ConversationModel>[];
 
             // For each conversation, fetch online status
             final conversations = await Future.wait(
@@ -455,6 +467,143 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     } catch (e) {
       debugPrint('❌ Failed to subscribe to conversations: $e');
       throw ServerException('Failed to subscribe to conversations: $e');
+    }
+  }
+
+  @override
+  Future<void> sendTypingIndicator({
+    required String conversationId,
+    required bool isTyping,
+  }) async {
+    try {
+      final currentUser = supabaseClient.auth.currentUser;
+      if (currentUser == null) throw ServerException('User not authenticated');
+
+      if (isTyping) {
+        // Insert or update typing indicator
+        await supabaseClient.from('typing_indicators').upsert({
+          'conversation_id': conversationId,
+          'user_id': currentUser.id,
+          'updated_at': DateTime.now().toIso8601String(),
+        });
+      } else {
+        // Remove typing indicator
+        await supabaseClient
+            .from('typing_indicators')
+            .delete()
+            .eq('conversation_id', conversationId)
+            .eq('user_id', currentUser.id);
+      }
+    } catch (e) {
+      // Silently fail for typing indicators as they're not critical
+      debugPrint('⚠️ Failed to send typing indicator: $e');
+    }
+  }
+
+  @override
+  Stream<bool> subscribeToTypingIndicator(String conversationId) {
+    try {
+      final currentUser = supabaseClient.auth.currentUser;
+      if (currentUser == null) throw ServerException('User not authenticated');
+
+      return supabaseClient
+          .from('typing_indicators')
+          .stream(primaryKey: ['conversation_id', 'user_id'])
+          .eq('conversation_id', conversationId)
+          .map((data) {
+            // Check if any other user is typing (not current user)
+            final otherUsersTyping = data.where(
+              (indicator) => indicator['user_id'] != currentUser.id,
+            );
+
+            if (otherUsersTyping.isEmpty) return false;
+
+            // Check if typing indicator is recent (within last 5 seconds)
+            final latestIndicator = otherUsersTyping.first;
+            final updatedAt = DateTime.parse(
+              latestIndicator['updated_at'] as String,
+            );
+            final difference = DateTime.now().difference(updatedAt);
+
+            return difference.inSeconds < 5;
+          });
+    } catch (e) {
+      debugPrint('⚠️ Failed to subscribe to typing indicator: $e');
+      return Stream.value(false);
+    }
+  }
+
+  @override
+  Future<String> uploadImage(String filePath) async {
+    try {
+      final currentUser = supabaseClient.auth.currentUser;
+      if (currentUser == null) throw ServerException('User not authenticated');
+
+      final fileName =
+          '${currentUser.id}_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final storagePath = 'message_images/$fileName';
+
+      // Upload to Supabase Storage
+      await supabaseClient.storage
+          .from('messages')
+          .upload(storagePath, File(filePath));
+
+      // Get public URL
+      final publicUrl = supabaseClient.storage
+          .from('messages')
+          .getPublicUrl(storagePath);
+
+      return publicUrl;
+    } on StorageException catch (e) {
+      throw ServerException('Failed to upload image: ${e.message}');
+    } catch (e) {
+      throw ServerException('Failed to upload image: $e');
+    }
+  }
+
+  @override
+  Future<List<MessageModel>> searchMessages({
+    required String query,
+    int? limit,
+  }) async {
+    try {
+      final currentUser = supabaseClient.auth.currentUser;
+      if (currentUser == null) throw ServerException('User not authenticated');
+
+      // Get all conversations for the current user first
+      final conversations = await supabaseClient
+          .from(DatabaseConstants.conversationsTable)
+          .select('id')
+          .or('user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}');
+
+      final conversationIds = (conversations as List)
+          .map((c) => c['id'] as String)
+          .toList();
+
+      if (conversationIds.isEmpty) return [];
+
+      // Search messages in user's conversations
+      final response = await supabaseClient
+          .from(DatabaseConstants.messagesTable)
+          .select('*, users!inner(full_name, avatar_url)')
+          .inFilter('conversation_id', conversationIds)
+          .ilike('content', '%$query%')
+          .order('created_at', ascending: false)
+          .limit(limit ?? 50);
+
+      return (response as List)
+          .map(
+            (json) => MessageModel.fromJson({
+              ...json,
+              'sender_name': json['users']['full_name'],
+              'sender_avatar': json['users']['avatar_url'],
+            }),
+          )
+          .toList();
+    } on PostgrestException catch (e) {
+      throw ServerException('Search failed: ${e.message}');
+    } catch (e) {
+      throw ServerException('Failed to search messages: $e');
     }
   }
 }

@@ -1,6 +1,5 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter/foundation.dart';
-import 'package:mwanachuo/core/constants/storage_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/core/network/network_info.dart';
@@ -151,25 +150,25 @@ class MessageRepositoryImpl implements MessageRepository {
     }
 
     try {
-      debugPrint('📤 Sending message to conversation: $conversationId');
       final message = await remoteDataSource.sendMessage(
         conversationId: conversationId,
         content: content,
         imageUrl: imageUrl,
       );
       
-      // Invalidate cache for this conversation
-      debugPrint('🗑️ Invalidating message cache for conversation: $conversationId');
+      // Incrementally update cache instead of clearing it
       try {
-        // Remove cached messages for this conversation to force refresh
-        await sharedPreferences.remove('${StorageConstants.messagesCachePrefix}_$conversationId');
-        await sharedPreferences.remove('${StorageConstants.conversationTimestampPrefix}_$conversationId');
+        // Add message to messages cache
+        await localDataSource.addMessageToCache(conversationId, message);
         
-        // Also invalidate conversations cache to update last message
-        await sharedPreferences.remove(StorageConstants.conversationsCacheKey);
-        await sharedPreferences.remove('${StorageConstants.conversationsCacheKey}_timestamp');
+        // Update conversation's last message in conversations cache
+        await localDataSource.updateConversationLastMessage(
+          conversationId,
+          content,
+          message.createdAt,
+        );
       } catch (e) {
-        debugPrint('⚠️ Failed to invalidate cache: $e');
+        debugPrint('⚠️ Failed to update cache incrementally: $e');
       }
       
       return Right(message);
@@ -224,6 +223,67 @@ class MessageRepositoryImpl implements MessageRepository {
   @override
   Stream<ConversationEntity> subscribeToConversations() {
     return remoteDataSource.subscribeToConversations();
+  }
+
+  @override
+  Future<Either<Failure, void>> sendTypingIndicator({
+    required String conversationId,
+    required bool isTyping,
+  }) async {
+    try {
+      await remoteDataSource.sendTypingIndicator(
+        conversationId: conversationId,
+        isTyping: isTyping,
+      );
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to send typing indicator: $e'));
+    }
+  }
+
+  @override
+  Stream<bool> subscribeToTypingIndicator(String conversationId) {
+    return remoteDataSource.subscribeToTypingIndicator(conversationId);
+  }
+
+  @override
+  Future<Either<Failure, String>> uploadImage(String filePath) async {
+    if (!await networkInfo.isConnected) {
+      return Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      final imageUrl = await remoteDataSource.uploadImage(filePath);
+      return Right(imageUrl);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to upload image: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<MessageEntity>>> searchMessages({
+    required String query,
+    int? limit,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      final messages = await remoteDataSource.searchMessages(
+        query: query,
+        limit: limit,
+      );
+      return Right(messages);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to search messages: $e'));
+    }
   }
 }
 

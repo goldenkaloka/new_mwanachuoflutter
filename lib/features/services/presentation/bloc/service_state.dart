@@ -15,11 +15,28 @@ class ServicesLoading extends ServiceState {}
 class ServicesLoaded extends ServiceState {
   final List<ServiceEntity> services;
   final bool hasMore;
+  final bool isLoadingMore;
 
-  const ServicesLoaded({required this.services, this.hasMore = false});
+  const ServicesLoaded({
+    required this.services,
+    this.hasMore = false,
+    this.isLoadingMore = false,
+  });
+
+  ServicesLoaded copyWith({
+    List<ServiceEntity>? services,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
+    return ServicesLoaded(
+      services: services ?? this.services,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
 
   @override
-  List<Object?> get props => [services, hasMore];
+  List<Object?> get props => [services, hasMore, isLoadingMore];
 }
 
 class ServiceLoading extends ServiceState {}

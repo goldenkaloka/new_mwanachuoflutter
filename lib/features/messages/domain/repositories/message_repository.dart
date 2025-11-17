@@ -43,5 +43,23 @@ abstract class MessageRepository {
 
   /// Subscribe to conversations (real-time updates)
   Stream<ConversationEntity> subscribeToConversations();
+
+  /// Send typing indicator
+  Future<Either<Failure, void>> sendTypingIndicator({
+    required String conversationId,
+    required bool isTyping,
+  });
+
+  /// Subscribe to typing indicators
+  Stream<bool> subscribeToTypingIndicator(String conversationId);
+
+  /// Upload image for message
+  Future<Either<Failure, String>> uploadImage(String filePath);
+
+  /// Search messages across all conversations
+  Future<Either<Failure, List<MessageEntity>>> searchMessages({
+    required String query,
+    int? limit,
+  });
 }
 

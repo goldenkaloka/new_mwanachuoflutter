@@ -67,7 +67,6 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   final TextEditingController _messageController = TextEditingController();
   String? _recipientName;
   String? _recipientAvatar;
-  String? _recipientId;
   bool _recipientIsOnline = false;
   DateTime? _recipientLastSeen;
 
@@ -142,11 +141,9 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       if (mounted) {
         setState(() {
           if (isUser1) {
-            _recipientId = response['user2_id'];
             _recipientName = response['user2_name'];
             _recipientAvatar = response['user2_avatar'];
           } else {
-            _recipientId = response['user1_id'];
             _recipientName = response['user1_name'];
             _recipientAvatar = response['user1_avatar'];
           }

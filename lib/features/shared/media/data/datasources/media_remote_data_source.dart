@@ -39,10 +39,14 @@ abstract class MediaRemoteDataSource {
 class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
   final SupabaseClient supabaseClient;
   final Uuid uuid;
+  final int maxRetries;
+  final Duration initialRetryDelay;
 
   MediaRemoteDataSourceImpl({
     required this.supabaseClient,
     Uuid? uuid,
+    this.maxRetries = 3,
+    this.initialRetryDelay = const Duration(seconds: 1),
   }) : uuid = uuid ?? const Uuid();
 
   @override
@@ -51,8 +55,22 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
     required String bucket,
     String? folder,
   }) async {
+    return await _uploadWithRetry(
+      imageFile: imageFile,
+      bucket: bucket,
+      folder: folder,
+    );
+  }
+
+  /// Upload image with retry logic and exponential backoff
+  Future<MediaModel> _uploadWithRetry({
+    required File imageFile,
+    required String bucket,
+    String? folder,
+    int attempt = 1,
+  }) async {
     try {
-      debugPrint('📤 Starting image upload to bucket: $bucket, folder: $folder');
+      debugPrint('📤 Upload attempt $attempt/$maxRetries - bucket: $bucket, folder: $folder');
       
       // Generate unique file name
       final extension = path.extension(imageFile.path);
@@ -78,7 +96,7 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
             ),
           );
 
-      debugPrint('✅ Upload successful!');
+      debugPrint('✅ Upload successful on attempt $attempt!');
 
       // Get public URL
       final publicUrl = supabaseClient.storage.from(bucket).getPublicUrl(filePath);
@@ -93,14 +111,59 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
         fileSize: fileSize,
       );
     } on StorageException catch (e) {
-      debugPrint('❌ StorageException: ${e.message}');
+      // Retry on network errors
+      if (attempt < maxRetries && _isRetryableError(e)) {
+        final delay = initialRetryDelay * (1 << (attempt - 1)); // Exponential backoff
+        debugPrint('⚠️  Upload failed (${e.message}), retrying in ${delay.inSeconds}s... (attempt $attempt/$maxRetries)');
+        await Future.delayed(delay);
+        return _uploadWithRetry(
+          imageFile: imageFile,
+          bucket: bucket,
+          folder: folder,
+          attempt: attempt + 1,
+        );
+      }
+      debugPrint('❌ StorageException after $attempt attempts: ${e.message}');
       debugPrint('❌ StatusCode: ${e.statusCode}');
       throw ServerException('Storage error: ${e.message} (${e.statusCode})');
     } catch (e, stackTrace) {
-      debugPrint('❌ Unexpected error: $e');
+      // Retry on network errors
+      if (attempt < maxRetries && _isNetworkError(e)) {
+        final delay = initialRetryDelay * (1 << (attempt - 1)); // Exponential backoff
+        debugPrint('⚠️  Network error, retrying in ${delay.inSeconds}s... (attempt $attempt/$maxRetries)');
+        await Future.delayed(delay);
+        return _uploadWithRetry(
+          imageFile: imageFile,
+          bucket: bucket,
+          folder: folder,
+          attempt: attempt + 1,
+        );
+      }
+      debugPrint('❌ Upload failed after $attempt attempts: $e');
       debugPrint('❌ StackTrace: $stackTrace');
       throw ServerException('Failed to upload image: $e');
     }
+  }
+
+  /// Check if error is retryable
+  bool _isRetryableError(StorageException e) {
+    // Retry on network/timeout errors, not on auth/validation errors
+    return e.statusCode == null || 
+           e.statusCode == '408' || // Request Timeout
+           e.statusCode == '429' || // Too Many Requests
+           e.statusCode == '500' || // Internal Server Error
+           e.statusCode == '502' || // Bad Gateway
+           e.statusCode == '503' || // Service Unavailable
+           e.statusCode == '504';   // Gateway Timeout
+  }
+
+  /// Check if error is a network error
+  bool _isNetworkError(dynamic error) {
+    final errorString = error.toString().toLowerCase();
+    return errorString.contains('network') ||
+           errorString.contains('connection') ||
+           errorString.contains('timeout') ||
+           errorString.contains('socket');
   }
 
   @override

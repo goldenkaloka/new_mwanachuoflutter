@@ -103,7 +103,12 @@ import 'package:mwanachuo/features/accommodations/data/datasources/accommodation
 import 'package:mwanachuo/features/accommodations/data/repositories/accommodation_repository_impl.dart';
 import 'package:mwanachuo/features/accommodations/domain/repositories/accommodation_repository.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/create_accommodation.dart';
+import 'package:mwanachuo/features/accommodations/domain/usecases/delete_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/get_accommodations.dart';
+import 'package:mwanachuo/features/accommodations/domain/usecases/get_my_accommodations.dart';
+import 'package:mwanachuo/features/accommodations/domain/usecases/increment_view_count.dart'
+    as mwanachuo;
+import 'package:mwanachuo/features/accommodations/domain/usecases/update_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_bloc.dart';
 import 'package:mwanachuo/features/messages/data/datasources/message_remote_data_source.dart';
 import 'package:mwanachuo/features/messages/data/datasources/message_local_data_source.dart';
@@ -564,7 +569,13 @@ Future<void> _initServicesFeature() async {
 Future<void> _initAccommodationsFeature() async {
   // Use Cases
   sl.registerLazySingleton(() => GetAccommodations(sl()));
+  sl.registerLazySingleton(() => GetMyAccommodations(sl()));
   sl.registerLazySingleton(() => CreateAccommodation(sl()));
+  sl.registerLazySingleton(() => UpdateAccommodation(sl()));
+  sl.registerLazySingleton(() => DeleteAccommodation(sl()));
+  sl.registerLazySingleton(
+    () => mwanachuo.IncrementViewCount(sl()),
+  );
 
   // Repository
   sl.registerLazySingleton<AccommodationRepository>(
@@ -584,7 +595,11 @@ Future<void> _initAccommodationsFeature() async {
   sl.registerFactory(
     () => AccommodationBloc(
       getAccommodations: sl(),
+      getMyAccommodations: sl(),
       createAccommodation: sl(),
+      updateAccommodation: sl(),
+      deleteAccommodation: sl(),
+      incrementViewCount: sl(),
     ),
   );
 }

@@ -19,14 +19,28 @@ class ProductsLoading extends ProductState {}
 class ProductsLoaded extends ProductState {
   final List<ProductEntity> products;
   final bool hasMore;
+  final bool isLoadingMore;
 
   const ProductsLoaded({
     required this.products,
     this.hasMore = false,
+    this.isLoadingMore = false,
   });
 
+  ProductsLoaded copyWith({
+    List<ProductEntity>? products,
+    bool? hasMore,
+    bool? isLoadingMore,
+  }) {
+    return ProductsLoaded(
+      products: products ?? this.products,
+      hasMore: hasMore ?? this.hasMore,
+      isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+    );
+  }
+
   @override
-  List<Object?> get props => [products, hasMore];
+  List<Object?> get props => [products, hasMore, isLoadingMore];
 }
 
 /// Loading single product

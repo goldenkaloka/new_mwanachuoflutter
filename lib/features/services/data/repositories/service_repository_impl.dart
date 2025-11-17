@@ -149,7 +149,13 @@ class ServiceRepositoryImpl implements ServiceRepository {
             metadata: metadata,
           );
 
-          await localDataSource.clearCache();
+          // Add service to cache (incremental update)
+          try {
+            await localDataSource.addServiceToCache(service);
+          } catch (e) {
+            // Non-critical error, continue
+          }
+          
           return Right(service);
         },
       );
@@ -219,7 +225,13 @@ class ServiceRepositoryImpl implements ServiceRepository {
         metadata: metadata,
       );
 
-      await localDataSource.clearCache();
+      // Update service in cache (incremental update)
+      try {
+        await localDataSource.updateServiceInCache(service);
+      } catch (e) {
+        // Non-critical error, continue
+      }
+      
       return Right(service);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

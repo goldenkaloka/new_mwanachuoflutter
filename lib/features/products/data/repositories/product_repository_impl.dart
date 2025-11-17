@@ -171,8 +171,14 @@ class ProductRepositoryImpl implements ProductRepository {
 
           debugPrint('✅ ProductRepository: Product created - ID: ${product.id}');
 
-          // Clear cache to force refresh
-          await localDataSource.clearCache();
+          // Add product to cache (incremental update)
+          try {
+            await localDataSource.addProductToCache(product);
+            debugPrint('✅ ProductRepository: Product added to cache');
+          } catch (e) {
+            debugPrint('⚠️  ProductRepository: Failed to cache product - $e');
+            // Non-critical error, continue
+          }
 
           return Right(product);
         },
@@ -245,8 +251,14 @@ class ProductRepositoryImpl implements ProductRepository {
         metadata: metadata,
       );
 
-      // Clear cache to force refresh
-      await localDataSource.clearCache();
+      // Update product in cache (incremental update)
+      try {
+        await localDataSource.updateProductInCache(product);
+        debugPrint('✅ ProductRepository: Product updated in cache');
+      } catch (e) {
+        debugPrint('⚠️  ProductRepository: Failed to update cache - $e');
+        // Non-critical error, continue
+      }
 
       return Right(product);
     } on ServerException catch (e) {

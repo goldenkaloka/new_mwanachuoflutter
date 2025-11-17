@@ -82,3 +82,62 @@ class StartListeningToMessagesEvent extends MessageEvent {
 class StartListeningToConversationsEvent extends MessageEvent {}
 
 class StopListeningEvent extends MessageEvent {}
+
+class SendTypingIndicatorEvent extends MessageEvent {
+  final String conversationId;
+  final bool isTyping;
+
+  const SendTypingIndicatorEvent({
+    required this.conversationId,
+    required this.isTyping,
+  });
+
+  @override
+  List<Object?> get props => [conversationId, isTyping];
+}
+
+class UploadImageEvent extends MessageEvent {
+  final String filePath;
+
+  const UploadImageEvent({required this.filePath});
+
+  @override
+  List<Object?> get props => [filePath];
+}
+
+class SearchMessagesEvent extends MessageEvent {
+  final String query;
+  final int? limit;
+
+  const SearchMessagesEvent({
+    required this.query,
+    this.limit,
+  });
+
+  @override
+  List<Object?> get props => [query, limit];
+}
+
+class LoadMoreMessagesEvent extends MessageEvent {
+  final String conversationId;
+
+  const LoadMoreMessagesEvent({required this.conversationId});
+
+  @override
+  List<Object?> get props => [conversationId];
+}
+
+class RetryMessageEvent extends MessageEvent {
+  final String conversationId;
+  final String content;
+  final String? imageUrl;
+
+  const RetryMessageEvent({
+    required this.conversationId,
+    required this.content,
+    this.imageUrl,
+  });
+
+  @override
+  List<Object?> get props => [conversationId, content, imageUrl];
+}

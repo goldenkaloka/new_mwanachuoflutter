@@ -37,18 +37,19 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<StartListeningToMessagesEvent>(_onStartListeningToMessages);
     on<StartListeningToConversationsEvent>(_onStartListeningToConversations);
     on<StopListeningEvent>(_onStopListening);
+    on<SendTypingIndicatorEvent>(_onSendTypingIndicator);
+    on<UploadImageEvent>(_onUploadImage);
+    on<SearchMessagesEvent>(_onSearchMessages);
+    on<LoadMoreMessagesEvent>(_onLoadMoreMessages);
+    on<RetryMessageEvent>(_onRetryMessage);
   }
 
   Future<void> _onLoadConversations(
     LoadConversationsEvent event,
     Emitter<MessageState> emit,
   ) async {
-    debugPrint('🔄 [LOAD CONVERSATIONS] Event received');
-    debugPrint('   Force refresh: ${event.forceRefresh}');
-
     // If force refresh, clear cache first
     if (event.forceRefresh) {
-      debugPrint('🗑️ [LOAD CONVERSATIONS] Clearing cache for force refresh');
       await sharedPreferences.remove(StorageConstants.conversationsCacheKey);
       await sharedPreferences.remove(
         '${StorageConstants.conversationsCacheKey}_timestamp',
@@ -62,21 +63,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     );
 
     result.fold(
-      (failure) {
-        debugPrint('❌ [LOAD CONVERSATIONS] Error: ${failure.message}');
-        emit(MessageError(message: failure.message));
-      },
-      (conversations) {
-        debugPrint(
-          '✅ [LOAD CONVERSATIONS] Loaded ${conversations.length} conversations',
-        );
-        for (var conv in conversations) {
-          debugPrint(
-            '   - ${conv.otherUserName}: "${conv.lastMessage ?? 'NULL'}" at ${conv.lastMessageTime}',
-          );
-        }
-        emit(ConversationsLoaded(conversations: conversations));
-      },
+      (failure) => emit(MessageError(message: failure.message)),
+      (conversations) =>
+          emit(ConversationsLoaded(conversations: conversations)),
     );
   }
 
@@ -105,20 +94,23 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     final result = await getMessages(
       GetMessagesParams(
         conversationId: event.conversationId,
-        limit: event.limit,
+        limit: event.limit ?? 50,
         offset: event.offset,
       ),
     );
 
-    result.fold(
-      (failure) => emit(MessageError(message: failure.message)),
-      (messages) => emit(
+    result.fold((failure) => emit(MessageError(message: failure.message)), (
+      messages,
+    ) {
+      final hasMore = messages.length >= (event.limit ?? 50);
+      emit(
         MessagesLoaded(
           messages: messages,
           conversationId: event.conversationId,
+          hasMore: hasMore,
         ),
-      ),
-    );
+      );
+    });
   }
 
   Future<void> _onSendMessage(
@@ -127,14 +119,16 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async {
     // Capture current state before async operation
     final currentState = state;
-    final hadMessagesLoaded =
+    final MessagesLoaded? messagesLoadedState =
         currentState is MessagesLoaded &&
-        currentState.conversationId == event.conversationId;
+            currentState.conversationId == event.conversationId
+        ? currentState
+        : null;
 
     // Show sending state
-    if (hadMessagesLoaded) {
+    if (messagesLoadedState != null) {
       // Optimistically show sending state while keeping current messages
-      emit((currentState as MessagesLoaded).copyWith(isSending: true));
+      emit(messagesLoadedState.copyWith(isSending: true));
     } else {
       emit(MessageSending());
     }
@@ -150,18 +144,18 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     result.fold(
       (failure) {
         // On error, restore previous state or show error
-        if (hadMessagesLoaded) {
-          emit((currentState as MessagesLoaded).copyWith(isSending: false));
+        if (messagesLoadedState != null) {
+          emit(messagesLoadedState.copyWith(isSending: false));
         } else {
           emit(MessageError(message: failure.message));
         }
       },
       (message) {
         // Successfully sent - optimistically add message to current state
-        if (hadMessagesLoaded) {
+        if (messagesLoadedState != null) {
           // Use the captured state (before isSending was set)
           // Messages are ordered newest first (descending), so add new message at the beginning
-          final originalMessages = (currentState as MessagesLoaded).messages;
+          final originalMessages = messagesLoadedState.messages;
           final updatedMessages = [message, ...originalMessages];
           emit(
             MessagesLoaded(
@@ -169,9 +163,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
               conversationId: event.conversationId,
               isSending: false,
             ),
-          );
-          debugPrint(
-            '✅ Message added optimistically. Total: ${updatedMessages.length}',
           );
         } else {
           // If we don't have messages loaded, emit MessageSent and reload
@@ -183,25 +174,11 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         // The real-time subscription will pick this up and reload conversations automatically
         // Add a small delay fallback reload to ensure it updates even if real-time is slow
         if (!isClosed) {
-          debugPrint('🔄 [SEND MESSAGE] Scheduling conversation reload');
-          debugPrint('   Message sent: "${message.content}"');
-          debugPrint('   Conversation ID: ${event.conversationId}');
-
-          // Use Future.microtask to delay the reload slightly, allowing DB update to be visible
           Future.delayed(const Duration(milliseconds: 500), () {
             if (!isClosed) {
-              debugPrint(
-                '🔄 [SEND MESSAGE] Executing fallback reload after 500ms (FORCE REFRESH)',
-              );
               add(const LoadConversationsEvent(forceRefresh: true));
-            } else {
-              debugPrint('⚠️ [SEND MESSAGE] Bloc closed, skipping reload');
             }
           });
-        } else {
-          debugPrint(
-            '⚠️ [SEND MESSAGE] Bloc is closed, cannot reload conversations',
-          );
         }
       },
     );
@@ -231,7 +208,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     await sharedPreferences.remove(
       '${StorageConstants.conversationsCacheKey}_timestamp',
     );
-    debugPrint('🗑️ Cleared conversations cache');
 
     // Load initial data
     emit(ConversationsLoading());
@@ -246,51 +222,34 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       },
       (conversations) {
         emit(ConversationsLoaded(conversations: conversations));
-        debugPrint('✅ Initial conversations loaded: ${conversations.length}');
       },
     );
 
     // Now subscribe to real-time updates
     // Note: We cannot use emit() in the stream callback since the handler
     // has already completed. Instead, we dispatch a new event.
-    debugPrint('🔴 [REAL-TIME] Starting real-time subscription...');
-    _conversationSubscription = messageRepository.subscribeToConversations().listen(
-      (updatedConversation) async {
-        debugPrint('🔔 [REAL-TIME] Update received!');
-        debugPrint('   Conversation ID: ${updatedConversation.id}');
-        debugPrint('   Other user: ${updatedConversation.otherUserName}');
-        debugPrint(
-          '   Last message: "${updatedConversation.lastMessage ?? 'NULL'}"',
-        );
-        debugPrint(
-          '   Last message time: ${updatedConversation.lastMessageTime}',
-        );
+    _conversationSubscription = messageRepository
+        .subscribeToConversations()
+        .listen(
+          (updatedConversation) async {
+            // Clear cache to force fresh fetch
+            await sharedPreferences.remove(
+              StorageConstants.conversationsCacheKey,
+            );
+            await sharedPreferences.remove(
+              '${StorageConstants.conversationsCacheKey}_timestamp',
+            );
 
-        // Clear cache to force fresh fetch
-        await sharedPreferences.remove(StorageConstants.conversationsCacheKey);
-        await sharedPreferences.remove(
-          '${StorageConstants.conversationsCacheKey}_timestamp',
+            // Dispatch a new event to reload conversations
+            // This ensures emit() is called in a proper event handler context
+            if (!isClosed) {
+              add(const LoadConversationsEvent(forceRefresh: true));
+            }
+          },
+          onError: (error) {
+            debugPrint('⚠️ Real-time subscription error: $error');
+          },
         );
-        debugPrint('🗑️ [REAL-TIME] Cache cleared');
-
-        // Dispatch a new event to reload conversations
-        // This ensures emit() is called in a proper event handler context
-        if (!isClosed) {
-          debugPrint(
-            '🔄 [REAL-TIME] Dispatching LoadConversationsEvent (FORCE REFRESH)',
-          );
-          add(const LoadConversationsEvent(forceRefresh: true));
-        } else {
-          debugPrint('⚠️ [REAL-TIME] Bloc closed, cannot reload');
-        }
-      },
-      onError: (error) {
-        debugPrint('❌ [REAL-TIME] Error: $error');
-      },
-      onDone: () {
-        debugPrint('🔴 [REAL-TIME] Subscription closed');
-      },
-    );
   }
 
   Future<void> _onStopListening(
@@ -299,6 +258,114 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   ) async {
     await _messageSubscription?.cancel();
     await _conversationSubscription?.cancel();
+  }
+
+  Future<void> _onSendTypingIndicator(
+    SendTypingIndicatorEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    // Send typing indicator without emitting state
+    // This is a fire-and-forget operation
+    await messageRepository.sendTypingIndicator(
+      conversationId: event.conversationId,
+      isTyping: event.isTyping,
+    );
+  }
+
+  Future<void> _onUploadImage(
+    UploadImageEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    emit(ImageUploading());
+
+    final result = await messageRepository.uploadImage(event.filePath);
+
+    result.fold(
+      (failure) => emit(MessageError(message: failure.message)),
+      (imageUrl) => emit(ImageUploaded(imageUrl: imageUrl)),
+    );
+  }
+
+  Future<void> _onSearchMessages(
+    SearchMessagesEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    if (event.query.isEmpty) {
+      emit(const SearchResultsLoaded(results: [], query: ''));
+      return;
+    }
+
+    emit(MessagesLoading());
+
+    final result = await messageRepository.searchMessages(
+      query: event.query,
+      limit: event.limit,
+    );
+
+    result.fold(
+      (failure) => emit(MessageError(message: failure.message)),
+      (messages) =>
+          emit(SearchResultsLoaded(results: messages, query: event.query)),
+    );
+  }
+
+  Future<void> _onLoadMoreMessages(
+    LoadMoreMessagesEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    final currentState = state;
+
+    // Only load more if we have messages loaded and not already loading
+    if (currentState is! MessagesLoaded) return;
+    if (currentState.isLoadingMore || !currentState.hasMore) return;
+
+    // Show loading state while keeping current messages
+    emit(currentState.copyWith(isLoadingMore: true));
+
+    final result = await getMessages(
+      GetMessagesParams(
+        conversationId: event.conversationId,
+        limit: 50,
+        offset: currentState.messages.length,
+      ),
+    );
+
+    result.fold(
+      (failure) {
+        // Revert loading state on error
+        emit(currentState.copyWith(isLoadingMore: false));
+      },
+      (newMessages) {
+        final allMessages = [...currentState.messages, ...newMessages];
+        final hasMore =
+            newMessages.length >=
+            50; // If we got less than limit, no more messages
+
+        emit(
+          MessagesLoaded(
+            messages: allMessages,
+            conversationId: event.conversationId,
+            hasMore: hasMore,
+            isLoadingMore: false,
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _onRetryMessage(
+    RetryMessageEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    // Retry sending a failed message
+    // This uses the same logic as SendMessageEvent
+    add(
+      SendMessageEvent(
+        conversationId: event.conversationId,
+        content: event.content,
+        imageUrl: event.imageUrl,
+      ),
+    );
   }
 
   @override

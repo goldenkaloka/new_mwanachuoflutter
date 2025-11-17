@@ -161,3 +161,18 @@ class IncrementServiceViewCountEvent extends ServiceEvent {
   List<Object?> get props => [serviceId];
 }
 
+class LoadMoreServicesEvent extends ServiceEvent {
+  final String? category;
+  final String? universityId;
+  final int offset;
+
+  const LoadMoreServicesEvent({
+    this.category,
+    this.universityId,
+    required this.offset,
+  });
+
+  @override
+  List<Object?> get props => [category, universityId, offset];
+}
+

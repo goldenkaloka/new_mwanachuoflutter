@@ -20,8 +20,42 @@ class AllProductsPage extends StatelessWidget {
   }
 }
 
-class _AllProductsView extends StatelessWidget {
+class _AllProductsView extends StatefulWidget {
   const _AllProductsView();
+
+  @override
+  State<_AllProductsView> createState() => _AllProductsViewState();
+}
+
+class _AllProductsViewState extends State<_AllProductsView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.9) {
+      final state = context.read<ProductBloc>().state;
+      if (state is ProductsLoaded && 
+          state.hasMore && 
+          !state.isLoadingMore) {
+        context.read<ProductBloc>().add(
+          LoadMoreProductsEvent(offset: state.products.length),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,6 +141,7 @@ class _AllProductsView extends StatelessWidget {
             }
 
             return GridView.builder(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
@@ -114,8 +149,37 @@ class _AllProductsView extends StatelessWidget {
                 crossAxisSpacing: 16,
                 mainAxisSpacing: 16,
               ),
-              itemCount: state.products.length,
+              itemCount: state.products.length + (state.isLoadingMore ? 1 : 0),
               itemBuilder: (context, index) {
+                // Show loading indicator at the bottom
+                if (index == state.products.length && state.isLoadingMore) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          CircularProgressIndicator(
+                            color: kPrimaryColor,
+                            strokeWidth: 2,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Loading more...',
+                            style: TextStyle(
+                              color: secondaryTextColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (index >= state.products.length) return SizedBox.shrink();
+                
+              
                 final product = state.products[index];
                 return GestureDetector(
                   onTap: () => Navigator.pushNamed(

@@ -22,6 +22,16 @@ abstract class MessageLocalDataSource {
   /// Update conversation cache (when new message arrives)
   Future<void> updateConversationCache(ConversationModel conversation);
 
+  /// Add a single message to cache (for incremental updates)
+  Future<void> addMessageToCache(String conversationId, MessageModel message);
+
+  /// Update conversation's last message without clearing cache
+  Future<void> updateConversationLastMessage(
+    String conversationId,
+    String lastMessage,
+    DateTime lastMessageTime,
+  );
+
   /// Check if conversations cache is expired
   bool isConversationsCacheExpired();
 
@@ -122,6 +132,67 @@ class MessageLocalDataSourceImpl implements MessageLocalDataSource {
       final index = conversations.indexWhere((c) => c.id == conversation.id);
       if (index != -1) {
         conversations[index] = conversation;
+        await cacheConversations(conversations);
+      }
+    } catch (e) {
+      // If no cache exists, just skip
+    }
+  }
+
+  @override
+  Future<void> addMessageToCache(String conversationId, MessageModel message) async {
+    try {
+      // Get existing cached messages
+      final messages = await getCachedMessages(conversationId);
+      
+      // Check if message already exists (avoid duplicates)
+      final exists = messages.any((m) => m.id == message.id);
+      if (!exists) {
+        // Add to beginning (messages are ordered newest first)
+        messages.insert(0, message);
+        await cacheMessages(conversationId, messages);
+      }
+    } catch (e) {
+      // If no cache exists, create one with just this message
+      try {
+        await cacheMessages(conversationId, [message]);
+      } catch (e) {
+        // Silently fail if caching is not possible
+      }
+    }
+  }
+
+  @override
+  Future<void> updateConversationLastMessage(
+    String conversationId,
+    String lastMessage,
+    DateTime lastMessageTime,
+  ) async {
+    try {
+      // Get existing cached conversations
+      final conversations = await getCachedConversations();
+      
+      // Find and update the conversation's last message
+      final index = conversations.indexWhere((c) => c.id == conversationId);
+      if (index != -1) {
+        // Create updated conversation with new last message
+        final oldConv = conversations[index];
+        final updatedConv = ConversationModel(
+          id: oldConv.id,
+          userId: oldConv.userId,
+          otherUserId: oldConv.otherUserId,
+          otherUserName: oldConv.otherUserName,
+          otherUserAvatar: oldConv.otherUserAvatar,
+          lastMessage: lastMessage,
+          lastMessageTime: lastMessageTime,
+          unreadCount: oldConv.unreadCount,
+          isOnline: oldConv.isOnline,
+          lastSeenAt: oldConv.lastSeenAt,
+          createdAt: oldConv.createdAt,
+          updatedAt: DateTime.now(),
+        );
+        
+        conversations[index] = updatedConv;
         await cacheConversations(conversations);
       }
     } catch (e) {

@@ -20,8 +20,42 @@ class ServicesScreen extends StatelessWidget {
   }
 }
 
-class _ServicesView extends StatelessWidget {
+class _ServicesView extends StatefulWidget {
   const _ServicesView();
+
+  @override
+  State<_ServicesView> createState() => _ServicesViewState();
+}
+
+class _ServicesViewState extends State<_ServicesView> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.removeListener(_onScroll);
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent * 0.9) {
+      final state = context.read<ServiceBloc>().state;
+      if (state is ServicesLoaded && 
+          state.hasMore && 
+          !state.isLoadingMore) {
+        context.read<ServiceBloc>().add(
+          LoadMoreServicesEvent(offset: state.services.length),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -107,10 +141,38 @@ class _ServicesView extends StatelessWidget {
             }
 
             return ListView.separated(
+              controller: _scrollController,
               padding: const EdgeInsets.all(16),
-              itemCount: state.services.length,
+              itemCount: state.services.length + (state.isLoadingMore ? 1 : 0),
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
+                // Show loading indicator at the bottom
+                if (index == state.services.length && state.isLoadingMore) {
+                  return Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Center(
+                      child: Column(
+                        children: [
+                          CircularProgressIndicator(
+                            color: kPrimaryColor,
+                            strokeWidth: 2,
+                          ),
+                          SizedBox(height: 8),
+                          Text(
+                            'Loading more...',
+                            style: TextStyle(
+                              color: secondaryTextColor,
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                if (index >= state.services.length) return SizedBox.shrink();
+
                 final service = state.services[index];
                 return InkWell(
                   onTap: () => Navigator.pushNamed(
