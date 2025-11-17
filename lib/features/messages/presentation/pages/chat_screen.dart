@@ -69,6 +69,7 @@ class _ChatScreenView extends StatefulWidget {
 class _ChatScreenViewState extends State<_ChatScreenView>
     with WidgetsBindingObserver {
   final TextEditingController _messageController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   final ImagePicker _imagePicker = ImagePicker();
   String? _recipientName;
   String? _recipientAvatar;
@@ -81,6 +82,9 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    
+    // Add scroll listener for pagination
+    _scrollController.addListener(_onScroll);
     
     // Load conversation details (recipient name, avatar, status)
     _loadConversationDetails();
@@ -107,10 +111,23 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _scrollController.dispose();
     _updateUserOnlineStatus(false);
     _onlineStatusSubscription?.cancel();
     _messageController.dispose();
     super.dispose();
+  }
+
+  void _onScroll() {
+    // Check if we've scrolled to the top (which is the end in reverse list)
+    // This triggers loading more older messages
+    if (_scrollController.position.pixels >= 
+        _scrollController.position.maxScrollExtent * 0.9) {
+      // Load more messages when 90% scrolled
+      context.read<MessageBloc>().add(
+        LoadMoreMessagesEvent(conversationId: widget.conversationId),
+      );
+    }
   }
 
   @override
@@ -558,10 +575,24 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           }
 
           return ListView.builder(
+            controller: _scrollController,
             reverse: true,
             padding: const EdgeInsets.all(16),
-            itemCount: state.messages.length,
+            itemCount: state.messages.length + (state.isLoadingMore ? 1 : 0),
             itemBuilder: (context, index) {
+              // Show loading indicator at the bottom (top in reverse list)
+              if (index == state.messages.length) {
+                return const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: CircularProgressIndicator(
+                      color: kPrimaryColor,
+                      strokeWidth: 2,
+                    ),
+                  ),
+                );
+              }
+
               final message = state.messages[index];
               final isFirstInDay =
                   index == state.messages.length - 1 ||

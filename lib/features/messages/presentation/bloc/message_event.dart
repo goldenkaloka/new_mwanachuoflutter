@@ -131,13 +131,15 @@ class RetryMessageEvent extends MessageEvent {
   final String conversationId;
   final String content;
   final String? imageUrl;
+  final int? retryCount;
 
   const RetryMessageEvent({
     required this.conversationId,
     required this.content,
     this.imageUrl,
+    this.retryCount,
   });
 
   @override
-  List<Object?> get props => [conversationId, content, imageUrl];
+  List<Object?> get props => [conversationId, content, imageUrl, retryCount];
 }
