@@ -123,8 +123,8 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
         }
       },
       builder: (context, state) {
-        // Show loading only on initial load
-        if (state is ConversationsLoading && _isInitialLoad) {
+        // Show loading ONLY on very first load with no cached data (WhatsApp-style)
+        if (_cachedConversations.isEmpty && state is ConversationsLoading && _isInitialLoad) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -242,12 +242,35 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
                 conversation: conversation,
                 isDarkMode: isDarkMode,
                 screenSize: screenSize,
-                onTap: () {
-                  Navigator.pushNamed(
+                onTap: () async {
+                  final conversationId = conversation.id;
+                  
+                  // Navigate to chat and wait for return
+                  await Navigator.pushNamed(
                     context,
                     '/chat',
-                    arguments: conversation.id,
+                    arguments: conversationId,
                   );
+                  
+                  // When user returns from chat, update the cached conversation to mark as read
+                  // This provides instant visual feedback (optimistic UI update)
+                  if (mounted) {
+                    setState(() {
+                      _cachedConversations = _cachedConversations.map((conv) {
+                        // Update unread count to 0 for the viewed conversation
+                        return conv.id == conversationId 
+                            ? conv.copyWith(unreadCount: 0)
+                            : conv;
+                      }).toList();
+                    });
+                    
+                    // Also reload from server to get accurate data
+                    if (context.mounted) {
+                      context.read<MessageBloc>().add(
+                        const LoadConversationsEvent(forceRefresh: true),
+                      );
+                    }
+                  }
                 },
               );
             },
@@ -477,10 +500,42 @@ class ConversationListItem extends StatelessWidget {
     return TimeFormatter.formatConversationTime(time);
   }
 
+  void _showDeleteDialog(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Conversation'),
+        content: Text(
+          'Delete this conversation with ${conversation.otherUserName}?\n\nThis will only remove it for you. ${conversation.otherUserName} will still have access to the messages.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(dialogContext).pop();
+              // Dispatch delete event
+              context.read<MessageBloc>().add(
+                DeleteConversationEvent(conversationId: conversation.id),
+              );
+            },
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final primaryTextColor = isDarkMode ? Colors.white : Colors.black87;
-    final hasUnread = conversation.unreadCount > 0;
+    // Use effectiveUnreadCount which returns 0 for self-conversations
+    final hasUnread = conversation.effectiveUnreadCount > 0;
     final lastMessageColor = hasUnread
         ? (isDarkMode ? Colors.white : Colors.black87)
         : (isDarkMode ? Colors.grey[400]! : Colors.grey[600]!);
@@ -497,6 +552,7 @@ class ConversationListItem extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
+      onLongPress: () => _showDeleteDialog(context),
       child: Container(
         color: isSelected
             ? (isDarkMode
@@ -629,7 +685,8 @@ class ConversationListItem extends StatelessWidget {
                       color: isDarkMode ? Colors.grey[400]! : Colors.grey[500]!,
                     ),
                   ),
-                  if (conversation.unreadCount > 0) ...[
+                  // Only show badge for actual unread messages (not self-conversations)
+                  if (conversation.effectiveUnreadCount > 0) ...[
                     SizedBox(
                       height: ResponsiveBreakpoints.responsiveValue(
                         context,
@@ -657,7 +714,7 @@ class ConversationListItem extends StatelessWidget {
                         shape: BoxShape.circle,
                       ),
                       child: Text(
-                        conversation.unreadCount.toString(),
+                        conversation.effectiveUnreadCount.toString(),
                         style: GoogleFonts.plusJakartaSans(
                           fontSize: ResponsiveBreakpoints.responsiveValue(
                             context,

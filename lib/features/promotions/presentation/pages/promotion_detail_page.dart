@@ -5,7 +5,6 @@ import 'package:intl/intl.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
-import 'package:mwanachuo/core/widgets/comments_and_ratings_section.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
@@ -338,14 +337,6 @@ class _PromotionDetailView extends StatelessWidget {
                                     ],
                                   ),
                                 ),
-                              ),
-
-                              const SizedBox(height: 32.0),
-
-                              // Comments and Ratings
-                              CommentsAndRatingsSection(
-                                itemId: promotion.id,
-                                itemType: 'promotion',
                               ),
 
                               SizedBox(

@@ -558,9 +558,10 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               // User Avatar
               CircleAvatar(
                 radius: 20.0,
+                backgroundColor: kPrimaryColor.withValues(alpha: 0.3),
                 backgroundImage: review.userAvatar != null && review.userAvatar!.isNotEmpty
                     ? NetworkImage(review.userAvatar!)
-                    : const AssetImage('assets/images/default_avatar.png') as ImageProvider,
+                    : null,
                 child: review.userAvatar == null || review.userAvatar!.isEmpty
                     ? Text(
                         review.userName.isNotEmpty ? review.userName[0].toUpperCase() : '?',

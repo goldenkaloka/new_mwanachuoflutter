@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
@@ -77,6 +78,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   bool _recipientIsOnline = false;
   DateTime? _recipientLastSeen;
   StreamSubscription? _onlineStatusSubscription;
+  MessageEntity? _repliedToMessage; // Track message being replied to
 
   @override
   void initState() {
@@ -252,10 +254,84 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     if (content.isEmpty) return;
 
     context.read<MessageBloc>().add(
-      SendMessageEvent(conversationId: widget.conversationId, content: content),
+      SendMessageEvent(
+        conversationId: widget.conversationId,
+        content: content,
+        repliedToMessageId: _repliedToMessage?.id,
+      ),
     );
 
     _messageController.clear();
+    // Clear reply preview
+    setState(() {
+      _repliedToMessage = null;
+    });
+  }
+
+  void _handleReply(MessageEntity message) {
+    setState(() {
+      _repliedToMessage = message;
+    });
+    // Focus on text field
+    FocusScope.of(context).requestFocus(FocusNode());
+  }
+
+  void _showDeleteMessageDialog(MessageEntity message) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        backgroundColor: isDarkMode ? const Color(0xFF1F2C34) : Colors.white,
+        title: Text(
+          'Delete message?',
+          style: GoogleFonts.plusJakartaSans(
+            color: isDarkMode ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        content: Text(
+          'This message will be deleted only for you. The other person can still see it.',
+          style: GoogleFonts.plusJakartaSans(
+            color: isDarkMode ? Colors.white70 : Colors.black54,
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.plusJakartaSans(
+                color: kPrimaryColor,
+              ),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              _deleteMessage(message.id);
+            },
+            child: Text(
+              'Delete',
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.red,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _deleteMessage(String messageId) {
+    context.read<MessageBloc>().add(
+      DeleteMessageForUserEvent(messageId: messageId),
+    );
+    // Reload messages to reflect the deletion
+    context.read<MessageBloc>().add(
+      LoadMessagesEvent(conversationId: widget.conversationId),
+    );
   }
 
   Future<void> _pickAndUploadImage() async {
@@ -378,9 +454,12 @@ class _ChatScreenViewState extends State<_ChatScreenView>
 
     return BlocListener<MessageBloc, MessageState>(
       listener: (context, state) {
-        // Note: MessageSent is now handled optimistically in the bloc,
-        // so we don't need to reload. Only reload if we get NewMessageReceived
-        // and it's not already in our current messages list.
+        // Reload messages when a message is sent or received
+        if (state is MessageSent) {
+          LoggerService.debug('Message sent, messages will reload automatically');
+          // The bloc already dispatched LoadMessagesEvent, no need to do it here
+        }
+        
         if (state is NewMessageReceived) {
           // New message received via real-time subscription
           // Only reload if we don't already have messages loaded
@@ -491,23 +570,8 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       builder: (context, state) {
         LoggerService.debug('Messages list state: ${state.runtimeType}');
 
-        if (state is MessagesLoading) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const CircularProgressIndicator(color: kPrimaryColor),
-                const SizedBox(height: 16),
-                Text(
-                  'Loading messages...',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          );
-        }
+        // NO LOADING SCREEN - WhatsApp shows messages instantly
+        // Messages will appear as soon as they're loaded
 
         if (state is MessageError) {
           return Center(
@@ -612,13 +676,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           );
         }
 
-        if (state is MessageSent || state is MessageSending) {
-          // Keep showing previous messages while sending
-          LoggerService.debug('Message sending/sent state - keeping previous UI');
-          return const SizedBox.shrink();
-        }
-
-        LoggerService.warning('Unknown message state: ${state.runtimeType}');
+        // For any other state, show empty (will be replaced by MessagesLoaded soon)
         return const SizedBox.shrink();
       },
     );
@@ -629,28 +687,27 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     final currentUserId = SupabaseConfig.client.auth.currentUser?.id ?? '';
     final isSent = message.senderId == currentUserId;
 
-    return Align(
-      alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 8),
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.of(context).size.width * 0.80, // WhatsApp uses 80%
-        ),
-        decoration: BoxDecoration(
-          // WhatsApp colors: sent = light green, received = white/dark grey
-          color: isSent
-              ? (isDarkMode 
-                  ? const Color(0xFF005C4B) // Dark mode sent (dark teal)
-                  : const Color(0xFFDCF8C6)) // Light mode sent (light green)
-              : (isDarkMode 
-                  ? const Color(0xFF262D31) // Dark mode received (dark grey)
-                  : Colors.white), // Light mode received (white)
-          borderRadius: BorderRadius.circular(8), // WhatsApp uses 8dp
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
+    // Build the message bubble content
+    Widget messageBubble = Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      constraints: BoxConstraints(
+        maxWidth: MediaQuery.of(context).size.width * 0.80, // WhatsApp uses 80%
+      ),
+      decoration: BoxDecoration(
+        // WhatsApp colors: sent = light green, received = white/dark grey
+        color: isSent
+            ? (isDarkMode 
+                ? const Color(0xFF005C4B) // Dark mode sent (dark teal)
+                : const Color(0xFFDCF8C6)) // Light mode sent (light green)
+            : (isDarkMode 
+                ? const Color(0xFF262D31) // Dark mode received (dark grey)
+                : Colors.white), // Light mode received (white)
+        borderRadius: BorderRadius.circular(8), // WhatsApp uses 8dp
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
             // Display image if available
             if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
               ClipRRect(
@@ -731,6 +788,53 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           ],
         ),
       ),
+    );
+
+    // Wrap with GestureDetector for long press
+    messageBubble = GestureDetector(
+      onLongPress: () => _showDeleteMessageDialog(message),
+      child: messageBubble,
+    );
+
+    // Wrap with Slidable for swipe to reply
+    messageBubble = Slidable(
+      key: ValueKey(message.id),
+      startActionPane: isSent
+          ? null
+          : ActionPane(
+              motion: const StretchMotion(),
+              extentRatio: 0.25,
+              children: [
+                SlidableAction(
+                  onPressed: (_) => _handleReply(message),
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: isDarkMode ? Colors.white70 : Colors.grey,
+                  icon: Icons.reply,
+                  label: 'Reply',
+                ),
+              ],
+            ),
+      endActionPane: isSent
+          ? ActionPane(
+              motion: const StretchMotion(),
+              extentRatio: 0.25,
+              children: [
+                SlidableAction(
+                  onPressed: (_) => _handleReply(message),
+                  backgroundColor: Colors.transparent,
+                  foregroundColor: isDarkMode ? Colors.white70 : Colors.grey,
+                  icon: Icons.reply,
+                  label: 'Reply',
+                ),
+              ],
+            )
+          : null,
+      child: messageBubble,
+    );
+
+    return Align(
+      alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
+      child: messageBubble,
     );
   }
 
@@ -838,31 +942,17 @@ class _ChatScreenViewState extends State<_ChatScreenView>
             ),
           ),
           const SizedBox(width: 12),
-          BlocBuilder<MessageBloc, MessageState>(
-            builder: (context, state) {
-              final isSending = state is MessageSending;
-
-              return CircleAvatar(
-                backgroundColor: kPrimaryColor,
-                child: isSending
-                    ? const SizedBox(
-                        width: 20,
-                        height: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : IconButton(
-                        icon: const Icon(
-                          Icons.send,
-                          color: kBackgroundColorDark,
-                        ),
-                        onPressed: isSending ? null : _sendMessage,
-                        padding: EdgeInsets.zero,
-                      ),
-              );
-            },
+          CircleAvatar(
+            backgroundColor: kPrimaryColor,
+            // NO LOADING INDICATOR - WhatsApp sends instantly (optimistically)
+            child: IconButton(
+              icon: const Icon(
+                Icons.send,
+                color: kBackgroundColorDark,
+              ),
+              onPressed: _sendMessage,
+              padding: EdgeInsets.zero,
+            ),
           ),
         ],
       ),

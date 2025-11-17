@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:mwanachuo/core/constants/database_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
+import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/features/messages/data/models/conversation_model.dart';
 import 'package:mwanachuo/features/messages/data/models/message_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -20,9 +21,12 @@ abstract class MessageRemoteDataSource {
     required String conversationId,
     required String content,
     String? imageUrl,
+    String? repliedToMessageId,
   });
   Future<void> markMessagesAsRead({required String conversationId});
   Future<void> deleteMessage(String messageId);
+  Future<void> deleteMessageForUser(String messageId);
+  Future<void> deleteConversation(String conversationId);
   Stream<MessageModel> subscribeToMessages(String conversationId);
   Stream<ConversationModel> subscribeToConversations();
   Future<void> sendTypingIndicator({
@@ -53,20 +57,22 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       // Batch fetch unread counts for all conversations
       final results = await Future.wait(
         conversationIds.map((convId) async {
+          // Count unread messages from others (not sent by current user)
           final response = await supabaseClient
               .from(DatabaseConstants.messagesTable)
               .select('id')
               .eq('conversation_id', convId)
               .neq('sender_id', currentUserId)
               .eq('is_read', false);
-
-          return MapEntry(convId, (response as List).length);
+          
+          final count = (response as List).length;
+          return MapEntry(convId, count);
         }),
       );
 
       return Map.fromEntries(results);
-    } catch (e) {
-      debugPrint('⚠️ Failed to fetch unread counts: $e');
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to fetch unread counts', e, stackTrace);
       return {};
     }
   }
@@ -81,7 +87,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       if (currentUser == null) throw ServerException('User not authenticated');
 
       // Join with users table to get online status and last seen
-      // Note: unread_count will be calculated separately due to Supabase limitations
       final response = await supabaseClient
           .from(DatabaseConstants.conversationsTable)
           .select('''
@@ -94,18 +99,34 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .limit(limit ?? 50);
 
       final List<dynamic> data = response as List<dynamic>;
-      if (data.isEmpty) {
+      
+      // Filter out conversations deleted by current user (soft delete)
+      final filteredData = data.where((json) {
+        final isUser1 = json['user1_id'] == currentUser.id;
+        final isUser2 = json['user2_id'] == currentUser.id;
+        
+        if (isUser1) {
+          // Check if user1 has deleted this conversation
+          return json['user1_deleted_at'] == null;
+        } else if (isUser2) {
+          // Check if user2 has deleted this conversation
+          return json['user2_deleted_at'] == null;
+        }
+        return false; // Should never reach here
+      }).toList();
+      
+      if (filteredData.isEmpty) {
         return [];
       }
 
       // Batch fetch unread counts for all conversations
-      final conversationIds = data.map((json) => json['id'] as String).toList();
+      final conversationIds = filteredData.map((json) => json['id'] as String).toList();
       final unreadCounts = await _getUnreadCounts(
         conversationIds,
         currentUser.id,
       );
 
-      return data.map((json) {
+      return filteredData.map((json) {
         // Determine which user is "other"
         final isUser1 = json['user1_id'] == currentUser.id;
 
@@ -231,6 +252,9 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     int? offset,
   }) async {
     try {
+      final currentUser = supabaseClient.auth.currentUser;
+      if (currentUser == null) throw ServerException('User not authenticated');
+
       final response = await supabaseClient
           .from(DatabaseConstants.messagesTable)
           .select('*, users!inner(full_name, avatar_url)')
@@ -239,7 +263,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .limit(limit ?? 50)
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 50) - 1);
 
-      return (response as List)
+      final messages = (response as List)
           .map(
             (json) => MessageModel.fromJson({
               ...json,
@@ -248,10 +272,38 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
             }),
           )
           .toList();
+
+      // Filter out messages deleted by current user (WhatsApp-style soft delete)
+      final filteredMessages = messages.where((message) {
+        return !message.isDeletedForUser(currentUser.id);
+      }).toList();
+
+      // Mark messages sent by others as delivered (if not already)
+      // This happens when recipient fetches messages
+      _markMessagesAsDelivered(conversationId, currentUser.id);
+
+      return filteredMessages;
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
       throw ServerException('Failed to get messages: $e');
+    }
+  }
+
+  /// Mark messages as delivered when fetched by recipient
+  Future<void> _markMessagesAsDelivered(String conversationId, String currentUserId) async {
+    try {
+      await supabaseClient
+          .from(DatabaseConstants.messagesTable)
+          .update({
+            'delivered_at': DateTime.now().toIso8601String(),
+          })
+          .eq('conversation_id', conversationId)
+          .neq('sender_id', currentUserId)
+          .filter('delivered_at', 'is', null);
+    } catch (e) {
+      // Don't throw - this is a background operation
+      debugPrint('⚠️ Failed to mark messages as delivered: $e');
     }
   }
 
@@ -260,6 +312,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     required String conversationId,
     required String content,
     String? imageUrl,
+    String? repliedToMessageId,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -272,6 +325,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
             'sender_id': currentUser.id,
             'content': content,
             'image_url': imageUrl,
+            'replied_to_message_id': repliedToMessageId,
             'created_at': DateTime.now().toIso8601String(),
           })
           .select('*, users!inner(full_name, avatar_url)')
@@ -314,18 +368,22 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       final currentUser = supabaseClient.auth.currentUser;
       if (currentUser == null) throw ServerException('User not authenticated');
 
+      // Mark all unread messages from others as read
       await supabaseClient
           .from(DatabaseConstants.messagesTable)
           .update({
             'is_read': true,
-            'read_at': DateTime.now().toIso8601String(),
+            'read_at': DateTime.now().toUtc().toIso8601String(),
           })
           .eq('conversation_id', conversationId)
           .neq('sender_id', currentUser.id)
           .eq('is_read', false);
+          
     } on PostgrestException catch (e) {
+      LoggerService.error('PostgrestException marking messages as read', e);
       throw ServerException(e.message);
-    } catch (e) {
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to mark messages as read', e, stackTrace);
       throw ServerException('Failed to mark messages as read: $e');
     }
   }
@@ -345,6 +403,81 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       throw ServerException(e.message);
     } catch (e) {
       throw ServerException('Failed to delete message: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteMessageForUser(String messageId) async {
+    try {
+      final currentUser = supabaseClient.auth.currentUser;
+      if (currentUser == null) throw ServerException('User not authenticated');
+
+      // Get current deleted_by array
+      final message = await supabaseClient
+          .from(DatabaseConstants.messagesTable)
+          .select('deleted_by')
+          .eq('id', messageId)
+          .single();
+
+      final List<dynamic> currentDeletedBy = message['deleted_by'] as List<dynamic>? ?? [];
+      
+      // Add current user to deleted_by array if not already present
+      if (!currentDeletedBy.contains(currentUser.id)) {
+        final updatedDeletedBy = [...currentDeletedBy, currentUser.id];
+        
+        await supabaseClient
+            .from(DatabaseConstants.messagesTable)
+            .update({'deleted_by': updatedDeletedBy})
+            .eq('id', messageId);
+      }
+
+      LoggerService.debug('Message soft-deleted for current user');
+    } on PostgrestException catch (e) {
+      LoggerService.error('PostgrestException deleting message for user', e);
+      throw ServerException(e.message);
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to delete message for user', e, stackTrace);
+      throw ServerException('Failed to delete message: $e');
+    }
+  }
+
+  @override
+  Future<void> deleteConversation(String conversationId) async {
+    try {
+      final currentUser = supabaseClient.auth.currentUser;
+      if (currentUser == null) throw ServerException('User not authenticated');
+
+      // First, check if current user is user1 or user2
+      final conversation = await supabaseClient
+          .from(DatabaseConstants.conversationsTable)
+          .select('user1_id, user2_id')
+          .eq('id', conversationId)
+          .single();
+
+      final isUser1 = conversation['user1_id'] == currentUser.id;
+      final isUser2 = conversation['user2_id'] == currentUser.id;
+
+      if (!isUser1 && !isUser2) {
+        throw ServerException('User is not a participant in this conversation');
+      }
+
+      // Soft delete: Mark conversation as deleted for this user only
+      // Messages remain in database, other user can still see conversation
+      final deleteField = isUser1 ? 'user1_deleted_at' : 'user2_deleted_at';
+      
+      await supabaseClient
+          .from(DatabaseConstants.conversationsTable)
+          .update({deleteField: DateTime.now().toUtc().toIso8601String()})
+          .eq('id', conversationId);
+
+      LoggerService.debug('Conversation soft-deleted for current user (field: $deleteField)');
+          
+    } on PostgrestException catch (e) {
+      LoggerService.error('PostgrestException deleting conversation', e);
+      throw ServerException(e.message);
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to delete conversation', e, stackTrace);
+      throw ServerException('Failed to delete conversation: $e');
     }
   }
 

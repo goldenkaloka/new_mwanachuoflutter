@@ -20,6 +20,8 @@ class MessageEntity extends Equatable {
   final DateTime createdAt;
   final DateTime? readAt;
   final DateTime? deliveredAt;
+  final String? repliedToMessageId;
+  final List<String> deletedBy;
 
   const MessageEntity({
     required this.id,
@@ -33,6 +35,8 @@ class MessageEntity extends Equatable {
     required this.createdAt,
     this.readAt,
     this.deliveredAt,
+    this.repliedToMessageId,
+    this.deletedBy = const [],
   });
 
   /// Get message status for display
@@ -40,6 +44,11 @@ class MessageEntity extends Equatable {
     if (readAt != null) return MessageStatus.read;
     if (deliveredAt != null) return MessageStatus.delivered;
     return MessageStatus.sent;
+  }
+
+  /// Check if message is deleted for a specific user
+  bool isDeletedForUser(String userId) {
+    return deletedBy.contains(userId);
   }
 
   @override
@@ -55,6 +64,8 @@ class MessageEntity extends Equatable {
         createdAt,
         readAt,
         deliveredAt,
+        repliedToMessageId,
+        deletedBy,
       ];
 }
 

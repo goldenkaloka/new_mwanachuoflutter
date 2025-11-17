@@ -1,5 +1,6 @@
 import 'package:dartz/dartz.dart';
 import 'package:flutter/foundation.dart';
+import 'package:mwanachuo/core/constants/storage_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/core/network/network_info.dart';
@@ -207,6 +208,43 @@ class MessageRepositoryImpl implements MessageRepository {
 
     try {
       await remoteDataSource.deleteMessage(messageId);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to delete message: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteConversation(String conversationId) async {
+    if (!await networkInfo.isConnected) {
+      return Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      await remoteDataSource.deleteConversation(conversationId);
+      // Clear cache after deletion
+      await sharedPreferences.remove(StorageConstants.conversationsCacheKey);
+      await sharedPreferences.remove(
+        '${StorageConstants.conversationsCacheKey}_timestamp',
+      );
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to delete conversation: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> deleteMessageForUser(String messageId) async {
+    if (!await networkInfo.isConnected) {
+      return Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      await remoteDataSource.deleteMessageForUser(messageId);
       return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

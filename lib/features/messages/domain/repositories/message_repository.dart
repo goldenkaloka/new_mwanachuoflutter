@@ -28,6 +28,7 @@ abstract class MessageRepository {
     required String conversationId,
     required String content,
     String? imageUrl,
+    String? repliedToMessageId,
   });
 
   /// Mark messages as read
@@ -37,6 +38,12 @@ abstract class MessageRepository {
 
   /// Delete a message
   Future<Either<Failure, void>> deleteMessage(String messageId);
+
+  /// Delete a message for current user only (WhatsApp-style soft delete)
+  Future<Either<Failure, void>> deleteMessageForUser(String messageId);
+
+  /// Delete a conversation and all its messages
+  Future<Either<Failure, void>> deleteConversation(String conversationId);
 
   /// Subscribe to messages in a conversation (real-time)
   Stream<MessageEntity> subscribeToMessages(String conversationId);

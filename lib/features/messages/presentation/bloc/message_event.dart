@@ -50,15 +50,17 @@ class SendMessageEvent extends MessageEvent {
   final String conversationId;
   final String content;
   final String? imageUrl;
+  final String? repliedToMessageId;
 
   const SendMessageEvent({
     required this.conversationId,
     required this.content,
     this.imageUrl,
+    this.repliedToMessageId,
   });
 
   @override
-  List<Object?> get props => [conversationId, content, imageUrl];
+  List<Object?> get props => [conversationId, content, imageUrl, repliedToMessageId];
 }
 
 class MarkMessagesAsReadEvent extends MessageEvent {
@@ -142,4 +144,26 @@ class RetryMessageEvent extends MessageEvent {
 
   @override
   List<Object?> get props => [conversationId, content, imageUrl, retryCount];
+}
+
+class DeleteConversationEvent extends MessageEvent {
+  final String conversationId;
+
+  const DeleteConversationEvent({
+    required this.conversationId,
+  });
+
+  @override
+  List<Object?> get props => [conversationId];
+}
+
+class DeleteMessageForUserEvent extends MessageEvent {
+  final String messageId;
+
+  const DeleteMessageForUserEvent({
+    required this.messageId,
+  });
+
+  @override
+  List<Object?> get props => [messageId];
 }

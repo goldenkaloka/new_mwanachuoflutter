@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/constants/storage_constants.dart';
+import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/features/messages/domain/repositories/message_repository.dart';
 import 'package:mwanachuo/features/messages/domain/usecases/get_conversations.dart';
 import 'package:mwanachuo/features/messages/domain/usecases/get_messages.dart';
@@ -35,6 +36,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<LoadMessagesEvent>(_onLoadMessages);
     on<SendMessageEvent>(_onSendMessage);
     on<MarkMessagesAsReadEvent>(_onMarkMessagesAsRead);
+    on<DeleteConversationEvent>(_onDeleteConversation);
+    on<DeleteMessageForUserEvent>(_onDeleteMessageForUser);
     on<StartListeningToMessagesEvent>(_onStartListeningToMessages);
     on<StartListeningToConversationsEvent>(_onStartListeningToConversations);
     on<StopListeningEvent>(_onStopListening);
@@ -152,30 +155,14 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         }
       },
       (message) {
-        // Successfully sent - optimistically add message to current state
-        if (messagesLoadedState != null) {
-          // Use the captured state (before isSending was set)
-          // Messages are ordered newest first (descending), so add new message at the beginning
-          final originalMessages = messagesLoadedState.messages;
-          final updatedMessages = [message, ...originalMessages];
-          emit(
-            MessagesLoaded(
-              messages: updatedMessages,
-              conversationId: event.conversationId,
-              isSending: false,
-            ),
-          );
-        } else {
-          // If we don't have messages loaded, emit MessageSent and reload
-          emit(MessageSent(message: message));
-          add(LoadMessagesEvent(conversationId: event.conversationId));
-        }
+        // Successfully sent - reload messages to ensure UI is in sync
+        // This ensures the sent message appears even if optimistic update fails
+        emit(MessageSent(message: message));
+        add(LoadMessagesEvent(conversationId: event.conversationId));
 
-        // The conversation table has been updated with last_message and last_message_time
-        // The real-time subscription will pick this up and reload conversations automatically
-        // Add a small delay fallback reload to ensure it updates even if real-time is slow
+        // Also reload conversations to update last message
         if (!isClosed) {
-          Future.delayed(const Duration(milliseconds: 500), () {
+          Future.delayed(const Duration(milliseconds: 300), () {
             if (!isClosed) {
               add(const LoadConversationsEvent(forceRefresh: true));
             }
@@ -193,14 +180,32 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       await messageRepository.markMessagesAsRead(
         conversationId: event.conversationId,
       );
-      // Success - the unread count will be updated via real-time subscription
-      // Force reload conversations to update unread count immediately
-      if (!isClosed) {
-        add(const LoadConversationsEvent(forceRefresh: true));
-      }
-    } catch (e) {
-      // Log error but don't emit error state - this is a background operation
-      debugPrint('Failed to mark messages as read: $e');
+      // Success - real-time subscription will handle UI updates
+      // Optimistic UI already updated in the messages page
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to mark messages as read', e, stackTrace);
+    }
+  }
+
+  Future<void> _onDeleteConversation(
+    DeleteConversationEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    try {
+      final result = await messageRepository.deleteConversation(event.conversationId);
+      
+      result.fold(
+        (failure) {
+          emit(MessageError(message: failure.message));
+        },
+        (_) {
+          // Reload conversations after deletion
+          add(const LoadConversationsEvent(forceRefresh: true));
+        },
+      );
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to delete conversation', e, stackTrace);
+      emit(const MessageError(message: 'Failed to delete conversation'));
     }
   }
 

@@ -68,10 +68,7 @@ class MwanachuoshopApp extends StatelessWidget {
             ],
             child: const HomePage(),
           ),
-          '/product-details': (context) => BlocProvider(
-            create: (context) => sl<ProductBloc>(),
-            child: const ProductDetailsPage(),
-          ),
+          '/product-details': (context) => const ProductDetailsPage(),
           '/post-product': (context) => BlocProvider(
             create: (context) => sl<ProductBloc>(),
             child: const PostProductScreen(),
@@ -132,18 +129,9 @@ class MwanachuoshopApp extends StatelessWidget {
             child: const CreateAccommodationScreen(),
           ),
           '/notifications': (context) => const NotificationsPage(),
-          '/promotion-details': (context) => BlocProvider(
-            create: (context) => sl<PromotionCubit>(),
-            child: const PromotionDetailPage(),
-          ),
-          '/service-details': (context) => BlocProvider(
-            create: (context) => sl<ServiceBloc>(),
-            child: const ServiceDetailPage(),
-          ),
-          '/accommodation-details': (context) => BlocProvider(
-            create: (context) => sl<AccommodationBloc>(),
-            child: const AccommodationDetailPage(),
-          ),
+          '/promotion-details': (context) => const PromotionDetailPage(),
+          '/service-details': (context) => const ServiceDetailPage(),
+          '/accommodation-details': (context) => const AccommodationDetailPage(),
           '/all-products': (context) => BlocProvider(
             create: (context) => sl<ProductBloc>(),
             child: const AllProductsPage(),

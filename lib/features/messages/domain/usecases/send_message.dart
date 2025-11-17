@@ -20,6 +20,7 @@ class SendMessage implements UseCase<MessageEntity, SendMessageParams> {
       conversationId: params.conversationId,
       content: params.content.trim(),
       imageUrl: params.imageUrl,
+      repliedToMessageId: params.repliedToMessageId,
     );
   }
 }
@@ -28,14 +29,16 @@ class SendMessageParams extends Equatable {
   final String conversationId;
   final String content;
   final String? imageUrl;
+  final String? repliedToMessageId;
 
   const SendMessageParams({
     required this.conversationId,
     required this.content,
     this.imageUrl,
+    this.repliedToMessageId,
   });
 
   @override
-  List<Object?> get props => [conversationId, content, imageUrl];
+  List<Object?> get props => [conversationId, content, imageUrl, repliedToMessageId];
 }
 

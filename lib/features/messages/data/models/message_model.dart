@@ -13,6 +13,8 @@ class MessageModel extends MessageEntity {
     required super.createdAt,
     super.readAt,
     super.deliveredAt,
+    super.repliedToMessageId,
+    super.deletedBy,
   });
 
   factory MessageModel.fromJson(Map<String, dynamic> json) {
@@ -32,6 +34,10 @@ class MessageModel extends MessageEntity {
       deliveredAt: json['delivered_at'] != null
           ? DateTime.parse(json['delivered_at'] as String)
           : null,
+      repliedToMessageId: json['replied_to_message_id'] as String?,
+      deletedBy: json['deleted_by'] != null
+          ? List<String>.from(json['deleted_by'] as List)
+          : const [],
     );
   }
 
@@ -48,6 +54,8 @@ class MessageModel extends MessageEntity {
       'created_at': createdAt.toIso8601String(),
       'read_at': readAt?.toIso8601String(),
       'delivered_at': deliveredAt?.toIso8601String(),
+      'replied_to_message_id': repliedToMessageId,
+      'deleted_by': deletedBy,
     };
   }
 }
