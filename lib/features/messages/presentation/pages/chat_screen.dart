@@ -1,9 +1,11 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/constants/database_constants.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/core/utils/time_formatter.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
@@ -70,21 +72,43 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   final ImagePicker _imagePicker = ImagePicker();
   String? _recipientName;
   String? _recipientAvatar;
+  String? _recipientId;
   bool _recipientIsOnline = false;
   DateTime? _recipientLastSeen;
+  StreamSubscription? _onlineStatusSubscription;
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    
+    // Load conversation details (recipient name, avatar, status)
     _loadConversationDetails();
+    
+    // Update current user's online status
     _updateUserOnlineStatus(true);
+    
+    // Load messages for this conversation
+    context.read<MessageBloc>().add(
+      LoadMessagesEvent(conversationId: widget.conversationId),
+    );
+    
+    // Mark all messages as read when opening chat
+    context.read<MessageBloc>().add(
+      MarkMessagesAsReadEvent(conversationId: widget.conversationId),
+    );
+    
+    // Start listening for real-time message updates
+    context.read<MessageBloc>().add(
+      StartListeningToMessagesEvent(conversationId: widget.conversationId),
+    );
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _updateUserOnlineStatus(false);
+    _onlineStatusSubscription?.cancel();
     _messageController.dispose();
     super.dispose();
   }
@@ -140,9 +164,11 @@ class _ChatScreenViewState extends State<_ChatScreenView>
 
       final isUser1 = response['user1_id'] == currentUserId;
       final otherUserData = isUser1 ? response['user2'] : response['user1'];
+      final otherUserId = isUser1 ? response['user2_id'] : response['user1_id'];
 
       if (mounted) {
         setState(() {
+          _recipientId = otherUserId as String;
           if (isUser1) {
             _recipientName = response['user2_name'];
             _recipientAvatar = response['user2_avatar'];
@@ -158,10 +184,43 @@ class _ChatScreenViewState extends State<_ChatScreenView>
 
           LoggerService.debug('Recipient loaded: $_recipientName, online: $_recipientIsOnline');
         });
+        
+        // Start listening for online status changes
+        _startListeningToOnlineStatus();
       }
     } catch (e) {
       LoggerService.error('Failed to load conversation details', e);
     }
+  }
+
+  void _startListeningToOnlineStatus() {
+    if (_recipientId == null) return;
+    
+    // Cancel any existing subscription
+    _onlineStatusSubscription?.cancel();
+    
+    // Listen for changes to the recipient's online status
+    _onlineStatusSubscription = SupabaseConfig.client
+        .from(DatabaseConstants.usersTable)
+        .stream(primaryKey: ['id'])
+        .eq('id', _recipientId!)
+        .listen((data) {
+          if (data.isEmpty || !mounted) return;
+          
+          final userData = data.first;
+          final isOnline = userData['is_online'] as bool? ?? false;
+          final lastSeenAt = userData['last_seen_at'] != null
+              ? DateTime.parse(userData['last_seen_at'] as String)
+              : null;
+          
+          if (mounted) {
+            setState(() {
+              _recipientIsOnline = isOnline;
+              _recipientLastSeen = lastSeenAt;
+            });
+            LoggerService.debug('Recipient status updated: online=$isOnline');
+          }
+        });
   }
 
   String _getOnlineStatus() {

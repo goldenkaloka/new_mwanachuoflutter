@@ -34,6 +34,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     on<GetOrCreateConversationEvent>(_onGetOrCreateConversation);
     on<LoadMessagesEvent>(_onLoadMessages);
     on<SendMessageEvent>(_onSendMessage);
+    on<MarkMessagesAsReadEvent>(_onMarkMessagesAsRead);
     on<StartListeningToMessagesEvent>(_onStartListeningToMessages);
     on<StartListeningToConversationsEvent>(_onStartListeningToConversations);
     on<StopListeningEvent>(_onStopListening);
@@ -182,6 +183,25 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         }
       },
     );
+  }
+
+  Future<void> _onMarkMessagesAsRead(
+    MarkMessagesAsReadEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    try {
+      await messageRepository.markMessagesAsRead(
+        conversationId: event.conversationId,
+      );
+      // Success - the unread count will be updated via real-time subscription
+      // Force reload conversations to update unread count immediately
+      if (!isClosed) {
+        add(const LoadConversationsEvent(forceRefresh: true));
+      }
+    } catch (e) {
+      // Log error but don't emit error state - this is a background operation
+      debugPrint('Failed to mark messages as read: $e');
+    }
   }
 
   Future<void> _onStartListeningToMessages(
