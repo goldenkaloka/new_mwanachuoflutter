@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
@@ -16,12 +17,6 @@ class MessagesPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use the shared MessageBloc instance from app level
-    // Load conversations when page is first built
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      context.read<MessageBloc>().add(const LoadConversationsEvent());
-    });
-
     return const _MessagesView();
   }
 }
@@ -33,30 +28,44 @@ class _MessagesView extends StatefulWidget {
   State<_MessagesView> createState() => _MessagesViewState();
 }
 
-class _MessagesViewState extends State<_MessagesView> {
-  MessageBloc? _messageBloc;
+class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
 
   @override
   void initState() {
     super.initState();
-    // Start real-time listening to conversations
+    // Load conversations and start listening only once
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        _messageBloc = context.read<MessageBloc>();
-        _messageBloc?.add(StartListeningToConversationsEvent());
+        final bloc = context.read<MessageBloc>();
+        final currentState = bloc.state;
+        
+        // Only load if not already loaded
+        if (currentState is! ConversationsLoaded) {
+          LoggerService.info('Loading conversations for the first time');
+          bloc.add(const LoadConversationsEvent());
+        } else {
+          LoggerService.debug('Conversations already loaded, count: ${currentState.conversations.length}');
+        }
+        
+        // Start real-time listening
+        bloc.add(StartListeningToConversationsEvent());
       }
     });
   }
 
   @override
   void dispose() {
-    // Stop listening when leaving the page - use saved reference
-    _messageBloc?.add(StopListeningEvent());
+    // Don't stop listening when just navigating away temporarily
+    // The subscription will stay active for real-time updates
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
+    super.build(context); // Required for AutomaticKeepAliveClientMixin
+    
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final isExpanded = ResponsiveBreakpoints.isExpanded(context);
 
@@ -148,17 +157,7 @@ class _MessagesViewState extends State<_MessagesView> {
         }
 
         if (state is ConversationsLoaded) {
-          debugPrint(
-            '💬 [UI] ConversationsLoaded state received in MessagesPage',
-          );
-          debugPrint('   Total conversations: ${state.conversations.length}');
-          for (var conv in state.conversations) {
-            debugPrint('   [UI] Conversation: ${conv.otherUserName}');
-            debugPrint('      ID: ${conv.id}');
-            debugPrint('      last_message: "${conv.lastMessage ?? 'NULL'}"');
-            debugPrint('      last_message_time: ${conv.lastMessageTime}');
-            debugPrint('      unread_count: ${conv.unreadCount}');
-          }
+          LoggerService.debug('ConversationsLoaded: ${state.conversations.length} conversations');
 
           if (state.conversations.isEmpty) {
             return Center(
@@ -191,33 +190,44 @@ class _MessagesViewState extends State<_MessagesView> {
             );
           }
 
-          return ListView.separated(
-            itemCount: state.conversations.length,
-            separatorBuilder: (context, index) => Divider(
-              height: 1,
-              thickness: 0,
-              indent: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 88.0,
-                medium: 96.0,
-                expanded: 104.0,
-              ),
-            ),
-            itemBuilder: (context, index) {
-              final conversation = state.conversations[index];
-              return ConversationListItem(
-                conversation: conversation,
-                isDarkMode: isDarkMode,
-                screenSize: screenSize,
-                onTap: () {
-                  Navigator.pushNamed(
-                    context,
-                    '/chat',
-                    arguments: conversation.id,
-                  );
-                },
+          return RefreshIndicator(
+            onRefresh: () async {
+              context.read<MessageBloc>().add(
+                const LoadConversationsEvent(forceRefresh: true),
               );
+              // Wait a bit for the refresh to complete
+              await Future.delayed(const Duration(milliseconds: 500));
             },
+            color: kPrimaryColor,
+            child: ListView.separated(
+              physics: const AlwaysScrollableScrollPhysics(),
+              itemCount: state.conversations.length,
+              separatorBuilder: (context, index) => Divider(
+                height: 1,
+                thickness: 0,
+                indent: ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 88.0,
+                  medium: 96.0,
+                  expanded: 104.0,
+                ),
+              ),
+              itemBuilder: (context, index) {
+                final conversation = state.conversations[index];
+                return ConversationListItem(
+                  conversation: conversation,
+                  isDarkMode: isDarkMode,
+                  screenSize: screenSize,
+                  onTap: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/chat',
+                      arguments: conversation.id,
+                    );
+                  },
+                );
+              },
+            ),
           );
         }
 
@@ -445,28 +455,58 @@ class ConversationListItem extends StatelessWidget {
   String _formatTime(DateTime? time) {
     if (time == null) return '';
 
-    // Convert to local time to avoid timezone issues
-    final localTime = time.toLocal();
-    final now = DateTime.now();
-    final difference = now.difference(localTime);
+    try {
+      // Ensure we're working with local time
+      final localTime = time.isUtc ? time.toLocal() : time;
+      final now = DateTime.now();
+      
+      // Calculate difference carefully
+      final difference = now.difference(localTime);
 
-    // Handle negative differences (future times due to sync issues)
-    if (difference.isNegative) {
-      return 'Just now';
-    }
+      // Handle negative differences (future times due to clock sync issues)
+      if (difference.isNegative || difference.inSeconds < 30) {
+        return 'Just now';
+      }
 
-    if (difference.inMinutes < 1) {
-      return 'Just now';
-    } else if (difference.inMinutes < 60) {
-      return '${difference.inMinutes}m ago';
-    } else if (difference.inHours < 24) {
-      return DateFormat('HH:mm').format(localTime);
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays}d ago';
-    } else {
-      return DateFormat('MMM d').format(localTime);
+      // Less than 1 minute
+      if (difference.inMinutes < 1) {
+        return 'Just now';
+      }
+      
+      // Less than 1 hour - show minutes
+      if (difference.inMinutes < 60) {
+        return '${difference.inMinutes}m';
+      }
+      
+      // Same day - show time
+      final today = DateTime(now.year, now.month, now.day);
+      final messageDay = DateTime(localTime.year, localTime.month, localTime.day);
+      
+      if (messageDay == today) {
+        return DateFormat('HH:mm').format(localTime);
+      }
+      
+      // Yesterday
+      final yesterday = today.subtract(const Duration(days: 1));
+      if (messageDay == yesterday) {
+        return 'Yesterday';
+      }
+      
+      // Within the last week
+      if (difference.inDays < 7) {
+        return DateFormat('EEE').format(localTime); // Mon, Tue, etc.
+      }
+      
+      // This year - show date without year
+      if (localTime.year == now.year) {
+        return DateFormat('MMM d').format(localTime);
+      }
+      
+      // Different year - show full date
+      return DateFormat('MMM d, yyyy').format(localTime);
+    } catch (e) {
+      LoggerService.error('Error formatting time', e);
+      return '';
     }
   }
 

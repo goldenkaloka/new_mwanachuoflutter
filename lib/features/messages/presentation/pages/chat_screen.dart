@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
@@ -107,16 +108,16 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           'update_user_last_seen',
           params: {'user_id': currentUserId},
         );
-        debugPrint('✅ Updated user status: online');
+        LoggerService.debug('Updated user status: online');
       } else {
         await SupabaseConfig.client.rpc(
           'mark_user_offline',
           params: {'user_id': currentUserId},
         );
-        debugPrint('✅ Updated user status: offline');
+        LoggerService.debug('Updated user status: offline');
       }
     } catch (e) {
-      debugPrint('⚠️ Failed to update online status: $e');
+      LoggerService.warning('Failed to update online status', e);
     }
   }
 
@@ -153,13 +154,11 @@ class _ChatScreenViewState extends State<_ChatScreenView>
               ? DateTime.parse(otherUserData!['last_seen_at'] as String)
               : null;
 
-          debugPrint('👤 Recipient: $_recipientName');
-          debugPrint('   is_online: $_recipientIsOnline');
-          debugPrint('   last_seen: $_recipientLastSeen');
+          LoggerService.debug('Recipient loaded: $_recipientName, online: $_recipientIsOnline');
         });
       }
     } catch (e) {
-      debugPrint('Failed to load conversation details: $e');
+      LoggerService.error('Failed to load conversation details', e);
     }
   }
 
@@ -214,7 +213,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           final currentState = context.read<MessageBloc>().state;
           if (currentState is! MessagesLoaded ||
               currentState.conversationId != widget.conversationId) {
-            debugPrint('📩 New message received, reloading...');
+            LoggerService.debug('New message received, reloading messages');
             context.read<MessageBloc>().add(
               LoadMessagesEvent(conversationId: widget.conversationId),
             );
