@@ -142,6 +142,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         conversationId: event.conversationId,
         content: event.content,
         imageUrl: event.imageUrl,
+        repliedToMessageId: event.repliedToMessageId,
       ),
     );
 
@@ -206,6 +207,29 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     } catch (e, stackTrace) {
       LoggerService.error('Failed to delete conversation', e, stackTrace);
       emit(const MessageError(message: 'Failed to delete conversation'));
+    }
+  }
+
+  Future<void> _onDeleteMessageForUser(
+    DeleteMessageForUserEvent event,
+    Emitter<MessageState> emit,
+  ) async {
+    try {
+      final result = await messageRepository.deleteMessageForUser(event.messageId);
+      
+      result.fold(
+        (failure) {
+          LoggerService.error('Failed to delete message: ${failure.message}');
+          emit(MessageError(message: failure.message));
+        },
+        (_) {
+          // Message deleted successfully - state will be updated via message reload
+          LoggerService.debug('Message ${event.messageId} deleted successfully');
+        },
+      );
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to delete message', e, stackTrace);
+      emit(const MessageError(message: 'Failed to delete message'));
     }
   }
 

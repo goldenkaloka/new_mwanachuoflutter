@@ -893,7 +893,6 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     // Note: Message sending is now handled optimistically in the bloc,
     // so we don't need to reload messages here
     return Container(
-      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDarkMode ? kBackgroundColorDark : Colors.white,
         border: Border(
@@ -902,8 +901,17 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           ),
         ),
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // Reply preview (shows when replying to a message)
+          if (_repliedToMessage != null) _buildReplyPreview(isDarkMode),
+          
+          // Input row
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
           // Attachment button
           IconButton(
             icon: Icon(
@@ -953,6 +961,69 @@ class _ChatScreenViewState extends State<_ChatScreenView>
               onPressed: _sendMessage,
               padding: EdgeInsets.zero,
             ),
+          ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildReplyPreview(bool isDarkMode) {
+    if (_repliedToMessage == null) return const SizedBox.shrink();
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[900] : Colors.grey[100],
+        border: Border(
+          left: BorderSide(
+            color: kPrimaryColor,
+            width: 4,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Replying to',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: kPrimaryColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  _repliedToMessage!.content.length > 50
+                      ? '${_repliedToMessage!.content.substring(0, 50)}...'
+                      : _repliedToMessage!.content,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                    fontSize: 14,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            icon: Icon(
+              Icons.close,
+              color: isDarkMode ? Colors.white70 : Colors.black54,
+              size: 20,
+            ),
+            onPressed: () {
+              setState(() {
+                _repliedToMessage = null;
+              });
+            },
           ),
         ],
       ),

@@ -145,6 +145,7 @@ class MessageRepositoryImpl implements MessageRepository {
     required String conversationId,
     required String content,
     String? imageUrl,
+    String? repliedToMessageId,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -155,6 +156,7 @@ class MessageRepositoryImpl implements MessageRepository {
         conversationId: conversationId,
         content: content,
         imageUrl: imageUrl,
+        repliedToMessageId: repliedToMessageId,
       );
       
       // Incrementally update cache instead of clearing it
