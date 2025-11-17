@@ -5,6 +5,7 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/widgets/comments_and_ratings_section.dart';
+import 'package:mwanachuo/core/widgets/empty_state.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_bloc.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_event.dart';
@@ -73,9 +74,9 @@ class _ServiceDetailView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
-    final surfaceColor = isDarkMode ? Colors.grey[900]! : Colors.white;
+    final primaryTextColor = isDarkMode ? kTextPrimaryDark : kTextPrimary;
+    final secondaryTextColor = isDarkMode ? kTextSecondaryDark : kTextSecondary;
+    final surfaceColor = isDarkMode ? kSurfaceColorDark : kSurfaceColorLight;
 
     return BlocBuilder<ServiceBloc, ServiceState>(
       builder: (context, state) {
@@ -86,10 +87,10 @@ class _ServiceDetailView extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const CircularProgressIndicator(color: kPrimaryColor),
-                  const SizedBox(height: 16),
+                  SizedBox(height: kSpacingLg),
                   Text(
                     'Loading service...',
-                    style: TextStyle(color: secondaryTextColor),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
               ),
@@ -99,38 +100,11 @@ class _ServiceDetailView extends StatelessWidget {
 
         if (state is ServiceError) {
           return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load service',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: secondaryTextColor),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text('Go Back'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      foregroundColor: kBackgroundColorDark,
-                    ),
-                  ),
-                ],
-              ),
+            body: ErrorState(
+              title: 'Failed to Load Service',
+              message: state.message,
+              onRetry: () => Navigator.pop(context),
+              retryLabel: 'Go Back',
             ),
           );
         }

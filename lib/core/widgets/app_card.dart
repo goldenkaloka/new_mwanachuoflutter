@@ -35,7 +35,7 @@ class AppCard extends StatelessWidget {
   final List<BoxShadow>? customShadow;
 
   const AppCard({
-    Key? key,
+    super.key,
     required this.child,
     this.onTap,
     this.padding,
@@ -44,7 +44,7 @@ class AppCard extends StatelessWidget {
     this.backgroundColor,
     this.borderRadius,
     this.customShadow,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -132,7 +132,7 @@ class ProductCard extends StatelessWidget {
   final bool showCategory;
 
   const ProductCard({
-    Key? key,
+    super.key,
     required this.imageUrl,
     required this.title,
     required this.price,
@@ -142,7 +142,7 @@ class ProductCard extends StatelessWidget {
     required this.onTap,
     this.showRating = true,
     this.showCategory = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -274,7 +274,7 @@ class ServiceCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const ServiceCard({
-    Key? key,
+    super.key,
     required this.imageUrl,
     required this.title,
     required this.price,
@@ -283,7 +283,7 @@ class ServiceCard extends StatelessWidget {
     this.providerName,
     this.location,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -403,7 +403,7 @@ class AccommodationCard extends StatelessWidget {
   final VoidCallback onTap;
 
   const AccommodationCard({
-    Key? key,
+    super.key,
     required this.imageUrl,
     required this.title,
     required this.price,
@@ -412,7 +412,7 @@ class AccommodationCard extends StatelessWidget {
     this.bedrooms,
     this.bathrooms,
     required this.onTap,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

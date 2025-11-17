@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/constants/typography_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/widgets/comments_and_ratings_section.dart';
+import 'package:mwanachuo/core/widgets/empty_state.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
@@ -101,11 +103,9 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryTextColor = isDarkMode ? Colors.white : kBackgroundColorDark;
-    final secondaryTextColor = isDarkMode
-        ? Colors.grey[400]!
-        : Colors.grey[600]!;
-    final cardBgColor = isDarkMode ? kBackgroundColorDark : Colors.white;
+    final primaryTextColor = isDarkMode ? kTextPrimaryDark : kTextPrimary;
+    final secondaryTextColor = isDarkMode ? kTextSecondaryDark : kTextSecondary;
+    final cardBgColor = isDarkMode ? kSurfaceColorDark : kSurfaceColorLight;
     final isExpanded = ResponsiveBreakpoints.isExpanded(context);
 
     return BlocBuilder<ProductBloc, ProductState>(
@@ -117,10 +117,10 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const CircularProgressIndicator(color: kPrimaryColor),
-                  const SizedBox(height: 16),
+                  SizedBox(height: kSpacingLg),
                   Text(
                     'Loading product...',
-                    style: TextStyle(color: secondaryTextColor),
+                    style: Theme.of(context).textTheme.bodyMedium,
                   ),
                 ],
               ),
@@ -130,38 +130,11 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
 
         if (state is ProductError) {
           return Scaffold(
-            body: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Failed to load product',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    state.message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: secondaryTextColor),
-                  ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () => Navigator.pop(context),
-                    icon: const Icon(Icons.arrow_back),
-                    label: const Text('Go Back'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      foregroundColor: kBackgroundColorDark,
-                    ),
-                  ),
-                ],
-              ),
+            body: ErrorState(
+              title: 'Failed to Load Product',
+              message: state.message,
+              onRetry: () => Navigator.pop(context),
+              retryLabel: 'Go Back',
             ),
           );
         }
@@ -183,7 +156,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
           body: Center(
             child: Text(
               'Something went wrong',
-              style: TextStyle(color: secondaryTextColor),
+              style: Theme.of(context).textTheme.bodyMedium,
             ),
           ),
         );
@@ -544,14 +517,11 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
 
   Widget _buildProductInfo(ProductEntity product, Color primaryTextColor, ScreenSize screenSize) {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final textTheme = Theme.of(context).textTheme;
+    
     return Padding(
       padding: EdgeInsets.only(
-        top: ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 8.0,
-          medium: 12.0,
-          expanded: 16.0,
-        ),
+        top: kSpacingMd,
         left: horizontalPadding,
         right: horizontalPadding,
       ),
@@ -560,58 +530,36 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
         children: [
           // Category Chip
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+            padding: EdgeInsets.symmetric(
+              horizontal: kSpacingMd,
+              vertical: kSpacingXs,
+            ),
             decoration: BoxDecoration(
               color: kPrimaryColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(9999),
+              borderRadius: kBaseRadiusFull,
             ),
             child: Text(
               product.category,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-                color: primaryTextColor.withValues(alpha: 0.8),
+              style: textTheme.labelMedium?.copyWith(
+                color: primaryTextColor.withValues(alpha: kOpacityHigh),
               ),
             ),
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: kSpacingMd),
           // Title
           Text(
             product.title,
-            style: GoogleFonts.plusJakartaSans(
+            style: textTheme.headlineMedium?.copyWith(
               color: primaryTextColor,
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 28.0,
-                medium: 30.0,
-                expanded: 36.0,
-              ),
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.5,
-              height: 1.1,
             ),
           ),
-          SizedBox(
-            height: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 12.0,
-              medium: 16.0,
-              expanded: 20.0,
-            ),
-          ),
+          SizedBox(height: kSpacingLg),
           // Price
           Text(
-            '\$${product.price.toStringAsFixed(2)}',
-            style: GoogleFonts.plusJakartaSans(
+            'Ksh ${product.price.toStringAsFixed(2)}',
+            style: textTheme.headlineSmall?.copyWith(
               color: kPrimaryColor,
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 24.0,
-                medium: 26.0,
-                expanded: 32.0,
-              ),
-              fontWeight: FontWeight.bold,
-              letterSpacing: -0.2,
+              fontWeight: AppTypography.bold,
             ),
           ),
         ],
@@ -624,15 +572,10 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: horizontalPadding,
-        vertical: ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 24.0,
-          medium: 24.0,
-          expanded: 32.0,
-        ),
+        vertical: kSpacing2xl,
       ),
       child: Divider(
-        color: isDarkMode ? Colors.grey[700] : Colors.grey[200],
+        color: isDarkMode ? kDividerColorDark : kDividerColor,
         thickness: 1,
         height: 0,
       ),
@@ -641,6 +584,8 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
 
   Widget _buildDescription(ProductEntity product, Color primaryTextColor, Color secondaryTextColor, ScreenSize screenSize) {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final textTheme = Theme.of(context).textTheme;
+    
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Column(
@@ -648,39 +593,18 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
         children: [
           Text(
             'Description',
-            style: GoogleFonts.plusJakartaSans(
+            style: textTheme.titleLarge?.copyWith(
               color: primaryTextColor,
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 18.0,
-                medium: 20.0,
-                expanded: 22.0,
-              ),
-              fontWeight: FontWeight.bold,
             ),
           ),
-          SizedBox(
-            height: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 8.0,
-              medium: 12.0,
-              expanded: 16.0,
-            ),
-          ),
+          SizedBox(height: kSpacingMd),
           Text(
             product.description,
-            style: GoogleFonts.plusJakartaSans(
+            style: textTheme.bodyMedium?.copyWith(
               color: secondaryTextColor,
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 17.0,
-                expanded: 18.0,
-              ),
-              height: 1.5,
             ),
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: kSpacingLg),
           // Condition
           Row(
             children: [
