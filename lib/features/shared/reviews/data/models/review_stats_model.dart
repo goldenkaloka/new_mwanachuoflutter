@@ -13,7 +13,7 @@ class ReviewStatsModel extends ReviewStatsEntity {
   factory ReviewStatsModel.fromJson(Map<String, dynamic> json) {
     return ReviewStatsModel(
       itemId: json['item_id'] as String,
-      averageRating: (json['average_rating'] as num).toDouble(),
+      averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0.0,
       totalReviews: json['total_reviews'] as int,
       ratingDistribution: Map<int, int>.from(
         json['rating_distribution'] as Map<String, dynamic>,
@@ -62,4 +62,3 @@ class ReviewStatsModel extends ReviewStatsEntity {
     );
   }
 }
-

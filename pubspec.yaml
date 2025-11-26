@@ -68,9 +68,6 @@ dependencies:
   cached_network_image: ^3.4.1
   intl: ^0.19.0
   logger: ^2.4.0
-  firebase_core: ^3.6.0
-  firebase_messaging: ^15.1.5
-  flutter_local_notifications: ^17.2.3
 
 dev_dependencies:
   flutter_test:
@@ -101,7 +98,6 @@ flutter:
   # Assets
   assets:
     - assets/
-
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
@@ -127,3 +123,40 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+flutter_native_splash:
+  # Background color
+  color: "#0066FF"
+  # Optional background image
+  #background_image: "assets/background.png"
+  
+  # Splash screen branding
+  android_12:
+    # App icon with splash screen background color as shown in Android 12
+    # More info: https://developer.android.com/guide/topics/ui/splash-screen
+    color: "#0066FF"
+    # Icon used for the splash screen
+    image: assets/icon/icon.png
+    # App icon without background color as shown in Android 12+
+    # More info: https://developer.android.com/about/versions/12/features/splash-screen
+    icon_background_color: "#0066FF"
+  
+  # iOS specific configuration
+  ios:
+    # Enables the use of the native iOS splash screen
+    enable: true
+  
+  # Web specific configuration
+  web:
+    # Enables the use of the native web splash screen
+    enable: true
+    # Background color for web
+    color: "#0066FF"
+    # Background image for web (optional)
+    #background_image: "assets/background.png"
+  
+  # Customize the info.plist file for iOS
+  info_plist_files:
+    # Add custom keys to the Info.plist file
+    # More info: https://developer.apple.com/documentation/bundleresources/information_property_list
+    UILaunchStoryboardName: LaunchScreen

@@ -48,8 +48,7 @@ class MwanachuoshopApp extends StatelessWidget {
         title: 'Mwanachuoshop',
         debugShowCheckedModeBanner: false,
         theme: lightTheme(),
-        darkTheme: darkTheme(),
-        themeMode: ThemeMode.system,
+        themeMode: ThemeMode.light,
         home: const SplashScreen(),
         routes: {
           '/login': (context) => const LoginPage(),
@@ -131,7 +130,8 @@ class MwanachuoshopApp extends StatelessWidget {
           '/notifications': (context) => const NotificationsPage(),
           '/promotion-details': (context) => const PromotionDetailPage(),
           '/service-details': (context) => const ServiceDetailPage(),
-          '/accommodation-details': (context) => const AccommodationDetailPage(),
+          '/accommodation-details': (context) =>
+              const AccommodationDetailPage(),
           '/all-products': (context) => BlocProvider(
             create: (context) => sl<ProductBloc>(),
             child: const AllProductsPage(),

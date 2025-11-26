@@ -90,7 +90,9 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
       final pickedFiles = await picker.pickMultipleMedia();
       if (pickedFiles.isNotEmpty) {
         setState(() {
-          _newImages.addAll(pickedFiles.map((file) => File(file.path)).toList());
+          _newImages.addAll(
+            pickedFiles.map((file) => File(file.path)).toList(),
+          );
         });
       }
     } catch (e) {
@@ -133,33 +135,35 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
     }
 
     context.read<AccommodationBloc>().add(
-          UpdateAccommodationEvent(
-            accommodationId: widget.accommodation.id,
-            name: _nameController.text.trim(),
-            description: _descriptionController.text.trim(),
-            price: double.parse(_priceController.text.trim()),
-            priceType: _selectedPriceType,
-            roomType: _selectedRoomType,
-            newImages: _newImages.isNotEmpty ? _newImages : null,
-            existingImages: _existingImages,
-            location: _locationController.text.trim(),
-            contactPhone: _contactPhoneController.text.trim(),
-            contactEmail: _contactEmailController.text.trim().isNotEmpty
-                ? _contactEmailController.text.trim()
-                : null,
-            amenities: _selectedAmenities,
-            bedrooms: int.parse(_bedroomsController.text.trim()),
-            bathrooms: int.parse(_bathroomsController.text.trim()),
-            isActive: _isActive,
-          ),
-        );
+      UpdateAccommodationEvent(
+        accommodationId: widget.accommodation.id,
+        name: _nameController.text.trim(),
+        description: _descriptionController.text.trim(),
+        price: double.parse(_priceController.text.trim()),
+        priceType: _selectedPriceType,
+        roomType: _selectedRoomType,
+        newImages: _newImages.isNotEmpty ? _newImages : null,
+        existingImages: _existingImages,
+        location: _locationController.text.trim(),
+        contactPhone: _contactPhoneController.text.trim(),
+        contactEmail: _contactEmailController.text.trim().isNotEmpty
+            ? _contactEmailController.text.trim()
+            : null,
+        amenities: _selectedAmenities,
+        bedrooms: int.parse(_bedroomsController.text.trim()),
+        bathrooms: int.parse(_bathroomsController.text.trim()),
+        isActive: _isActive,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
 
     return Scaffold(
       appBar: AppBar(
@@ -169,7 +173,9 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
         ),
         backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
       ),
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: BlocListener<AccommodationBloc, AccommodationState>(
         listener: (context, state) {
           if (state is AccommodationUpdated) {
@@ -247,10 +253,12 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                                   ),
                                 ),
                                 items: RoomTypes.all
-                                    .map((type) => DropdownMenuItem(
-                                          value: type,
-                                          child: Text(type),
-                                        ))
+                                    .map(
+                                      (type) => DropdownMenuItem(
+                                        value: type,
+                                        child: Text(type),
+                                      ),
+                                    )
                                     .toList(),
                                 onChanged: (value) {
                                   setState(() {
@@ -270,10 +278,12 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                                   ),
                                 ),
                                 items: PriceTypes.all
-                                    .map((type) => DropdownMenuItem(
-                                          value: type,
-                                          child: Text(type),
-                                        ))
+                                    .map(
+                                      (type) => DropdownMenuItem(
+                                        value: type,
+                                        child: Text(type),
+                                      ),
+                                    )
                                     .toList(),
                                 onChanged: (value) {
                                   setState(() {
@@ -292,7 +302,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                           decoration: InputDecoration(
                             labelText: 'Price *',
                             hintText: 'e.g., 350',
-                            prefixText: 'Ksh ',
+                            prefixText: 'TZS ',
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
                             ),
@@ -450,7 +460,9 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                           spacing: 8,
                           runSpacing: 8,
                           children: Amenities.all.map((amenity) {
-                            final isSelected = _selectedAmenities.contains(amenity);
+                            final isSelected = _selectedAmenities.contains(
+                              amenity,
+                            );
                             return FilterChip(
                               label: Text(amenity),
                               selected: isSelected,
@@ -463,7 +475,9 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                                   }
                                 });
                               },
-                              selectedColor: kPrimaryColor.withValues(alpha: 0.3),
+                              selectedColor: kPrimaryColor.withValues(
+                                alpha: 0.3,
+                              ),
                               checkmarkColor: kPrimaryColor,
                             );
                           }).toList(),
@@ -610,11 +624,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                   color: Colors.red,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 16,
-                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
             ),
           ),
@@ -649,11 +659,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                   color: Colors.red,
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
-                  Icons.close,
-                  color: Colors.white,
-                  size: 16,
-                ),
+                child: const Icon(Icons.close, color: Colors.white, size: 16),
               ),
             ),
           ),
@@ -662,4 +668,3 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
     );
   }
 }
-

@@ -3,7 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/constants/storage_constants.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
-import 'package:mwanachuo/core/services/notification_dispatcher.dart';
+
 import 'package:mwanachuo/features/messages/domain/repositories/message_repository.dart';
 import 'package:mwanachuo/features/messages/domain/usecases/get_conversations.dart';
 import 'package:mwanachuo/features/messages/domain/usecases/get_messages.dart';
@@ -20,7 +20,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final SendMessage sendMessage;
   final MessageRepository messageRepository;
   final SharedPreferences sharedPreferences;
-  final NotificationDispatcher notificationDispatcher;
 
   StreamSubscription? _messageSubscription;
   StreamSubscription? _conversationSubscription;
@@ -32,7 +31,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     required this.sendMessage,
     required this.messageRepository,
     required this.sharedPreferences,
-    required this.notificationDispatcher,
   }) : super(MessageInitial()) {
     on<LoadConversationsEvent>(_onLoadConversations);
     on<GetOrCreateConversationEvent>(_onGetOrCreateConversation);
@@ -164,23 +162,6 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         emit(MessageSent(message: message));
         add(LoadMessagesEvent(conversationId: event.conversationId));
 
-        unawaited(
-          notificationDispatcher.notifyConversation(
-            conversationId: event.conversationId,
-            senderId: message.senderId,
-            title: message.senderName.isNotEmpty
-                ? '${message.senderName} sent a message'
-                : 'New message',
-            body: message.content.isNotEmpty
-                ? message.content
-                : (message.imageUrl != null ? '📎 Image attachment' : 'New message'),
-            data: {
-              'conversationId': event.conversationId,
-              'messageId': message.id,
-            },
-          ),
-        );
-
         // Also reload conversations to update last message
         if (!isClosed) {
           Future.delayed(const Duration(milliseconds: 300), () {
@@ -213,8 +194,10 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     Emitter<MessageState> emit,
   ) async {
     try {
-      final result = await messageRepository.deleteConversation(event.conversationId);
-      
+      final result = await messageRepository.deleteConversation(
+        event.conversationId,
+      );
+
       result.fold(
         (failure) {
           emit(MessageError(message: failure.message));
@@ -235,8 +218,10 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     Emitter<MessageState> emit,
   ) async {
     try {
-      final result = await messageRepository.deleteMessageForUser(event.messageId);
-      
+      final result = await messageRepository.deleteMessageForUser(
+        event.messageId,
+      );
+
       result.fold(
         (failure) {
           LoggerService.error('Failed to delete message: ${failure.message}');
@@ -244,7 +229,9 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         },
         (_) {
           // Message deleted successfully - state will be updated via message reload
-          LoggerService.debug('Message ${event.messageId} deleted successfully');
+          LoggerService.debug(
+            'Message ${event.messageId} deleted successfully',
+          );
         },
       );
     } catch (e, stackTrace) {

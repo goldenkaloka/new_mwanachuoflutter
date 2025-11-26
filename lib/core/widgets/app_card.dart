@@ -8,10 +8,10 @@ enum AppCardSize { small, medium, large }
 enum AppCardStyle { elevated, outlined, filled }
 
 /// A standardized card widget that ensures consistent styling across the app
-/// 
+///
 /// This widget provides three sizes (small, medium, large) and three styles
 /// (elevated, outlined, filled) to maintain visual consistency.
-/// 
+///
 /// Example:
 /// ```dart
 /// AppCard(
@@ -48,15 +48,15 @@ class AppCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    // Force light theme
+    final isDarkMode = false;
+
     // Determine padding based on size
     final cardPadding = padding ?? _getPadding(size);
-    
+
     // Determine colors
-    final bgColor = backgroundColor ?? 
-      (isDarkMode ? kSurfaceColorDark : kSurfaceColorLight);
-    
+    final bgColor = backgroundColor ?? kSurfaceColorLight;
+
     // Determine shadow/border based on style
     final decoration = _getDecoration(style, isDarkMode, bgColor);
 
@@ -100,16 +100,11 @@ class AppCard extends StatelessWidget {
         return BoxDecoration(
           color: bgColor,
           borderRadius: BorderRadius.circular(borderRadius ?? kRadiusMd),
-          border: Border.all(
-            color: isDark ? kBorderColorDark : kBorderColor,
-            width: 1,
-          ),
+          border: Border.all(color: kBorderColor, width: 1),
         );
       case AppCardStyle.filled:
         return BoxDecoration(
-          color: isDark 
-            ? kPrimaryColor.withValues(alpha: 0.1) 
-            : kPrimaryColorLight.withValues(alpha: 0.3),
+          color: kPrimaryColorLight.withValues(alpha: 0.3),
           borderRadius: BorderRadius.circular(borderRadius ?? kRadiusMd),
         );
     }
@@ -117,7 +112,7 @@ class AppCard extends StatelessWidget {
 }
 
 /// A specialized card for displaying product information
-/// 
+///
 /// Provides a consistent layout for product images, titles, prices, and ratings.
 /// Uses the AppCard as a base with customized content layout.
 class ProductCard extends StatelessWidget {
@@ -146,15 +141,16 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    // Force light theme
+    final isDarkMode = false;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
+          color: kSurfaceColorLight,
           borderRadius: BorderRadius.circular(kRadiusMd),
-          boxShadow: kShadowMd,
+          // Removed boxShadow to remove shadows
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -171,9 +167,7 @@ class ProductCard extends StatelessWidget {
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) {
                     return Container(
-                      color: isDarkMode 
-                        ? kBorderColorDark 
-                        : kBorderColor,
+                      color: kBorderColor,
                       child: const Center(
                         child: Icon(
                           Icons.image_not_supported_outlined,
@@ -186,14 +180,12 @@ class ProductCard extends StatelessWidget {
                   loadingBuilder: (context, child, loadingProgress) {
                     if (loadingProgress == null) return child;
                     return Container(
-                      color: isDarkMode 
-                        ? kBorderColorDark 
-                        : kBorderColor,
+                      color: kBorderColor,
                       child: Center(
                         child: CircularProgressIndicator(
                           value: loadingProgress.expectedTotalBytes != null
                               ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
+                                    loadingProgress.expectedTotalBytes!
                               : null,
                           color: kPrimaryColor,
                           strokeWidth: 2,
@@ -204,7 +196,7 @@ class ProductCard extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Content
             Padding(
               padding: const EdgeInsets.all(kSpacingMd),
@@ -219,23 +211,30 @@ class ProductCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                   ),
                   const SizedBox(height: kSpacingXs),
-                  
+
                   // Price
                   Text(
                     price,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: kPrimaryColor,
+                      color: const Color(
+                        0xFF078829,
+                      ), // Match active state color
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  
+
                   // Rating & Category
-                  if ((showRating && rating != null) || (showCategory && category != null)) ...[
+                  if ((showRating && rating != null) ||
+                      (showCategory && category != null)) ...[
                     const SizedBox(height: kSpacingXs),
                     Row(
                       children: [
                         if (showRating && rating != null) ...[
-                          const Icon(Icons.star, size: kIconSizeSm, color: kWarningColor),
+                          const Icon(
+                            Icons.star,
+                            size: kIconSizeSm,
+                            color: kWarningColor,
+                          ),
                           const SizedBox(width: kSpacingXs),
                           Text(
                             '${rating!.toStringAsFixed(1)}${reviewCount != null ? ' ($reviewCount)' : ''}',
@@ -287,15 +286,16 @@ class ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+    // Force light theme
+    final isDarkMode = false;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
-          color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
+          color: kSurfaceColorLight,
           borderRadius: BorderRadius.circular(kRadiusMd),
-          boxShadow: kShadowMd,
+          // Removed boxShadow to remove shadows
         ),
         padding: const EdgeInsets.all(kSpacingMd),
         child: Row(
@@ -326,7 +326,7 @@ class ServiceCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: kSpacingMd),
-            
+
             // Content
             Expanded(
               child: Column(
@@ -347,9 +347,11 @@ class ServiceCard extends StatelessWidget {
                   ],
                   const SizedBox(height: kSpacingXs),
                   Text(
-                    '$price $priceType',
+                    price,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: kPrimaryColor,
+                      color: const Color(
+                        0xFF078829,
+                      ), // Match active state color
                       fontWeight: FontWeight.w700,
                     ),
                   ),
@@ -357,7 +359,11 @@ class ServiceCard extends StatelessWidget {
                   Row(
                     children: [
                       if (providerName != null) ...[
-                        const Icon(Icons.person_outline, size: kIconSizeSm, color: kTextSecondary),
+                        const Icon(
+                          Icons.person_outline,
+                          size: kIconSizeSm,
+                          color: kTextSecondary,
+                        ),
                         const SizedBox(width: kSpacingXs),
                         Flexible(
                           child: Text(
@@ -368,8 +374,13 @@ class ServiceCard extends StatelessWidget {
                         ),
                       ],
                       if (location != null) ...[
-                        if (providerName != null) const SizedBox(width: kSpacingMd),
-                        const Icon(Icons.location_on_outlined, size: kIconSizeSm, color: kTextSecondary),
+                        if (providerName != null)
+                          const SizedBox(width: kSpacingMd),
+                        const Icon(
+                          Icons.location_on_outlined,
+                          size: kIconSizeSm,
+                          color: kTextSecondary,
+                        ),
                         const SizedBox(width: kSpacingXs),
                         Flexible(
                           child: Text(
@@ -417,14 +428,14 @@ class AccommodationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
           borderRadius: BorderRadius.circular(kRadiusMd),
-          boxShadow: kShadowMd,
+          // Removed boxShadow to remove shadows
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,7 +465,7 @@ class AccommodationCard extends StatelessWidget {
                 ),
               ),
             ),
-            
+
             // Content
             Padding(
               padding: const EdgeInsets.all(kSpacingMd),
@@ -469,18 +480,26 @@ class AccommodationCard extends StatelessWidget {
                   ),
                   const SizedBox(height: kSpacingXs),
                   Text(
-                    '$price/$priceType',
+                    price,
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: kPrimaryColor,
+                      color: const Color(
+                        0xFF078829,
+                      ), // Match active state color
                       fontWeight: FontWeight.w700,
                     ),
                   ),
-                  if (location != null || bedrooms != null || bathrooms != null) ...[
+                  if (location != null ||
+                      bedrooms != null ||
+                      bathrooms != null) ...[
                     const SizedBox(height: kSpacingSm),
                     Row(
                       children: [
                         if (location != null) ...[
-                          const Icon(Icons.location_on_outlined, size: kIconSizeSm, color: kTextSecondary),
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: kIconSizeSm,
+                            color: kTextSecondary,
+                          ),
                           const SizedBox(width: kSpacingXs),
                           Flexible(
                             child: Text(
@@ -491,9 +510,14 @@ class AccommodationCard extends StatelessWidget {
                           ),
                         ],
                         if (bedrooms != null || bathrooms != null) ...[
-                          if (location != null) const SizedBox(width: kSpacingMd),
+                          if (location != null)
+                            const SizedBox(width: kSpacingMd),
                           if (bedrooms != null) ...[
-                            const Icon(Icons.bed_outlined, size: kIconSizeSm, color: kTextSecondary),
+                            const Icon(
+                              Icons.bed_outlined,
+                              size: kIconSizeSm,
+                              color: kTextSecondary,
+                            ),
                             const SizedBox(width: kSpacingXs),
                             Text(
                               '$bedrooms',
@@ -501,8 +525,13 @@ class AccommodationCard extends StatelessWidget {
                             ),
                           ],
                           if (bathrooms != null) ...[
-                            if (bedrooms != null) const SizedBox(width: kSpacingMd),
-                            const Icon(Icons.bathtub_outlined, size: kIconSizeSm, color: kTextSecondary),
+                            if (bedrooms != null)
+                              const SizedBox(width: kSpacingMd),
+                            const Icon(
+                              Icons.bathtub_outlined,
+                              size: kIconSizeSm,
+                              color: kTextSecondary,
+                            ),
                             const SizedBox(width: kSpacingXs),
                             Text(
                               '$bathrooms',
@@ -522,4 +551,3 @@ class AccommodationCard extends StatelessWidget {
     );
   }
 }
-

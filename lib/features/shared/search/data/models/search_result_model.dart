@@ -28,9 +28,8 @@ class SearchResultModel extends SearchResultEntity {
       description: json['description'] as String? ?? '',
       type: type,
       imageUrl: _extractImageUrl(json),
-      price: json['price'] != null ? (json['price'] as num).toDouble() : null,
-      rating:
-          json['rating'] != null ? (json['rating'] as num).toDouble() : null,
+      price: (json['price'] as num?)?.toDouble(),
+      rating: (json['rating'] as num?)?.toDouble(),
       reviewCount: json['review_count'] as int?,
       location: json['location'] as String?,
       sellerId: json['seller_id'] as String? ?? json['user_id'] as String?,
@@ -87,4 +86,3 @@ class SearchResultModel extends SearchResultEntity {
     }
   }
 }
-

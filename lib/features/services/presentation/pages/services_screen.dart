@@ -16,7 +16,8 @@ class ServicesScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => sl<ServiceBloc>()..add(const LoadServicesEvent(limit: 50)),
+      create: (context) =>
+          sl<ServiceBloc>()..add(const LoadServicesEvent(limit: 50)),
       child: const _ServicesView(),
     );
   }
@@ -49,9 +50,7 @@ class _ServicesViewState extends State<_ServicesView> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent * 0.9) {
       final state = context.read<ServiceBloc>().state;
-      if (state is ServicesLoaded && 
-          state.hasMore && 
-          !state.isLoadingMore) {
+      if (state is ServicesLoaded && state.hasMore && !state.isLoadingMore) {
         context.read<ServiceBloc>().add(
           LoadMoreServicesEvent(offset: state.services.length),
         );
@@ -78,11 +77,10 @@ class _ServicesViewState extends State<_ServicesView> {
               ),
               child: ListView.separated(
                 itemCount: 6,
-                separatorBuilder: (context, index) => const SizedBox(height: kSpacingMd),
-                itemBuilder: (context, index) => const ShimmerLoading(
-                  height: 110,
-                  width: double.infinity,
-                ),
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: kSpacingMd),
+                itemBuilder: (context, index) =>
+                    const ShimmerLoading(height: 110, width: double.infinity),
               ),
             );
           }
@@ -93,7 +91,9 @@ class _ServicesViewState extends State<_ServicesView> {
               title: 'Failed to Load Services',
               message: state.message,
               onRetry: () {
-                context.read<ServiceBloc>().add(const LoadServicesEvent(limit: 20));
+                context.read<ServiceBloc>().add(
+                  const LoadServicesEvent(limit: 20),
+                );
               },
             );
           }
@@ -116,7 +116,8 @@ class _ServicesViewState extends State<_ServicesView> {
                 ResponsiveBreakpoints.responsiveHorizontalPadding(context),
               ),
               itemCount: state.services.length + (state.isLoadingMore ? 1 : 0),
-              separatorBuilder: (context, index) => const SizedBox(height: kSpacingMd),
+              separatorBuilder: (context, index) =>
+                  const SizedBox(height: kSpacingMd),
               itemBuilder: (context, index) {
                 // Show loading indicator at the bottom
                 if (index == state.services.length && state.isLoadingMore) {
@@ -140,14 +141,17 @@ class _ServicesViewState extends State<_ServicesView> {
                   );
                 }
 
-                if (index >= state.services.length) return const SizedBox.shrink();
+                if (index >= state.services.length)
+                  return const SizedBox.shrink();
 
                 // Use new ServiceCard component
                 final service = state.services[index];
                 return ServiceCard(
-                  imageUrl: service.images.isNotEmpty ? service.images.first : '',
+                  imageUrl: service.images.isNotEmpty
+                      ? service.images.first
+                      : '',
                   title: service.title,
-                  price: 'Ksh ${service.price.toStringAsFixed(2)}',
+                  price: 'TZS ${service.price.toStringAsFixed(2)}',
                   priceType: service.priceType,
                   category: service.category,
                   providerName: service.providerName,

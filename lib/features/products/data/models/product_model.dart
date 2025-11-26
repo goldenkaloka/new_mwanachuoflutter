@@ -31,7 +31,7 @@ class ProductModel extends ProductEntity {
       id: json['id'] as String,
       title: json['title'] as String,
       description: json['description'] as String,
-      price: (json['price'] as num).toDouble(),
+      price: (json['price'] as num?)?.toDouble() ?? 0.0,
       category: json['category'] as String,
       condition: json['condition'] as String,
       images: List<String>.from(json['images'] as List? ?? []),
@@ -43,7 +43,7 @@ class ProductModel extends ProductEntity {
       isActive: json['is_active'] as bool? ?? true,
       isFeatured: json['is_featured'] as bool? ?? false,
       viewCount: json['view_count'] as int? ?? 0,
-      rating: json['rating'] != null ? (json['rating'] as num).toDouble() : null,
+      rating: (json['rating'] as num?)?.toDouble(),
       reviewCount: json['review_count'] as int?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
@@ -79,4 +79,3 @@ class ProductModel extends ProductEntity {
     };
   }
 }
-

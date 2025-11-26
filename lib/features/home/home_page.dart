@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:carousel_slider/carousel_slider.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
@@ -37,6 +38,7 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _selectedChipIndex = 0;
   int _selectedIndex = 0; // For Bottom Nav Bar
+  int _currentPromotionPage = 0;
   String? _selectedUniversity;
   String? _selectedUniversityLogo;
   bool _isLoadingUniversity = true;
@@ -49,19 +51,19 @@ class _HomePageState extends State<HomePage> {
   @override
   void initState() {
     super.initState();
-    
+
     // Verify user has completed registration (should never fail due to guards)
     _verifyUserHasUniversities();
-    
+
     // Load university and user data
     // Note: _loadSelectedUniversity() will call _loadDataForUniversity() when complete
     _loadSelectedUniversity();
     _loadUserDataFromAuth();
-    
+
     // Load promotions immediately (universal, no university required)
     context.read<PromotionCubit>().loadActivePromotions();
   }
-  
+
   void _verifyUserHasUniversities() {
     // Final safety check - users should have universities to be here
     // Registration transaction enforces this, but check anyway
@@ -72,7 +74,10 @@ class _HomePageState extends State<HomePage> {
         debugPrint('🔄 Redirecting to university selection...');
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
-            Navigator.pushReplacementNamed(context, '/signup-university-selection');
+            Navigator.pushReplacementNamed(
+              context,
+              '/signup-university-selection',
+            );
           }
         });
       } else {
@@ -92,10 +97,12 @@ class _HomePageState extends State<HomePage> {
       debugPrint('⏭️  Data already loaded, skipping...');
       return;
     }
-    
-    debugPrint('📊 Loading university data (products, services, accommodations)...');
+
+    debugPrint(
+      '📊 Loading university data (products, services, accommodations)...',
+    );
     _dataLoaded = true;
-    
+
     // Load products, services, and accommodations
     // Note: University filtering is handled by RLS policies in Supabase
     // based on the user's primary_university_id in the users table
@@ -126,13 +133,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Simulated Chip Data
-  final List<String> _chips = [
-    'All',
-    'Products',
-    'Accommodations',
-    'Services',
-    'Promotions',
-  ];
+  final List<String> _chips = ['All', 'Products', 'Accommodations', 'Services'];
 
   @override
   Widget build(BuildContext context) {
@@ -147,8 +148,8 @@ class _HomePageState extends State<HomePage> {
       listener: (context, state) {
         if (state is Authenticated) {
           // Only update if data actually changed to prevent rebuilds
-          if (_userName != state.user.name || 
-              _userRole != state.user.role.value || 
+          if (_userName != state.user.name ||
+              _userRole != state.user.role.value ||
               _isLoadingUser) {
             setState(() {
               _userName = state.user.name;
@@ -159,9 +160,9 @@ class _HomePageState extends State<HomePage> {
         }
       },
       child: Scaffold(
-      backgroundColor: isDarkMode
-          ? kBackgroundColorDark
-          : kBackgroundColorLight,
+        backgroundColor: isDarkMode
+            ? kBackgroundColorDark
+            : kBackgroundColorLight,
         body: ResponsiveBuilder(
           builder: (context, screenSize) {
             // For expanded screens, use a different layout structure
@@ -204,25 +205,11 @@ class _HomePageState extends State<HomePage> {
                           screenSize,
                         ),
 
-                        // 2.5. University Branding Header
-                        if (_selectedUniversity != null && !_isLoadingUniversity)
-                          _buildUniversityHeader(
-                            context,
-                            primaryTextColor,
-                            screenSize,
-                          ),
-
-                        // 3. Chips (Categories)
-                        _buildChipsRow(screenSize),
-
-                        // 4. Promotions Section
-                        _buildSectionHeader(
-                          'Promotions',
-                          Icons.local_offer,
-                          primaryTextColor,
-                          screenSize,
-                        ),
+                        // 3. Promotions Section
                         _buildPromotionsSection(screenSize),
+
+                        // 4. Chips (Categories)
+                        _buildChipsRow(screenSize),
 
                         // 5. Products Section
                         _buildSectionHeader(
@@ -328,22 +315,10 @@ class _HomePageState extends State<HomePage> {
                         secondaryTextColor,
                         ScreenSize.expanded,
                       ),
-                      // University Branding Header
-                      if (_selectedUniversity != null && !_isLoadingUniversity)
-                        _buildUniversityHeader(
-                          context,
-                          primaryTextColor,
-                          ScreenSize.expanded,
-                        ),
-                      _buildChipsRow(ScreenSize.expanded),
                       // Promotions Section
-                      _buildSectionHeader(
-                        'Promotions',
-                        Icons.local_offer,
-                        primaryTextColor,
-                        ScreenSize.expanded,
-                      ),
                       _buildPromotionsSection(ScreenSize.expanded),
+                      // Chips (Categories)
+                      _buildChipsRow(ScreenSize.expanded),
                       // Products Section
                       _buildSectionHeader(
                         'Products',
@@ -472,28 +447,28 @@ class _HomePageState extends State<HomePage> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
         color: isSelected
-            ? (Theme.of(context).brightness == Brightness.dark 
-                ? kPrimaryColor.withValues(alpha: 0.2)
-                : const Color(0xFF078829).withValues(alpha: 0.2))
+            ? (Theme.of(context).brightness == Brightness.dark
+                  ? kPrimaryColor.withValues(alpha: 0.2)
+                  : const Color(0xFF078829).withValues(alpha: 0.2))
             : Colors.transparent,
         child: Row(
           children: [
             Icon(
-              icon, 
-              color: isSelected 
-                  ? (Theme.of(context).brightness == Brightness.dark 
-                      ? kPrimaryColor 
-                      : const Color(0xFF078829))
-                  : color
+              icon,
+              color: isSelected
+                  ? (Theme.of(context).brightness == Brightness.dark
+                        ? kPrimaryColor
+                        : const Color(0xFF078829))
+                  : color,
             ),
             const SizedBox(width: 16),
             Text(
               label,
               style: GoogleFonts.plusJakartaSans(
-                color: isSelected 
-                    ? (Theme.of(context).brightness == Brightness.dark 
-                        ? kPrimaryColor 
-                        : const Color(0xFF078829))
+                color: isSelected
+                    ? (Theme.of(context).brightness == Brightness.dark
+                          ? kPrimaryColor
+                          : const Color(0xFF078829))
                     : color,
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -513,7 +488,7 @@ class _HomePageState extends State<HomePage> {
     ScreenSize screenSize,
   ) {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
-        context,
+      context,
     );
     return Container(
       color: Theme.of(context).scaffoldBackgroundColor,
@@ -544,7 +519,9 @@ class _HomePageState extends State<HomePage> {
                 ),
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
-                  color: kPrimaryColor.withValues(alpha: 0.3),
+                  color: const Color(
+                    0xFF078829,
+                  ), // Use the same active color as bottom nav
                 ),
                 child: NetworkImageWithFallback(
                   imageUrl: '', // User avatar will be loaded from profile
@@ -718,16 +695,16 @@ class _HomePageState extends State<HomePage> {
           expanded: 20.0,
         ),
       ),
-        decoration: BoxDecoration(
+      decoration: BoxDecoration(
         color: kPrimaryColor.withValues(alpha: isDarkMode ? 0.15 : 0.1),
-          borderRadius: BorderRadius.circular(16.0),
+        borderRadius: BorderRadius.circular(16.0),
         border: Border.all(
           color: kPrimaryColor.withValues(alpha: 0.3),
           width: 1.0,
         ),
-        ),
-        child: Row(
-          children: [
+      ),
+      child: Row(
+        children: [
           // University Logo
           if (_selectedUniversityLogo != null)
             Container(
@@ -775,7 +752,7 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           // University Name
-            Expanded(
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -813,10 +790,10 @@ class _HomePageState extends State<HomePage> {
                       expanded: 14.0,
                     ),
                     fontWeight: FontWeight.normal,
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
           ),
         ],
       ),
@@ -984,8 +961,8 @@ class _HomePageState extends State<HomePage> {
                   ),
                   fontWeight: FontWeight.w600,
                 ),
+              ),
             ),
-          ),
         ],
       ),
     );
@@ -1263,41 +1240,72 @@ class _HomePageState extends State<HomePage> {
       context,
     );
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.all(horizontalPadding),
-      child: Row(
-        children: promotions.take(5).map((promotion) {
-          return Row(
-            children: [
-              _buildPromotionCard(promotion, screenSize),
-              SizedBox(
-                width: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 16.0,
-                  medium: 18.0,
-                  expanded: 24.0,
+    return Column(
+      children: [
+        CarouselSlider.builder(
+          itemCount: promotions.length,
+          itemBuilder: (context, index, realIndex) {
+            return Container(
+              padding: EdgeInsets.symmetric(horizontal: 2.0),
+              child: _buildPromotionCard(promotions[index], screenSize),
+            );
+          },
+          options: CarouselOptions(
+            height: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 270.0,
+              medium: 320.0,
+              expanded: 400.0,
+            ),
+            autoPlay: true,
+            autoPlayInterval: const Duration(seconds: 5),
+            autoPlayAnimationDuration: const Duration(milliseconds: 800),
+            autoPlayCurve: Curves.fastOutSlowIn,
+            enlargeCenterPage: true, // Enable to highlight the active card
+            scrollDirection: Axis.horizontal,
+            viewportFraction: 0.8, // Adjust to show upcoming card
+            onPageChanged: (index, reason) {
+              setState(() {
+                _currentPromotionPage = index;
+              });
+            },
+          ),
+        ),
+        SizedBox(
+          height: 20,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(promotions.length, (index) {
+              return Container(
+                width: 8.0,
+                height: 8.0,
+                margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentPromotionPage == index
+                      ? kPrimaryColor
+                      : kPrimaryColor.withValues(alpha: 0.3),
                 ),
-              ),
-            ],
-          );
-        }).toList(),
-      ),
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildPromotionCard(PromotionEntity promotion, ScreenSize screenSize) {
     final cardWidth = ResponsiveBreakpoints.responsiveValue(
       context,
-      compact: 300.0,
-      medium: 320.0,
-      expanded: 400.0,
+      compact: 400.0,
+      medium: 480.0,
+      expanded: 580.0,
     );
     final cardHeight = ResponsiveBreakpoints.responsiveValue(
       context,
-      compact: 180.0,
-      medium: 200.0,
-      expanded: 280.0,
+      compact: 250.0,
+      medium: 300.0,
+      expanded: 380.0,
     );
 
     return GestureDetector(
@@ -1309,25 +1317,28 @@ class _HomePageState extends State<HomePage> {
       child: Container(
         width: cardWidth,
         height: cardHeight,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.0),
-        color: kPrimaryColor.withValues(alpha: 0.3),
-      ),
-      child: Stack(
-        children: [
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(24.0),
+          color: kPrimaryColor.withValues(alpha: 0.3),
+        ),
+        child: Stack(
+          fit: StackFit.expand, // Make stack expand to fill container
+          children: [
             if (promotion.imageUrl != null)
-          NetworkImageWithFallback(
-                imageUrl: promotion.imageUrl!,
-                width: cardWidth,
-                height: cardHeight,
-            fit: BoxFit.cover,
-          ),
-          Container(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(16.0),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24.0),
+                child: NetworkImageWithFallback(
+                  imageUrl: promotion.imageUrl!,
+                  width: cardWidth,
+                  height: cardHeight,
+                  fit: BoxFit.cover,
+                ),
+              ),
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(24.0),
                 color: Colors.black.withValues(alpha: 0.4),
-            ),
-            alignment: Alignment.bottomLeft,
+              ),
               padding: EdgeInsets.all(
                 ResponsiveBreakpoints.responsiveValue(
                   context,
@@ -1336,30 +1347,30 @@ class _HomePageState extends State<HomePage> {
                   expanded: 24.0,
                 ),
               ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.end,
-              children: [
-                Text(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Text(
                     promotion.title,
                     style: TextStyle(
-                    color: Colors.white,
+                      color: Colors.white,
                       fontSize: ResponsiveBreakpoints.responsiveValue(
                         context,
                         compact: 18.0,
                         medium: 20.0,
                         expanded: 24.0,
                       ),
-                    fontWeight: FontWeight.bold,
-                  ),
+                      fontWeight: FontWeight.bold,
+                    ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
-                ),
+                  ),
                   if (promotion.subtitle.isNotEmpty)
-                Text(
+                    Text(
                       promotion.subtitle,
                       style: TextStyle(
-                    color: Colors.white,
+                        color: Colors.white,
                         fontSize: ResponsiveBreakpoints.responsiveValue(
                           context,
                           compact: 14.0,
@@ -1369,11 +1380,11 @@ class _HomePageState extends State<HomePage> {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                ),
-              ],
+                    ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
         ),
       ),
     );
@@ -1413,7 +1424,7 @@ class _HomePageState extends State<HomePage> {
           return ProductCard(
             imageUrl: product.images.isNotEmpty ? product.images.first : '',
             title: product.title,
-            price: 'Ksh ${product.price.toStringAsFixed(2)}',
+            price: 'TZS ${product.price.toStringAsFixed(2)}',
             category: product.category,
             rating: product.rating,
             reviewCount: product.reviewCount,
@@ -1462,7 +1473,7 @@ class _HomePageState extends State<HomePage> {
           return ServiceCard(
             imageUrl: service.images.isNotEmpty ? service.images.first : '',
             title: service.title,
-            price: 'Ksh ${service.price.toStringAsFixed(2)}',
+            price: 'TZS ${service.price.toStringAsFixed(2)}',
             priceType: service.priceType,
             category: service.category,
             providerName: service.providerName,
@@ -1510,9 +1521,11 @@ class _HomePageState extends State<HomePage> {
         itemBuilder: (context, index) {
           final accommodation = accommodations[index];
           return AccommodationCard(
-            imageUrl: accommodation.images.isNotEmpty ? accommodation.images.first : '',
+            imageUrl: accommodation.images.isNotEmpty
+                ? accommodation.images.first
+                : '',
             title: accommodation.name,
-            price: 'Ksh ${accommodation.price.toStringAsFixed(2)}',
+            price: 'TZS ${accommodation.price.toStringAsFixed(2)}',
             priceType: accommodation.priceType,
             location: accommodation.location,
             bedrooms: accommodation.bedrooms,
@@ -1529,19 +1542,37 @@ class _HomePageState extends State<HomePage> {
   }
 
   // State widgets
-  Widget _buildLoadingCarousel(ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+  Widget _buildLoadingPromotionCard(ScreenSize screenSize) {
+    final cardWidth = ResponsiveBreakpoints.responsiveValue(
       context,
+      compact: 320.0,
+      medium: 360.0,
+      expanded: 450.0,
     );
-    return Padding(
-      padding: EdgeInsets.all(horizontalPadding),
+    final cardHeight = ResponsiveBreakpoints.responsiveValue(
+      context,
+      compact: 200.0,
+      medium: 240.0,
+      expanded: 320.0,
+    );
+
+    return Container(
+      width: cardWidth,
+      height: cardHeight,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(24.0),
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[800]
+            : Colors.grey[300],
+      ),
       child: Center(
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             const CircularProgressIndicator(color: kPrimaryColor),
             const SizedBox(height: 16),
             Text(
-              'Loading promotions...',
+              'Loading...',
               style: TextStyle(
                 color: Theme.of(context).brightness == Brightness.dark
                     ? Colors.grey[400]
@@ -1552,6 +1583,53 @@ class _HomePageState extends State<HomePage> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildLoadingCarousel(ScreenSize screenSize) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
+
+    return Column(
+      children: [
+        SizedBox(
+          height: ResponsiveBreakpoints.responsiveValue(
+            context,
+            compact: 220.0,
+            medium: 260.0,
+            expanded: 340.0,
+          ),
+          child: PageView.builder(
+            itemCount: 3,
+            itemBuilder: (context, index) {
+              return Container(
+                padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+                child: _buildLoadingPromotionCard(screenSize),
+              );
+            },
+          ),
+        ),
+        SizedBox(
+          height: 20,
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(3, (index) {
+              return Container(
+                width: 8.0,
+                height: 8.0,
+                margin: const EdgeInsets.symmetric(horizontal: 4.0),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: _currentPromotionPage == index
+                      ? kPrimaryColor
+                      : kPrimaryColor.withValues(alpha: 0.3),
+                ),
+              );
+            }),
+          ),
+        ),
+      ],
     );
   }
 

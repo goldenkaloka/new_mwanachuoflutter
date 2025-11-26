@@ -31,16 +31,24 @@ class _SplashScreenState extends State<SplashScreen> {
       listener: (context, state) {
         if (state is Authenticated) {
           // Check if registration is completed using BLoC
-          debugPrint('🔍 User authenticated, checking registration completion...');
-          context.read<AuthBloc>().add(const CheckRegistrationCompletionEvent());
+          debugPrint(
+            '🔍 User authenticated, checking registration completion...',
+          );
+          context.read<AuthBloc>().add(
+            const CheckRegistrationCompletionEvent(),
+          );
         } else if (state is Unauthenticated) {
           // User is not authenticated, go to onboarding
           debugPrint('👤 No user authenticated, going to onboarding');
           Navigator.of(context).pushReplacementNamed('/onboarding');
         } else if (state is RegistrationIncomplete) {
           // Account created but needs university selection
-          debugPrint('⚠️ Registration incomplete, redirecting to university selection');
-          Navigator.of(context).pushReplacementNamed('/signup-university-selection');
+          debugPrint(
+            '⚠️ Registration incomplete, redirecting to university selection',
+          );
+          Navigator.of(
+            context,
+          ).pushReplacementNamed('/signup-university-selection');
         } else if (state is RegistrationCheckCompleted) {
           if (state.isCompleted) {
             // Registration complete with universities, go to home
@@ -48,10 +56,15 @@ class _SplashScreenState extends State<SplashScreen> {
             Navigator.of(context).pushReplacementNamed('/home');
           } else {
             // Registration incomplete, go to university selection
-            debugPrint('⚠️ Registration incomplete, redirecting to university selection');
-            Navigator.of(context).pushReplacementNamed('/signup-university-selection');
+            debugPrint(
+              '⚠️ Registration incomplete, redirecting to university selection',
+            );
+            Navigator.of(
+              context,
+            ).pushReplacementNamed('/signup-university-selection');
           }
         }
+
         // AuthLoading and AuthInitial states don't navigate yet
       },
       child: _buildSplashUI(context),

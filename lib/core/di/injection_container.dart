@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/core/services/presence_service.dart';
-import 'package:mwanachuo/core/services/notification_dispatcher.dart';
 
 // Auth
 import 'package:mwanachuo/features/auth/data/datasources/auth_local_data_source.dart';
@@ -147,21 +146,18 @@ Future<void> initializeDependencies() async {
   // ============================================================================
   final sharedPreferences = await SharedPreferences.getInstance();
   sl.registerLazySingleton(() => sharedPreferences);
-  
+
   sl.registerLazySingleton(() => Connectivity());
-  
+
   sl.registerLazySingleton(() => SupabaseConfig.client);
-  
+
   // ============================================================================
   // Core
   // ============================================================================
-  sl.registerLazySingleton<NetworkInfo>(
-    () => NetworkInfoImpl(sl()),
-  );
-  
+  sl.registerLazySingleton<NetworkInfo>(() => NetworkInfoImpl(sl()));
+
   sl.registerLazySingleton(() => PresenceService(sl()));
-  sl.registerLazySingleton(() => NotificationDispatcher(sl()));
-  
+
   // ============================================================================
   // SHARED FEATURES
   // ============================================================================
@@ -185,16 +181,16 @@ Future<void> initializeDependencies() async {
   // ============================================================================
   // Features - Authentication
   // ============================================================================
-  
+
   // Data sources
   sl.registerLazySingleton<AuthRemoteDataSource>(
     () => AuthRemoteDataSourceImpl(sl()),
   );
-  
+
   sl.registerLazySingleton<AuthLocalDataSource>(
     () => AuthLocalDataSourceImpl(sl()),
   );
-  
+
   // Repository
   sl.registerLazySingleton<AuthRepository>(
     () => AuthRepositoryImpl(
@@ -203,7 +199,7 @@ Future<void> initializeDependencies() async {
       networkInfo: sl(),
     ),
   );
-  
+
   // Use cases
   sl.registerLazySingleton(() => SignIn(sl()));
   sl.registerLazySingleton(() => SignUp(sl()));
@@ -216,7 +212,7 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton(() => CompleteRegistration(sl()));
   sl.registerLazySingleton(() => CheckRegistrationCompletion(sl()));
   sl.registerLazySingleton(() => GetSellerRequestStatus(sl()));
-  
+
   // BLoC
   sl.registerFactory(
     () => AuthBloc(
@@ -240,18 +236,10 @@ Future<void> initializeDependencies() async {
 // ============================================
 Future<void> _initUniversityFeature() async {
   // Use Cases
-  sl.registerLazySingleton(
-    () => GetUniversities(sl()),
-  );
-  sl.registerLazySingleton(
-    () => GetSelectedUniversity(sl()),
-  );
-  sl.registerLazySingleton(
-    () => SetSelectedUniversity(sl()),
-  );
-  sl.registerLazySingleton(
-    () => SearchUniversities(sl()),
-  );
+  sl.registerLazySingleton(() => GetUniversities(sl()));
+  sl.registerLazySingleton(() => GetSelectedUniversity(sl()));
+  sl.registerLazySingleton(() => SetSelectedUniversity(sl()));
+  sl.registerLazySingleton(() => SearchUniversities(sl()));
 
   // Repository
   sl.registerLazySingleton<UniversityRepository>(
@@ -264,14 +252,10 @@ Future<void> _initUniversityFeature() async {
 
   // Data Sources
   sl.registerLazySingleton<UniversityRemoteDataSource>(
-    () => UniversityRemoteDataSourceImpl(
-      supabaseClient: sl(),
-    ),
+    () => UniversityRemoteDataSourceImpl(supabaseClient: sl()),
   );
   sl.registerLazySingleton<UniversityLocalDataSource>(
-    () => UniversityLocalDataSourceImpl(
-      sharedPreferences: sl(),
-    ),
+    () => UniversityLocalDataSourceImpl(sharedPreferences: sl()),
   );
 
   // Cubit
@@ -310,10 +294,7 @@ Future<void> _initMediaFeature() async {
 
   // Data Sources
   sl.registerLazySingleton<MediaRemoteDataSource>(
-    () => MediaRemoteDataSourceImpl(
-      supabaseClient: sl(),
-      uuid: sl(),
-    ),
+    () => MediaRemoteDataSourceImpl(supabaseClient: sl(), uuid: sl()),
   );
   sl.registerLazySingleton<MediaLocalDataSource>(
     () => MediaLocalDataSourceImpl(),
@@ -355,14 +336,10 @@ Future<void> _initReviewsFeature() async {
 
   // Data Sources
   sl.registerLazySingleton<ReviewRemoteDataSource>(
-    () => ReviewRemoteDataSourceImpl(
-      supabaseClient: sl(),
-    ),
+    () => ReviewRemoteDataSourceImpl(supabaseClient: sl()),
   );
   sl.registerLazySingleton<ReviewLocalDataSource>(
-    () => ReviewLocalDataSourceImpl(
-      sharedPreferences: sl(),
-    ),
+    () => ReviewLocalDataSourceImpl(sharedPreferences: sl()),
   );
 
   // Cubit
@@ -402,14 +379,10 @@ Future<void> _initSearchFeature() async {
 
   // Data Sources
   sl.registerLazySingleton<SearchRemoteDataSource>(
-    () => SearchRemoteDataSourceImpl(
-      supabaseClient: sl(),
-    ),
+    () => SearchRemoteDataSourceImpl(supabaseClient: sl()),
   );
   sl.registerLazySingleton<SearchLocalDataSource>(
-    () => SearchLocalDataSourceImpl(
-      sharedPreferences: sl(),
-    ),
+    () => SearchLocalDataSourceImpl(sharedPreferences: sl()),
   );
 
   // Cubit
@@ -449,14 +422,10 @@ Future<void> _initNotificationsFeature() async {
 
   // Data Sources
   sl.registerLazySingleton<NotificationRemoteDataSource>(
-    () => NotificationRemoteDataSourceImpl(
-      supabaseClient: sl(),
-    ),
+    () => NotificationRemoteDataSourceImpl(supabaseClient: sl()),
   );
   sl.registerLazySingleton<NotificationLocalDataSource>(
-    () => NotificationLocalDataSourceImpl(
-      sharedPreferences: sl(),
-    ),
+    () => NotificationLocalDataSourceImpl(sharedPreferences: sl()),
   );
 
   // Cubit
@@ -498,14 +467,10 @@ Future<void> _initProductsFeature() async {
 
   // Data Sources
   sl.registerLazySingleton<ProductRemoteDataSource>(
-    () => ProductRemoteDataSourceImpl(
-      supabaseClient: sl(),
-    ),
+    () => ProductRemoteDataSourceImpl(supabaseClient: sl()),
   );
   sl.registerLazySingleton<ProductLocalDataSource>(
-    () => ProductLocalDataSourceImpl(
-      sharedPreferences: sl(),
-    ),
+    () => ProductLocalDataSourceImpl(sharedPreferences: sl()),
   );
 
   // BLoC
@@ -575,9 +540,7 @@ Future<void> _initAccommodationsFeature() async {
   sl.registerLazySingleton(() => CreateAccommodation(sl()));
   sl.registerLazySingleton(() => UpdateAccommodation(sl()));
   sl.registerLazySingleton(() => DeleteAccommodation(sl()));
-  sl.registerLazySingleton(
-    () => mwanachuo.IncrementViewCount(sl()),
-  );
+  sl.registerLazySingleton(() => mwanachuo.IncrementViewCount(sl()));
 
   // Repository
   sl.registerLazySingleton<AccommodationRepository>(
@@ -640,7 +603,6 @@ Future<void> _initMessagesFeature() async {
       sendMessage: sl(),
       messageRepository: sl(),
       sharedPreferences: sl(),
-      notificationDispatcher: sl(),
     ),
   );
 }
@@ -670,7 +632,9 @@ Future<void> _initProfileFeature() async {
     () => ProfileRemoteDataSourceImpl(supabaseClient: sl()),
   );
 
-  sl.registerFactory(() => ProfileBloc(getMyProfile: sl(), updateProfile: sl()));
+  sl.registerFactory(
+    () => ProfileBloc(getMyProfile: sl(), updateProfile: sl()),
+  );
 }
 
 // ============================================
@@ -680,10 +644,7 @@ Future<void> _initDashboardFeature() async {
   sl.registerLazySingleton(() => GetDashboardStats(sl()));
 
   sl.registerLazySingleton<DashboardRepository>(
-    () => DashboardRepositoryImpl(
-      remoteDataSource: sl(),
-      networkInfo: sl(),
-    ),
+    () => DashboardRepositoryImpl(remoteDataSource: sl(), networkInfo: sl()),
   );
 
   sl.registerLazySingleton<DashboardRemoteDataSource>(
@@ -713,4 +674,3 @@ Future<void> _initPromotionsFeature() async {
 
   sl.registerFactory(() => PromotionCubit(getActivePromotions: sl()));
 }
-

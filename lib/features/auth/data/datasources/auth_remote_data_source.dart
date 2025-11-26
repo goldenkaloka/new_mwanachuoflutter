@@ -5,12 +5,27 @@ import 'package:mwanachuo/features/auth/data/models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
   Future<UserModel> signIn({required String email, required String password});
-  Future<UserModel> signUp({required String email, required String password, required String name});
+  Future<UserModel> signUp({
+    required String email,
+    required String password,
+    required String name,
+  });
   Future<void> signOut();
   Future<UserModel?> getCurrentUser();
-  Future<void> requestSellerAccess({required String userId, required String reason});
-  Future<void> approveSellerRequest({required String requestId, required String adminId, String? notes});
-  Future<void> rejectSellerRequest({required String requestId, required String adminId, String? notes});
+  Future<void> requestSellerAccess({
+    required String userId,
+    required String reason,
+  });
+  Future<void> approveSellerRequest({
+    required String requestId,
+    required String adminId,
+    String? notes,
+  });
+  Future<void> rejectSellerRequest({
+    required String requestId,
+    required String adminId,
+    String? notes,
+  });
   Future<UserModel> updateProfile({
     required String userId,
     String? name,
@@ -35,7 +50,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   AuthRemoteDataSourceImpl(this.supabase);
 
   @override
-  Future<UserModel> signIn({required String email, required String password}) async {
+  Future<UserModel> signIn({
+    required String email,
+    required String password,
+  }) async {
     try {
       final response = await supabase.auth.signInWithPassword(
         email: email,
@@ -129,7 +147,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Future<UserModel?> getCurrentUser() async {
     try {
       final user = supabase.auth.currentUser;
-      
+
       if (user == null) {
         return null;
       }
@@ -169,11 +187,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? notes,
   }) async {
     try {
-      await supabase.rpc('approve_seller_request', params: {
-        'request_id': requestId,
-        'admin_id': adminId,
-        'notes': notes,
-      });
+      await supabase.rpc(
+        'approve_seller_request',
+        params: {'request_id': requestId, 'admin_id': adminId, 'notes': notes},
+      );
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -186,12 +203,15 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? notes,
   }) async {
     try {
-      await supabase.from('seller_requests').update({
-        'status': 'rejected',
-        'reviewed_by': adminId,
-        'review_notes': notes,
-        'updated_at': DateTime.now().toIso8601String(),
-      }).eq('id', requestId);
+      await supabase
+          .from('seller_requests')
+          .update({
+            'status': 'rejected',
+            'reviewed_by': adminId,
+            'review_notes': notes,
+            'updated_at': DateTime.now().toIso8601String(),
+          })
+          .eq('id', requestId);
     } catch (e) {
       throw ServerException(e.toString());
     }
@@ -293,9 +313,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<List<SellerRequestModel>> getSellerRequests({String? status}) async {
     try {
-      var query = supabase
-          .from('seller_requests')
-          .select('''
+      var query = supabase.from('seller_requests').select('''
             *,
             requester:users!seller_requests_user_id_fkey(id, full_name, email, avatar_url),
             reviewer:users!seller_requests_reviewed_by_fkey(id, full_name, email)
@@ -308,7 +326,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       final data = await query.order('created_at', ascending: false);
 
       return (data as List)
-          .map((json) => SellerRequestModel.fromJson(json as Map<String, dynamic>))
+          .map(
+            (json) => SellerRequestModel.fromJson(json as Map<String, dynamic>),
+          )
           .toList();
     } catch (e) {
       throw ServerException('Failed to get seller requests: $e');
@@ -338,7 +358,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   Stream<UserModel?> watchAuthState() {
     return supabase.auth.onAuthStateChange.asyncMap((data) async {
       final user = data.session?.user;
-      
+
       if (user == null) {
         return null;
       }
@@ -357,4 +377,3 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     });
   }
 }
-

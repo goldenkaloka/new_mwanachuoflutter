@@ -11,7 +11,7 @@ import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_stat
 class CommentsAndRatingsSection extends StatefulWidget {
   final String itemId;
   final String itemType; // 'product', 'service', 'accommodation', 'promotion'
-  
+
   const CommentsAndRatingsSection({
     super.key,
     required this.itemId,
@@ -19,7 +19,8 @@ class CommentsAndRatingsSection extends StatefulWidget {
   });
 
   @override
-  State<CommentsAndRatingsSection> createState() => _CommentsAndRatingsSectionState();
+  State<CommentsAndRatingsSection> createState() =>
+      _CommentsAndRatingsSectionState();
 }
 
 class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
@@ -67,10 +68,11 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
-    final borderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[200]!;
+    // Force light theme
+    final isDarkMode = false;
+    final primaryTextColor = kTextPrimary;
+    final secondaryTextColor = Colors.grey[600]!;
+    final borderColor = Colors.grey[200]!;
 
     return BlocConsumer<ReviewCubit, ReviewState>(
       listener: (context, state) {
@@ -84,21 +86,21 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
           });
           // Reload reviews after submission
           context.read<ReviewCubit>().loadReviewsWithStats(
-                itemId: widget.itemId,
-                itemType: _getReviewType(),
-                limit: 10,
-              );
-        } else if (state is ReviewError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error: ${state.message}')),
+            itemId: widget.itemId,
+            itemType: _getReviewType(),
+            limit: 10,
           );
+        } else if (state is ReviewError) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: ${state.message}')));
         } else if (state is ReviewMarkedHelpful) {
           // Reload reviews after marking as helpful
           context.read<ReviewCubit>().loadReviewsWithStats(
-                itemId: widget.itemId,
-                itemType: _getReviewType(),
-                limit: 10,
-              );
+            itemId: widget.itemId,
+            itemType: _getReviewType(),
+            limit: 10,
+          );
         }
       },
       builder: (context, state) {
@@ -116,7 +118,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                   borderColor,
                   screenSize,
                 ),
-                
+
                 SizedBox(
                   height: ResponsiveBreakpoints.responsiveValue(
                     context,
@@ -125,7 +127,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                     expanded: 32.0,
                   ),
                 ),
-                
+
                 // Add Review Section
                 _buildAddReviewSection(
                   context,
@@ -135,7 +137,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                   borderColor,
                   screenSize,
                 ),
-                
+
                 SizedBox(
                   height: ResponsiveBreakpoints.responsiveValue(
                     context,
@@ -144,7 +146,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                     expanded: 32.0,
                   ),
                 ),
-                
+
                 // Reviews List
                 _buildReviewsList(
                   context,
@@ -174,7 +176,8 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
     final stats = state is ReviewsLoaded ? state.stats : null;
     final averageRating = stats?.averageRating ?? 0.0;
     final totalReviews = stats?.totalReviews ?? 0;
-    final ratingDistribution = stats?.ratingDistribution ?? {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+    final ratingDistribution =
+        stats?.ratingDistribution ?? {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
 
     return Container(
       padding: EdgeInsets.all(
@@ -186,9 +189,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
         ),
       ),
       decoration: BoxDecoration(
-        color: Theme.of(context).brightness == Brightness.dark
-            ? Colors.grey[900]
-            : Colors.grey[50],
+        color: Colors.grey[50],
         borderRadius: BorderRadius.circular(16.0),
         border: Border.all(color: borderColor),
       ),
@@ -229,15 +230,17 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               ],
             ),
           ),
-          
+
           // Rating Distribution
           Expanded(
             flex: 3,
             child: Column(
               children: [5, 4, 3, 2, 1].map((rating) {
                 final count = ratingDistribution[rating] ?? 0;
-                final percentage = totalReviews == 0 ? 0.0 : count / totalReviews;
-                
+                final percentage = totalReviews == 0
+                    ? 0.0
+                    : count / totalReviews;
+
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
                   child: Row(
@@ -258,7 +261,9 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                           child: LinearProgressIndicator(
                             value: percentage,
                             backgroundColor: borderColor,
-                            valueColor: AlwaysStoppedAnimation<Color>(Colors.amber[600]!),
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              Colors.amber[600]!,
+                            ),
                             minHeight: 6.0,
                           ),
                         ),
@@ -322,7 +327,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
             ),
           ),
           const SizedBox(height: 16.0),
-          
+
           // Star Rating Selector
           Row(
             children: [
@@ -352,9 +357,9 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               }),
             ],
           ),
-          
+
           const SizedBox(height: 16.0),
-          
+
           // Comment TextField
           TextField(
             controller: _commentController,
@@ -372,9 +377,9 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               ),
             ),
           ),
-          
+
           const SizedBox(height: 16.0),
-          
+
           // Submit Button
           SizedBox(
             width: double.infinity,
@@ -383,18 +388,21 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               onPressed: isSubmitting
                   ? null
                   : () {
-                      if (_userRating > 0 && _commentController.text.trim().isNotEmpty) {
+                      if (_userRating > 0 &&
+                          _commentController.text.trim().isNotEmpty) {
                         // Submit review using ReviewCubit
                         context.read<ReviewCubit>().submitNewReview(
-                              itemId: widget.itemId,
-                              itemType: _getReviewType(),
-                              rating: _userRating,
-                              comment: _commentController.text.trim(),
-                            );
+                          itemId: widget.itemId,
+                          itemType: _getReviewType(),
+                          rating: _userRating,
+                          comment: _commentController.text.trim(),
+                        );
                       } else {
                         ScaffoldMessenger.of(context).showSnackBar(
                           const SnackBar(
-                            content: Text('Please provide a rating and comment'),
+                            content: Text(
+                              'Please provide a rating and comment',
+                            ),
                           ),
                         );
                       }
@@ -459,7 +467,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
           ),
         ),
         const SizedBox(height: 16.0),
-        
+
         if (state is ReviewsLoading)
           const Center(
             child: Padding(
@@ -490,7 +498,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               screenSize,
             );
           }),
-          
+
           // Load More Button
           if (hasMore) ...[
             const SizedBox(height: 16.0),
@@ -500,11 +508,11 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                   : OutlinedButton(
                       onPressed: () {
                         context.read<ReviewCubit>().loadMoreReviews(
-                              itemId: widget.itemId,
-                              itemType: _getReviewType(),
-                              offset: reviews.length,
-                              limit: 10,
-                            );
+                          itemId: widget.itemId,
+                          itemType: _getReviewType(),
+                          offset: reviews.length,
+                          limit: 10,
+                        );
                       },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: kPrimaryColor,
@@ -516,9 +524,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                       ),
                       child: Text(
                         'Load More Reviews',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w600,
-                        ),
+                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                       ),
                     ),
             ),
@@ -559,12 +565,15 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               CircleAvatar(
                 radius: 20.0,
                 backgroundColor: kPrimaryColor.withValues(alpha: 0.3),
-                backgroundImage: review.userAvatar != null && review.userAvatar!.isNotEmpty
+                backgroundImage:
+                    review.userAvatar != null && review.userAvatar!.isNotEmpty
                     ? NetworkImage(review.userAvatar!)
                     : null,
                 child: review.userAvatar == null || review.userAvatar!.isEmpty
                     ? Text(
-                        review.userName.isNotEmpty ? review.userName[0].toUpperCase() : '?',
+                        review.userName.isNotEmpty
+                            ? review.userName[0].toUpperCase()
+                            : '?',
                         style: GoogleFonts.inter(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -573,7 +582,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                     : null,
               ),
               const SizedBox(width: 12.0),
-              
+
               // User Info
               Expanded(
                 child: Column(
@@ -592,7 +601,10 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                         if (review.isVerifiedPurchase) ...[
                           const SizedBox(width: 8.0),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 2.0),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6.0,
+                              vertical: 2.0,
+                            ),
                             decoration: BoxDecoration(
                               color: kPrimaryColor.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(4.0),
@@ -628,9 +640,9 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               ),
             ],
           ),
-          
+
           const SizedBox(height: 12.0),
-          
+
           // Review Comment
           if (review.comment != null && review.comment!.isNotEmpty)
             Text(
@@ -641,15 +653,19 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                 height: 1.5,
               ),
             ),
-          
+
           const SizedBox(height: 12.0),
-          
+
           // Helpful Button
           TextButton.icon(
             onPressed: () {
               context.read<ReviewCubit>().markAsHelpful(review.id);
             },
-            icon: Icon(Icons.thumb_up_outlined, size: 16.0, color: secondaryTextColor),
+            icon: Icon(
+              Icons.thumb_up_outlined,
+              size: 16.0,
+              color: secondaryTextColor,
+            ),
             label: Text(
               'Helpful${review.helpfulCount > 0 ? ' (${review.helpfulCount})' : ''}',
               style: GoogleFonts.inter(
@@ -683,4 +699,3 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
     );
   }
 }
-

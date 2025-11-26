@@ -19,12 +19,9 @@ class DashboardStatsModel extends DashboardStatsEntity {
       totalAccommodations: json['total_accommodations'] as int? ?? 0,
       activeListings: json['active_listings'] as int? ?? 0,
       totalViews: json['total_views'] as int? ?? 0,
-      averageRating: json['average_rating'] != null
-          ? (json['average_rating'] as num).toDouble()
-          : 0.0,
+      averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0.0,
       totalReviews: json['total_reviews'] as int? ?? 0,
       unreadMessages: json['unread_messages'] as int? ?? 0,
     );
   }
 }
-

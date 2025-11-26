@@ -27,7 +27,7 @@ class ReviewModel extends ReviewEntity {
       userAvatar: json['user_avatar'] as String?,
       itemId: json['item_id'] as String,
       itemType: _reviewTypeFromString(json['item_type'] as String),
-      rating: (json['rating'] as num).toDouble(),
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       comment: json['comment'] as String?,
       images: json['images'] != null
           ? List<String>.from(json['images'] as List)
@@ -84,4 +84,3 @@ class ReviewModel extends ReviewEntity {
     }
   }
 }
-

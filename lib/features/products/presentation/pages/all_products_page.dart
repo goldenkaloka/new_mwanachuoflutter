@@ -16,7 +16,8 @@ class AllProductsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => sl<ProductBloc>()..add(const LoadProductsEvent(limit: 50)),
+      create: (context) =>
+          sl<ProductBloc>()..add(const LoadProductsEvent(limit: 50)),
       child: const _AllProductsView(),
     );
   }
@@ -49,9 +50,7 @@ class _AllProductsViewState extends State<_AllProductsView> {
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent * 0.9) {
       final state = context.read<ProductBloc>().state;
-      if (state is ProductsLoaded && 
-          state.hasMore && 
-          !state.isLoadingMore) {
+      if (state is ProductsLoaded && state.hasMore && !state.isLoadingMore) {
         context.read<ProductBloc>().add(
           LoadMoreProductsEvent(offset: state.products.length),
         );
@@ -86,7 +85,9 @@ class _AllProductsViewState extends State<_AllProductsView> {
               title: 'Failed to Load Products',
               message: state.message,
               onRetry: () {
-                context.read<ProductBloc>().add(const LoadProductsEvent(limit: 20));
+                context.read<ProductBloc>().add(
+                  const LoadProductsEvent(limit: 20),
+                );
               },
             );
           }
@@ -131,9 +132,7 @@ class _AllProductsViewState extends State<_AllProductsView> {
                           SizedBox(height: kSpacingSm),
                           Text(
                             'Loading more...',
-                            style: TextStyle(
-                              fontSize: 12,
-                            ),
+                            style: TextStyle(fontSize: 12),
                           ),
                         ],
                       ),
@@ -141,14 +140,17 @@ class _AllProductsViewState extends State<_AllProductsView> {
                   );
                 }
 
-                if (index >= state.products.length) return const SizedBox.shrink();
-                
+                if (index >= state.products.length)
+                  return const SizedBox.shrink();
+
                 // Use new ProductCard component
                 final product = state.products[index];
                 return ProductCard(
-                  imageUrl: product.images.isNotEmpty ? product.images.first : '',
+                  imageUrl: product.images.isNotEmpty
+                      ? product.images.first
+                      : '',
                   title: product.title,
-                  price: 'Ksh ${product.price.toStringAsFixed(2)}',
+                  price: 'TZS ${product.price.toStringAsFixed(2)}',
                   category: product.category,
                   rating: product.rating,
                   reviewCount: product.reviewCount,
@@ -168,5 +170,3 @@ class _AllProductsViewState extends State<_AllProductsView> {
     );
   }
 }
-
-

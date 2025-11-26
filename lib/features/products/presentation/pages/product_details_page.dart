@@ -62,9 +62,7 @@ class ProductDetailsPage extends StatelessWidget {
               limit: 10,
             ),
         ),
-        BlocProvider(
-          create: (context) => sl<MessageBloc>(),
-        ),
+        BlocProvider(create: (context) => sl<MessageBloc>()),
       ],
       child: const _ProductDetailsView(),
     );
@@ -186,7 +184,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
               cardBgColor,
             );
           }
-          
+
           return Stack(
             children: [
               // Main Scrollable Content
@@ -214,7 +212,12 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                       _buildProductInfo(product, primaryTextColor, screenSize),
                       // Description
                       _buildSectionDivider(isDarkMode),
-                      _buildDescription(product, primaryTextColor, secondaryTextColor, screenSize),
+                      _buildDescription(
+                        product,
+                        primaryTextColor,
+                        secondaryTextColor,
+                        screenSize,
+                      ),
                       // Seller Information
                       _buildSectionDivider(isDarkMode),
                       _buildSellerInfo(
@@ -235,7 +238,10 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                       // Comments and Ratings Section
                       Padding(
                         padding: EdgeInsets.symmetric(
-                          horizontal: ResponsiveBreakpoints.responsiveHorizontalPadding(context),
+                          horizontal:
+                              ResponsiveBreakpoints.responsiveHorizontalPadding(
+                                context,
+                              ),
                         ),
                         child: CommentsAndRatingsSection(
                           itemId: product.id,
@@ -286,7 +292,11 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                 children: [
                   const SizedBox(height: 24),
                   _buildImageCarousel(product, ScreenSize.expanded),
-                  _buildPageIndicators(product, isDarkMode, ScreenSize.expanded),
+                  _buildPageIndicators(
+                    product,
+                    isDarkMode,
+                    ScreenSize.expanded,
+                  ),
                 ],
               ),
             ),
@@ -307,10 +317,23 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 24),
-                  _buildTopAppBar(isDarkMode, primaryTextColor, ScreenSize.expanded),
-                  _buildProductInfo(product, primaryTextColor, ScreenSize.expanded),
+                  _buildTopAppBar(
+                    isDarkMode,
+                    primaryTextColor,
+                    ScreenSize.expanded,
+                  ),
+                  _buildProductInfo(
+                    product,
+                    primaryTextColor,
+                    ScreenSize.expanded,
+                  ),
                   _buildSectionDivider(isDarkMode),
-                  _buildDescription(product, primaryTextColor, secondaryTextColor, ScreenSize.expanded),
+                  _buildDescription(
+                    product,
+                    primaryTextColor,
+                    secondaryTextColor,
+                    ScreenSize.expanded,
+                  ),
                   _buildSectionDivider(isDarkMode),
                   _buildSellerInfo(
                     product,
@@ -338,8 +361,14 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
 
   // --- WIDGET BUILDERS ---
 
-  Widget _buildTopAppBar(bool isDarkMode, Color primaryTextColor, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+  Widget _buildTopAppBar(
+    bool isDarkMode,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
@@ -414,7 +443,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
       medium: 26.0,
       expanded: 28.0,
     );
-    
+
     return GestureDetector(
       onTap: () {
         if (icon == Icons.arrow_back) {
@@ -429,7 +458,9 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
         width: buttonSize,
         height: buttonSize,
         decoration: BoxDecoration(
-          color: isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.white,
+          color: isDarkMode
+              ? Colors.white.withValues(alpha: 0.1)
+              : Colors.white,
           shape: BoxShape.circle,
           boxShadow: [
             BoxShadow(
@@ -445,16 +476,18 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
   }
 
   Widget _buildImageCarousel(ProductEntity product, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     final carouselHeight = ResponsiveBreakpoints.responsiveValue(
       context,
       compact: 400.0,
       medium: 420.0,
       expanded: 600.0,
     );
-    
+
     final images = product.images.isNotEmpty ? product.images : [''];
-    
+
     return SizedBox(
       height: carouselHeight,
       child: PageView.builder(
@@ -480,9 +513,13 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     );
   }
 
-  Widget _buildPageIndicators(ProductEntity product, bool isDarkMode, ScreenSize screenSize) {
+  Widget _buildPageIndicators(
+    ProductEntity product,
+    bool isDarkMode,
+    ScreenSize screenSize,
+  ) {
     final images = product.images.isNotEmpty ? product.images : [''];
-    
+
     return Padding(
       padding: EdgeInsets.only(
         top: ResponsiveBreakpoints.responsiveValue(
@@ -515,10 +552,16 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     );
   }
 
-  Widget _buildProductInfo(ProductEntity product, Color primaryTextColor, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+  Widget _buildProductInfo(
+    ProductEntity product,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     final textTheme = Theme.of(context).textTheme;
-    
+
     return Padding(
       padding: EdgeInsets.only(
         top: kSpacingMd,
@@ -549,14 +592,12 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
           // Title
           Text(
             product.title,
-            style: textTheme.headlineMedium?.copyWith(
-              color: primaryTextColor,
-            ),
+            style: textTheme.headlineMedium?.copyWith(color: primaryTextColor),
           ),
           SizedBox(height: kSpacingLg),
           // Price
           Text(
-            'Ksh ${product.price.toStringAsFixed(2)}',
+            'TZS ${product.price.toStringAsFixed(2)}',
             style: textTheme.headlineSmall?.copyWith(
               color: kPrimaryColor,
               fontWeight: AppTypography.bold,
@@ -568,7 +609,9 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
   }
 
   Widget _buildSectionDivider(bool isDarkMode) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: horizontalPadding,
@@ -582,10 +625,17 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     );
   }
 
-  Widget _buildDescription(ProductEntity product, Color primaryTextColor, Color secondaryTextColor, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+  Widget _buildDescription(
+    ProductEntity product,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     final textTheme = Theme.of(context).textTheme;
-    
+
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Column(
@@ -593,16 +643,12 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
         children: [
           Text(
             'Description',
-            style: textTheme.titleLarge?.copyWith(
-              color: primaryTextColor,
-            ),
+            style: textTheme.titleLarge?.copyWith(color: primaryTextColor),
           ),
           SizedBox(height: kSpacingMd),
           Text(
             product.description,
-            style: textTheme.bodyMedium?.copyWith(
-              color: secondaryTextColor,
-            ),
+            style: textTheme.bodyMedium?.copyWith(color: secondaryTextColor),
           ),
           SizedBox(height: kSpacingLg),
           // Condition
@@ -637,7 +683,9 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     Color cardBgColor,
     ScreenSize screenSize,
   ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
       child: Column(
@@ -770,35 +818,34 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                           expanded: 8.0,
                         ),
                       ),
-                      if (product.rating != null && product.reviewCount != null && product.reviewCount! > 0)
+                      if (product.rating != null &&
+                          product.reviewCount != null &&
+                          product.reviewCount! > 0)
                         Row(
                           children: [
                             // Star Rating
-                            ...List.generate(
-                              5,
-                              (index) {
-                                final rating = product.rating ?? 0.0;
-                                if (index < rating.floor()) {
-                                  return const Icon(
-                                    Icons.star,
-                                    color: Colors.amber,
-                                    size: 16,
-                                  );
-                                } else if (index < rating) {
-                                  return const Icon(
-                                    Icons.star_half,
-                                    color: Colors.amber,
-                                    size: 16,
-                                  );
-                                } else {
-                                  return Icon(
-                                    Icons.star_border,
-                                    color: secondaryTextColor,
-                                    size: 16,
-                                  );
-                                }
-                              },
-                            ),
+                            ...List.generate(5, (index) {
+                              final rating = product.rating ?? 0.0;
+                              if (index < rating.floor()) {
+                                return const Icon(
+                                  Icons.star,
+                                  color: Colors.amber,
+                                  size: 16,
+                                );
+                              } else if (index < rating) {
+                                return const Icon(
+                                  Icons.star_half,
+                                  color: Colors.amber,
+                                  size: 16,
+                                );
+                              } else {
+                                return Icon(
+                                  Icons.star_border,
+                                  color: secondaryTextColor,
+                                  size: 16,
+                                );
+                              }
+                            }),
                             const SizedBox(width: 8),
                             // Review Count
                             Text(
@@ -832,7 +879,9 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
   }
 
   Widget _buildCtaButton(ProductEntity product, bool isDarkMode) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     final buttonHeight = ResponsiveBreakpoints.responsiveValue(
       context,
       compact: 56.0,
@@ -845,7 +894,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
       medium: 100.0,
       expanded: 96.0,
     );
-    
+
     return Positioned(
       bottom: 0,
       left: 0,
@@ -872,7 +921,9 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
           color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
           boxShadow: [
             BoxShadow(
-              color: isDarkMode ? Colors.black26 : Colors.grey.withValues(alpha: 0.2),
+              color: isDarkMode
+                  ? Colors.black26
+                  : Colors.grey.withValues(alpha: 0.2),
               blurRadius: 10,
               offset: const Offset(0, -5),
             ),
@@ -889,8 +940,8 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
               ),
             ),
             child: SizedBox(
-              width: ResponsiveBreakpoints.isCompact(context) 
-                  ? double.infinity 
+              width: ResponsiveBreakpoints.isCompact(context)
+                  ? double.infinity
                   : null,
               height: buttonHeight,
               child: BlocListener<MessageBloc, MessageState>(
@@ -919,52 +970,52 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                   onPressed: () {
                     // Get or create conversation with seller
                     context.read<MessageBloc>().add(
-                          GetOrCreateConversationEvent(
-                            otherUserId: product.sellerId,
-                          ),
-                        );
+                      GetOrCreateConversationEvent(
+                        otherUserId: product.sellerId,
+                      ),
+                    );
                   },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  foregroundColor: kBackgroundColorDark,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      ResponsiveBreakpoints.responsiveValue(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                    foregroundColor: kBackgroundColorDark,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(
+                        ResponsiveBreakpoints.responsiveValue(
+                          context,
+                          compact: 16.0,
+                          medium: 18.0,
+                          expanded: 20.0,
+                        ),
+                      ),
+                    ),
+                    elevation: ResponsiveBreakpoints.responsiveValue(
+                      context,
+                      compact: 4.0,
+                      medium: 5.0,
+                      expanded: 6.0,
+                    ),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: ResponsiveBreakpoints.responsiveValue(
                         context,
-                        compact: 16.0,
-                        medium: 18.0,
-                        expanded: 20.0,
+                        compact: 24.0,
+                        medium: 32.0,
+                        expanded: 36.0,
                       ),
                     ),
                   ),
-                  elevation: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 4.0,
-                    medium: 5.0,
-                    expanded: 6.0,
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 24.0,
-                      medium: 32.0,
-                      expanded: 36.0,
+                  child: Text(
+                    'Contact Seller',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 16.0,
+                        medium: 17.0,
+                        expanded: 18.0,
+                      ),
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
                     ),
                   ),
-                ),
-                child: Text(
-                  'Contact Seller',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 16.0,
-                      medium: 17.0,
-                      expanded: 18.0,
-                    ),
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
-                  ),
-                ),
                 ),
               ),
             ),
@@ -974,4 +1025,3 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     );
   }
 }
-

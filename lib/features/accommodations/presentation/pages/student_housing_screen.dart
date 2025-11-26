@@ -16,7 +16,9 @@ class StudentHousingScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (context) => sl<AccommodationBloc>()..add(const LoadAccommodationsEvent(limit: 50)),
+      create: (context) =>
+          sl<AccommodationBloc>()
+            ..add(const LoadAccommodationsEvent(limit: 50)),
       child: const _HousingView(),
     );
   }
@@ -52,7 +54,9 @@ class _HousingView extends StatelessWidget {
               title: 'Failed to Load Accommodations',
               message: state.message,
               onRetry: () {
-                context.read<AccommodationBloc>().add(const LoadAccommodationsEvent(limit: 20));
+                context.read<AccommodationBloc>().add(
+                  const LoadAccommodationsEvent(limit: 20),
+                );
               },
             );
           }
@@ -84,9 +88,11 @@ class _HousingView extends StatelessWidget {
                 // Use new AccommodationCard component
                 final accommodation = state.accommodations[index];
                 return AccommodationCard(
-                  imageUrl: accommodation.images.isNotEmpty ? accommodation.images.first : '',
+                  imageUrl: accommodation.images.isNotEmpty
+                      ? accommodation.images.first
+                      : '',
                   title: accommodation.name,
-                  price: 'Ksh ${accommodation.price.toStringAsFixed(2)}',
+                  price: 'TZS ${accommodation.price.toStringAsFixed(2)}',
                   priceType: accommodation.priceType,
                   location: accommodation.location,
                   bedrooms: accommodation.bedrooms,
@@ -107,5 +113,3 @@ class _HousingView extends StatelessWidget {
     );
   }
 }
-
-

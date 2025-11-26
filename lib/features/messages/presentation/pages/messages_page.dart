@@ -28,7 +28,8 @@ class _MessagesView extends StatefulWidget {
   State<_MessagesView> createState() => _MessagesViewState();
 }
 
-class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveClientMixin {
+class _MessagesViewState extends State<_MessagesView>
+    with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
 
@@ -44,10 +45,12 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
       if (mounted) {
         final bloc = context.read<MessageBloc>();
         final currentState = bloc.state;
-        
+
         // If we already have conversations loaded, cache them
         if (currentState is ConversationsLoaded) {
-          LoggerService.debug('Conversations already loaded, count: ${currentState.conversations.length}');
+          LoggerService.debug(
+            'Conversations already loaded, count: ${currentState.conversations.length}',
+          );
           _cachedConversations = currentState.conversations;
           _isInitialLoad = false;
         } else {
@@ -55,7 +58,7 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
           LoggerService.info('Loading conversations for the first time');
           bloc.add(const LoadConversationsEvent());
         }
-        
+
         // Start real-time listening
         bloc.add(StartListeningToConversationsEvent());
       }
@@ -72,7 +75,7 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
   @override
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
-    
+
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final isExpanded = ResponsiveBreakpoints.isExpanded(context);
 
@@ -119,12 +122,16 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
             _cachedConversations = state.conversations;
             _isInitialLoad = false;
           });
-          LoggerService.debug('Updated cached conversations: ${state.conversations.length}');
+          LoggerService.debug(
+            'Updated cached conversations: ${state.conversations.length}',
+          );
         }
       },
       builder: (context, state) {
         // Show loading ONLY on very first load with no cached data (WhatsApp-style)
-        if (_cachedConversations.isEmpty && state is ConversationsLoading && _isInitialLoad) {
+        if (_cachedConversations.isEmpty &&
+            state is ConversationsLoading &&
+            _isInitialLoad) {
           return Center(
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
@@ -176,11 +183,13 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
         }
 
         // Use cached conversations or newly loaded ones
-        final conversationsToShow = state is ConversationsLoaded 
-            ? state.conversations 
+        final conversationsToShow = state is ConversationsLoaded
+            ? state.conversations
             : _cachedConversations;
 
-        LoggerService.debug('Showing conversations: ${conversationsToShow.length} (from ${state is ConversationsLoaded ? "state" : "cache"})');
+        LoggerService.debug(
+          'Showing conversations: ${conversationsToShow.length} (from ${state is ConversationsLoaded ? "state" : "cache"})',
+        );
 
         // Show empty state only if we truly have no conversations
         if (conversationsToShow.isEmpty && !_isInitialLoad) {
@@ -244,26 +253,26 @@ class _MessagesViewState extends State<_MessagesView>  with AutomaticKeepAliveCl
                 screenSize: screenSize,
                 onTap: () async {
                   final conversationId = conversation.id;
-                  
+
                   // Navigate to chat and wait for return
                   await Navigator.pushNamed(
                     context,
                     '/chat',
                     arguments: conversationId,
                   );
-                  
+
                   // When user returns from chat, update the cached conversation to mark as read
                   // This provides instant visual feedback (optimistic UI update)
                   if (mounted) {
                     setState(() {
                       _cachedConversations = _cachedConversations.map((conv) {
                         // Update unread count to 0 for the viewed conversation
-                        return conv.id == conversationId 
+                        return conv.id == conversationId
                             ? conv.copyWith(unreadCount: 0)
                             : conv;
                       }).toList();
                     });
-                    
+
                     // Also reload from server to get accurate data
                     if (context.mounted) {
                       context.read<MessageBloc>().add(
@@ -521,9 +530,7 @@ class ConversationListItem extends StatelessWidget {
                 DeleteConversationEvent(conversationId: conversation.id),
               );
             },
-            style: TextButton.styleFrom(
-              foregroundColor: Colors.red,
-            ),
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
           ),
         ],
@@ -533,12 +540,12 @@ class ConversationListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primaryTextColor = isDarkMode ? Colors.white : Colors.black87;
+    // Force light theme
+    final isDarkMode = false;
+    final primaryTextColor = Colors.black87;
     // Use effectiveUnreadCount which returns 0 for self-conversations
     final hasUnread = conversation.effectiveUnreadCount > 0;
-    final lastMessageColor = hasUnread
-        ? (isDarkMode ? Colors.white : Colors.black87)
-        : (isDarkMode ? Colors.grey[400]! : Colors.grey[600]!);
+    final lastMessageColor = hasUnread ? Colors.black87 : Colors.grey[600]!;
     final lastMessageWeight = hasUnread ? FontWeight.bold : FontWeight.normal;
     final horizontalPadding = screenSize == ScreenSize.expanded
         ? 16.0
@@ -554,11 +561,7 @@ class ConversationListItem extends StatelessWidget {
       onTap: onTap,
       onLongPress: () => _showDeleteDialog(context),
       child: Container(
-        color: isSelected
-            ? (isDarkMode
-                  ? Colors.grey[800]!.withValues(alpha: 0.5)
-                  : Colors.grey[100])
-            : Colors.transparent,
+        color: isSelected ? Colors.grey[100] : Colors.transparent,
         child: Padding(
           padding: EdgeInsets.symmetric(
             horizontal: horizontalPadding,
@@ -570,7 +573,7 @@ class ConversationListItem extends StatelessWidget {
             ),
           ),
           child: Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Profile Picture with Online Indicator
               Stack(
@@ -601,12 +604,7 @@ class ConversationListItem extends StatelessWidget {
                         decoration: BoxDecoration(
                           color: Colors.green,
                           shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isDarkMode
-                                ? kBackgroundColorDark
-                                : Colors.white,
-                            width: 2.5,
-                          ),
+                          border: Border.all(color: Colors.white, width: 2.5),
                         ),
                       ),
                     ),
@@ -624,8 +622,9 @@ class ConversationListItem extends StatelessWidget {
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.start,
                   children: [
+                    SizedBox(height: 4),
                     Text(
                       conversation.otherUserName,
                       overflow: TextOverflow.ellipsis,
@@ -670,8 +669,9 @@ class ConversationListItem extends StatelessWidget {
               // Timestamp and Unread Badge
               Column(
                 crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisAlignment: MainAxisAlignment.start,
                 children: [
+                  SizedBox(height: 4),
                   Text(
                     _formatTime(conversation.lastMessageTime),
                     style: GoogleFonts.plusJakartaSans(

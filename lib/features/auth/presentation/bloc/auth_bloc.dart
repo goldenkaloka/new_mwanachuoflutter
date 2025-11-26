@@ -56,11 +56,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onSignIn(SignInEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
-    
-    final result = await signIn(SignInParams(
-      email: event.email,
-      password: event.password,
-    ));
+
+    final result = await signIn(
+      SignInParams(email: event.email, password: event.password),
+    );
 
     result.fold(
       (failure) => emit(AuthError(failure.message)),
@@ -70,28 +69,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onSignUp(SignUpEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
-    
-    final result = await signUp(SignUpParams(
-      email: event.email,
-      password: event.password,
-      name: event.name,
-    ));
 
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) {
-        // After signup, user is created but registration is incomplete
-        // They must select universities before accessing the app
-        debugPrint('✅ User account created - ID: ${user.id}');
-        debugPrint('⏳ Registration incomplete - user must select universities');
-        emit(const RegistrationIncomplete());
-      },
+    final result = await signUp(
+      SignUpParams(
+        email: event.email,
+        password: event.password,
+        name: event.name,
+      ),
     );
+
+    result.fold((failure) => emit(AuthError(failure.message)), (user) {
+      // After signup, user is created but registration is incomplete
+      // They must select universities before accessing the app
+      debugPrint('✅ User account created - ID: ${user.id}');
+      debugPrint('⏳ Registration incomplete - user must select universities');
+      emit(const RegistrationIncomplete());
+    });
   }
 
   Future<void> _onSignOut(SignOutEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
-    
+
     final result = await signOut(NoParams());
 
     result.fold(
@@ -105,19 +103,16 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    
+
     final result = await getCurrentUser(NoParams());
 
-    result.fold(
-      (failure) => emit(const Unauthenticated()),
-      (user) {
-        if (user != null) {
-          emit(Authenticated(user));
-        } else {
-          emit(const Unauthenticated());
-        }
-      },
-    );
+    result.fold((failure) => emit(const Unauthenticated()), (user) {
+      if (user != null) {
+        emit(Authenticated(user));
+      } else {
+        emit(const Unauthenticated());
+      }
+    });
   }
 
   Future<void> _onRequestSellerAccess(
@@ -125,11 +120,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    
-    final result = await requestSellerAccess(RequestSellerAccessParams(
-      userId: event.userId,
-      reason: event.reason,
-    ));
+
+    final result = await requestSellerAccess(
+      RequestSellerAccessParams(userId: event.userId, reason: event.reason),
+    );
 
     result.fold(
       (failure) => emit(AuthError(failure.message)),
@@ -142,36 +136,43 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    
-    final result = await completeRegistration(CompleteRegistrationParams(
-      userId: event.userId,
-      primaryUniversityId: event.primaryUniversityId,
-      subsidiaryUniversityIds: event.subsidiaryUniversityIds,
-    ));
 
-    await result.fold(
-      (failure) async => emit(AuthError(failure.message)),
-      (_) async {
-        debugPrint('✅ Registration completed with universities');
-        
-        // Emit temporary state
-        emit(const RegistrationCompleted());
-        
-        // Get updated user data with universities
-        final userResult = await getCurrentUser(NoParams());
-        userResult.fold(
-          (failure) => emit(AuthError('Registration completed but failed to load user: ${failure.message}')),
-          (user) {
-            if (user != null) {
-              debugPrint('✅ User authenticated with universities - ID: ${user.id}');
-              emit(Authenticated(user));
-            } else {
-              emit(const Unauthenticated());
-            }
-          },
-        );
-      },
+    final result = await completeRegistration(
+      CompleteRegistrationParams(
+        userId: event.userId,
+        primaryUniversityId: event.primaryUniversityId,
+        subsidiaryUniversityIds: event.subsidiaryUniversityIds,
+      ),
     );
+
+    await result.fold((failure) async => emit(AuthError(failure.message)), (
+      _,
+    ) async {
+      debugPrint('✅ Registration completed with universities');
+
+      // Emit temporary state
+      emit(const RegistrationCompleted());
+
+      // Get updated user data with universities
+      final userResult = await getCurrentUser(NoParams());
+      userResult.fold(
+        (failure) => emit(
+          AuthError(
+            'Registration completed but failed to load user: ${failure.message}',
+          ),
+        ),
+        (user) {
+          if (user != null) {
+            debugPrint(
+              '✅ User authenticated with universities - ID: ${user.id}',
+            );
+            emit(Authenticated(user));
+          } else {
+            emit(const Unauthenticated());
+          }
+        },
+      );
+    });
   }
 
   Future<void> _onCheckRegistrationCompletion(
@@ -179,7 +180,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    
+
     final result = await checkRegistrationCompletion(NoParams());
 
     result.fold(
@@ -193,7 +194,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    
+
     final result = await getSellerRequestStatus(NoParams());
 
     result.fold(
@@ -207,12 +208,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    
-    final result = await approveSellerRequest(ApproveSellerRequestParams(
-      requestId: event.requestId,
-      adminId: event.adminId,
-      notes: event.notes,
-    ));
+
+    final result = await approveSellerRequest(
+      ApproveSellerRequestParams(
+        requestId: event.requestId,
+        adminId: event.adminId,
+        notes: event.notes,
+      ),
+    );
 
     result.fold(
       (failure) => emit(AuthError(failure.message)),
@@ -225,12 +228,14 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const AuthLoading());
-    
-    final result = await rejectSellerRequest(RejectSellerRequestParams(
-      requestId: event.requestId,
-      adminId: event.adminId,
-      notes: event.notes,
-    ));
+
+    final result = await rejectSellerRequest(
+      RejectSellerRequestParams(
+        requestId: event.requestId,
+        adminId: event.adminId,
+        notes: event.notes,
+      ),
+    );
 
     result.fold(
       (failure) => emit(AuthError(failure.message)),
@@ -243,10 +248,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Emitter<AuthState> emit,
   ) async {
     emit(const SellerRequestsLoading());
-    
-    final result = await getSellerRequests(GetSellerRequestsParams(
-      status: event.status,
-    ));
+
+    final result = await getSellerRequests(
+      GetSellerRequestsParams(status: event.status),
+    );
 
     result.fold(
       (failure) => emit(AuthError(failure.message)),
@@ -254,4 +259,3 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     );
   }
 }
-

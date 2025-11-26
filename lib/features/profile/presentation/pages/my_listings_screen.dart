@@ -25,16 +25,17 @@ class MyListingsScreen extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => sl<ProductBloc>()
-            ..add(const LoadProductsEvent(limit: 100)),
+          create: (context) =>
+              sl<ProductBloc>()..add(const LoadProductsEvent(limit: 100)),
         ),
         BlocProvider(
-          create: (context) => sl<ServiceBloc>()
-            ..add(const LoadServicesEvent(limit: 100)),
+          create: (context) =>
+              sl<ServiceBloc>()..add(const LoadServicesEvent(limit: 100)),
         ),
         BlocProvider(
-          create: (context) => sl<AccommodationBloc>()
-            ..add(const LoadAccommodationsEvent(limit: 100)),
+          create: (context) =>
+              sl<AccommodationBloc>()
+                ..add(const LoadAccommodationsEvent(limit: 100)),
         ),
       ],
       child: const _MyListingsView(),
@@ -69,8 +70,9 @@ class _MyListingsViewState extends State<_MyListingsView>
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor =
-        isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
 
     return Scaffold(
       appBar: AppBar(
@@ -91,15 +93,19 @@ class _MyListingsViewState extends State<_MyListingsView>
           ],
         ),
       ),
-      backgroundColor:
-          isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: TabBarView(
         controller: _tabController,
         children: [
           _buildProductsTab(isDarkMode, primaryTextColor, secondaryTextColor),
           _buildServicesTab(isDarkMode, primaryTextColor, secondaryTextColor),
           _buildAccommodationsTab(
-              isDarkMode, primaryTextColor, secondaryTextColor),
+            isDarkMode,
+            primaryTextColor,
+            secondaryTextColor,
+          ),
         ],
       ),
     );
@@ -134,8 +140,8 @@ class _MyListingsViewState extends State<_MyListingsView>
                 ElevatedButton(
                   onPressed: () {
                     context.read<ProductBloc>().add(
-                          const LoadProductsEvent(limit: 100),
-                        );
+                      const LoadProductsEvent(limit: 100),
+                    );
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimaryColor,
@@ -149,7 +155,8 @@ class _MyListingsViewState extends State<_MyListingsView>
         }
 
         if (state is ProductsLoaded) {
-          final currentUserId = SupabaseConfig.client.auth.currentUser?.id ?? '';
+          final currentUserId =
+              SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myProducts = state.products
               .where((p) => p.sellerId == currentUserId)
               .toList();
@@ -180,7 +187,8 @@ class _MyListingsViewState extends State<_MyListingsView>
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () => Navigator.pushNamed(context, '/post-product'),
+                    onPressed: () =>
+                        Navigator.pushNamed(context, '/post-product'),
                     icon: const Icon(Icons.add),
                     label: const Text('Post Product'),
                     style: ElevatedButton.styleFrom(
@@ -251,7 +259,9 @@ class _MyListingsViewState extends State<_MyListingsView>
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: product.isActive ? Colors.green : Colors.grey,
+                            color: product.isActive
+                                ? Colors.green
+                                : Colors.grey,
                           ),
                         ),
                       ),
@@ -259,8 +269,11 @@ class _MyListingsViewState extends State<_MyListingsView>
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.visibility,
-                              size: 12, color: secondaryTextColor),
+                          Icon(
+                            Icons.visibility,
+                            size: 12,
+                            color: secondaryTextColor,
+                          ),
                           const SizedBox(width: 2),
                           Text(
                             '${product.viewCount}',
@@ -315,7 +328,8 @@ class _MyListingsViewState extends State<_MyListingsView>
         }
 
         if (state is ServicesLoaded) {
-          final currentUserId = SupabaseConfig.client.auth.currentUser?.id ?? '';
+          final currentUserId =
+              SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myServices = state.services
               .where((s) => s.providerId == currentUserId)
               .toList();
@@ -377,8 +391,9 @@ class _MyListingsViewState extends State<_MyListingsView>
                   leading: ClipRRect(
                     borderRadius: BorderRadius.circular(8),
                     child: NetworkImageWithFallback(
-                      imageUrl:
-                          service.images.isNotEmpty ? service.images.first : '',
+                      imageUrl: service.images.isNotEmpty
+                          ? service.images.first
+                          : '',
                       width: 60,
                       height: 60,
                       fit: BoxFit.cover,
@@ -417,7 +432,9 @@ class _MyListingsViewState extends State<_MyListingsView>
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
-                            color: service.isActive ? Colors.green : Colors.grey,
+                            color: service.isActive
+                                ? Colors.green
+                                : Colors.grey,
                           ),
                         ),
                       ),
@@ -425,8 +442,11 @@ class _MyListingsViewState extends State<_MyListingsView>
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(Icons.visibility,
-                              size: 12, color: secondaryTextColor),
+                          Icon(
+                            Icons.visibility,
+                            size: 12,
+                            color: secondaryTextColor,
+                          ),
                           const SizedBox(width: 2),
                           Text(
                             '${service.viewCount}',
@@ -481,7 +501,8 @@ class _MyListingsViewState extends State<_MyListingsView>
         }
 
         if (state is AccommodationsLoaded) {
-          final currentUserId = SupabaseConfig.client.auth.currentUser?.id ?? '';
+          final currentUserId =
+              SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myAccommodations = state.accommodations
               .where((a) => a.ownerId == currentUserId)
               .toList();
@@ -537,8 +558,8 @@ class _MyListingsViewState extends State<_MyListingsView>
                 );
                 // Reload accommodations
                 context.read<AccommodationBloc>().add(
-                      const LoadAccommodationsEvent(limit: 100),
-                    );
+                  const LoadAccommodationsEvent(limit: 100),
+                );
               } else if (state is AccommodationError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
@@ -585,7 +606,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                           overflow: TextOverflow.ellipsis,
                         ),
                         subtitle: Text(
-                          'Ksh ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType} • ${accommodation.roomType}',
+                          'TZS ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType} • ${accommodation.roomType}',
                           style: TextStyle(color: secondaryTextColor),
                         ),
                         trailing: Column(
@@ -618,8 +639,11 @@ class _MyListingsViewState extends State<_MyListingsView>
                             Row(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                Icon(Icons.visibility,
-                                    size: 12, color: secondaryTextColor),
+                                Icon(
+                                  Icons.visibility,
+                                  size: 12,
+                                  color: secondaryTextColor,
+                                ),
                                 const SizedBox(width: 2),
                                 Text(
                                   '${accommodation.viewCount}',
@@ -652,18 +676,16 @@ class _MyListingsViewState extends State<_MyListingsView>
                                   MaterialPageRoute(
                                     builder: (context) =>
                                         _buildEditAccommodationScreen(
-                                      accommodation,
-                                    ),
+                                          accommodation,
+                                        ),
                                   ),
                                 );
                                 if (result == true) {
                                   // Reload accommodations if edit was successful
                                   if (context.mounted) {
                                     context.read<AccommodationBloc>().add(
-                                          const LoadAccommodationsEvent(
-                                            limit: 100,
-                                          ),
-                                        );
+                                      const LoadAccommodationsEvent(limit: 100),
+                                    );
                                   }
                                 }
                               },
@@ -727,10 +749,8 @@ class _MyListingsViewState extends State<_MyListingsView>
             onPressed: () {
               Navigator.pop(dialogContext);
               context.read<AccommodationBloc>().add(
-                    DeleteAccommodationEvent(
-                      accommodationId: accommodationId,
-                    ),
-                  );
+                DeleteAccommodationEvent(accommodationId: accommodationId),
+              );
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),
             child: const Text('Delete'),
@@ -740,4 +760,3 @@ class _MyListingsViewState extends State<_MyListingsView>
     );
   }
 }
-

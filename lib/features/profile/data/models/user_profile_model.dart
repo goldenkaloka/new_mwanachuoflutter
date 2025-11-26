@@ -44,9 +44,7 @@ class UserProfileModel extends UserProfileEntity {
       productCount: json['product_count'] as int? ?? 0,
       serviceCount: json['service_count'] as int? ?? 0,
       accommodationCount: json['accommodation_count'] as int? ?? 0,
-      averageRating: json['average_rating'] != null
-          ? (json['average_rating'] as num).toDouble()
-          : null,
+      averageRating: (json['average_rating'] as num?)?.toDouble(),
       totalReviews: json['total_reviews'] as int? ?? 0,
     );
   }
@@ -73,4 +71,3 @@ class UserProfileModel extends UserProfileEntity {
     };
   }
 }
-
