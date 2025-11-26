@@ -226,9 +226,6 @@ class _PostProductScreenState extends State<PostProductScreen> {
                   color: isDarkMode ? Colors.white : Colors.black,
                 ),
               ),
-              bottomAppBarTheme: BottomAppBarTheme(
-                color: isDarkMode ? kBackgroundColorDark : Colors.white,
-              ),
               colorScheme: ColorScheme.fromSeed(
                 seedColor: kPrimaryColor,
                 brightness: isDarkMode ? Brightness.dark : Brightness.light,
@@ -1250,7 +1247,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
           ),
         ),
         DropdownButtonFormField<String>(
-          value: _selectedCategory,
+          initialValue: _selectedCategory,
           decoration: InputDecoration(
             filled: true,
             fillColor: isDarkMode
@@ -1377,7 +1374,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
           ),
         ),
         DropdownButtonFormField<String>(
-          value: _selectedCondition,
+          initialValue: _selectedCondition,
           decoration: InputDecoration(
             filled: true,
             fillColor: isDarkMode

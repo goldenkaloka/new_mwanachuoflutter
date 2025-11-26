@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/core/services/presence_service.dart';
+import 'package:mwanachuo/core/services/notification_dispatcher.dart';
 
 // Auth
 import 'package:mwanachuo/features/auth/data/datasources/auth_local_data_source.dart';
@@ -159,6 +160,7 @@ Future<void> initializeDependencies() async {
   );
   
   sl.registerLazySingleton(() => PresenceService(sl()));
+  sl.registerLazySingleton(() => NotificationDispatcher(sl()));
   
   // ============================================================================
   // SHARED FEATURES
@@ -638,6 +640,7 @@ Future<void> _initMessagesFeature() async {
       sendMessage: sl(),
       messageRepository: sl(),
       sharedPreferences: sl(),
+      notificationDispatcher: sl(),
     ),
   );
 }

@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/constants/storage_constants.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
+import 'package:mwanachuo/core/services/notification_dispatcher.dart';
 import 'package:mwanachuo/features/messages/domain/repositories/message_repository.dart';
 import 'package:mwanachuo/features/messages/domain/usecases/get_conversations.dart';
 import 'package:mwanachuo/features/messages/domain/usecases/get_messages.dart';
@@ -19,6 +20,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
   final SendMessage sendMessage;
   final MessageRepository messageRepository;
   final SharedPreferences sharedPreferences;
+  final NotificationDispatcher notificationDispatcher;
 
   StreamSubscription? _messageSubscription;
   StreamSubscription? _conversationSubscription;
@@ -30,6 +32,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     required this.sendMessage,
     required this.messageRepository,
     required this.sharedPreferences,
+    required this.notificationDispatcher,
   }) : super(MessageInitial()) {
     on<LoadConversationsEvent>(_onLoadConversations);
     on<GetOrCreateConversationEvent>(_onGetOrCreateConversation);
@@ -160,6 +163,23 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         // This ensures the sent message appears even if optimistic update fails
         emit(MessageSent(message: message));
         add(LoadMessagesEvent(conversationId: event.conversationId));
+
+        unawaited(
+          notificationDispatcher.notifyConversation(
+            conversationId: event.conversationId,
+            senderId: message.senderId,
+            title: message.senderName.isNotEmpty
+                ? '${message.senderName} sent a message'
+                : 'New message',
+            body: message.content.isNotEmpty
+                ? message.content
+                : (message.imageUrl != null ? '📎 Image attachment' : 'New message'),
+            data: {
+              'conversationId': event.conversationId,
+              'messageId': message.id,
+            },
+          ),
+        );
 
         // Also reload conversations to update last message
         if (!isClosed) {

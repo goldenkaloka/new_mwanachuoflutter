@@ -432,7 +432,7 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
               Switch(
                 value: item.toggleValue ?? false,
                 onChanged: item.onToggle,
-                activeColor: kPrimaryColor,
+                activeThumbColor: kPrimaryColor,
               )
             else
               Icon(

@@ -224,11 +224,11 @@ class CompactEmptyState extends StatelessWidget {
   final Color? iconColor;
 
   const CompactEmptyState({
-    Key? key,
+    super.key,
     required this.icon,
     required this.message,
     this.iconColor,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -269,10 +269,10 @@ class LoadingState extends StatelessWidget {
   final Color? color;
 
   const LoadingState({
-    Key? key,
+    super.key,
     this.message,
     this.color,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -308,12 +308,12 @@ class ErrorState extends StatelessWidget {
   final String? retryLabel;
 
   const ErrorState({
-    Key? key,
+    super.key,
     this.title,
     required this.message,
     this.onRetry,
     this.retryLabel,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

@@ -50,7 +50,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
   String _selectedPriceType = PriceTypes.all.first;
   List<String> _selectedAmenities = [];
   List<String> _existingImages = [];
-  List<File> _newImages = [];
+  final List<File> _newImages = [];
   bool _isActive = true;
 
   @override
@@ -239,7 +239,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: _selectedRoomType,
+                                initialValue: _selectedRoomType,
                                 decoration: InputDecoration(
                                   labelText: 'Room Type *',
                                   border: OutlineInputBorder(
@@ -262,7 +262,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                value: _selectedPriceType,
+                                initialValue: _selectedPriceType,
                                 decoration: InputDecoration(
                                   labelText: 'Price Type *',
                                   border: OutlineInputBorder(
@@ -484,7 +484,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                             style: TextStyle(color: secondaryTextColor),
                           ),
                           value: _isActive,
-                          activeColor: kPrimaryColor,
+                          activeThumbColor: kPrimaryColor,
                           onChanged: (value) {
                             setState(() {
                               _isActive = value;

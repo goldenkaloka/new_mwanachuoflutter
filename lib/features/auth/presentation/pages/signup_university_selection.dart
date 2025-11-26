@@ -343,7 +343,14 @@ class _SignupUniversitySelectionScreenState
                                   onChanged: (value) {
                                     _toggleSubsidiaryUniversity(universityId);
                                   },
-                                  activeColor: kPrimaryColor,
+                                  fillColor: WidgetStateProperty.resolveWith(
+                                    (states) => states.contains(WidgetState.selected)
+                                        ? kPrimaryColor
+                                        : (isDarkMode
+                                            ? Colors.grey[700]
+                                            : Colors.grey[400]),
+                                  ),
+                                  checkColor: kBackgroundColorDark,
                                 )
                               : null,
                         ),

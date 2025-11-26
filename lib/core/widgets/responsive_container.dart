@@ -26,12 +26,12 @@ class ResponsiveContainer extends StatelessWidget {
   final bool centerContent;
 
   const ResponsiveContainer({
-    Key? key,
+    super.key,
     required this.child,
     this.maxWidth,
     this.padding,
     this.centerContent = true,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -96,10 +96,10 @@ class ConstrainedContent extends StatelessWidget {
   final double? maxWidth;
 
   const ConstrainedContent({
-    Key? key,
+    super.key,
     required this.child,
     this.maxWidth,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -139,7 +139,7 @@ class ResponsiveGrid extends StatelessWidget {
   final int? expandedColumns;
 
   const ResponsiveGrid({
-    Key? key,
+    super.key,
     required this.children,
     this.spacing,
     this.runSpacing,
@@ -147,7 +147,7 @@ class ResponsiveGrid extends StatelessWidget {
     this.compactColumns,
     this.mediumColumns,
     this.expandedColumns,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -188,12 +188,12 @@ class ResponsivePadding extends StatelessWidget {
   final EdgeInsets? expanded;
 
   const ResponsivePadding({
-    Key? key,
+    super.key,
     required this.child,
     this.compact,
     this.medium,
     this.expanded,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -226,12 +226,12 @@ class ResponsiveSpacing extends StatelessWidget {
   final Axis axis;
 
   const ResponsiveSpacing({
-    Key? key,
+    super.key,
     this.compact,
     this.medium,
     this.expanded,
     this.axis = Axis.vertical,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {

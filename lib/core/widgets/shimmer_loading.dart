@@ -19,11 +19,11 @@ class ShimmerLoading extends StatelessWidget {
   final BorderRadius? borderRadius;
 
   const ShimmerLoading({
-    Key? key,
+    super.key,
     required this.width,
     required this.height,
     this.borderRadius,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -49,7 +49,7 @@ class ShimmerLoading extends StatelessWidget {
 /// 
 /// A shimmer placeholder for product cards while loading.
 class ProductCardSkeleton extends StatelessWidget {
-  const ProductCardSkeleton({Key? key}) : super(key: key);
+  const ProductCardSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -103,7 +103,7 @@ class ProductCardSkeleton extends StatelessWidget {
 /// 
 /// A shimmer placeholder for service cards while loading.
 class ServiceCardSkeleton extends StatelessWidget {
-  const ServiceCardSkeleton({Key? key}) : super(key: key);
+  const ServiceCardSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -173,7 +173,7 @@ class ServiceCardSkeleton extends StatelessWidget {
 /// 
 /// A shimmer placeholder for list items while loading.
 class ListItemSkeleton extends StatelessWidget {
-  const ListItemSkeleton({Key? key}) : super(key: key);
+  const ListItemSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -226,10 +226,10 @@ class ProductGridSkeleton extends StatelessWidget {
   final int crossAxisCount;
 
   const ProductGridSkeleton({
-    Key? key,
+    super.key,
     this.itemCount = 6,
     this.crossAxisCount = 2,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -255,10 +255,10 @@ class ListSkeleton extends StatelessWidget {
   final Widget Function(BuildContext, int)? itemBuilder;
 
   const ListSkeleton({
-    Key? key,
+    super.key,
     this.itemCount = 5,
     this.itemBuilder,
-  }) : super(key: key);
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -273,7 +273,7 @@ class ListSkeleton extends StatelessWidget {
 /// 
 /// A shimmer placeholder for profile headers.
 class ProfileHeaderSkeleton extends StatelessWidget {
-  const ProfileHeaderSkeleton({Key? key}) : super(key: key);
+  const ProfileHeaderSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -333,7 +333,7 @@ class ProfileHeaderSkeleton extends StatelessWidget {
 /// 
 /// A shimmer placeholder for detail pages (product, service, accommodation).
 class DetailPageSkeleton extends StatelessWidget {
-  const DetailPageSkeleton({Key? key}) : super(key: key);
+  const DetailPageSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -406,7 +406,7 @@ class DetailPageSkeleton extends StatelessWidget {
 /// 
 /// A shimmer placeholder for conversation lists.
 class ConversationSkeleton extends StatelessWidget {
-  const ConversationSkeleton({Key? key}) : super(key: key);
+  const ConversationSkeleton({super.key});
 
   @override
   Widget build(BuildContext context) {

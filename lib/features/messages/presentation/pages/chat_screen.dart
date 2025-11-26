@@ -84,26 +84,26 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    
+
     // Add scroll listener for pagination
     _scrollController.addListener(_onScroll);
-    
+
     // Load conversation details (recipient name, avatar, status)
     _loadConversationDetails();
-    
+
     // Update current user's online status
     _updateUserOnlineStatus(true);
-    
+
     // Load messages for this conversation
     context.read<MessageBloc>().add(
       LoadMessagesEvent(conversationId: widget.conversationId),
     );
-    
+
     // Mark all messages as read when opening chat
     context.read<MessageBloc>().add(
       MarkMessagesAsReadEvent(conversationId: widget.conversationId),
     );
-    
+
     // Start listening for real-time message updates
     context.read<MessageBloc>().add(
       StartListeningToMessagesEvent(conversationId: widget.conversationId),
@@ -123,7 +123,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   void _onScroll() {
     // Check if we've scrolled to the top (which is the end in reverse list)
     // This triggers loading more older messages
-    if (_scrollController.position.pixels >= 
+    if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent * 0.9) {
       // Load more messages when 90% scrolled
       context.read<MessageBloc>().add(
@@ -201,9 +201,11 @@ class _ChatScreenViewState extends State<_ChatScreenView>
               ? DateTime.parse(otherUserData!['last_seen_at'] as String)
               : null;
 
-          LoggerService.debug('Recipient loaded: $_recipientName, online: $_recipientIsOnline');
+          LoggerService.debug(
+            'Recipient loaded: $_recipientName, online: $_recipientIsOnline',
+          );
         });
-        
+
         // Start listening for online status changes
         _startListeningToOnlineStatus();
       }
@@ -214,10 +216,10 @@ class _ChatScreenViewState extends State<_ChatScreenView>
 
   void _startListeningToOnlineStatus() {
     if (_recipientId == null) return;
-    
+
     // Cancel any existing subscription
     _onlineStatusSubscription?.cancel();
-    
+
     // Listen for changes to the recipient's online status
     _onlineStatusSubscription = SupabaseConfig.client
         .from(DatabaseConstants.usersTable)
@@ -225,13 +227,13 @@ class _ChatScreenViewState extends State<_ChatScreenView>
         .eq('id', _recipientId!)
         .listen((data) {
           if (data.isEmpty || !mounted) return;
-          
+
           final userData = data.first;
           final isOnline = userData['is_online'] as bool? ?? false;
           final lastSeenAt = userData['last_seen_at'] != null
               ? DateTime.parse(userData['last_seen_at'] as String)
               : null;
-          
+
           if (mounted) {
             setState(() {
               _recipientIsOnline = isOnline;
@@ -278,7 +280,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
 
   void _showDeleteMessageDialog(MessageEntity message) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     showDialog(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -301,9 +303,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
             onPressed: () => Navigator.pop(dialogContext),
             child: Text(
               'Cancel',
-              style: GoogleFonts.plusJakartaSans(
-                color: kPrimaryColor,
-              ),
+              style: GoogleFonts.plusJakartaSans(color: kPrimaryColor),
             ),
           ),
           TextButton(
@@ -348,11 +348,9 @@ class _ChatScreenViewState extends State<_ChatScreenView>
 
       // Show uploading indicator
       if (!mounted) return;
-      
+
       // Upload image via bloc
-      context.read<MessageBloc>().add(
-        UploadImageEvent(filePath: image.path),
-      );
+      context.read<MessageBloc>().add(UploadImageEvent(filePath: image.path));
 
       LoggerService.info('Image selected for upload: ${image.path}');
     } catch (e) {
@@ -382,11 +380,9 @@ class _ChatScreenViewState extends State<_ChatScreenView>
 
       // Show uploading indicator
       if (!mounted) return;
-      
+
       // Upload image via bloc
-      context.read<MessageBloc>().add(
-        UploadImageEvent(filePath: photo.path),
-      );
+      context.read<MessageBloc>().add(UploadImageEvent(filePath: photo.path));
 
       LoggerService.info('Photo captured for upload: ${photo.path}');
     } catch (e) {
@@ -411,9 +407,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
         return Container(
           decoration: BoxDecoration(
             color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
-            borderRadius: const BorderRadius.vertical(
-              top: Radius.circular(20),
-            ),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.symmetric(vertical: 20),
           child: Column(
@@ -433,7 +427,10 @@ class _ChatScreenViewState extends State<_ChatScreenView>
               ListTile(
                 leading: CircleAvatar(
                   backgroundColor: kPrimaryColor.withValues(alpha: 0.8),
-                  child: const Icon(Icons.camera_alt, color: kBackgroundColorDark),
+                  child: const Icon(
+                    Icons.camera_alt,
+                    color: kBackgroundColorDark,
+                  ),
                 ),
                 title: const Text('Camera'),
                 onTap: () {
@@ -456,10 +453,12 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       listener: (context, state) {
         // Reload messages when a message is sent or received
         if (state is MessageSent) {
-          LoggerService.debug('Message sent, messages will reload automatically');
+          LoggerService.debug(
+            'Message sent, messages will reload automatically',
+          );
           // The bloc already dispatched LoadMessagesEvent, no need to do it here
         }
-        
+
         if (state is NewMessageReceived) {
           // New message received via real-time subscription
           // Only reload if we don't already have messages loaded
@@ -606,7 +605,9 @@ class _ChatScreenViewState extends State<_ChatScreenView>
         }
 
         if (state is MessagesLoaded) {
-          LoggerService.debug('Messages loaded: ${state.messages.length} messages');
+          LoggerService.debug(
+            'Messages loaded: ${state.messages.length} messages',
+          );
 
           if (state.messages.isEmpty) {
             return Center(
@@ -683,121 +684,103 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   }
 
   Widget _buildMessageBubble(MessageEntity message, bool isDarkMode) {
-    // Get current user ID from Supabase Auth
     final currentUserId = SupabaseConfig.client.auth.currentUser?.id ?? '';
     final isSent = message.senderId == currentUserId;
 
-    // Build the message bubble content
-    Widget messageBubble = Container(
+    Widget bubbleContent = Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       constraints: BoxConstraints(
-        maxWidth: MediaQuery.of(context).size.width * 0.80, // WhatsApp uses 80%
+        maxWidth: MediaQuery.of(context).size.width * 0.80,
       ),
       decoration: BoxDecoration(
-        // WhatsApp colors: sent = light green, received = white/dark grey
         color: isSent
-            ? (isDarkMode 
-                ? const Color(0xFF005C4B) // Dark mode sent (dark teal)
-                : const Color(0xFFDCF8C6)) // Light mode sent (light green)
-            : (isDarkMode 
-                ? const Color(0xFF262D31) // Dark mode received (dark grey)
-                : Colors.white), // Light mode received (white)
-        borderRadius: BorderRadius.circular(8), // WhatsApp uses 8dp
+            ? (isDarkMode ? const Color(0xFF005C4B) : const Color(0xFFDCF8C6))
+            : (isDarkMode ? const Color(0xFF262D31) : Colors.white),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-            // Display image if available
-            if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.network(
-                  message.imageUrl!,
-                  fit: BoxFit.cover,
-                  width: double.infinity,
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      height: 200,
-                      color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
+          if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
+            ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: Image.network(
+                message.imageUrl!,
+                fit: BoxFit.cover,
+                width: double.infinity,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    height: 200,
+                    color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                    child: Center(
+                      child: CircularProgressIndicator(
+                        value: loadingProgress.expectedTotalBytes != null
+                            ? loadingProgress.cumulativeBytesLoaded /
                                   loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: kPrimaryColor,
-                        ),
+                            : null,
+                        color: kPrimaryColor,
                       ),
-                    );
-                  },
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
-                      height: 200,
-                      color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
-                      child: const Center(
-                        child: Icon(Icons.broken_image, size: 48),
-                      ),
-                    );
-                  },
-                ),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 200,
+                    color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                    child: const Center(
+                      child: Icon(Icons.broken_image, size: 48),
+                    ),
+                  );
+                },
               ),
-              if (message.content.isNotEmpty) const SizedBox(height: 8),
-            ],
-            // Display text content (can be empty if it's an image-only message)
-            if (message.content.isNotEmpty)
-              Text(
-                message.content,
-                style: GoogleFonts.plusJakartaSans(
-                  // WhatsApp text colors
-                  color: isSent
-                      ? (isDarkMode 
-                          ? Colors.white // White text on dark teal
-                          : const Color(0xFF000000)) // Black text on light green
-                      : (isDarkMode 
-                          ? Colors.white // White text on dark grey
-                          : const Color(0xFF000000)), // Black text on white
-                  fontSize: 15, // WhatsApp uses slightly larger text
-                ),
-              ),
-            const SizedBox(height: 4),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  TimeFormatter.formatMessageTime(message.createdAt),
-                  style: GoogleFonts.plusJakartaSans(
-                    // WhatsApp time colors
-                    color: isSent
-                        ? (isDarkMode
-                            ? Colors.white.withValues(alpha: 0.7) // Light grey on dark teal
-                            : const Color(0xFF667781)) // Grey on light green
-                        : (isDarkMode
-                            ? Colors.white.withValues(alpha: 0.6) // Light grey on dark grey
-                            : const Color(0xFF667781)), // Grey on white
-                    fontSize: 11,
-                  ),
-                ),
-                if (isSent) ...[
-                  const SizedBox(width: 4),
-                  _buildMessageStatusIcon(message, isDarkMode),
-                ],
-              ],
             ),
+            if (message.content.isNotEmpty) const SizedBox(height: 8),
           ],
-        ),
+          if (message.content.isNotEmpty)
+            Text(
+              message.content,
+              style: GoogleFonts.plusJakartaSans(
+                color: isSent
+                    ? (isDarkMode ? Colors.white : const Color(0xFF000000))
+                    : (isDarkMode ? Colors.white : const Color(0xFF000000)),
+                fontSize: 15,
+              ),
+            ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                TimeFormatter.formatMessageTime(message.createdAt),
+                style: GoogleFonts.plusJakartaSans(
+                  color: isSent
+                      ? (isDarkMode
+                            ? Colors.white.withValues(alpha: 0.7)
+                            : const Color(0xFF667781))
+                      : (isDarkMode
+                            ? Colors.white.withValues(alpha: 0.6)
+                            : const Color(0xFF667781)),
+                  fontSize: 11,
+                ),
+              ),
+              if (isSent) ...[
+                const SizedBox(width: 4),
+                _buildMessageStatusIcon(message, isDarkMode),
+              ],
+            ],
+          ),
+        ],
       ),
     );
 
-    // Wrap with GestureDetector for long press
-    messageBubble = GestureDetector(
+    bubbleContent = GestureDetector(
       onLongPress: () => _showDeleteMessageDialog(message),
-      child: messageBubble,
+      child: bubbleContent,
     );
 
-    // Wrap with Slidable for swipe to reply
-    messageBubble = Slidable(
+    bubbleContent = Slidable(
       key: ValueKey(message.id),
       startActionPane: isSent
           ? null
@@ -829,12 +812,12 @@ class _ChatScreenViewState extends State<_ChatScreenView>
               ],
             )
           : null,
-      child: messageBubble,
+      child: bubbleContent,
     );
 
     return Align(
       alignment: isSent ? Alignment.centerRight : Alignment.centerLeft,
-      child: messageBubble,
+      child: bubbleContent,
     );
   }
 
@@ -906,62 +889,61 @@ class _ChatScreenViewState extends State<_ChatScreenView>
         children: [
           // Reply preview (shows when replying to a message)
           if (_repliedToMessage != null) _buildReplyPreview(isDarkMode),
-          
+
           // Input row
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-          // Attachment button
-          IconButton(
-            icon: Icon(
-              Icons.attach_file,
-              color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-            ),
-            onPressed: _showAttachmentOptions,
-            tooltip: 'Attach file',
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: TextField(
-              controller: _messageController,
-              decoration: InputDecoration(
-                hintText: 'Type a message...',
-                hintStyle: TextStyle(
-                  color: isDarkMode ? Colors.grey[500] : Colors.grey[400],
+                // Attachment button
+                IconButton(
+                  icon: Icon(
+                    Icons.attach_file,
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  ),
+                  onPressed: _showAttachmentOptions,
+                  tooltip: 'Attach file',
                 ),
-                filled: true,
-                fillColor: isDarkMode ? Colors.grey[900] : Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
+                const SizedBox(width: 4),
+                Expanded(
+                  child: TextField(
+                    controller: _messageController,
+                    decoration: InputDecoration(
+                      hintText: 'Type a message...',
+                      hintStyle: TextStyle(
+                        color: isDarkMode ? Colors.grey[500] : Colors.grey[400],
+                      ),
+                      filled: true,
+                      fillColor: isDarkMode
+                          ? Colors.grey[900]
+                          : Colors.grey[100],
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(24),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                    ),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
+                    maxLines: null,
+                    textInputAction: TextInputAction.send,
+                    onSubmitted: (_) => _sendMessage(),
+                  ),
                 ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 20,
-                  vertical: 12,
+                const SizedBox(width: 12),
+                CircleAvatar(
+                  backgroundColor: kPrimaryColor,
+                  // NO LOADING INDICATOR - WhatsApp sends instantly (optimistically)
+                  child: IconButton(
+                    icon: const Icon(Icons.send, color: kBackgroundColorDark),
+                    onPressed: _sendMessage,
+                    padding: EdgeInsets.zero,
+                  ),
                 ),
-              ),
-              style: GoogleFonts.plusJakartaSans(
-                color: isDarkMode ? Colors.white : Colors.black87,
-              ),
-              maxLines: null,
-              textInputAction: TextInputAction.send,
-              onSubmitted: (_) => _sendMessage(),
-            ),
-          ),
-          const SizedBox(width: 12),
-          CircleAvatar(
-            backgroundColor: kPrimaryColor,
-            // NO LOADING INDICATOR - WhatsApp sends instantly (optimistically)
-            child: IconButton(
-              icon: const Icon(
-                Icons.send,
-                color: kBackgroundColorDark,
-              ),
-              onPressed: _sendMessage,
-              padding: EdgeInsets.zero,
-            ),
-          ),
               ],
             ),
           ),
@@ -977,12 +959,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
         color: isDarkMode ? Colors.grey[900] : Colors.grey[100],
-        border: Border(
-          left: BorderSide(
-            color: kPrimaryColor,
-            width: 4,
-          ),
-        ),
+        border: Border(left: BorderSide(color: kPrimaryColor, width: 4)),
       ),
       child: Row(
         children: [
