@@ -140,8 +140,9 @@ class _AllProductsViewState extends State<_AllProductsView> {
                   );
                 }
 
-                if (index >= state.products.length)
+                if (index >= state.products.length) {
                   return const SizedBox.shrink();
+                }
 
                 // Use new ProductCard component
                 final product = state.products[index];

@@ -241,7 +241,7 @@ class _ServiceDetailView extends StatelessWidget {
                                   ],
                                   const Spacer(),
                                   Text(
-                                    '\$${service.price.toStringAsFixed(2)}',
+                                    'TZS ${service.price.toStringAsFixed(2)}',
                                     style: GoogleFonts.inter(
                                       color: kPrimaryColor,
                                       fontSize: 24.0,
@@ -289,7 +289,7 @@ class _ServiceDetailView extends StatelessWidget {
                               const SizedBox(height: 12.0),
                               
                               Text(
-                                'Get personalized mathematics tutoring from a certified tutor with 5+ years of experience. I specialize in calculus, algebra, statistics, and geometry. Whether you\'re struggling with homework or preparing for exams, I\'m here to help you succeed.\n\nSessions are conducted online or in-person, depending on your preference. I use interactive teaching methods and provide custom study materials tailored to your learning style.',
+                                service.description,
                                 style: GoogleFonts.inter(
                                   color: secondaryTextColor,
                                   fontSize: ResponsiveBreakpoints.responsiveValue(
@@ -304,93 +304,58 @@ class _ServiceDetailView extends StatelessWidget {
                               
                               const SizedBox(height: 24.0),
                               
-                              // What's Included
-                              Text(
-                                'What\'s Included',
-                                style: GoogleFonts.inter(
-                                  color: primaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 18.0,
-                                    medium: 20.0,
-                                    expanded: 22.0,
-                                  ),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 12.0),
-                              
-                              ...[
-                                'One-on-one tutoring sessions',
-                                'Custom study materials',
-                                'Homework help and exam preparation',
-                                'Flexible scheduling',
-                                'Progress tracking and reports',
-                              ].map((item) => Padding(
-                                padding: const EdgeInsets.only(bottom: 12.0),
-                                child: Row(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Icon(
-                                      Icons.check_circle,
-                                      color: Colors.green,
-                                      size: 20.0,
-                                    ),
-                                    const SizedBox(width: 12.0),
-                                    Expanded(
-                                      child: Text(
-                                        item,
-                                        style: GoogleFonts.inter(
-                                          color: primaryTextColor,
-                                          fontSize: 14.0,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              )),
-                              
                               const SizedBox(height: 24.0),
                               
                               // Availability
-                              Text(
-                                'Availability',
-                                style: GoogleFonts.inter(
-                                  color: primaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 18.0,
-                                    medium: 20.0,
-                                    expanded: 22.0,
-                                  ),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 12.0),
-                              
-                              Container(
-                                padding: const EdgeInsets.all(16.0),
-                                decoration: BoxDecoration(
-                                  color: surfaceColor,
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  border: Border.all(
-                                    color: Theme.of(context).brightness == Brightness.dark
-                                        ? Colors.grey[800]!
-                                        : Colors.grey[200]!,
+                              if (service.availability.isNotEmpty) ...[
+                                Text(
+                                  'Availability',
+                                  style: GoogleFonts.inter(
+                                    color: primaryTextColor,
+                                    fontSize: ResponsiveBreakpoints.responsiveValue(
+                                      context,
+                                      compact: 18.0,
+                                      medium: 20.0,
+                                      expanded: 22.0,
+                                    ),
+                                    fontWeight: FontWeight.bold,
                                   ),
                                 ),
-                                child: Column(
-                                  children: [
-                                    _buildAvailabilityRow('Monday - Friday', '3:00 PM - 9:00 PM', secondaryTextColor),
-                                    const Divider(),
-                                    _buildAvailabilityRow('Saturday', '10:00 AM - 6:00 PM', secondaryTextColor),
-                                    const Divider(),
-                                    _buildAvailabilityRow('Sunday', 'By Appointment', secondaryTextColor),
-                                  ],
+                                
+                                const SizedBox(height: 12.0),
+                                
+                                Container(
+                                  padding: const EdgeInsets.all(16.0),
+                                  decoration: BoxDecoration(
+                                    color: surfaceColor,
+                                    borderRadius: BorderRadius.circular(12.0),
+                                    border: Border.all(
+                                      color: Theme.of(context).brightness == Brightness.dark
+                                          ? Colors.grey[800]!
+                                          : Colors.grey[200]!,
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      ...service.availability.asMap().entries.map((entry) {
+                                        final index = entry.key;
+                                        final availabilityItem = entry.value;
+                                        // Parse availability item (format: "Day: Time" or just "Day" or "Time")
+                                        final parts = availabilityItem.split(':');
+                                        final day = parts.length > 1 ? parts[0].trim() : availabilityItem;
+                                        final time = parts.length > 1 ? parts[1].trim() : 'Available';
+                                        
+                                        return Column(
+                                          children: [
+                                            if (index > 0) const Divider(),
+                                            _buildAvailabilityRow(day, time, secondaryTextColor),
+                                          ],
+                                        );
+                                      }),
+                                    ],
+                                  ),
                                 ),
-                              ),
+                              ],
                               
                               const SizedBox(height: 32.0),
                               

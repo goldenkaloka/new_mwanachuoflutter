@@ -14,6 +14,7 @@ abstract class PromotionRemoteDataSource {
     required DateTime endDate,
     String? imageUrl,
     String? targetUrl,
+    List<String>? terms,
   });
 }
 
@@ -69,6 +70,7 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
     required DateTime endDate,
     String? imageUrl,
     String? targetUrl,
+    List<String>? terms,
   }) async {
     try {
       final response = await supabaseClient
@@ -81,6 +83,7 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
             'end_date': endDate.toIso8601String(),
             'image_url': imageUrl,
             'target_url': targetUrl,
+            'terms': terms,
             'created_at': DateTime.now().toIso8601String(),
           })
           .select()

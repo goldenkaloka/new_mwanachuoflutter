@@ -5,6 +5,7 @@ import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/features/shared/notifications/data/datasources/notification_local_data_source.dart';
 import 'package:mwanachuo/features/shared/notifications/data/datasources/notification_remote_data_source.dart';
 import 'package:mwanachuo/features/shared/notifications/domain/entities/notification_entity.dart';
+import 'package:mwanachuo/features/shared/notifications/domain/entities/notification_preferences_entity.dart';
 import 'package:mwanachuo/features/shared/notifications/domain/repositories/notification_repository.dart';
 
 /// Implementation of NotificationRepository
@@ -169,6 +170,90 @@ class NotificationRepositoryImpl implements NotificationRepository {
   @override
   Stream<NotificationEntity> subscribeToNotifications() {
     return remoteDataSource.subscribeToNotifications();
+  }
+
+  @override
+  Future<Either<Failure, void>> registerDeviceToken({
+    required String playerId,
+    required String platform,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      await remoteDataSource.registerDeviceToken(
+        playerId: playerId,
+        platform: platform,
+      );
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to register device token: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> unregisterDeviceToken(String playerId) async {
+    if (!await networkInfo.isConnected) {
+      return Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      await remoteDataSource.unregisterDeviceToken(playerId);
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to unregister device token: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, NotificationPreferencesEntity>> getNotificationPreferences() async {
+    if (!await networkInfo.isConnected) {
+      return Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      final preferences = await remoteDataSource.getNotificationPreferences();
+      return Right(preferences.toEntity());
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to get notification preferences: $e'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> updateNotificationPreferences({
+    bool? pushEnabled,
+    bool? messagesEnabled,
+    bool? reviewsEnabled,
+    bool? listingsEnabled,
+    bool? promotionsEnabled,
+    bool? sellerRequestsEnabled,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      await remoteDataSource.updateNotificationPreferences(
+        pushEnabled: pushEnabled,
+        messagesEnabled: messagesEnabled,
+        reviewsEnabled: reviewsEnabled,
+        listingsEnabled: listingsEnabled,
+        promotionsEnabled: promotionsEnabled,
+        sellerRequestsEnabled: sellerRequestsEnabled,
+      );
+      return const Right(null);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure('Failed to update notification preferences: $e'));
+    }
   }
 }
 

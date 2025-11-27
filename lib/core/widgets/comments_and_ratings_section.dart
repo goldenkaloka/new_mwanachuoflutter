@@ -68,8 +68,6 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
 
   @override
   Widget build(BuildContext context) {
-    // Force light theme
-    final isDarkMode = false;
     final primaryTextColor = kTextPrimary;
     final secondaryTextColor = Colors.grey[600]!;
     final borderColor = Colors.grey[200]!;

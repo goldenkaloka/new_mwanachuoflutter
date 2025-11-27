@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/constants/storage_constants.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
 
@@ -130,6 +131,23 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         ? currentState
         : null;
 
+    // Get recent messages for context-aware validation
+    List<String> recentMessages = [];
+    if (messagesLoadedState != null) {
+      final currentUser = SupabaseConfig.client.auth.currentUser;
+      if (currentUser != null) {
+        // Extract content from recent messages (last 5 messages from current user)
+        recentMessages = messagesLoadedState.messages
+            .where((m) => m.senderId == currentUser.id) // Only user's own messages
+            .take(5) // Last 5 messages
+            .map((m) => m.content)
+            .where((c) => c.isNotEmpty)
+            .toList()
+            .reversed
+            .toList(); // Reverse to get chronological order
+      }
+    }
+
     // Show sending state
     if (messagesLoadedState != null) {
       // Optimistically show sending state while keeping current messages
@@ -144,6 +162,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         content: event.content,
         imageUrl: event.imageUrl,
         repliedToMessageId: event.repliedToMessageId,
+        recentMessages: recentMessages, // Pass context for validation
       ),
     );
 

@@ -10,6 +10,7 @@ class PromotionEntity extends Equatable {
   final DateTime endDate;
   final bool isActive;
   final String? targetUrl;
+  final List<String>? terms;
   final DateTime createdAt;
 
   const PromotionEntity({
@@ -22,6 +23,7 @@ class PromotionEntity extends Equatable {
     required this.endDate,
     this.isActive = true,
     this.targetUrl,
+    this.terms,
     required this.createdAt,
   });
 
@@ -41,6 +43,7 @@ class PromotionEntity extends Equatable {
         endDate,
         isActive,
         targetUrl,
+        terms,
         createdAt,
       ];
 }

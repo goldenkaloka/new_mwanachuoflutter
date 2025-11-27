@@ -2,7 +2,9 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/core/utils/time_formatter.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
@@ -36,11 +38,73 @@ class _MessagesViewState extends State<_MessagesView>
   // Store conversations in widget state to persist across navigation
   List<ConversationEntity> _cachedConversations = [];
   bool _isInitialLoad = true;
+  bool? _canAccessMessages;
+  bool _isCheckingSubscription = true;
 
   @override
   void initState() {
     super.initState();
-    // Load conversations and start listening only once
+    // Check subscription first, then load conversations
+    _checkSubscriptionAndLoad();
+  }
+
+  Future<void> _checkSubscriptionAndLoad() async {
+    final currentUser = SupabaseConfig.client.auth.currentUser;
+    if (currentUser == null) {
+      setState(() {
+        _canAccessMessages = true; // Allow access if not logged in (shouldn't happen)
+        _isCheckingSubscription = false;
+      });
+      _loadConversations();
+      return;
+    }
+
+    // Check if user is seller/admin
+    try {
+      final userData = await SupabaseConfig.client
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+      final role = userData['role'] as String?;
+      final isSeller = role == 'seller' || role == 'admin';
+
+      if (!isSeller) {
+        // Buyers can always access messages
+        setState(() {
+          _canAccessMessages = true;
+          _isCheckingSubscription = false;
+        });
+        _loadConversations();
+        return;
+      }
+
+      // For sellers, check subscription
+      final canAccess = await SubscriptionMiddleware.canAccessMessages(
+        sellerId: currentUser.id,
+      );
+
+      setState(() {
+        _canAccessMessages = canAccess;
+        _isCheckingSubscription = false;
+      });
+
+      if (canAccess) {
+        _loadConversations();
+      }
+    } catch (e) {
+      // On error, allow access (fail open)
+      LoggerService.error('Error checking subscription for messages', e);
+      setState(() {
+        _canAccessMessages = true;
+        _isCheckingSubscription = false;
+      });
+      _loadConversations();
+    }
+  }
+
+  void _loadConversations() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         final bloc = context.read<MessageBloc>();
@@ -76,6 +140,35 @@ class _MessagesViewState extends State<_MessagesView>
   Widget build(BuildContext context) {
     super.build(context); // Required for AutomaticKeepAliveClientMixin
 
+    // Show loading while checking subscription
+    if (_isCheckingSubscription) {
+      return Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: kPrimaryColor),
+              const SizedBox(height: 16),
+              Text(
+                'Checking subscription...',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show blocking screen if subscription expired
+    if (_canAccessMessages == false) {
+      return _buildSubscriptionBlockedScreen(context);
+    }
+
+    // Show normal messages page
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final isExpanded = ResponsiveBreakpoints.isExpanded(context);
 
@@ -109,6 +202,83 @@ class _MessagesViewState extends State<_MessagesView>
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildSubscriptionBlockedScreen(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Messages'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.lock_outline,
+                size: 64,
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Subscription Required',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Your subscription has expired. Please renew your subscription to access messages.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/subscription-plans');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                ),
+                child: Text(
+                  'Renew Subscription',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: kBackgroundColorDark,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Note: You will still receive notifications for new messages.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 12,
+                  color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -540,12 +710,13 @@ class ConversationListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Force light theme
-    final isDarkMode = false;
-    final primaryTextColor = Colors.black87;
+    // Use the isDarkMode parameter passed to the widget
+    final primaryTextColor = isDarkMode ? Colors.white : Colors.black87;
     // Use effectiveUnreadCount which returns 0 for self-conversations
     final hasUnread = conversation.effectiveUnreadCount > 0;
-    final lastMessageColor = hasUnread ? Colors.black87 : Colors.grey[600]!;
+    final lastMessageColor = hasUnread 
+        ? (isDarkMode ? Colors.white : Colors.black87)
+        : (isDarkMode ? Colors.grey[400]! : Colors.grey[600]!);
     final lastMessageWeight = hasUnread ? FontWeight.bold : FontWeight.normal;
     final horizontalPadding = screenSize == ScreenSize.expanded
         ? 16.0
@@ -682,7 +853,7 @@ class ConversationListItem extends StatelessWidget {
                         expanded: 14.0,
                       ),
                       fontWeight: FontWeight.normal,
-                      color: isDarkMode ? Colors.grey[400]! : Colors.grey[500]!,
+                      color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
                     ),
                   ),
                   // Only show badge for actual unread messages (not self-conversations)

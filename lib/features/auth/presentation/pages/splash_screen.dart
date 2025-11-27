@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/services/push_notification_service.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
@@ -14,6 +15,9 @@ class SplashScreen extends StatefulWidget {
 }
 
 class _SplashScreenState extends State<SplashScreen> {
+  bool _hasCheckedRegistration = false;
+  bool _hasNavigated = false;
+
   @override
   void initState() {
     super.initState();
@@ -25,48 +29,68 @@ class _SplashScreenState extends State<SplashScreen> {
     });
   }
 
+  void _handleAuthState(BuildContext context, AuthState state) {
+    if (_hasNavigated) return; // Prevent multiple navigations
+
+    if (state is Authenticated) {
+      // Register device token for push notifications
+      PushNotificationService().registerDeviceTokenForUser(state.user.id);
+      
+      // Check if registration is completed using BLoC (only once)
+      if (!_hasCheckedRegistration) {
+        _hasCheckedRegistration = true;
+        debugPrint(
+          '🔍 User authenticated, checking registration completion...',
+        );
+        context.read<AuthBloc>().add(const CheckRegistrationCompletionEvent());
+      }
+    } else if (state is Unauthenticated) {
+      if (_hasNavigated) return;
+      _hasNavigated = true;
+      // User is not authenticated, go to onboarding
+      debugPrint('👤 No user authenticated, going to onboarding');
+      Navigator.of(context).pushReplacementNamed('/onboarding');
+    } else if (state is RegistrationIncomplete) {
+      if (_hasNavigated) return;
+      _hasNavigated = true;
+      // Account created but needs university selection
+      debugPrint(
+        '⚠️ Registration incomplete, redirecting to university selection',
+      );
+      Navigator.of(
+        context,
+      ).pushReplacementNamed('/signup-university-selection');
+    } else if (state is RegistrationCheckCompleted) {
+      if (_hasNavigated) return;
+      _hasNavigated = true;
+
+      if (state.isCompleted) {
+        // Registration complete with universities, go to home
+        debugPrint('✅ Registration complete, going to home');
+        Navigator.of(context).pushReplacementNamed('/home');
+      } else {
+        // Registration incomplete, go to university selection
+        debugPrint(
+          '⚠️ Registration incomplete, redirecting to university selection',
+        );
+        Navigator.of(
+          context,
+        ).pushReplacementNamed('/signup-university-selection');
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is Authenticated) {
-          // Check if registration is completed using BLoC
-          debugPrint(
-            '🔍 User authenticated, checking registration completion...',
-          );
-          context.read<AuthBloc>().add(
-            const CheckRegistrationCompletionEvent(),
-          );
-        } else if (state is Unauthenticated) {
-          // User is not authenticated, go to onboarding
-          debugPrint('👤 No user authenticated, going to onboarding');
-          Navigator.of(context).pushReplacementNamed('/onboarding');
-        } else if (state is RegistrationIncomplete) {
-          // Account created but needs university selection
-          debugPrint(
-            '⚠️ Registration incomplete, redirecting to university selection',
-          );
-          Navigator.of(
-            context,
-          ).pushReplacementNamed('/signup-university-selection');
-        } else if (state is RegistrationCheckCompleted) {
-          if (state.isCompleted) {
-            // Registration complete with universities, go to home
-            debugPrint('✅ Registration complete, going to home');
-            Navigator.of(context).pushReplacementNamed('/home');
-          } else {
-            // Registration incomplete, go to university selection
-            debugPrint(
-              '⚠️ Registration incomplete, redirecting to university selection',
-            );
-            Navigator.of(
-              context,
-            ).pushReplacementNamed('/signup-university-selection');
-          }
-        }
+    // Check initial state immediately (handles hot restart)
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _hasNavigated) return;
+      final currentState = context.read<AuthBloc>().state;
+      _handleAuthState(context, currentState);
+    });
 
-        // AuthLoading and AuthInitial states don't navigate yet
-      },
+    return BlocListener<AuthBloc, AuthState>(
+      listener: _handleAuthState,
       child: _buildSplashUI(context),
     );
   }

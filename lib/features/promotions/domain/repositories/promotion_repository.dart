@@ -14,6 +14,7 @@ abstract class PromotionRepository {
     required DateTime endDate,
     File? image,
     String? targetUrl,
+    List<String>? terms,
   });
 }
 

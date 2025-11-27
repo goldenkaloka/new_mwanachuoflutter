@@ -350,6 +350,47 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
         // Don't throw - message was sent successfully, just conversation update failed
       }
 
+      // Send push notification to recipient
+      try {
+        // Get conversation to find recipient
+        final conversation = await supabaseClient
+            .from(DatabaseConstants.conversationsTable)
+            .select('user1_id, user2_id')
+            .eq('id', conversationId)
+            .single();
+
+        final recipientId = conversation['user1_id'] == currentUser.id
+            ? conversation['user2_id'] as String
+            : conversation['user1_id'] as String;
+
+        final senderName = response['users']['full_name'] as String;
+        final messagePreview = content.length > 50
+            ? '${content.substring(0, 50)}...'
+            : content;
+
+        // Call push notification function
+        await supabaseClient.rpc(
+          'send_immediate_push_notification',
+          params: {
+            'p_user_id': recipientId,
+            'p_title': 'New Message',
+            'p_message': '$senderName: $messagePreview',
+            'p_type': 'message',
+            'p_action_url': '/chat?conversationId=$conversationId',
+            'p_metadata': {
+              'conversationId': conversationId,
+              'senderId': currentUser.id,
+              'senderName': senderName,
+            },
+          },
+        );
+      } catch (e) {
+        debugPrint(
+          '⚠️ Failed to send push notification for message: $e',
+        );
+        // Don't throw - message was sent successfully, just push notification failed
+      }
+
       return MessageModel.fromJson({
         ...response,
         'sender_name': response['users']['full_name'],

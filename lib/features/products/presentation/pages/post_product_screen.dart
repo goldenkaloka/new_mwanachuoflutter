@@ -338,7 +338,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
             ),
           );
           
-          // Navigate back to dashboard
+          // Navigate back
           Navigator.of(context).pop();
         } else if (state is ProductError) {
           // Close loading dialog if open

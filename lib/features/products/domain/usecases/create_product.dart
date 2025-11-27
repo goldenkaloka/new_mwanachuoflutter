@@ -5,12 +5,15 @@ import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/core/usecases/usecase.dart';
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/products/domain/repositories/product_repository.dart';
+import 'package:mwanachuo/features/subscriptions/domain/usecases/check_subscription_status.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
 
 /// Use case for creating a product
 class CreateProduct implements UseCase<ProductEntity, CreateProductParams> {
   final ProductRepository repository;
+  final CheckSubscriptionStatus checkSubscriptionStatus;
 
-  CreateProduct(this.repository);
+  CreateProduct(this.repository, this.checkSubscriptionStatus);
 
   @override
   Future<Either<Failure, ProductEntity>> call(
@@ -28,6 +31,26 @@ class CreateProduct implements UseCase<ProductEntity, CreateProductParams> {
     }
     if (params.images.isEmpty) {
       return Left(ValidationFailure('At least one image is required'));
+    }
+
+    // Check subscription status before creating product
+    final currentUser = SupabaseConfig.client.auth.currentUser;
+    if (currentUser != null) {
+      final subscriptionCheck = await checkSubscriptionStatus(
+        CheckSubscriptionStatusParams(
+          sellerId: currentUser.id,
+          listingType: 'product',
+        ),
+      );
+      final canCreate = subscriptionCheck.fold(
+        (failure) => false,
+        (result) => result,
+      );
+      if (!canCreate) {
+        return Left(ServerFailure(
+          'Subscription required. Please subscribe to create listings.',
+        ));
+      }
     }
 
     return await repository.createProduct(

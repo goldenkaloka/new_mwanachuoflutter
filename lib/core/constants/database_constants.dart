@@ -11,6 +11,12 @@ class DatabaseConstants {
   static const String conversationsTable = 'conversations';
   static const String reviewsTable = 'reviews';
   static const String notificationsTable = 'notifications';
+  static const String deviceTokensTable = 'device_tokens';
+  static const String notificationPreferencesTable = 'notification_preferences';
+  static const String subscriptionPlansTable = 'subscription_plans';
+  static const String sellerSubscriptionsTable = 'seller_subscriptions';
+  static const String subscriptionPaymentsTable = 'subscription_payments';
+  static const String subscriptionUsageTable = 'subscription_usage';
 
   // Storage buckets
   static const String productImagesBucket = 'product-images';

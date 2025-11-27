@@ -7,7 +7,9 @@ import 'package:image_picker/image_picker.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/constants/database_constants.dart';
+import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
+import 'package:mwanachuo/core/utils/content_filter.dart';
 import 'package:mwanachuo/core/utils/time_formatter.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
@@ -16,8 +18,82 @@ import 'package:mwanachuo/features/messages/domain/entities/message_entity.dart'
 
 // --- CHAT SCREEN WIDGET ---
 
-class ChatScreen extends StatelessWidget {
+class ChatScreen extends StatefulWidget {
   const ChatScreen({super.key});
+
+  @override
+  State<ChatScreen> createState() => _ChatScreenState();
+}
+
+class _ChatScreenState extends State<ChatScreen> {
+  bool? _canAccessMessages;
+  bool _isCheckingSubscription = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkSubscription();
+  }
+
+  Future<void> _checkSubscription() async {
+    final conversationId =
+        ModalRoute.of(context)?.settings.arguments as String?;
+
+    if (conversationId == null) {
+      setState(() {
+        _canAccessMessages = true; // Will show invalid conversation error
+        _isCheckingSubscription = false;
+      });
+      return;
+    }
+
+    final currentUser = SupabaseConfig.client.auth.currentUser;
+    if (currentUser == null) {
+      setState(() {
+        _canAccessMessages = true; // Allow access if not logged in (shouldn't happen)
+        _isCheckingSubscription = false;
+      });
+      return;
+    }
+
+    // Check if user is seller/admin
+    try {
+      final userData = await SupabaseConfig.client
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+      final role = userData['role'] as String?;
+      final isSeller = role == 'seller' || role == 'admin';
+
+      if (!isSeller) {
+        // Buyers can always access messages
+        setState(() {
+          _canAccessMessages = true;
+          _isCheckingSubscription = false;
+        });
+        return;
+      }
+
+      // For sellers, check subscription
+      final canAccess = await SubscriptionMiddleware.canAccessMessages(
+        sellerId: currentUser.id,
+      );
+
+      setState(() {
+        _canAccessMessages = canAccess;
+        _isCheckingSubscription = false;
+      });
+    } catch (e) {
+      // On error, allow access (fail open)
+      LoggerService.error('Error checking subscription for chat', e);
+      setState(() {
+        _canAccessMessages = true;
+        _isCheckingSubscription = false;
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -46,6 +122,35 @@ class ChatScreen extends StatelessWidget {
       );
     }
 
+    // Show loading while checking subscription
+    if (_isCheckingSubscription) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Chat')),
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const CircularProgressIndicator(color: kPrimaryColor),
+              const SizedBox(height: 16),
+              Text(
+                'Checking subscription...',
+                style: TextStyle(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[400]
+                      : Colors.grey[600],
+                ),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // Show blocking screen if subscription expired
+    if (_canAccessMessages == false) {
+      return _buildSubscriptionBlockedChatScreen(context);
+    }
+
     // Use the shared MessageBloc instance from app level
     // Load messages when screen is first built
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -55,6 +160,73 @@ class ChatScreen extends StatelessWidget {
     });
 
     return _ChatScreenView(conversationId: conversationId);
+  }
+
+  Widget _buildSubscriptionBlockedChatScreen(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Chat'),
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(
+                Icons.lock_outline,
+                size: 64,
+                color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'Subscription Required',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                'Your subscription has expired. Please renew to view messages.',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                ),
+              ),
+              const SizedBox(height: 32),
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/subscription-plans');
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 32,
+                    vertical: 16,
+                  ),
+                ),
+                child: Text(
+                  'Renew Subscription',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: kBackgroundColorDark,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -254,6 +426,64 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   void _sendMessage() {
     final content = _messageController.text.trim();
     if (content.isEmpty) return;
+
+    // Get recent messages from current state for context-aware validation
+    final currentState = context.read<MessageBloc>().state;
+    List<String> recentMessages = [];
+    
+    if (currentState is MessagesLoaded && 
+        currentState.conversationId == widget.conversationId) {
+      final currentUser = SupabaseConfig.client.auth.currentUser;
+      if (currentUser != null) {
+        // Get last 5 messages from current user
+        recentMessages = currentState.messages
+            .where((m) => m.senderId == currentUser.id)
+            .take(5)
+            .map((m) => m.content)
+            .where((c) => c.isNotEmpty)
+            .toList()
+            .reversed
+            .toList();
+      }
+    }
+
+    // Pre-validate content with context
+    final validationError = ContentFilter.validateMessage(
+      content,
+      recentMessages: recentMessages,
+    );
+    
+    if (validationError != null) {
+      // Show error dialog
+      showDialog(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(
+            'Ujumbe Hauruhusiwi',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            validationError,
+            style: GoogleFonts.plusJakartaSans(),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: Text(
+                'Sawa',
+                style: GoogleFonts.plusJakartaSans(
+                  color: kPrimaryColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     context.read<MessageBloc>().add(
       SendMessageEvent(
@@ -568,7 +798,6 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     final backgroundColor = isDarkMode
         ? kBackgroundColorDark
         : kBackgroundColorLight;
-    final textColor = isDarkMode ? kTextPrimaryDark : kTextPrimary;
     final secondaryTextColor = isDarkMode ? kTextSecondaryDark : kTextSecondary;
 
     return BlocBuilder<MessageBloc, MessageState>(
@@ -696,7 +925,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
             Container(
               decoration: const BoxDecoration(
                 image: DecorationImage(
-                  image: AssetImage('icon/chat_background.jpg'),
+                  image: AssetImage('assets/icon/chat_background.jpg'),
                   fit: BoxFit.cover,
                 ),
               ),
@@ -871,7 +1100,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     );
 
     // Use a custom approach for better alignment control
-    return Container(
+    return SizedBox(
       width: double.infinity,
       child: isSent
           ? Row(
@@ -1022,7 +1251,6 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
     final backgroundColor = isDarkMode ? kSurfaceColorDark : kSurfaceColorLight;
-    final textColor = isDarkMode ? kTextPrimaryDark : kTextPrimary;
     final secondaryTextColor = isDarkMode ? kTextSecondaryDark : kTextSecondary;
 
     return Container(

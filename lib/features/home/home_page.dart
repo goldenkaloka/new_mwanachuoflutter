@@ -39,9 +39,6 @@ class _HomePageState extends State<HomePage> {
   int _selectedChipIndex = 0;
   int _selectedIndex = 0; // For Bottom Nav Bar
   int _currentPromotionPage = 0;
-  String? _selectedUniversity;
-  String? _selectedUniversityLogo;
-  bool _isLoadingUniversity = true;
   String _userName = 'User';
   bool _isLoadingUser = true;
   String _userRole = 'buyer';
@@ -114,18 +111,34 @@ class _HomePageState extends State<HomePage> {
   }
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload products when returning to homepage to show newly created products
+    // This ensures products are refreshed after navigation (e.g., from post-product screen)
+    if (_dataLoaded && mounted) {
+      final route = ModalRoute.of(context);
+      if (route != null && route.isCurrent && route.settings.name == '/home') {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            debugPrint('🔄 Homepage route active, reloading products...');
+            context.read<ProductBloc>().add(const LoadProductsEvent(limit: 10));
+          }
+        });
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _loadSelectedUniversity() async {
-    final university = await UniversityService.getSelectedUniversity();
-    final logo = await UniversityService.getSelectedUniversityLogo();
+    await UniversityService.getSelectedUniversity();
+    await UniversityService.getSelectedUniversityLogo();
     setState(() {
-      _selectedUniversity = university;
-      _selectedUniversityLogo = logo;
-      _isLoadingUniversity = false;
+      // University selection stored in shared preferences
     });
 
     // Load data after university is loaded
@@ -144,21 +157,34 @@ class _HomePageState extends State<HomePage> {
     final searchBorderColor = isDarkMode ? Colors.white10 : Colors.transparent;
     final isExpanded = ResponsiveBreakpoints.isExpanded(context);
 
-    return BlocListener<AuthBloc, AuthState>(
-      listener: (context, state) {
-        if (state is Authenticated) {
-          // Only update if data actually changed to prevent rebuilds
-          if (_userName != state.user.name ||
-              _userRole != state.user.role.value ||
-              _isLoadingUser) {
-            setState(() {
-              _userName = state.user.name;
-              _userRole = state.user.role.value;
-              _isLoadingUser = false;
-            });
-          }
-        }
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<AuthBloc, AuthState>(
+          listener: (context, state) {
+            if (state is Authenticated) {
+              // Only update if data actually changed to prevent rebuilds
+              if (_userName != state.user.name ||
+                  _userRole != state.user.role.value ||
+                  _isLoadingUser) {
+                setState(() {
+                  _userName = state.user.name;
+                  _userRole = state.user.role.value;
+                  _isLoadingUser = false;
+                });
+              }
+            }
+          },
+        ),
+        BlocListener<ProductBloc, ProductState>(
+          listener: (context, state) {
+            // Reload products when a new product is created
+            if (state is ProductCreated) {
+              debugPrint('🔄 Product created, reloading products on homepage...');
+              context.read<ProductBloc>().add(const LoadProductsEvent(limit: 10));
+            }
+          },
+        ),
+      ],
       child: Scaffold(
         backgroundColor: isDarkMode
             ? kBackgroundColorDark
@@ -667,139 +693,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildUniversityHeader(
-    BuildContext context,
-    Color primaryTextColor,
-    ScreenSize screenSize,
-  ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
-      context,
-    );
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      margin: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 12.0,
-          medium: 16.0,
-          expanded: 20.0,
-        ),
-      ),
-      padding: EdgeInsets.all(
-        ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 12.0,
-          medium: 16.0,
-          expanded: 20.0,
-        ),
-      ),
-      decoration: BoxDecoration(
-        color: kPrimaryColor.withValues(alpha: isDarkMode ? 0.15 : 0.1),
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(
-          color: kPrimaryColor.withValues(alpha: 0.3),
-          width: 1.0,
-        ),
-      ),
-      child: Row(
-        children: [
-          // University Logo
-          if (_selectedUniversityLogo != null)
-            Container(
-              width: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 40.0,
-                medium: 44.0,
-                expanded: 48.0,
-              ),
-              height: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 40.0,
-                medium: 44.0,
-                expanded: 48.0,
-              ),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.2),
-              ),
-              child: ClipOval(
-                child: NetworkImageWithFallback(
-                  imageUrl: _selectedUniversityLogo!,
-                  width: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 40.0,
-                    medium: 44.0,
-                    expanded: 48.0,
-                  ),
-                  height: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 40.0,
-                    medium: 44.0,
-                    expanded: 48.0,
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-          SizedBox(
-            width: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 12.0,
-              medium: 16.0,
-              expanded: 20.0,
-            ),
-          ),
-          // University Name
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  _selectedUniversity ?? '',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: primaryTextColor,
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 16.0,
-                      medium: 17.0,
-                      expanded: 18.0,
-                    ),
-                    fontWeight: FontWeight.bold,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                SizedBox(
-                  height: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 2.0,
-                    medium: 4.0,
-                    expanded: 6.0,
-                  ),
-                ),
-                Text(
-                  'Campus Marketplace',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: primaryTextColor.withValues(alpha: 0.7),
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 12.0,
-                      medium: 13.0,
-                      expanded: 14.0,
-                    ),
-                    fontWeight: FontWeight.normal,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildChipsRow(ScreenSize screenSize) {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
@@ -1236,10 +1129,6 @@ class _HomePageState extends State<HomePage> {
     List<PromotionEntity> promotions,
     ScreenSize screenSize,
   ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
-      context,
-    );
-
     return Column(
       children: [
         CarouselSlider.builder(
@@ -1253,9 +1142,9 @@ class _HomePageState extends State<HomePage> {
           options: CarouselOptions(
             height: ResponsiveBreakpoints.responsiveValue(
               context,
-              compact: 270.0,
-              medium: 320.0,
-              expanded: 400.0,
+              compact: 220.0,
+              medium: 260.0,
+              expanded: 320.0,
             ),
             autoPlay: true,
             autoPlayInterval: const Duration(seconds: 5),
@@ -1303,9 +1192,9 @@ class _HomePageState extends State<HomePage> {
     );
     final cardHeight = ResponsiveBreakpoints.responsiveValue(
       context,
-      compact: 250.0,
-      medium: 300.0,
-      expanded: 380.0,
+      compact: 200.0,
+      medium: 240.0,
+      expanded: 300.0,
     );
 
     return GestureDetector(
@@ -1318,7 +1207,7 @@ class _HomePageState extends State<HomePage> {
         width: cardWidth,
         height: cardHeight,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24.0),
+          borderRadius: BorderRadius.circular(16.0),
           color: kPrimaryColor.withValues(alpha: 0.3),
         ),
         child: Stack(
@@ -1326,7 +1215,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             if (promotion.imageUrl != null)
               ClipRRect(
-                borderRadius: BorderRadius.circular(24.0),
+                borderRadius: BorderRadius.circular(16.0),
                 child: NetworkImageWithFallback(
                   imageUrl: promotion.imageUrl!,
                   width: cardWidth,
@@ -1336,7 +1225,7 @@ class _HomePageState extends State<HomePage> {
               ),
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(24.0),
+                borderRadius: BorderRadius.circular(16.0),
                 color: Colors.black.withValues(alpha: 0.4),
               ),
               padding: EdgeInsets.all(
@@ -1448,36 +1337,90 @@ class _HomePageState extends State<HomePage> {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
-    final columns = ResponsiveBreakpoints.responsiveGridColumns(context);
-    final spacing = ResponsiveBreakpoints.responsiveValue(
-      context,
-      compact: 16.0,
-      medium: 20.0,
-      expanded: 24.0,
-    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: GridView.builder(
+      child: ListView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: services.take(6).length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: spacing,
-          childAspectRatio: 0.75,
-        ),
         itemBuilder: (context, index) {
           final service = services[index];
-          return ServiceCard(
-            imageUrl: service.images.isNotEmpty ? service.images.first : '',
-            title: service.title,
-            price: 'TZS ${service.price.toStringAsFixed(2)}',
-            priceType: service.priceType,
-            category: service.category,
-            providerName: service.providerName,
-            location: service.location,
+          return ListTile(
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            leading: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: NetworkImageWithFallback(
+                imageUrl: service.images.isNotEmpty ? service.images.first : '',
+                width: 60,
+                height: 60,
+                fit: BoxFit.cover,
+              ),
+            ),
+            title: Text(
+              service.title,
+              style: Theme.of(context).textTheme.titleMedium,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                Text(
+                  'TZS ${service.price.toStringAsFixed(2)}${service.priceType == 'per_hour'
+                      ? '/hour'
+                      : service.priceType == 'per_day'
+                      ? '/day'
+                      : ''}',
+                  style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                    color: const Color(0xFF078829),
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  service.category,
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.person_outline,
+                      size: 14,
+                      color: kTextSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        service.providerName,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.location_on_outlined,
+                      size: 14,
+                      color: kTextSecondary,
+                    ),
+                    const SizedBox(width: 4),
+                    Expanded(
+                      child: Text(
+                        service.location,
+                        style: Theme.of(context).textTheme.bodySmall,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            trailing: const Icon(Icons.chevron_right),
             onTap: () => Navigator.pushNamed(
               context,
               '/service-details',
@@ -1501,9 +1444,9 @@ class _HomePageState extends State<HomePage> {
     final columns = ResponsiveBreakpoints.responsiveGridColumns(context);
     final spacing = ResponsiveBreakpoints.responsiveValue(
       context,
-      compact: 16.0,
-      medium: 20.0,
-      expanded: 24.0,
+      compact: 8.0,
+      medium: 12.0,
+      expanded: 16.0,
     );
 
     return Padding(
@@ -1516,7 +1459,12 @@ class _HomePageState extends State<HomePage> {
           crossAxisCount: columns,
           crossAxisSpacing: spacing,
           mainAxisSpacing: spacing,
-          childAspectRatio: 0.75,
+          childAspectRatio: ResponsiveBreakpoints.responsiveValue(
+            context,
+            compact: 0.65,
+            medium: 0.7,
+            expanded: 0.75,
+          ),
         ),
         itemBuilder: (context, index) {
           final accommodation = accommodations[index];

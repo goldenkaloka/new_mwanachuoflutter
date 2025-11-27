@@ -11,6 +11,7 @@ class PromotionModel extends PromotionEntity {
     required super.endDate,
     super.isActive,
     super.targetUrl,
+    super.terms,
     required super.createdAt,
   });
 
@@ -25,6 +26,9 @@ class PromotionModel extends PromotionEntity {
       endDate: DateTime.parse(json['end_date'] as String),
       isActive: json['is_active'] as bool? ?? true,
       targetUrl: json['target_url'] as String?,
+      terms: json['terms'] != null
+          ? List<String>.from(json['terms'] as List)
+          : null,
       createdAt: DateTime.parse(json['created_at'] as String),
     );
   }
@@ -40,6 +44,7 @@ class PromotionModel extends PromotionEntity {
       'end_date': endDate.toIso8601String(),
       'is_active': isActive,
       'target_url': targetUrl,
+      'terms': terms,
       'created_at': createdAt.toIso8601String(),
     };
   }

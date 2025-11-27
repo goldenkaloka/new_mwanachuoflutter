@@ -63,6 +63,7 @@ class PromotionRepositoryImpl implements PromotionRepository {
     required DateTime endDate,
     File? image,
     String? targetUrl,
+    List<String>? terms,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -94,6 +95,7 @@ class PromotionRepositoryImpl implements PromotionRepository {
         endDate: endDate,
         imageUrl: imageUrl,
         targetUrl: targetUrl,
+        terms: terms,
       );
 
       return Right(promotion);

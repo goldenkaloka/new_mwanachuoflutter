@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -5,6 +6,7 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 
 class CreatePromotionScreen extends StatefulWidget {
   const CreatePromotionScreen({super.key});
@@ -50,14 +52,17 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   final _titleController = TextEditingController();
   final _subtitleController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _termsController = TextEditingController();
   DateTime? _startDate;
   DateTime? _endDate;
+  File? _selectedImage;
 
   @override
   void dispose() {
     _titleController.dispose();
     _subtitleController.dispose();
     _descriptionController.dispose();
+    _termsController.dispose();
     super.dispose();
   }
 
@@ -173,6 +178,26 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                               decoration: InputDecoration(
                                 labelText: 'Description',
                                 hintText: 'Describe your promotion...',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12.0),
+                                  borderSide: BorderSide(color: borderColor),
+                                ),
+                              ),
+                            ),
+                            
+                            const SizedBox(height: 20.0),
+                            
+                            // Terms & Conditions
+                            TextFormField(
+                              controller: _termsController,
+                              maxLines: 5,
+                              decoration: InputDecoration(
+                                labelText: 'Terms & Conditions (one per line)',
+                                hintText: 'Enter each term on a new line...\ne.g.,\nValid until stock lasts\nCannot be combined with other offers',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
                                   borderSide: BorderSide(color: borderColor),
@@ -398,10 +423,46 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
               width: double.infinity,
               height: 48.0, // M3 standard button height
               child: ElevatedButton(
-                onPressed: () {
+                onPressed: () async {
                   if (_formKey.currentState!.validate()) {
-                    // Handle promotion submission
-                    Navigator.pop(context);
+                    if (_startDate == null || _endDate == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Please select both start and end dates',
+                            style: GoogleFonts.plusJakartaSans(),
+                          ),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+
+                    // Parse terms from text (split by newlines, filter empty)
+                    final termsText = _termsController.text.trim();
+                    final terms = termsText.isNotEmpty
+                        ? termsText
+                            .split('\n')
+                            .map((t) => t.trim())
+                            .where((t) => t.isNotEmpty)
+                            .toList()
+                        : null;
+
+                    // Create promotion
+                    await context.read<PromotionCubit>().createNewPromotion(
+                          title: _titleController.text.trim(),
+                          subtitle: _subtitleController.text.trim(),
+                          description: _descriptionController.text.trim(),
+                          startDate: _startDate!,
+                          endDate: _endDate!,
+                          image: _selectedImage,
+                          terms: terms,
+                        );
+
+                    if (!mounted) return;
+                    final navigator = Navigator.of(context);
+                    if (!mounted) return;
+                    navigator.pop();
                   }
                 },
                 style: ElevatedButton.styleFrom(

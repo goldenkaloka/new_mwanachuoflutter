@@ -141,15 +141,15 @@ class ProductCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Force light theme
-    final isDarkMode = false;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: kSurfaceColorLight,
-          borderRadius: BorderRadius.circular(kRadiusMd),
+          borderRadius: BorderRadius.circular(kRadiusSm),
           // Removed boxShadow to remove shadows
         ),
         child: Column(
@@ -157,9 +157,10 @@ class ProductCard extends StatelessWidget {
           children: [
             // Image
             Expanded(
+              flex: isSmallScreen ? 3 : 2,
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusMd),
+                  top: Radius.circular(kRadiusSm),
                 ),
                 child: Image.network(
                   imageUrl,
@@ -198,60 +199,82 @@ class ProductCard extends StatelessWidget {
             ),
 
             // Content
-            Padding(
-              padding: const EdgeInsets.all(kSpacingMd),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Title
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: kSpacingXs),
-
-                  // Price
-                  Text(
-                    price,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: const Color(
-                        0xFF078829,
-                      ), // Match active state color
-                      fontWeight: FontWeight.w700,
+            Expanded(
+              flex: isSmallScreen ? 2 : 3,
+              child: Padding(
+                padding: EdgeInsets.all(isSmallScreen ? kSpacingXs : kSpacingSm),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Title
+                    Flexible(
+                      child: Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: isSmallScreen ? 14 : null,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
-                  ),
+                    SizedBox(height: isSmallScreen ? 2 : kSpacingXs),
 
-                  // Rating & Category
-                  if ((showRating && rating != null) ||
-                      (showCategory && category != null)) ...[
-                    const SizedBox(height: kSpacingXs),
-                    Row(
-                      children: [
-                        if (showRating && rating != null) ...[
-                          const Icon(
-                            Icons.star,
-                            size: kIconSizeSm,
-                            color: kWarningColor,
-                          ),
-                          const SizedBox(width: kSpacingXs),
-                          Text(
-                            '${rating!.toStringAsFixed(1)}${reviewCount != null ? ' ($reviewCount)' : ''}',
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                        if (showCategory && category != null) ...[
-                          if (showRating && rating != null) const Spacer(),
-                          Text(
-                            category!,
-                            style: Theme.of(context).textTheme.bodySmall,
-                          ),
-                        ],
-                      ],
+                    // Price
+                    Text(
+                      price,
+                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                        color: const Color(0xFF078829),
+                        fontWeight: FontWeight.w700,
+                        fontSize: isSmallScreen ? 14 : null,
+                      ),
                     ),
+
+                    // Rating & Category
+                    if ((showRating && rating != null) ||
+                        (showCategory && category != null)) ...[
+                      SizedBox(height: isSmallScreen ? 4 : kSpacingXs),
+                      Flexible(
+                        child: Row(
+                          children: [
+                            if (showRating && rating != null) ...[
+                              Icon(
+                                Icons.star,
+                                size: isSmallScreen ? 12 : kIconSizeSm,
+                                color: kWarningColor,
+                              ),
+                              SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
+                              Flexible(
+                                child: Text(
+                                  '${rating!.toStringAsFixed(1)}${reviewCount != null ? ' ($reviewCount)' : ''}',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: isSmallScreen ? 10 : null,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                            if (showCategory && category != null) ...[
+                              if (showRating && rating != null) const Spacer(),
+                              Flexible(
+                                child: Text(
+                                  category!,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: isSmallScreen ? 10 : null,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ],
@@ -286,9 +309,6 @@ class ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Force light theme
-    final isDarkMode = false;
-
     return GestureDetector(
       onTap: onTap,
       child: Container(
@@ -313,7 +333,7 @@ class ServiceCard extends StatelessWidget {
                   return Container(
                     width: 90,
                     height: 90,
-                    color: isDarkMode ? kBorderColorDark : kBorderColor,
+                    color: kBorderColor,
                     child: const Center(
                       child: Icon(
                         Icons.image_not_supported_outlined,
@@ -428,23 +448,26 @@ class AccommodationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmallScreen = screenWidth < 600;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
-          borderRadius: BorderRadius.circular(kRadiusMd),
+          borderRadius: BorderRadius.circular(kRadiusSm),
           // Removed boxShadow to remove shadows
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Image
+            // Image - takes more space on small screens
             Expanded(
+              flex: isSmallScreen ? 3 : 2,
               child: ClipRRect(
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusMd),
+                  top: Radius.circular(kRadiusSm),
                 ),
                 child: Image.network(
                   imageUrl,
@@ -466,83 +489,107 @@ class AccommodationCard extends StatelessWidget {
               ),
             ),
 
-            // Content
-            Padding(
-              padding: const EdgeInsets.all(kSpacingMd),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+            // Content - takes less space on small screens
+            Expanded(
+              flex: isSmallScreen ? 2 : 3,
+              child: SingleChildScrollView(
+                physics: const NeverScrollableScrollPhysics(),
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: isSmallScreen ? 6 : kSpacingSm,
+                    vertical: isSmallScreen ? 4 : kSpacingSm,
                   ),
-                  const SizedBox(height: kSpacingXs),
-                  Text(
-                    price,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: const Color(
-                        0xFF078829,
-                      ), // Match active state color
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  if (location != null ||
-                      bedrooms != null ||
-                      bathrooms != null) ...[
-                    const SizedBox(height: kSpacingSm),
-                    Row(
-                      children: [
-                        if (location != null) ...[
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: kIconSizeSm,
-                            color: kTextSecondary,
-                          ),
-                          const SizedBox(width: kSpacingXs),
-                          Flexible(
-                            child: Text(
-                              location!,
-                              style: Theme.of(context).textTheme.bodySmall,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                        if (bedrooms != null || bathrooms != null) ...[
-                          if (location != null)
-                            const SizedBox(width: kSpacingMd),
-                          if (bedrooms != null) ...[
-                            const Icon(
-                              Icons.bed_outlined,
-                              size: kIconSizeSm,
-                              color: kTextSecondary,
-                            ),
-                            const SizedBox(width: kSpacingXs),
-                            Text(
-                              '$bedrooms',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        title,
+                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                          fontSize: isSmallScreen ? 13 : null,
+                          height: 1.2,
+                        ),
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      SizedBox(height: isSmallScreen ? 2 : 4),
+                      Text(
+                        price,
+                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                          color: const Color(0xFF078829),
+                          fontWeight: FontWeight.w700,
+                          fontSize: isSmallScreen ? 13 : null,
+                          height: 1.2,
+                        ),
+                      ),
+                      if (location != null ||
+                          bedrooms != null ||
+                          bathrooms != null) ...[
+                        SizedBox(height: isSmallScreen ? 3 : 4),
+                        Row(
+                          children: [
+                            if (location != null) ...[
+                              Icon(
+                                Icons.location_on_outlined,
+                                size: isSmallScreen ? 11 : kIconSizeSm,
+                                color: kTextSecondary,
+                              ),
+                              SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
+                              Flexible(
+                                child: Text(
+                                  location!,
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: isSmallScreen ? 9 : null,
+                                    height: 1.2,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                            if (bedrooms != null || bathrooms != null) ...[
+                              if (location != null)
+                                SizedBox(width: isSmallScreen ? 3 : kSpacingXs),
+                              if (bedrooms != null) ...[
+                                Icon(
+                                  Icons.bed_outlined,
+                                  size: isSmallScreen ? 11 : kIconSizeSm,
+                                  color: kTextSecondary,
+                                ),
+                                SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
+                                Text(
+                                  '$bedrooms',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: isSmallScreen ? 9 : null,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ],
+                              if (bathrooms != null) ...[
+                                if (bedrooms != null)
+                                  SizedBox(width: isSmallScreen ? 3 : kSpacingXs),
+                                Icon(
+                                  Icons.bathtub_outlined,
+                                  size: isSmallScreen ? 11 : kIconSizeSm,
+                                  color: kTextSecondary,
+                                ),
+                                SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
+                                Text(
+                                  '$bathrooms',
+                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                                    fontSize: isSmallScreen ? 9 : null,
+                                    height: 1.2,
+                                  ),
+                                ),
+                              ],
+                            ],
                           ],
-                          if (bathrooms != null) ...[
-                            if (bedrooms != null)
-                              const SizedBox(width: kSpacingMd),
-                            const Icon(
-                              Icons.bathtub_outlined,
-                              size: kIconSizeSm,
-                              color: kTextSecondary,
-                            ),
-                            const SizedBox(width: kSpacingXs),
-                            Text(
-                              '$bathrooms',
-                              style: Theme.of(context).textTheme.bodySmall,
-                            ),
-                          ],
-                        ],
+                        ),
                       ],
-                    ),
-                  ],
-                ],
+                    ],
+                  ),
+                ),
               ),
             ),
           ],

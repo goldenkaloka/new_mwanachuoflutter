@@ -11,6 +11,7 @@ import 'package:mwanachuo/features/profile/domain/entities/user_profile_entity.d
 import 'package:mwanachuo/features/profile/domain/repositories/profile_repository.dart';
 import 'package:mwanachuo/features/shared/media/domain/usecases/upload_image.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class ProfileRepositoryImpl implements ProfileRepository {
   final ProfileRemoteDataSource remoteDataSource;
@@ -18,6 +19,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
   final NetworkInfo networkInfo;
   final UploadImage uploadImage;
   final SharedPreferences sharedPreferences;
+  final SupabaseClient supabaseClient;
 
   ProfileRepositoryImpl({
     required this.remoteDataSource,
@@ -25,6 +27,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     required this.networkInfo,
     required this.uploadImage,
     required this.sharedPreferences,
+    required this.supabaseClient,
   });
 
   @override
@@ -47,12 +50,31 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
   @override
   Future<Either<Failure, UserProfileEntity>> getMyProfile() async {
+    // Get current user ID to validate cache
+    final currentUser = supabaseClient.auth.currentUser;
+    if (currentUser == null) {
+      // Clear cache if no user is authenticated
+      await localDataSource.clearCache();
+      return Left(ServerFailure('User not authenticated'));
+    }
+    
+    final currentUserId = currentUser.id;
+    
     // Try cache first if not expired
     if (!localDataSource.isProfileCacheExpired()) {
       try {
         debugPrint('💾 Loading my profile from cache');
         final cachedProfile = await localDataSource.getCachedMyProfile();
-        return Right(cachedProfile);
+        
+        // Validate that cached profile belongs to current user
+        if (cachedProfile.id != currentUserId) {
+          debugPrint('⚠️ Cached profile belongs to different user (${cachedProfile.id} vs $currentUserId), clearing cache');
+          await localDataSource.clearCache();
+          // Fall through to fetch from server
+        } else {
+          debugPrint('✅ Cached profile validated for current user');
+          return Right(cachedProfile);
+        }
       } on CacheException {
         debugPrint('❌ Cache miss for profile, fetching from server');
       }
@@ -60,10 +82,15 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     // Check network
     if (!await networkInfo.isConnected) {
-      // Try to return cached data even if expired
+      // Try to return cached data even if expired, but validate user ID
       try {
         final cachedProfile = await localDataSource.getCachedMyProfile();
-        return Right(cachedProfile);
+        if (cachedProfile.id == currentUserId) {
+          return Right(cachedProfile);
+        } else {
+          await localDataSource.clearCache();
+          return Left(NetworkFailure('No internet connection and cached profile belongs to different user'));
+        }
       } on CacheException {
         return Left(NetworkFailure('No internet connection and no cached profile'));
       }
@@ -71,12 +98,18 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
     // Fetch from server
     try {
-      debugPrint('🌐 Fetching my profile from server');
+      debugPrint('🌐 Fetching my profile from server for user: $currentUserId');
       final profile = await remoteDataSource.getMyProfile();
+      
+      // Validate the fetched profile belongs to current user
+      if (profile.id != currentUserId) {
+        debugPrint('❌ Fetched profile ID (${profile.id}) does not match current user ID ($currentUserId)');
+        return Left(ServerFailure('Profile ID mismatch'));
+      }
       
       // Cache the result
       await localDataSource.cacheMyProfile(profile);
-      debugPrint('✅ Profile cached successfully');
+      debugPrint('✅ Profile cached successfully for user: $currentUserId');
       
       return Right(profile);
     } on ServerException catch (e) {

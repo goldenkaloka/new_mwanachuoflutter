@@ -141,8 +141,9 @@ class _ServicesViewState extends State<_ServicesView> {
                   );
                 }
 
-                if (index >= state.services.length)
+                if (index >= state.services.length) {
                   return const SizedBox.shrink();
+                }
 
                 // Use new ServiceCard component
                 final service = state.services[index];

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/services/push_notification_service.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
@@ -34,6 +35,11 @@ class ProfilePage extends StatelessWidget {
               '/login',
               (route) => false,
             );
+          } else if (state is Authenticated) {
+            // User authenticated - always reload profile to ensure we have the correct user's data
+            // This handles both new logins and user switches
+            debugPrint('🔄 User authenticated, reloading profile for user: ${state.user.id}');
+            context.read<ProfileBloc>().add(LoadMyProfileEvent());
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.message)),
@@ -519,7 +525,7 @@ class ProfilePage extends StatelessWidget {
       ));
     }
     
-    // Show "My Listings" and "Dashboard" for sellers only
+    // Show "My Listings", "Dashboard", and "Subscription" for sellers only
     if (profile.role.toString().contains('seller') || profile.role.toString().contains('admin')) {
       menuItems.addAll([
         _MenuItem(
@@ -534,6 +540,13 @@ class ProfilePage extends StatelessWidget {
           title: 'My Listings',
           onTap: () {
             Navigator.pushNamed(context, '/my-listings');
+          },
+        ),
+        _MenuItem(
+          icon: Icons.payment,
+          title: 'Subscription',
+          onTap: () {
+            Navigator.pushNamed(context, '/subscription-plans');
           },
         ),
       ]);
@@ -792,6 +805,8 @@ class ProfilePage extends StatelessWidget {
                       ? null
                       : () {
                           Navigator.pop(context);
+                          // Unregister device token before logout
+                          PushNotificationService().unregisterDeviceToken();
                           // Dispatch sign out event to BLoC
                           context.read<AuthBloc>().add(const SignOutEvent());
                         },

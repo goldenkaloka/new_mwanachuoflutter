@@ -271,7 +271,7 @@ class _PromotionDetailView extends StatelessWidget {
                               const SizedBox(height: 12.0),
 
                               Text(
-                                'Kick off the new academic year with amazing deals! Save big on textbooks, electronics, stationery, and more. Whether you need a new laptop, study materials, or dorm essentials, we\'ve got you covered with unbeatable prices.\n\nDon\'t miss out on this limited-time offer. Shop now and make this semester your best one yet!',
+                                promotion.description,
                                 style: GoogleFonts.inter(
                                   color: secondaryTextColor,
                                   fontSize:
@@ -288,56 +288,53 @@ class _PromotionDetailView extends StatelessWidget {
                               const SizedBox(height: 32.0),
 
                               // Terms & Conditions
-                              Text(
-                                'Terms & Conditions',
-                                style: GoogleFonts.inter(
-                                  color: primaryTextColor,
-                                  fontSize:
-                                      ResponsiveBreakpoints.responsiveValue(
-                                        context,
-                                        compact: 18.0,
-                                        medium: 20.0,
-                                        expanded: 22.0,
-                                      ),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-
-                              const SizedBox(height: 12.0),
-
-                              ...[
-                                'Valid for selected items only',
-                                'Cannot be combined with other offers',
-                                'While stocks last',
-                                'University ID required for verification',
-                              ].map(
-                                (term) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 8.0),
-                                  child: Row(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        '• ',
-                                        style: GoogleFonts.inter(
-                                          color: secondaryTextColor,
-                                          fontSize: 14.0,
+                              if (promotion.terms != null && promotion.terms!.isNotEmpty) ...[
+                                Text(
+                                  'Terms & Conditions',
+                                  style: GoogleFonts.inter(
+                                    color: primaryTextColor,
+                                    fontSize:
+                                        ResponsiveBreakpoints.responsiveValue(
+                                          context,
+                                          compact: 18.0,
+                                          medium: 20.0,
+                                          expanded: 22.0,
                                         ),
-                                      ),
-                                      Expanded(
-                                        child: Text(
-                                          term,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 12.0),
+
+                                ...promotion.terms!.map(
+                                  (term) => Padding(
+                                    padding: const EdgeInsets.only(bottom: 8.0),
+                                    child: Row(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          '• ',
                                           style: GoogleFonts.inter(
                                             color: secondaryTextColor,
                                             fontSize: 14.0,
-                                            height: 1.5,
                                           ),
                                         ),
-                                      ),
-                                    ],
+                                        Expanded(
+                                          child: Text(
+                                            term,
+                                            style: GoogleFonts.inter(
+                                              color: secondaryTextColor,
+                                              fontSize: 14.0,
+                                              height: 1.5,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
+                              ],
 
                               SizedBox(
                                 height: ResponsiveBreakpoints.responsiveValue(

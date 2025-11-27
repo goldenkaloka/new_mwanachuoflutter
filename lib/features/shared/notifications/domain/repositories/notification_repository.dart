@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/features/shared/notifications/domain/entities/notification_entity.dart';
+import 'package:mwanachuo/features/shared/notifications/domain/entities/notification_preferences_entity.dart';
 
 /// Notification repository interface
 abstract class NotificationRepository {
@@ -28,5 +29,27 @@ abstract class NotificationRepository {
 
   /// Subscribe to real-time notifications
   Stream<NotificationEntity> subscribeToNotifications();
+
+  /// Register device token (OneSignal player ID)
+  Future<Either<Failure, void>> registerDeviceToken({
+    required String playerId,
+    required String platform,
+  });
+
+  /// Unregister device token
+  Future<Either<Failure, void>> unregisterDeviceToken(String playerId);
+
+  /// Get notification preferences
+  Future<Either<Failure, NotificationPreferencesEntity>> getNotificationPreferences();
+
+  /// Update notification preferences
+  Future<Either<Failure, void>> updateNotificationPreferences({
+    bool? pushEnabled,
+    bool? messagesEnabled,
+    bool? reviewsEnabled,
+    bool? listingsEnabled,
+    bool? promotionsEnabled,
+    bool? sellerRequestsEnabled,
+  });
 }
 

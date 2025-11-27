@@ -9,6 +9,9 @@ class DashboardStatsEntity extends Equatable {
   final double averageRating;
   final int totalReviews;
   final int unreadMessages;
+  final DateTime? lastMessageTime;
+  final DateTime? lastListingUpdateTime;
+  final DateTime? lastReviewTime;
 
   const DashboardStatsEntity({
     this.totalProducts = 0,
@@ -19,6 +22,9 @@ class DashboardStatsEntity extends Equatable {
     this.averageRating = 0.0,
     this.totalReviews = 0,
     this.unreadMessages = 0,
+    this.lastMessageTime,
+    this.lastListingUpdateTime,
+    this.lastReviewTime,
   });
 
   @override
@@ -31,6 +37,9 @@ class DashboardStatsEntity extends Equatable {
         averageRating,
         totalReviews,
         unreadMessages,
+        lastMessageTime,
+        lastListingUpdateTime,
+        lastReviewTime,
       ];
 }
 

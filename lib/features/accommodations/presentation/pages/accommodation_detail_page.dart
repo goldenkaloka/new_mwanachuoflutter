@@ -257,30 +257,33 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                                   const SizedBox(width: 4.0),
                                   Expanded(
                                     child: Text(
-                                      '2km from Main Gate',
+                                      accommodation.location,
                                       style: GoogleFonts.inter(
                                         color: secondaryTextColor,
                                         fontSize: 14.0,
                                       ),
                                     ),
                                   ),
-                                  Icon(Icons.star, color: Colors.amber[600], size: 18.0),
-                                  const SizedBox(width: 4.0),
-                                  Text(
-                                    '4.7',
-                                    style: GoogleFonts.inter(
-                                      color: primaryTextColor,
-                                      fontSize: 14.0,
-                                      fontWeight: FontWeight.w600,
+                                  if (accommodation.rating != null) ...[
+                                    Icon(Icons.star, color: Colors.amber[600], size: 18.0),
+                                    const SizedBox(width: 4.0),
+                                    Text(
+                                      accommodation.rating!.toStringAsFixed(1),
+                                      style: GoogleFonts.inter(
+                                        color: primaryTextColor,
+                                        fontSize: 14.0,
+                                        fontWeight: FontWeight.w600,
+                                      ),
                                     ),
-                                  ),
-                                  Text(
-                                    ' (18)',
-                                    style: GoogleFonts.inter(
-                                      color: secondaryTextColor,
-                                      fontSize: 13.0,
-                                    ),
-                                  ),
+                                    if (accommodation.reviewCount != null && accommodation.reviewCount! > 0)
+                                      Text(
+                                        ' (${accommodation.reviewCount})',
+                                        style: GoogleFonts.inter(
+                                          color: secondaryTextColor,
+                                          fontSize: 13.0,
+                                        ),
+                                      ),
+                                  ],
                                 ],
                               ),
                               
@@ -290,7 +293,7 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                               Row(
                                 children: [
                                   Text(
-                                    '\$350',
+                                    'TZS ${accommodation.price.toStringAsFixed(0)}',
                                     style: GoogleFonts.inter(
                                       color: kPrimaryColor,
                                       fontSize: 32.0,
@@ -298,7 +301,7 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                                     ),
                                   ),
                                   Text(
-                                    '/month',
+                                    '/${accommodation.priceType.replaceAll('_', ' ')}',
                                     style: GoogleFonts.inter(
                                       color: secondaryTextColor,
                                       fontSize: 16.0,
@@ -312,6 +315,7 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                               // Quick Stats
                               _buildQuickStats(
                                 context,
+                                accommodation,
                                 primaryTextColor,
                                 secondaryTextColor,
                                 surfaceColor,
@@ -337,7 +341,7 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                               const SizedBox(height: 12.0),
                               
                               Text(
-                                'This modern studio apartment is perfect for students looking for comfort and convenience. Located just 2km from the main campus gate, you\'ll have easy access to classes while enjoying a peaceful living environment.\n\nThe fully furnished space includes a comfortable bed, study desk, wardrobe, and a private bathroom. High-speed WiFi is included in the rent. The building features 24/7 security and ample parking space.',
+                                accommodation.description,
                                 style: GoogleFonts.inter(
                                   color: secondaryTextColor,
                                   fontSize: ResponsiveBreakpoints.responsiveValue(
@@ -353,33 +357,37 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                               const SizedBox(height: 24.0),
                               
                               // Amenities
-                              Text(
-                                'Amenities',
-                                style: GoogleFonts.inter(
-                                  color: primaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 18.0,
-                                    medium: 20.0,
-                                    expanded: 22.0,
+                              if (accommodation.amenities.isNotEmpty) ...[
+                                Text(
+                                  'Amenities',
+                                  style: GoogleFonts.inter(
+                                    color: primaryTextColor,
+                                    fontSize: ResponsiveBreakpoints.responsiveValue(
+                                      context,
+                                      compact: 18.0,
+                                      medium: 20.0,
+                                      expanded: 22.0,
+                                    ),
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  fontWeight: FontWeight.bold,
                                 ),
-                              ),
-                              
-                              const SizedBox(height: 16.0),
-                              
-                              _buildAmenitiesGrid(
-                                context,
-                                primaryTextColor,
-                                surfaceColor,
-                              ),
+                                
+                                const SizedBox(height: 16.0),
+                                
+                                _buildAmenitiesGrid(
+                                  context,
+                                  accommodation.amenities,
+                                  primaryTextColor,
+                                  surfaceColor,
+                                ),
+                              ],
                               
                               const SizedBox(height: 24.0),
                               
                               // Landlord Info
                               _buildLandlordInfo(
                                 context,
+                                accommodation,
                                 primaryTextColor,
                                 secondaryTextColor,
                                 surfaceColor,
@@ -528,6 +536,7 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
 
   Widget _buildQuickStats(
     BuildContext context,
+    AccommodationEntity accommodation,
     Color primaryTextColor,
     Color secondaryTextColor,
     Color surfaceColor,
@@ -546,9 +555,32 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _buildStatItem(Icons.bed, '1 Bed', primaryTextColor, secondaryTextColor),
-          _buildStatItem(Icons.bathtub, '1 Bath', primaryTextColor, secondaryTextColor),
-          _buildStatItem(Icons.square_foot, '400 sqft', primaryTextColor, secondaryTextColor),
+          _buildStatItem(
+            Icons.bed,
+            '${accommodation.bedrooms} ${accommodation.bedrooms == 1 ? 'Bed' : 'Beds'}',
+            primaryTextColor,
+            secondaryTextColor,
+          ),
+          _buildStatItem(
+            Icons.bathtub,
+            '${accommodation.bathrooms} ${accommodation.bathrooms == 1 ? 'Bath' : 'Baths'}',
+            primaryTextColor,
+            secondaryTextColor,
+          ),
+          if (accommodation.metadata != null && accommodation.metadata!['area'] != null)
+            _buildStatItem(
+              Icons.square_foot,
+              '${accommodation.metadata!['area']} sqft',
+              primaryTextColor,
+              secondaryTextColor,
+            )
+          else
+            _buildStatItem(
+              Icons.home,
+              accommodation.roomType,
+              primaryTextColor,
+              secondaryTextColor,
+            ),
         ],
       ),
     );
@@ -573,17 +605,35 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
 
   Widget _buildAmenitiesGrid(
     BuildContext context,
+    List<String> amenities,
     Color primaryTextColor,
     Color surfaceColor,
   ) {
-    final amenities = [
-      {'icon': Icons.wifi, 'name': 'WiFi'},
-      {'icon': Icons.local_parking, 'name': 'Parking'},
-      {'icon': Icons.security, 'name': 'Security'},
-      {'icon': Icons.kitchen, 'name': 'Kitchen'},
-      {'icon': Icons.ac_unit, 'name': 'AC'},
-      {'icon': Icons.water_drop, 'name': 'Water'},
-    ];
+    // Map amenity names to icons
+    IconData getAmenityIcon(String amenity) {
+      final lowerAmenity = amenity.toLowerCase();
+      if (lowerAmenity.contains('wifi') || lowerAmenity.contains('internet')) {
+        return Icons.wifi;
+      } else if (lowerAmenity.contains('parking')) {
+        return Icons.local_parking;
+      } else if (lowerAmenity.contains('security')) {
+        return Icons.security;
+      } else if (lowerAmenity.contains('kitchen')) {
+        return Icons.kitchen;
+      } else if (lowerAmenity.contains('ac') || lowerAmenity.contains('air')) {
+        return Icons.ac_unit;
+      } else if (lowerAmenity.contains('water')) {
+        return Icons.water_drop;
+      } else if (lowerAmenity.contains('furnished')) {
+        return Icons.chair;
+      } else if (lowerAmenity.contains('gym') || lowerAmenity.contains('fitness')) {
+        return Icons.fitness_center;
+      } else if (lowerAmenity.contains('laundry')) {
+        return Icons.local_laundry_service;
+      } else {
+        return Icons.check_circle;
+      }
+    }
 
     return GridView.builder(
       shrinkWrap: true,
@@ -617,18 +667,20 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Icon(
-                amenity['icon'] as IconData,
+                getAmenityIcon(amenity),
                 color: kPrimaryColor,
                 size: 28.0,
               ),
               const SizedBox(height: 6.0),
               Text(
-                amenity['name'] as String,
+                amenity,
                 style: GoogleFonts.inter(
                   color: primaryTextColor,
                   fontSize: 12.0,
                 ),
                 textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -639,6 +691,7 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
 
   Widget _buildLandlordInfo(
     BuildContext context,
+    AccommodationEntity accommodation,
     Color primaryTextColor,
     Color secondaryTextColor,
     Color surfaceColor,
@@ -658,7 +711,21 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
         children: [
           CircleAvatar(
             radius: 30.0,
-            backgroundImage: NetworkImage('https://i.pravatar.cc/150?img=7'),
+            backgroundColor: kPrimaryColor.withValues(alpha: 0.2),
+            backgroundImage: accommodation.ownerAvatar != null && accommodation.ownerAvatar!.isNotEmpty
+                ? NetworkImage(accommodation.ownerAvatar!)
+                : null,
+            child: accommodation.ownerAvatar == null || accommodation.ownerAvatar!.isEmpty
+                ? Text(
+                    accommodation.ownerName.isNotEmpty
+                        ? accommodation.ownerName[0].toUpperCase()
+                        : 'O',
+                    style: GoogleFonts.inter(
+                      fontSize: 20.0,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  )
+                : null,
           ),
           const SizedBox(width: 16.0),
           Expanded(
@@ -674,7 +741,7 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                 ),
                 const SizedBox(height: 2.0),
                 Text(
-                  'Sarah Johnson',
+                  accommodation.ownerName,
                   style: GoogleFonts.inter(
                     color: primaryTextColor,
                     fontSize: 16.0,
@@ -698,11 +765,36 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/messages');
+          BlocListener<MessageBloc, MessageState>(
+            listener: (context, state) {
+              if (state is ConversationLoaded) {
+                Navigator.pushNamed(
+                  context,
+                  '/chat',
+                  arguments: state.conversation.id,
+                );
+              } else if (state is MessageError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      state.message,
+                      style: GoogleFonts.inter(),
+                    ),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
             },
-            icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
+            child: IconButton(
+              onPressed: () {
+                context.read<MessageBloc>().add(
+                      GetOrCreateConversationEvent(
+                        otherUserId: accommodation.ownerId,
+                      ),
+                    );
+              },
+              icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
+            ),
           ),
         ],
       ),

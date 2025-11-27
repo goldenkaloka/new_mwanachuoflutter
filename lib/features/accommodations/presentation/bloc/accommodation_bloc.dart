@@ -3,6 +3,7 @@ import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/create_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/delete_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/get_accommodations.dart';
+import 'package:mwanachuo/features/accommodations/domain/usecases/get_accommodation_by_id.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/get_my_accommodations.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/increment_view_count.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/update_accommodation.dart';
@@ -11,6 +12,7 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 
 class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
   final GetAccommodations getAccommodations;
+  final GetAccommodationById getAccommodationById;
   final GetMyAccommodations getMyAccommodations;
   final CreateAccommodation createAccommodation;
   final UpdateAccommodation updateAccommodation;
@@ -19,6 +21,7 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
 
   AccommodationBloc({
     required this.getAccommodations,
+    required this.getAccommodationById,
     required this.getMyAccommodations,
     required this.createAccommodation,
     required this.updateAccommodation,
@@ -26,6 +29,7 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
     required this.incrementViewCount,
   }) : super(AccommodationInitial()) {
     on<LoadAccommodationsEvent>(_onLoadAccommodations);
+    on<LoadAccommodationByIdEvent>(_onLoadAccommodationById);
     on<LoadMyAccommodationsEvent>(_onLoadMyAccommodations);
     on<CreateAccommodationEvent>(_onCreateAccommodation);
     on<UpdateAccommodationEvent>(_onUpdateAccommodation);
@@ -71,6 +75,30 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
           accommodations: accommodations,
           hasMore: accommodations.length == (event.limit ?? 20),
         ));
+      },
+    );
+  }
+
+  Future<void> _onLoadAccommodationById(
+    LoadAccommodationByIdEvent event,
+    Emitter<AccommodationState> emit,
+  ) async {
+    emit(AccommodationLoading());
+
+    final result = await getAccommodationById(
+      GetAccommodationByIdParams(accommodationId: event.accommodationId),
+    );
+
+    if (isClosed) return;
+
+    result.fold(
+      (failure) {
+        LoggerService.error('Accommodation load failed', failure.message);
+        emit(AccommodationError(message: failure.message));
+      },
+      (accommodation) {
+        LoggerService.info('Accommodation loaded: ${accommodation.id}');
+        emit(AccommodationLoaded(accommodation: accommodation));
       },
     );
   }

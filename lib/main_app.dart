@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/config/onesignal_config.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/theme/app_theme.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/auth_pages.dart';
@@ -31,11 +33,207 @@ import 'package:mwanachuo/features/services/presentation/pages/service_detail_pa
 import 'package:mwanachuo/features/services/presentation/pages/create_service_screen.dart';
 import 'package:mwanachuo/features/promotions/presentation/pages/create_promotion_screen.dart';
 import 'package:mwanachuo/features/promotions/presentation/pages/promotion_detail_page.dart';
+import 'package:mwanachuo/features/shared/notifications/presentation/pages/notification_settings_screen.dart';
+import 'package:mwanachuo/features/subscriptions/presentation/pages/subscription_plans_page.dart';
+import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
+import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
+import 'package:google_fonts/google_fonts.dart';
 
-class MwanachuoshopApp extends StatelessWidget {
+class MwanachuoshopApp extends StatefulWidget {
   const MwanachuoshopApp({super.key});
+
+  @override
+  State<MwanachuoshopApp> createState() => _MwanachuoshopAppState();
+}
+
+class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
+  final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
+  @override
+  void initState() {
+    super.initState();
+    // Check for pending notification data on app start
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _handlePendingNotification();
+    });
+  }
+
+  void _handlePendingNotification() {
+    final notificationData = OneSignalConfig.getPendingNotificationData();
+    if (notificationData != null) {
+      _navigateFromNotification(notificationData);
+    }
+  }
+
+  void _navigateFromNotification(Map<String, dynamic> data) {
+    final type = data['type'] as String?;
+    final actionUrl = data['actionUrl'] as String?;
+    final notificationData = data['data'] as Map<String, dynamic>?;
+
+    if (type == null) return;
+
+    switch (type) {
+      case 'message':
+        final conversationId = notificationData?['conversationId'] as String?;
+        if (conversationId != null && navigatorKey.currentContext != null) {
+          _checkSubscriptionAndNavigateToChat(
+            navigatorKey.currentContext!,
+            conversationId,
+          );
+        }
+        break;
+      case 'review':
+        final itemId = notificationData?['itemId'] as String?;
+        final itemType = notificationData?['itemType'] as String?;
+        if (itemId != null && itemType != null && navigatorKey.currentContext != null) {
+          if (itemType == 'product') {
+            Navigator.of(navigatorKey.currentContext!).pushNamed(
+              '/product-details',
+              arguments: {'productId': itemId},
+            );
+          } else if (itemType == 'service') {
+            Navigator.of(navigatorKey.currentContext!).pushNamed(
+              '/service-details',
+              arguments: {'serviceId': itemId},
+            );
+          } else if (itemType == 'accommodation') {
+            Navigator.of(navigatorKey.currentContext!).pushNamed(
+              '/accommodation-details',
+              arguments: {'accommodationId': itemId},
+            );
+          }
+        }
+        break;
+      case 'promotion':
+        final promotionId = notificationData?['promotionId'] as String?;
+        if (promotionId != null && navigatorKey.currentContext != null) {
+          Navigator.of(navigatorKey.currentContext!).pushNamed(
+            '/promotion-details',
+            arguments: {'promotionId': promotionId},
+          );
+        }
+        break;
+      case 'sellerRequest':
+      case 'productApproval':
+        if (navigatorKey.currentContext != null) {
+          Navigator.of(navigatorKey.currentContext!).pushNamed('/dashboard');
+        }
+        break;
+      default:
+        // For other types, try to use actionUrl if available
+        if (actionUrl != null && navigatorKey.currentContext != null) {
+          // Parse actionUrl and navigate accordingly
+          // This is a simple implementation - you may want to use a proper router
+          debugPrint('Notification actionUrl: $actionUrl');
+        }
+        break;
+    }
+  }
+
+  Future<void> _checkSubscriptionAndNavigateToChat(
+    BuildContext context,
+    String conversationId,
+  ) async {
+    final currentUser = SupabaseConfig.client.auth.currentUser;
+    if (currentUser == null) {
+      // Not logged in, just navigate
+      Navigator.of(context).pushNamed(
+        '/chat',
+        arguments: conversationId,
+      );
+      return;
+    }
+
+    try {
+      // Check if user is seller/admin
+      final userData = await SupabaseConfig.client
+          .from('users')
+          .select('role')
+          .eq('id', currentUser.id)
+          .single();
+
+      final role = userData['role'] as String?;
+      final isSeller = role == 'seller' || role == 'admin';
+
+      if (!isSeller) {
+        // Buyers can always access messages
+        Navigator.of(context).pushNamed(
+          '/chat',
+          arguments: conversationId,
+        );
+        return;
+      }
+
+      // For sellers, check subscription
+      final canAccess = await SubscriptionMiddleware.canAccessMessages(
+        sellerId: currentUser.id,
+      );
+
+      if (!canAccess) {
+        // Show dialog explaining subscription is required
+        if (!context.mounted) return;
+        showDialog(
+          context: context,
+          builder: (dialogContext) => AlertDialog(
+            title: Text(
+              'Subscription Required',
+              style: GoogleFonts.plusJakartaSans(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            content: Text(
+              'Your subscription has expired. Please renew to view messages.\n\n'
+              'You will continue to receive notifications for new messages.',
+              style: GoogleFonts.plusJakartaSans(),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(dialogContext).pop(),
+                child: Text(
+                  'Cancel',
+                  style: GoogleFonts.plusJakartaSans(),
+                ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(dialogContext).pop();
+                  Navigator.pushNamed(context, '/subscription-plans');
+                },
+                style: TextButton.styleFrom(
+                  foregroundColor: kPrimaryColor,
+                ),
+                child: Text(
+                  'Renew Subscription',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+        return;
+      }
+
+      // Subscription active - navigate to chat
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamed(
+        '/chat',
+        arguments: conversationId,
+      );
+    } catch (e) {
+      // On error, allow navigation (fail open)
+      debugPrint('Error checking subscription for notification: $e');
+      if (!context.mounted) return;
+      Navigator.of(context).pushNamed(
+        '/chat',
+        arguments: conversationId,
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -45,6 +243,7 @@ class MwanachuoshopApp extends StatelessWidget {
         BlocProvider(create: (context) => sl<MessageBloc>()),
       ],
       child: MaterialApp(
+        navigatorKey: navigatorKey,
         title: 'Mwanachuoshop',
         debugShowCheckedModeBanner: false,
         theme: lightTheme(),
@@ -135,6 +334,12 @@ class MwanachuoshopApp extends StatelessWidget {
           '/all-products': (context) => BlocProvider(
             create: (context) => sl<ProductBloc>(),
             child: const AllProductsPage(),
+          ),
+          '/notification-settings': (context) =>
+              const NotificationSettingsScreen(),
+          '/subscription-plans': (context) => BlocProvider(
+            create: (context) => sl<SubscriptionCubit>(),
+            child: const SubscriptionPlansPage(),
           ),
         },
       ),

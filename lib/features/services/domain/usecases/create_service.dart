@@ -5,11 +5,14 @@ import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/core/usecases/usecase.dart';
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/services/domain/repositories/service_repository.dart';
+import 'package:mwanachuo/features/subscriptions/domain/usecases/check_subscription_status.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
 
 class CreateService implements UseCase<ServiceEntity, CreateServiceParams> {
   final ServiceRepository repository;
+  final CheckSubscriptionStatus checkSubscriptionStatus;
 
-  CreateService(this.repository);
+  CreateService(this.repository, this.checkSubscriptionStatus);
 
   @override
   Future<Either<Failure, ServiceEntity>> call(
@@ -30,6 +33,26 @@ class CreateService implements UseCase<ServiceEntity, CreateServiceParams> {
     }
     if (params.contactPhone.trim().isEmpty) {
       return Left(ValidationFailure('Contact phone is required'));
+    }
+
+    // Check subscription status before creating service
+    final currentUser = SupabaseConfig.client.auth.currentUser;
+    if (currentUser != null) {
+      final subscriptionCheck = await checkSubscriptionStatus(
+        CheckSubscriptionStatusParams(
+          sellerId: currentUser.id,
+          listingType: 'service',
+        ),
+      );
+      final canCreate = subscriptionCheck.fold(
+        (failure) => false,
+        (result) => result,
+      );
+      if (!canCreate) {
+        return Left(ServerFailure(
+          'Subscription required. Please subscribe to create listings.',
+        ));
+      }
     }
 
     return await repository.createService(

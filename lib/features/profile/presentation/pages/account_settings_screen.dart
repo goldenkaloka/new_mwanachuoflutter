@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 
 class AccountSettingsScreen extends StatefulWidget {
   const AccountSettingsScreen({super.key});
@@ -11,7 +14,6 @@ class AccountSettingsScreen extends StatefulWidget {
 }
 
 class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
-  bool _notificationsEnabled = true;
 
   @override
   Widget build(BuildContext context) {
@@ -51,35 +53,54 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                           ),
                           
                           // Account Section
-                          _buildSection(
-                            context,
-                            'Account',
-                            primaryTextColor,
-                            secondaryTextColor,
-                            surfaceColor,
-                            borderColor,
-                            isDarkMode,
-                            screenSize,
-                            [
-                              _SettingsItem(
-                                icon: Icons.person,
-                                title: 'Edit Profile',
-                                onTap: () {
-                                  Navigator.pushNamed(context, '/edit-profile');
-                                },
-                              ),
-                              _SettingsItem(
-                                icon: Icons.notifications,
-                                title: 'Notification Settings',
-                                hasToggle: true,
-                                toggleValue: _notificationsEnabled,
-                                onToggle: (value) {
-                                  setState(() {
-                                    _notificationsEnabled = value;
-                                  });
-                                },
-                              ),
-                            ],
+                          BlocBuilder<AuthBloc, AuthState>(
+                            builder: (context, authState) {
+                              final isSeller = authState is Authenticated &&
+                                  (authState.user.role.value == 'seller' ||
+                                      authState.user.role.value == 'admin');
+                              
+                              final accountItems = [
+                                _SettingsItem(
+                                  icon: Icons.person,
+                                  title: 'Edit Profile',
+                                  onTap: () {
+                                    Navigator.pushNamed(context, '/edit-profile');
+                                  },
+                                ),
+                                _SettingsItem(
+                                  icon: Icons.notifications,
+                                  title: 'Notification Settings',
+                                  onTap: () {
+                                    Navigator.pushNamed(context, '/notification-settings');
+                                  },
+                                ),
+                              ];
+                              
+                              // Add subscription menu item for sellers
+                              if (isSeller) {
+                                accountItems.add(
+                                  _SettingsItem(
+                                    icon: Icons.payment,
+                                    title: 'Subscription',
+                                    onTap: () {
+                                      Navigator.pushNamed(context, '/subscription-plans');
+                                    },
+                                  ),
+                                );
+                              }
+                              
+                              return _buildSection(
+                                context,
+                                'Account',
+                                primaryTextColor,
+                                secondaryTextColor,
+                                surfaceColor,
+                                borderColor,
+                                isDarkMode,
+                                screenSize,
+                                accountItems,
+                              );
+                            },
                           ),
                           
                           SizedBox(
@@ -427,24 +448,17 @@ class _AccountSettingsScreenState extends State<AccountSettingsScreen> {
                 expanded: 20.0,
               ),
             ),
-            // Toggle or Chevron
-            if (item.hasToggle)
-              Switch(
-                value: item.toggleValue ?? false,
-                onChanged: item.onToggle,
-                activeThumbColor: kPrimaryColor,
-              )
-            else
-              Icon(
-                Icons.chevron_right,
-                color: secondaryColor,
-                size: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 24.0,
-                  medium: 26.0,
-                  expanded: 28.0,
-                ),
-              ),
+             // Chevron
+             Icon(
+               Icons.chevron_right,
+               color: secondaryColor,
+               size: ResponsiveBreakpoints.responsiveValue(
+                 context,
+                 compact: 24.0,
+                 medium: 26.0,
+                 expanded: 28.0,
+               ),
+             ),
           ],
         ),
       ),
@@ -456,17 +470,11 @@ class _SettingsItem {
   final IconData icon;
   final String title;
   final VoidCallback? onTap;
-  final bool hasToggle;
-  final bool? toggleValue;
-  final ValueChanged<bool>? onToggle;
 
   _SettingsItem({
     required this.icon,
     required this.title,
     this.onTap,
-    this.hasToggle = false,
-    this.toggleValue,
-    this.onToggle,
   });
 }
 

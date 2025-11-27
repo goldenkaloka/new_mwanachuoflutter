@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart';
+import 'package:mwanachuo/core/constants/database_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
 import 'package:mwanachuo/features/shared/reviews/data/models/review_model.dart';
 import 'package:mwanachuo/features/shared/reviews/data/models/review_stats_model.dart';
@@ -161,11 +163,89 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDataSource {
           .select('*, users!inner(full_name, avatar_url)')
           .single();
 
-      return ReviewModel.fromJson({
+      final reviewModel = ReviewModel.fromJson({
         ...response,
         'user_name': response['users']['full_name'],
         'user_avatar': response['users']['avatar_url'],
       });
+
+      // Send push notification to listing owner
+      try {
+        // Get listing owner ID based on item type
+        String? ownerId;
+        String itemTableName;
+        String ownerIdColumn;
+
+        switch (itemType) {
+          case ReviewType.product:
+            itemTableName = DatabaseConstants.productsTable;
+            ownerIdColumn = 'seller_id';
+            break;
+          case ReviewType.service:
+            itemTableName = DatabaseConstants.servicesTable;
+            ownerIdColumn = 'provider_id';
+            break;
+          case ReviewType.accommodation:
+            itemTableName = DatabaseConstants.accommodationsTable;
+            ownerIdColumn = 'owner_id';
+            break;
+        }
+
+        final itemResponse = await supabaseClient
+            .from(itemTableName)
+            .select('$ownerIdColumn, title')
+            .eq('id', itemId)
+            .single();
+
+        ownerId = itemResponse[ownerIdColumn] as String?;
+        final itemTitle = itemResponse['title'] as String?;
+
+        if (ownerId != null && ownerId != currentUser.id) {
+          final reviewerName = response['users']['full_name'] as String;
+          final ratingStars = '⭐' * rating.toInt();
+          final reviewMessage = comment != null && comment.isNotEmpty
+              ? '$reviewerName left a $ratingStars review: "${comment.length > 50 ? '${comment.substring(0, 50)}...' : comment}"'
+              : '$reviewerName left a $ratingStars review';
+
+          // Determine action URL based on item type
+          String actionUrl;
+          switch (itemType) {
+            case ReviewType.product:
+              actionUrl = '/product-details?productId=$itemId';
+              break;
+            case ReviewType.service:
+              actionUrl = '/service-details?serviceId=$itemId';
+              break;
+            case ReviewType.accommodation:
+              actionUrl = '/accommodation-details?accommodationId=$itemId';
+              break;
+          }
+
+          // Call push notification function
+          await supabaseClient.rpc(
+            'send_push_notification',
+            params: {
+              'p_user_id': ownerId,
+              'p_title': 'New Review on ${itemTitle ?? 'Your Listing'}',
+              'p_message': reviewMessage,
+              'p_type': 'review',
+              'p_action_url': actionUrl,
+              'p_metadata': {
+                'itemId': itemId,
+                'itemType': _reviewTypeToString(itemType),
+                'reviewerId': currentUser.id,
+                'reviewerName': reviewerName,
+                'rating': rating,
+              },
+            },
+          );
+        }
+      } catch (e) {
+        debugPrint('⚠️ Failed to send push notification for review: $e');
+        // Don't throw - review was submitted successfully, just push notification failed
+      }
+
+      return reviewModel;
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {

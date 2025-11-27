@@ -236,7 +236,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
-                    '\$${product.price.toStringAsFixed(2)} • ${product.category}',
+                    'TZS ${product.price.toStringAsFixed(2)} • ${product.category}',
                     style: TextStyle(color: secondaryTextColor),
                   ),
                   trailing: Column(
@@ -409,7 +409,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                     overflow: TextOverflow.ellipsis,
                   ),
                   subtitle: Text(
-                    '\$${service.price.toStringAsFixed(2)}/${service.priceType}',
+                    'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
                     style: TextStyle(color: secondaryTextColor),
                   ),
                   trailing: Column(

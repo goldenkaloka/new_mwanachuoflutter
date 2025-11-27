@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
+import 'package:mwanachuo/core/utils/time_formatter.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
@@ -153,73 +154,6 @@ class _DashboardViewState extends State<_DashboardView> {
                     children: [
                       const SizedBox(height: 24),
 
-                      // Sales Analytics Header
-                      Text(
-                        'Sales Analytics',
-                        style: GoogleFonts.inter(
-                          fontSize: 32,
-                          fontWeight: FontWeight.bold,
-                          color: primaryTextColor,
-                          letterSpacing: -0.015,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-
-                      // Quick Stats Cards
-                      ResponsiveBreakpoints.isCompact(context)
-                          ? Column(
-                              children: [
-                                _buildQuickStatCard(
-                                  'Total Earnings',
-                                  '\$${(stats.totalViews * 0.5).toStringAsFixed(2)}',
-                                  '+15.2%',
-                                  cardBgColor,
-                                  borderColor,
-                                  primaryTextColor,
-                                  secondaryTextColor,
-                                ),
-                                const SizedBox(height: 16),
-                                _buildQuickStatCard(
-                                  'Items Sold',
-                                  '${stats.totalProducts + stats.totalServices}',
-                                  '+8.1%',
-                                  cardBgColor,
-                                  borderColor,
-                                  primaryTextColor,
-                                  secondaryTextColor,
-                                ),
-                              ],
-                            )
-                          : Row(
-                              children: [
-                                Expanded(
-                                  child: _buildQuickStatCard(
-                                    'Total Earnings',
-                                    '\$${(stats.totalViews * 0.5).toStringAsFixed(2)}',
-                                    '+15.2%',
-                                    cardBgColor,
-                                    borderColor,
-                                    primaryTextColor,
-                                    secondaryTextColor,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: _buildQuickStatCard(
-                                    'Items Sold',
-                                    '${stats.totalProducts + stats.totalServices}',
-                                    '+8.1%',
-                                    cardBgColor,
-                                    borderColor,
-                                    primaryTextColor,
-                                    secondaryTextColor,
-                                  ),
-                                ),
-                              ],
-                            ),
-
-                      const SizedBox(height: 24),
-
                       // Recent Activity
                       Text(
                         'Recent Activity',
@@ -289,63 +223,6 @@ class _DashboardViewState extends State<_DashboardView> {
     );
   }
 
-  Widget _buildQuickStatCard(
-    String label,
-    String value,
-    String change,
-    Color cardBgColor,
-    Color borderColor,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: cardBgColor,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: secondaryTextColor,
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            value,
-            style: GoogleFonts.inter(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: primaryTextColor,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            change,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF078829),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildRecentActivity(
     BuildContext context,
     dynamic stats,
@@ -355,19 +232,32 @@ class _DashboardViewState extends State<_DashboardView> {
     Color secondaryTextColor,
     bool isDarkMode,
   ) {
+    // Format times using TimeFormatter
+    final lastMessageTimeStr = stats.lastMessageTime != null
+        ? TimeFormatter.formatConversationTime(stats.lastMessageTime)
+        : 'No messages';
+    
+    final lastListingTimeStr = stats.lastListingUpdateTime != null
+        ? TimeFormatter.formatConversationTime(stats.lastListingUpdateTime)
+        : 'No listings';
+    
+    final lastReviewTimeStr = stats.lastReviewTime != null
+        ? TimeFormatter.formatConversationTime(stats.lastReviewTime)
+        : 'No reviews';
+
     final activities = [
       {
         'icon': Icons.mail,
         'title': 'New messages',
         'subtitle': 'You have ${stats.unreadMessages} unread messages',
-        'time': '5m ago',
+        'time': lastMessageTimeStr,
         'route': '/messages',
       },
       {
         'icon': Icons.inventory_2,
         'title': 'Active Listings',
         'subtitle': '${stats.activeListings} items currently listed',
-        'time': '1h ago',
+        'time': lastListingTimeStr,
         'route': '/my-listings',
       },
       {
@@ -376,7 +266,7 @@ class _DashboardViewState extends State<_DashboardView> {
         'subtitle': stats.averageRating > 0
             ? '${stats.averageRating.toStringAsFixed(1)} stars'
             : 'No reviews yet',
-        'time': '3h ago',
+        'time': lastReviewTimeStr,
       },
     ];
 
@@ -504,20 +394,20 @@ class _DashboardViewState extends State<_DashboardView> {
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
               _buildSummaryItem(
+                '${stats.totalProducts}',
+                'Products',
+                primaryTextColor,
+                secondaryTextColor,
+              ),
+              _buildSummaryItem(
+                '${stats.totalServices}',
+                'Services',
+                primaryTextColor,
+                secondaryTextColor,
+              ),
+              _buildSummaryItem(
                 '${stats.activeListings}',
                 'Active',
-                primaryTextColor,
-                secondaryTextColor,
-              ),
-              _buildSummaryItem(
-                '${stats.totalProducts + stats.totalServices - stats.activeListings}',
-                'Sold Out',
-                primaryTextColor,
-                secondaryTextColor,
-              ),
-              _buildSummaryItem(
-                '0',
-                'Drafts',
                 primaryTextColor,
                 secondaryTextColor,
               ),

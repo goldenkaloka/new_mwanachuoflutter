@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/services/push_notification_service.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/create_account_screen.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
@@ -44,6 +45,8 @@ class _LoginPageState extends State<LoginPage> {
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
         if (state is Authenticated) {
+          // Register device token for push notifications
+          PushNotificationService().registerDeviceTokenForUser(state.user.id);
           Navigator.pushReplacementNamed(context, '/home');
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(

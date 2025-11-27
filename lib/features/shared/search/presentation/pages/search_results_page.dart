@@ -16,27 +16,25 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 
 class SearchResultsPage extends StatelessWidget {
   final String? searchQuery;
-  
-  const SearchResultsPage({
-    super.key,
-    this.searchQuery,
-  });
+
+  const SearchResultsPage({super.key, this.searchQuery});
 
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => sl<ProductBloc>()
-            ..add(const LoadProductsEvent(limit: 50)),
+          create: (context) =>
+              sl<ProductBloc>()..add(const LoadProductsEvent(limit: 50)),
         ),
         BlocProvider(
-          create: (context) => sl<ServiceBloc>()
-            ..add(const LoadServicesEvent(limit: 50)),
+          create: (context) =>
+              sl<ServiceBloc>()..add(const LoadServicesEvent(limit: 50)),
         ),
         BlocProvider(
-          create: (context) => sl<AccommodationBloc>()
-            ..add(const LoadAccommodationsEvent(limit: 50)),
+          create: (context) =>
+              sl<AccommodationBloc>()
+                ..add(const LoadAccommodationsEvent(limit: 50)),
         ),
       ],
       child: _SearchResultsView(searchQuery: searchQuery),
@@ -65,13 +63,15 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
 
   void _performSearch(String query) {
     if (query.isEmpty) return;
-    
+
     // Load all data - client-side filtering happens in BlocBuilder
     context.read<ProductBloc>().add(const LoadProductsEvent(limit: 100));
     context.read<ServiceBloc>().add(const LoadServicesEvent(limit: 100));
-    context.read<AccommodationBloc>().add(const LoadAccommodationsEvent(limit: 100));
+    context.read<AccommodationBloc>().add(
+      const LoadAccommodationsEvent(limit: 100),
+    );
   }
-  
+
   bool _matchesQuery(String text, String query) {
     return text.toLowerCase().contains(query.toLowerCase());
   }
@@ -86,23 +86,35 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: Column(
         children: [
           _buildSearchHeader(context, isDarkMode, primaryTextColor),
           _buildCategoryTabs(isDarkMode, primaryTextColor),
           Expanded(
-            child: _buildSearchResults(isDarkMode, primaryTextColor, secondaryTextColor),
+            child: _buildSearchResults(
+              isDarkMode,
+              primaryTextColor,
+              secondaryTextColor,
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildSearchHeader(BuildContext context, bool isDarkMode, Color primaryTextColor) {
+  Widget _buildSearchHeader(
+    BuildContext context,
+    bool isDarkMode,
+    Color primaryTextColor,
+  ) {
     return Container(
       padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
       color: isDarkMode ? kBackgroundColorDark : Colors.white,
@@ -124,7 +136,10 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 suffixIcon: IconButton(
                   icon: const Icon(Icons.search, color: kPrimaryColor),
                   onPressed: () => _performSearch(_searchController.text),
@@ -140,7 +155,7 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
 
   Widget _buildCategoryTabs(bool isDarkMode, Color primaryTextColor) {
     final categories = ['All', 'Products', 'Services', 'Accommodations'];
-    
+
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8),
       color: isDarkMode ? kBackgroundColorDark : Colors.white,
@@ -161,7 +176,9 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                   });
                 },
                 selectedColor: kPrimaryColor,
-                backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                backgroundColor: isDarkMode
+                    ? Colors.grey[800]
+                    : Colors.grey[200],
                 labelStyle: TextStyle(
                   color: isSelected ? Colors.white : primaryTextColor,
                   fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
@@ -174,31 +191,63 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     );
   }
 
-  Widget _buildSearchResults(bool isDarkMode, Color primaryTextColor, Color secondaryTextColor) {
+  Widget _buildSearchResults(
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+  ) {
     if (_selectedCategory == 'All') {
       return SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProductsSection(isDarkMode, primaryTextColor, secondaryTextColor),
+            _buildProductsSection(
+              isDarkMode,
+              primaryTextColor,
+              secondaryTextColor,
+            ),
             const SizedBox(height: 24),
-            _buildServicesSection(isDarkMode, primaryTextColor, secondaryTextColor),
+            _buildServicesSection(
+              isDarkMode,
+              primaryTextColor,
+              secondaryTextColor,
+            ),
             const SizedBox(height: 24),
-            _buildAccommodationsSection(isDarkMode, primaryTextColor, secondaryTextColor),
+            _buildAccommodationsSection(
+              isDarkMode,
+              primaryTextColor,
+              secondaryTextColor,
+            ),
           ],
         ),
       );
     } else if (_selectedCategory == 'Products') {
-      return _buildProductsSection(isDarkMode, primaryTextColor, secondaryTextColor);
+      return _buildProductsSection(
+        isDarkMode,
+        primaryTextColor,
+        secondaryTextColor,
+      );
     } else if (_selectedCategory == 'Services') {
-      return _buildServicesSection(isDarkMode, primaryTextColor, secondaryTextColor);
+      return _buildServicesSection(
+        isDarkMode,
+        primaryTextColor,
+        secondaryTextColor,
+      );
     } else {
-      return _buildAccommodationsSection(isDarkMode, primaryTextColor, secondaryTextColor);
+      return _buildAccommodationsSection(
+        isDarkMode,
+        primaryTextColor,
+        secondaryTextColor,
+      );
     }
   }
 
-  Widget _buildProductsSection(bool isDarkMode, Color primaryTextColor, Color secondaryTextColor) {
+  Widget _buildProductsSection(
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+  ) {
     return BlocBuilder<ProductBloc, ProductState>(
       builder: (context, state) {
         if (state is ProductsLoading) {
@@ -227,17 +276,23 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
           final query = _searchController.text.trim();
           final filteredProducts = query.isEmpty
               ? state.products
-              : state.products.where((p) =>
-                  _matchesQuery(p.title, query) ||
-                  _matchesQuery(p.description, query) ||
-                  _matchesQuery(p.category, query)).toList();
-          
+              : state.products
+                    .where(
+                      (p) =>
+                          _matchesQuery(p.title, query) ||
+                          _matchesQuery(p.description, query) ||
+                          _matchesQuery(p.category, query),
+                    )
+                    .toList();
+
           if (filteredProducts.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Text(
-                  query.isEmpty ? 'No products available' : 'No products found for "$query"',
+                  query.isEmpty
+                      ? 'No products available'
+                      : 'No products found for "$query"',
                   style: TextStyle(color: secondaryTextColor),
                   textAlign: TextAlign.center,
                 ),
@@ -245,10 +300,39 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
             );
           }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_selectedCategory == 'All')
+          final isAll = _selectedCategory == 'All';
+
+          Widget list = ListView.separated(
+            padding: isAll ? EdgeInsets.zero : const EdgeInsets.all(16),
+            shrinkWrap: isAll,
+            physics: isAll
+                ? const NeverScrollableScrollPhysics()
+                : const AlwaysScrollableScrollPhysics(),
+            itemCount: filteredProducts.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final product = filteredProducts[index];
+              return _buildResultCard(
+                title: product.title,
+                price: 'TZS ${product.price.toStringAsFixed(2)}',
+                description: product.description,
+                imageUrl: product.images.isNotEmpty ? product.images.first : '',
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/product-details',
+                  arguments: product.id,
+                ),
+                isDarkMode: isDarkMode,
+                primaryTextColor: primaryTextColor,
+                secondaryTextColor: secondaryTextColor,
+              );
+            },
+          );
+
+          if (isAll) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
@@ -260,31 +344,12 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                     ),
                   ),
                 ),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredProducts.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final product = filteredProducts[index];
-                  return _buildResultCard(
-                    title: product.title,
-                    price: '\$${product.price.toStringAsFixed(2)}',
-                    description: product.description,
-                    imageUrl: product.images.isNotEmpty ? product.images.first : '',
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      '/product-details',
-                      arguments: product.id,
-                    ),
-                    isDarkMode: isDarkMode,
-                    primaryTextColor: primaryTextColor,
-                    secondaryTextColor: secondaryTextColor,
-                  );
-                },
-              ),
-            ],
-          );
+                list,
+              ],
+            );
+          }
+
+          return list;
         }
 
         return const SizedBox.shrink();
@@ -292,7 +357,11 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     );
   }
 
-  Widget _buildServicesSection(bool isDarkMode, Color primaryTextColor, Color secondaryTextColor) {
+  Widget _buildServicesSection(
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+  ) {
     return BlocBuilder<ServiceBloc, ServiceState>(
       builder: (context, state) {
         if (state is ServicesLoading) {
@@ -321,17 +390,23 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
           final query = _searchController.text.trim();
           final filteredServices = query.isEmpty
               ? state.services
-              : state.services.where((s) =>
-                  _matchesQuery(s.title, query) ||
-                  _matchesQuery(s.description, query) ||
-                  _matchesQuery(s.category, query)).toList();
-          
+              : state.services
+                    .where(
+                      (s) =>
+                          _matchesQuery(s.title, query) ||
+                          _matchesQuery(s.description, query) ||
+                          _matchesQuery(s.category, query),
+                    )
+                    .toList();
+
           if (filteredServices.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Text(
-                  query.isEmpty ? 'No services available' : 'No services found for "$query"',
+                  query.isEmpty
+                      ? 'No services available'
+                      : 'No services found for "$query"',
                   style: TextStyle(color: secondaryTextColor),
                   textAlign: TextAlign.center,
                 ),
@@ -339,10 +414,40 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
             );
           }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_selectedCategory == 'All')
+          final isAll = _selectedCategory == 'All';
+
+          Widget list = ListView.separated(
+            padding: isAll ? EdgeInsets.zero : const EdgeInsets.all(16),
+            shrinkWrap: isAll,
+            physics: isAll
+                ? const NeverScrollableScrollPhysics()
+                : const AlwaysScrollableScrollPhysics(),
+            itemCount: filteredServices.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final service = filteredServices[index];
+              return _buildResultCard(
+                title: service.title,
+                price:
+                    'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
+                description: service.description,
+                imageUrl: service.images.isNotEmpty ? service.images.first : '',
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/service-details',
+                  arguments: service.id,
+                ),
+                isDarkMode: isDarkMode,
+                primaryTextColor: primaryTextColor,
+                secondaryTextColor: secondaryTextColor,
+              );
+            },
+          );
+
+          if (isAll) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
@@ -354,31 +459,12 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                     ),
                   ),
                 ),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredServices.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final service = filteredServices[index];
-                  return _buildResultCard(
-                    title: service.title,
-                    price: '\$${service.price.toStringAsFixed(2)}/${service.priceType}',
-                    description: service.description,
-                    imageUrl: service.images.isNotEmpty ? service.images.first : '',
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      '/service-details',
-                      arguments: service.id,
-                    ),
-                    isDarkMode: isDarkMode,
-                    primaryTextColor: primaryTextColor,
-                    secondaryTextColor: secondaryTextColor,
-                  );
-                },
-              ),
-            ],
-          );
+                list,
+              ],
+            );
+          }
+
+          return list;
         }
 
         return const SizedBox.shrink();
@@ -386,7 +472,11 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     );
   }
 
-  Widget _buildAccommodationsSection(bool isDarkMode, Color primaryTextColor, Color secondaryTextColor) {
+  Widget _buildAccommodationsSection(
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+  ) {
     return BlocBuilder<AccommodationBloc, AccommodationState>(
       builder: (context, state) {
         if (state is AccommodationsLoading) {
@@ -415,18 +505,24 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
           final query = _searchController.text.trim();
           final filteredAccommodations = query.isEmpty
               ? state.accommodations
-              : state.accommodations.where((a) =>
-                  _matchesQuery(a.name, query) ||
-                  _matchesQuery(a.description, query) ||
-                  _matchesQuery(a.location, query) ||
-                  _matchesQuery(a.roomType, query)).toList();
-          
+              : state.accommodations
+                    .where(
+                      (a) =>
+                          _matchesQuery(a.name, query) ||
+                          _matchesQuery(a.description, query) ||
+                          _matchesQuery(a.location, query) ||
+                          _matchesQuery(a.roomType, query),
+                    )
+                    .toList();
+
           if (filteredAccommodations.isEmpty) {
             return Center(
               child: Padding(
                 padding: const EdgeInsets.all(32),
                 child: Text(
-                  query.isEmpty ? 'No accommodations available' : 'No accommodations found for "$query"',
+                  query.isEmpty
+                      ? 'No accommodations available'
+                      : 'No accommodations found for "$query"',
                   style: TextStyle(color: secondaryTextColor),
                   textAlign: TextAlign.center,
                 ),
@@ -434,10 +530,42 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
             );
           }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (_selectedCategory == 'All')
+          final isAll = _selectedCategory == 'All';
+
+          Widget list = ListView.separated(
+            padding: isAll ? EdgeInsets.zero : const EdgeInsets.all(16),
+            shrinkWrap: isAll,
+            physics: isAll
+                ? const NeverScrollableScrollPhysics()
+                : const AlwaysScrollableScrollPhysics(),
+            itemCount: filteredAccommodations.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              final accommodation = filteredAccommodations[index];
+              return _buildResultCard(
+                title: accommodation.name,
+                price:
+                    'TZS ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType}',
+                description: accommodation.description,
+                imageUrl: accommodation.images.isNotEmpty
+                    ? accommodation.images.first
+                    : '',
+                onTap: () => Navigator.pushNamed(
+                  context,
+                  '/accommodation-details',
+                  arguments: accommodation.id,
+                ),
+                isDarkMode: isDarkMode,
+                primaryTextColor: primaryTextColor,
+                secondaryTextColor: secondaryTextColor,
+              );
+            },
+          );
+
+          if (isAll) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
                 Padding(
                   padding: const EdgeInsets.only(bottom: 12),
                   child: Text(
@@ -449,31 +577,12 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                     ),
                   ),
                 ),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                itemCount: filteredAccommodations.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final accommodation = filteredAccommodations[index];
-                  return _buildResultCard(
-                    title: accommodation.name,
-                    price: '\$${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType}',
-                    description: accommodation.description,
-                    imageUrl: accommodation.images.isNotEmpty ? accommodation.images.first : '',
-                    onTap: () => Navigator.pushNamed(
-                      context,
-                      '/accommodation-details',
-                      arguments: accommodation.id,
-                    ),
-                    isDarkMode: isDarkMode,
-                    primaryTextColor: primaryTextColor,
-                    secondaryTextColor: secondaryTextColor,
-                  );
-                },
-              ),
-            ],
-          );
+                list,
+              ],
+            );
+          }
+
+          return list;
         }
 
         return const SizedBox.shrink();
@@ -532,10 +641,7 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                   const SizedBox(height: 4),
                   Text(
                     description,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: secondaryTextColor,
-                    ),
+                    style: TextStyle(fontSize: 14, color: secondaryTextColor),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),

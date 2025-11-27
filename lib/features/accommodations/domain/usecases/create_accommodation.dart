@@ -5,11 +5,14 @@ import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/core/usecases/usecase.dart';
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 import 'package:mwanachuo/features/accommodations/domain/repositories/accommodation_repository.dart';
+import 'package:mwanachuo/features/subscriptions/domain/usecases/check_subscription_status.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
 
 class CreateAccommodation implements UseCase<AccommodationEntity, CreateAccommodationParams> {
   final AccommodationRepository repository;
+  final CheckSubscriptionStatus checkSubscriptionStatus;
 
-  CreateAccommodation(this.repository);
+  CreateAccommodation(this.repository, this.checkSubscriptionStatus);
 
   @override
   Future<Either<Failure, AccommodationEntity>> call(CreateAccommodationParams params) async {
@@ -21,6 +24,26 @@ class CreateAccommodation implements UseCase<AccommodationEntity, CreateAccommod
     }
     if (params.images.isEmpty) {
       return Left(ValidationFailure('At least one image is required'));
+    }
+
+    // Check subscription status before creating accommodation
+    final currentUser = SupabaseConfig.client.auth.currentUser;
+    if (currentUser != null) {
+      final subscriptionCheck = await checkSubscriptionStatus(
+        CheckSubscriptionStatusParams(
+          sellerId: currentUser.id,
+          listingType: 'accommodation',
+        ),
+      );
+      final canCreate = subscriptionCheck.fold(
+        (failure) => false,
+        (result) => result,
+      );
+      if (!canCreate) {
+        return Left(ServerFailure(
+          'Subscription required. Please subscribe to create listings.',
+        ));
+      }
     }
 
     return await repository.createAccommodation(

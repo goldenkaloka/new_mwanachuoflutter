@@ -150,6 +150,14 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       (product) {
         debugPrint('✅ ProductBloc: Product created successfully - ID: ${product.id}');
         emit(ProductCreated(product: product));
+        
+        // Automatically reload products if we have a ProductsLoaded state
+        // This ensures the new product appears in lists immediately
+        final currentState = state;
+        if (currentState is ProductsLoaded) {
+          debugPrint('🔄 Auto-reloading products after creation...');
+          add(const LoadProductsEvent(limit: 10));
+        }
       },
     );
   }

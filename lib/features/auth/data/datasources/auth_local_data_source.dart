@@ -47,10 +47,24 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   @override
   Future<void> clearCache() async {
     try {
+      // Clear auth cache
       await sharedPreferences.remove('cached_user');
       await sharedPreferences.remove(StorageConstants.isLoggedInKey);
       await sharedPreferences.remove(StorageConstants.userIdKey);
       await sharedPreferences.remove(StorageConstants.userRoleKey);
+      
+      // Clear profile cache to prevent showing previous user's data
+      await sharedPreferences.remove(StorageConstants.myProfileCacheKey);
+      await sharedPreferences.remove(StorageConstants.profileTimestampKey);
+      
+      // Clear all user profile caches
+      final keys = sharedPreferences.getKeys();
+      final profileKeys = keys.where((key) =>
+          key.startsWith(StorageConstants.profileCachePrefix));
+      
+      for (final key in profileKeys) {
+        await sharedPreferences.remove(key);
+      }
     } catch (e) {
       throw CacheException(e.toString());
     }

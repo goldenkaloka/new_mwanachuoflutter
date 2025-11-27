@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
+import 'package:mwanachuo/config/onesignal_config.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/main_app.dart';
 
@@ -8,6 +9,7 @@ Future<void> main() async {
     WidgetsFlutterBinding.ensureInitialized();
 
     await SupabaseConfig.initialize();
+    await OneSignalConfig.initialize();
     await initializeDependencies();
 
     runApp(const MwanachuoshopApp());
