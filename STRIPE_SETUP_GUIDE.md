@@ -10,20 +10,19 @@
 4. Click **"New Secret"**
 5. Add:
    - **Name**: `STRIPE_SECRET_KEY`
-   - **Value**: `sk_test_51SYCaRBmC0UcqX1lwnzaMPed7HEmSfOkmbC0UIQh4JrAbsmwBghUipu9aMq1wyNzK7mNv2LB5VfLYJB7yK6il43v0053OgNTQz`
+   - **Value**: `YOUR_STRIPE_SECRET_KEY` (get from Stripe Dashboard → Developers → API keys)
 6. Click **"Save"**
 
-### 2. Your Stripe Credentials
+### 2. Get Your Stripe Credentials
 
-**Secret Key (for backend):**
-```
-sk_test_51SYCaRBmC0UcqX1lwnzaMPed7HEmSfOkmbC0UIQh4JrAbsmwBghUipu9aMq1wyNzK7mNv2LB5VfLYJB7yK6il43v0053OgNTQz
-```
+**Where to find your keys:**
+1. Go to Stripe Dashboard: https://dashboard.stripe.com
+2. Navigate to: **Developers** → **API keys**
+3. Copy your keys:
+   - **Secret Key** (starts with `sk_test_` for test mode) - Use this for `STRIPE_SECRET_KEY`
+   - **Publishable Key** (starts with `pk_test_` for test mode) - For future frontend use
 
-**Publishable Key (for future frontend use):**
-```
-pk_test_51SYCaRBmC0UcqX1lCthSfrYFrRWE4Ahi1Bx74kpVFiiwf7NNe9NcDtIlSQBHfmiLSbZ6VGWstWZhYsEQ16w7zVLa00DsSX9nMQ
-```
+⚠️ **Never commit these keys to Git!** Always use environment variables or secrets management.
 
 ### 3. Verify Edge Function
 

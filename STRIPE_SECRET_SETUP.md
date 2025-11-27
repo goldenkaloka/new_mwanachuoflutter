@@ -15,7 +15,7 @@
 1. Click **"New Secret"** button
 2. Enter:
    - **Name**: `STRIPE_SECRET_KEY`
-   - **Value**: `sk_test_51SYCaRBmC0UcqX1lwnzaMPed7HEmSfOkmbC0UIQh4JrAbsmwBghUipu9aMq1wyNzK7mNv2LB5VfLYJB7yK6il43v0053OgNTQz`
+   - **Value**: `YOUR_STRIPE_SECRET_KEY` (get from Stripe Dashboard → Developers → API keys)
 3. Click **"Save"** or **"Add Secret"**
 
 ### Step 4: Verify

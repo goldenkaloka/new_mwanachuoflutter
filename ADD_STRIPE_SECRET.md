@@ -27,10 +27,11 @@ Stripe not configured. Please configure STRIPE_SECRET_KEY in Supabase Edge Funct
 2. In the form that appears:
    - **Name field**: Type exactly: `STRIPE_SECRET_KEY`
      - ⚠️ Must be exact: case-sensitive, no spaces
-   - **Value field**: Paste this exactly:
+   - **Value field**: Paste your Stripe Secret Key (starts with `sk_test_` for test mode)
      ```
-     sk_test_51SYCaRBmC0UcqX1lwnzaMPed7HEmSfOkmbC0UIQh4JrAbsmwBghUipu9aMq1wyNzK7mNv2LB5VfLYJB7yK6il43v0053OgNTQz
+     YOUR_STRIPE_SECRET_KEY
      ```
+     ⚠️ **Important**: Get your actual secret key from your Stripe Dashboard → Developers → API keys
      - ⚠️ No spaces before or after
 3. Click **"Save"** or **"Add Secret"**
 
@@ -86,7 +87,7 @@ Supabase Dashboard
 - [ ] Navigated to Project Settings → Edge Functions → Secrets
 - [ ] Clicked "New Secret"
 - [ ] Entered name: `STRIPE_SECRET_KEY` (exact, case-sensitive)
-- [ ] Entered value: `sk_test_51SYCaRBmC0UcqX1lwnzaMPed7HEmSfOkmbC0UIQh4JrAbsmwBghUipu9aMq1wyNzK7mNv2LB5VfLYJB7yK6il43v0053OgNTQz`
+- [ ] Entered value: `YOUR_STRIPE_SECRET_KEY` (get from Stripe Dashboard)
 - [ ] Clicked "Save"
 - [ ] Waited 30 seconds
 - [ ] Tested the subscription flow again
