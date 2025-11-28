@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 
 /// Card size options
 enum AppCardSize { small, medium, large }
@@ -116,7 +117,7 @@ class AppCard extends StatelessWidget {
 ///
 /// Provides a consistent layout for product images, titles, prices, and ratings.
 /// Uses the AppCard as a base with customized content layout.
-class ProductCard extends StatelessWidget {
+class ProductCard extends StatefulWidget {
   final String imageUrl;
   final String title;
   final String price;
@@ -141,103 +142,110 @@ class ProductCard extends StatelessWidget {
   });
 
   @override
+  State<ProductCard> createState() => _ProductCardState();
+}
+
+class _ProductCardState extends State<ProductCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 100),
+    );
+    _scaleAnimation = Tween<double>(
+      begin: 1.0,
+      end: 0.95,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
 
     return RepaintBoundary(
       child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-        decoration: BoxDecoration(
-          color: kSurfaceColorLight,
-          borderRadius: BorderRadius.circular(kRadiusSm),
-          // Removed boxShadow to remove shadows
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            Expanded(
-              flex: isSmallScreen ? 3 : 2,
-              child: Hero(
-                tag: 'product_$imageUrl',
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(kRadiusSm),
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 600,
-                    maxWidthDiskCache: 800,
-                    placeholder: (context, url) => Container(
-                      color: kBorderColor,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
+        onTapDown: (_) => _controller.forward(),
+        onTapUp: (_) {
+          _controller.reverse();
+          widget.onTap();
+        },
+        onTapCancel: () => _controller.reverse(),
+        child: ScaleTransition(
+          scale: _scaleAnimation,
+          child: Container(
+            decoration: BoxDecoration(
+              color: kSurfaceColorLight,
+              borderRadius: BorderRadius.circular(kRadiusSm),
+              // Removed boxShadow to remove shadows
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image
+                Expanded(
+                  flex: isSmallScreen ? 3 : 2,
+                  child: Hero(
+                    tag: 'product_${widget.imageUrl}',
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(kRadiusSm),
+                      ),
+                      child: NetworkImageWithFallback(
+                        imageUrl: widget.imageUrl,
+                        width: double.infinity,
+                        height: double.infinity,
+                        fit: BoxFit.cover,
+                        borderRadius: const BorderRadius.vertical(
+                          top: Radius.circular(kRadiusSm),
                         ),
                       ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      color: kBorderColor,
-                      child: const Center(
-                        child: Icon(
-                          Icons.image_not_supported_outlined,
-                          size: kIconSize2xl,
-                          color: kTextSecondary,
-                        ),
-                      ),
-                    ),
-                    fadeInDuration: const Duration(milliseconds: 200),
                   ),
                 ),
-              ),
-            ),
-
-            // Content
-            Expanded(
-              flex: isSmallScreen ? 2 : 3,
-              child: Padding(
-                padding: EdgeInsets.all(isSmallScreen ? kSpacingXs : kSpacingSm),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Title
-                    Flexible(
-                      child: Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: isSmallScreen ? 14 : null,
-                        ),
-                        maxLines: 2,
+                // Content
+                Padding(
+                  padding: EdgeInsets.all(isSmallScreen ? 8 : kSpacingMd),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        widget.title,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              fontSize: isSmallScreen ? 13 : null,
+                              fontWeight: FontWeight.bold,
+                            ),
+                        maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ),
-                    SizedBox(height: isSmallScreen ? 2 : kSpacingXs),
-
-                    // Price
-                    Text(
-                      price,
-                      style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                        color: const Color(0xFF078829),
-                        fontWeight: FontWeight.w700,
-                        fontSize: isSmallScreen ? 14 : null,
+                      SizedBox(height: isSmallScreen ? 2 : kSpacingXs),
+                      // Price
+                      Text(
+                        widget.price,
+                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                          color: kPrimaryColor,
+                          fontWeight: FontWeight.bold,
+                          fontSize: isSmallScreen ? 12 : null,
+                        ),
                       ),
-                    ),
-
-                    // Rating & Category
-                    if ((showRating && rating != null) ||
-                        (showCategory && category != null)) ...[
-                      SizedBox(height: isSmallScreen ? 4 : kSpacingXs),
-                      Flexible(
-                        child: Row(
+                      if (widget.showCategory && widget.category != null) ...[
+                        SizedBox(height: isSmallScreen ? 2 : kSpacingXs),
+                        Row(
                           children: [
-                            if (showRating && rating != null) ...[
+                            if (widget.showRating && widget.rating != null) ...[
                               Icon(
                                 Icons.star,
                                 size: isSmallScreen ? 12 : kIconSizeSm,
@@ -246,23 +254,28 @@ class ProductCard extends StatelessWidget {
                               SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
                               Flexible(
                                 child: Text(
-                                  '${rating!.toStringAsFixed(1)}${reviewCount != null ? ' ($reviewCount)' : ''}',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontSize: isSmallScreen ? 10 : null,
-                                  ),
+                                  '${widget.rating!.toStringAsFixed(1)}${widget.reviewCount != null ? ' (${widget.reviewCount})' : ''}',
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        fontSize: isSmallScreen ? 10 : null,
+                                      ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),
                             ],
-                            if (showCategory && category != null) ...[
-                              if (showRating && rating != null) const Spacer(),
+                            if (widget.showCategory &&
+                                widget.category != null) ...[
+                              if (widget.showRating && widget.rating != null)
+                                const Spacer(),
                               Flexible(
                                 child: Text(
-                                  category!,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontSize: isSmallScreen ? 10 : null,
-                                  ),
+                                  widget.category!,
+                                  style: Theme.of(context).textTheme.bodySmall
+                                      ?.copyWith(
+                                        color: kTextSecondary,
+                                        fontSize: isSmallScreen ? 10 : null,
+                                      ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                 ),
@@ -270,16 +283,15 @@ class ProductCard extends StatelessWidget {
                             ],
                           ],
                         ),
-                      ),
+                      ],
                     ],
-                  ],
+                  ),
                 ),
-              ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
-      ), // RepaintBoundary closing
     );
   }
 }
@@ -312,128 +324,130 @@ class ServiceCard extends StatelessWidget {
     return RepaintBoundary(
       child: GestureDetector(
         onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: kSurfaceColorLight,
-          borderRadius: BorderRadius.circular(kRadiusMd),
-          // Removed boxShadow to remove shadows
-        ),
-        padding: const EdgeInsets.all(kSpacingMd),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            Hero(
-              tag: 'service_$imageUrl',
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(kRadiusSm),
-                child: CachedNetworkImage(
-                  imageUrl: imageUrl,
-                  width: 90,
-                  height: 90,
-                  fit: BoxFit.cover,
-                  memCacheWidth: 180,
-                  memCacheHeight: 180,
-                  placeholder: (context, url) => Container(
+        child: Container(
+          decoration: BoxDecoration(
+            color: kSurfaceColorLight,
+            borderRadius: BorderRadius.circular(kRadiusMd),
+            // Removed boxShadow to remove shadows
+          ),
+          padding: const EdgeInsets.all(kSpacingMd),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image
+              Hero(
+                tag: 'service_$imageUrl',
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(kRadiusSm),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
                     width: 90,
                     height: 90,
-                    color: kBorderColor,
-                    child: const Center(
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
+                    fit: BoxFit.cover,
+                    memCacheWidth: 180,
+                    memCacheHeight: 180,
+                    placeholder: (context, url) => Container(
+                      width: 90,
+                      height: 90,
+                      color: kBorderColor,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            kPrimaryColor,
+                          ),
+                        ),
                       ),
                     ),
-                  ),
-                  errorWidget: (context, url, error) => Container(
-                    width: 90,
-                    height: 90,
-                    color: kBorderColor,
-                    child: const Center(
-                      child: Icon(
-                        Icons.image_not_supported_outlined,
-                        size: kIconSizeLg,
-                        color: kTextSecondary,
+                    errorWidget: (context, url, error) => Container(
+                      width: 90,
+                      height: 90,
+                      color: kBorderColor,
+                      child: const Center(
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          size: kIconSizeLg,
+                          color: kTextSecondary,
+                        ),
                       ),
                     ),
+                    fadeInDuration: const Duration(milliseconds: 200),
                   ),
-                  fadeInDuration: const Duration(milliseconds: 200),
                 ),
               ),
-            ),
-            const SizedBox(width: kSpacingMd),
+              const SizedBox(width: kSpacingMd),
 
-            // Content
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (category != null) ...[
+              // Content
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.titleMedium,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (category != null) ...[
+                      const SizedBox(height: kSpacingXs),
+                      Text(
+                        category!,
+                        style: Theme.of(context).textTheme.bodySmall,
+                      ),
+                    ],
                     const SizedBox(height: kSpacingXs),
                     Text(
-                      category!,
-                      style: Theme.of(context).textTheme.bodySmall,
+                      price,
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        color: const Color(
+                          0xFF078829,
+                        ), // Match active state color
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: kSpacingSm),
+                    Row(
+                      children: [
+                        if (providerName != null) ...[
+                          const Icon(
+                            Icons.person_outline,
+                            size: kIconSizeSm,
+                            color: kTextSecondary,
+                          ),
+                          const SizedBox(width: kSpacingXs),
+                          Flexible(
+                            child: Text(
+                              providerName!,
+                              style: Theme.of(context).textTheme.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                        if (location != null) ...[
+                          if (providerName != null)
+                            const SizedBox(width: kSpacingMd),
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: kIconSizeSm,
+                            color: kTextSecondary,
+                          ),
+                          const SizedBox(width: kSpacingXs),
+                          Flexible(
+                            child: Text(
+                              location!,
+                              style: Theme.of(context).textTheme.bodySmall,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ],
                     ),
                   ],
-                  const SizedBox(height: kSpacingXs),
-                  Text(
-                    price,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: const Color(
-                        0xFF078829,
-                      ), // Match active state color
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const SizedBox(height: kSpacingSm),
-                  Row(
-                    children: [
-                      if (providerName != null) ...[
-                        const Icon(
-                          Icons.person_outline,
-                          size: kIconSizeSm,
-                          color: kTextSecondary,
-                        ),
-                        const SizedBox(width: kSpacingXs),
-                        Flexible(
-                          child: Text(
-                            providerName!,
-                            style: Theme.of(context).textTheme.bodySmall,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                      if (location != null) ...[
-                        if (providerName != null)
-                          const SizedBox(width: kSpacingMd),
-                        const Icon(
-                          Icons.location_on_outlined,
-                          size: kIconSizeSm,
-                          color: kTextSecondary,
-                        ),
-                        const SizedBox(width: kSpacingXs),
-                        Flexible(
-                          child: Text(
-                            location!,
-                            style: Theme.of(context).textTheme.bodySmall,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ), // RepaintBoundary closing
     );
   }
@@ -471,161 +485,176 @@ class AccommodationCard extends StatelessWidget {
     return RepaintBoundary(
       child: GestureDetector(
         onTap: onTap,
-      child: Container(
-        decoration: BoxDecoration(
-          color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
-          borderRadius: BorderRadius.circular(kRadiusSm),
-          // Removed boxShadow to remove shadows
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image - takes more space on small screens
-            Expanded(
-              flex: isSmallScreen ? 3 : 2,
-              child: Hero(
-                tag: 'accommodation_$imageUrl',
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(kRadiusSm),
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    memCacheWidth: 600,
-                    maxWidthDiskCache: 800,
-                    placeholder: (context, url) => Container(
-                      color: isDarkMode ? kBorderColorDark : kBorderColor,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
+            borderRadius: BorderRadius.circular(kRadiusSm),
+            // Removed boxShadow to remove shadows
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Image - takes more space on small screens
+              Expanded(
+                flex: isSmallScreen ? 3 : 2,
+                child: Hero(
+                  tag: 'accommodation_$imageUrl',
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(kRadiusSm),
+                    ),
+                    child: CachedNetworkImage(
+                      imageUrl: imageUrl,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      memCacheWidth: 600,
+                      maxWidthDiskCache: 800,
+                      placeholder: (context, url) => Container(
+                        color: isDarkMode ? kBorderColorDark : kBorderColor,
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            valueColor: AlwaysStoppedAnimation<Color>(
+                              kPrimaryColor,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                    errorWidget: (context, url, error) => Container(
-                      color: isDarkMode ? kBorderColorDark : kBorderColor,
-                      child: const Center(
-                        child: Icon(
-                          Icons.home_outlined,
-                          size: kIconSize2xl,
-                          color: kTextSecondary,
+                      errorWidget: (context, url, error) => Container(
+                        color: isDarkMode ? kBorderColorDark : kBorderColor,
+                        child: const Center(
+                          child: Icon(
+                            Icons.home_outlined,
+                            size: kIconSize2xl,
+                            color: kTextSecondary,
+                          ),
                         ),
                       ),
+                      fadeInDuration: const Duration(milliseconds: 200),
                     ),
-                    fadeInDuration: const Duration(milliseconds: 200),
                   ),
                 ),
               ),
-            ),
 
-            // Content - takes less space on small screens
-            Expanded(
-              flex: isSmallScreen ? 2 : 3,
-              child: SingleChildScrollView(
-                physics: const NeverScrollableScrollPhysics(),
-                child: Padding(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isSmallScreen ? 6 : kSpacingSm,
-                    vertical: isSmallScreen ? 4 : kSpacingSm,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        title,
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          fontSize: isSmallScreen ? 13 : null,
-                          height: 1.2,
-                        ),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: isSmallScreen ? 2 : 4),
-                      Text(
-                        price,
-                        style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                          color: const Color(0xFF078829),
-                          fontWeight: FontWeight.w700,
-                          fontSize: isSmallScreen ? 13 : null,
-                          height: 1.2,
-                        ),
-                      ),
-                      if (location != null ||
-                          bedrooms != null ||
-                          bathrooms != null) ...[
-                        SizedBox(height: isSmallScreen ? 3 : 4),
-                        Row(
-                          children: [
-                            if (location != null) ...[
-                              Icon(
-                                Icons.location_on_outlined,
-                                size: isSmallScreen ? 11 : kIconSizeSm,
-                                color: kTextSecondary,
+              // Content - takes less space on small screens
+              Expanded(
+                flex: isSmallScreen ? 2 : 3,
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isSmallScreen ? 6 : kSpacingSm,
+                      vertical: isSmallScreen ? 4 : kSpacingSm,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontSize: isSmallScreen ? 13 : null,
+                                height: 1.2,
                               ),
-                              SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
-                              Flexible(
-                                child: Text(
-                                  location!,
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontSize: isSmallScreen ? 9 : null,
-                                    height: 1.2,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        SizedBox(height: isSmallScreen ? 2 : 4),
+                        Text(
+                          price,
+                          style: Theme.of(context).textTheme.titleSmall
+                              ?.copyWith(
+                                color: const Color(0xFF078829),
+                                fontWeight: FontWeight.w700,
+                                fontSize: isSmallScreen ? 13 : null,
+                                height: 1.2,
                               ),
-                            ],
-                            if (bedrooms != null || bathrooms != null) ...[
-                              if (location != null)
-                                SizedBox(width: isSmallScreen ? 3 : kSpacingXs),
-                              if (bedrooms != null) ...[
+                        ),
+                        if (location != null ||
+                            bedrooms != null ||
+                            bathrooms != null) ...[
+                          SizedBox(height: isSmallScreen ? 3 : 4),
+                          Row(
+                            children: [
+                              if (location != null) ...[
                                 Icon(
-                                  Icons.bed_outlined,
+                                  Icons.location_on_outlined,
                                   size: isSmallScreen ? 11 : kIconSizeSm,
                                   color: kTextSecondary,
                                 ),
                                 SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
-                                Text(
-                                  '$bedrooms',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontSize: isSmallScreen ? 9 : null,
-                                    height: 1.2,
+                                Flexible(
+                                  child: Text(
+                                    location!,
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          fontSize: isSmallScreen ? 9 : null,
+                                          height: 1.2,
+                                        ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                   ),
                                 ),
                               ],
-                              if (bathrooms != null) ...[
-                                if (bedrooms != null)
-                                  SizedBox(width: isSmallScreen ? 3 : kSpacingXs),
-                                Icon(
-                                  Icons.bathtub_outlined,
-                                  size: isSmallScreen ? 11 : kIconSizeSm,
-                                  color: kTextSecondary,
-                                ),
-                                SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
-                                Text(
-                                  '$bathrooms',
-                                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                                    fontSize: isSmallScreen ? 9 : null,
-                                    height: 1.2,
+                              if (bedrooms != null || bathrooms != null) ...[
+                                if (location != null)
+                                  SizedBox(
+                                    width: isSmallScreen ? 3 : kSpacingXs,
                                   ),
-                                ),
+                                if (bedrooms != null) ...[
+                                  Icon(
+                                    Icons.bed_outlined,
+                                    size: isSmallScreen ? 11 : kIconSizeSm,
+                                    color: kTextSecondary,
+                                  ),
+                                  SizedBox(
+                                    width: isSmallScreen ? 2 : kSpacingXs,
+                                  ),
+                                  Text(
+                                    '$bedrooms',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          fontSize: isSmallScreen ? 9 : null,
+                                          height: 1.2,
+                                        ),
+                                  ),
+                                ],
+                                if (bathrooms != null) ...[
+                                  if (bedrooms != null)
+                                    SizedBox(
+                                      width: isSmallScreen ? 3 : kSpacingXs,
+                                    ),
+                                  Icon(
+                                    Icons.bathtub_outlined,
+                                    size: isSmallScreen ? 11 : kIconSizeSm,
+                                    color: kTextSecondary,
+                                  ),
+                                  SizedBox(
+                                    width: isSmallScreen ? 2 : kSpacingXs,
+                                  ),
+                                  Text(
+                                    '$bathrooms',
+                                    style: Theme.of(context).textTheme.bodySmall
+                                        ?.copyWith(
+                                          fontSize: isSmallScreen ? 9 : null,
+                                          height: 1.2,
+                                        ),
+                                  ),
+                                ],
                               ],
                             ],
-                          ],
-                        ),
+                          ),
+                        ],
                       ],
-                    ],
+                    ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
-      ),
       ), // RepaintBoundary closing
     );
   }

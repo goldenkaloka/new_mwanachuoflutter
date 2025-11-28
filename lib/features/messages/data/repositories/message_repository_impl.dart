@@ -33,7 +33,8 @@ class MessageRepositoryImpl implements MessageRepository {
     if (!localDataSource.isConversationsCacheExpired()) {
       try {
         debugPrint('💾 Loading conversations from cache');
-        final cachedConversations = await localDataSource.getCachedConversations();
+        final cachedConversations = await localDataSource
+            .getCachedConversations();
         return Right(cachedConversations);
       } on CacheException {
         debugPrint('❌ Cache miss, fetching from server');
@@ -44,10 +45,13 @@ class MessageRepositoryImpl implements MessageRepository {
     if (!await networkInfo.isConnected) {
       // Try to return cached data even if expired
       try {
-        final cachedConversations = await localDataSource.getCachedConversations();
+        final cachedConversations = await localDataSource
+            .getCachedConversations();
         return Right(cachedConversations);
       } on CacheException {
-        return Left(NetworkFailure('No internet connection and no cached data'));
+        return Left(
+          NetworkFailure('No internet connection and no cached data'),
+        );
       }
     }
 
@@ -58,11 +62,11 @@ class MessageRepositoryImpl implements MessageRepository {
         limit: limit,
         offset: offset,
       );
-      
+
       // Cache the result
       await localDataSource.cacheConversations(conversations);
       debugPrint('✅ Conversations cached successfully');
-      
+
       return Right(conversations);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -100,8 +104,12 @@ class MessageRepositoryImpl implements MessageRepository {
     // Try cache first if not expired
     if (!localDataSource.isMessagesCacheExpired(conversationId)) {
       try {
-        debugPrint('💾 Loading messages from cache for conversation: $conversationId');
-        final cachedMessages = await localDataSource.getCachedMessages(conversationId);
+        debugPrint(
+          '💾 Loading messages from cache for conversation: $conversationId',
+        );
+        final cachedMessages = await localDataSource.getCachedMessages(
+          conversationId,
+        );
         return Right(cachedMessages);
       } on CacheException {
         debugPrint('❌ Cache miss for messages, fetching from server');
@@ -112,26 +120,32 @@ class MessageRepositoryImpl implements MessageRepository {
     if (!await networkInfo.isConnected) {
       // Try to return cached data even if expired
       try {
-        final cachedMessages = await localDataSource.getCachedMessages(conversationId);
+        final cachedMessages = await localDataSource.getCachedMessages(
+          conversationId,
+        );
         return Right(cachedMessages);
       } on CacheException {
-        return Left(NetworkFailure('No internet connection and no cached messages'));
+        return Left(
+          NetworkFailure('No internet connection and no cached messages'),
+        );
       }
     }
 
     // Fetch from server
     try {
-      debugPrint('🌐 Fetching messages from server for conversation: $conversationId');
+      debugPrint(
+        '🌐 Fetching messages from server for conversation: $conversationId',
+      );
       final messages = await remoteDataSource.getMessages(
         conversationId: conversationId,
         limit: limit,
         offset: offset,
       );
-      
+
       // Cache the result
       await localDataSource.cacheMessages(conversationId, messages);
       debugPrint('✅ Messages cached successfully');
-      
+
       return Right(messages);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -158,12 +172,12 @@ class MessageRepositoryImpl implements MessageRepository {
         imageUrl: imageUrl,
         repliedToMessageId: repliedToMessageId,
       );
-      
+
       // Incrementally update cache instead of clearing it
       try {
         // Add message to messages cache
         await localDataSource.addMessageToCache(conversationId, message);
-        
+
         // Update conversation's last message in conversations cache
         await localDataSource.updateConversationLastMessage(
           conversationId,
@@ -173,7 +187,7 @@ class MessageRepositoryImpl implements MessageRepository {
       } catch (e) {
         debugPrint('⚠️ Failed to update cache incrementally: $e');
       }
-      
+
       return Right(message);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -191,9 +205,7 @@ class MessageRepositoryImpl implements MessageRepository {
     }
 
     try {
-      await remoteDataSource.markMessagesAsRead(
-        conversationId: conversationId,
-      );
+      await remoteDataSource.markMessagesAsRead(conversationId: conversationId);
       return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -219,7 +231,9 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteConversation(String conversationId) async {
+  Future<Either<Failure, void>> deleteConversation(
+    String conversationId,
+  ) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
     }
@@ -256,7 +270,7 @@ class MessageRepositoryImpl implements MessageRepository {
   }
 
   @override
-  Stream<MessageEntity> subscribeToMessages(String conversationId) {
+  Stream<List<MessageEntity>> subscribeToMessages(String conversationId) {
     return remoteDataSource.subscribeToMessages(conversationId);
   }
 
@@ -326,4 +340,3 @@ class MessageRepositoryImpl implements MessageRepository {
     }
   }
 }
-

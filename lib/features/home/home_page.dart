@@ -7,6 +7,7 @@ import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/services/university_service.dart';
 import 'package:mwanachuo/core/widgets/app_card.dart';
+import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
@@ -179,8 +180,12 @@ class _HomePageState extends State<HomePage> {
           listener: (context, state) {
             // Reload products when a new product is created
             if (state is ProductCreated) {
-              debugPrint('🔄 Product created, reloading products on homepage...');
-              context.read<ProductBloc>().add(const LoadProductsEvent(limit: 10));
+              debugPrint(
+                '🔄 Product created, reloading products on homepage...',
+              );
+              context.read<ProductBloc>().add(
+                const LoadProductsEvent(limit: 10),
+              );
             }
           },
         ),
@@ -697,6 +702,16 @@ class _HomePageState extends State<HomePage> {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
+
+    // Map chip labels to icons
+    final Map<String, IconData> chipIcons = {
+      'All': Icons.grid_view_rounded,
+      'Products': Icons.shopping_bag_outlined,
+      'Services': Icons.build_outlined,
+      'Accommodations': Icons.home_work_outlined,
+      'Events': Icons.event_outlined,
+    };
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(
@@ -705,8 +720,10 @@ class _HomePageState extends State<HomePage> {
       ),
       child: Row(
         children: List.generate(_chips.length, (index) {
+          final label = _chips[index];
           final isSelected = index == _selectedChipIndex;
           final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+          final icon = chipIcons[label] ?? Icons.category_outlined;
 
           return Padding(
             padding: const EdgeInsets.only(right: 12.0),
@@ -718,7 +735,7 @@ class _HomePageState extends State<HomePage> {
               },
               child: Container(
                 height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 20.0),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
                 decoration: BoxDecoration(
                   color: isSelected
                       ? (isDarkMode ? kPrimaryColor : const Color(0xFF078829))
@@ -740,19 +757,30 @@ class _HomePageState extends State<HomePage> {
                         ]
                       : null,
                 ),
-                child: Center(
-                  child: Text(
-                    _chips[index],
-                    style: GoogleFonts.plusJakartaSans(
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 18,
                       color: isSelected
                           ? (isDarkMode ? kBackgroundColorDark : Colors.white)
                           : (isDarkMode ? Colors.white70 : kTextSecondary),
-                      fontSize: 14,
-                      fontWeight: isSelected
-                          ? FontWeight.bold
-                          : FontWeight.w500,
                     ),
-                  ),
+                    const SizedBox(width: 8),
+                    Text(
+                      label,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: isSelected
+                            ? (isDarkMode ? kBackgroundColorDark : Colors.white)
+                            : (isDarkMode ? Colors.white70 : kTextSecondary),
+                        fontSize: 14,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.w500,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
@@ -1019,12 +1047,18 @@ class _HomePageState extends State<HomePage> {
       buildWhen: (previous, current) {
         // Only rebuild when state type changes or products list changes
         return previous.runtimeType != current.runtimeType ||
-            (current is ProductsLoaded && previous is ProductsLoaded &&
+            (current is ProductsLoaded &&
+                previous is ProductsLoaded &&
                 current.products.length != previous.products.length);
       },
       builder: (context, state) {
         if (state is ProductsLoading) {
-          return _buildLoadingGrid(screenSize);
+          return ProductGridSkeleton(
+            itemCount: 4,
+            crossAxisCount: ResponsiveBreakpoints.responsiveGridColumns(
+              context,
+            ),
+          );
         }
 
         if (state is ProductError) {
@@ -1063,12 +1097,16 @@ class _HomePageState extends State<HomePage> {
       buildWhen: (previous, current) {
         // Only rebuild when state type changes or services list changes
         return previous.runtimeType != current.runtimeType ||
-            (current is ServicesLoaded && previous is ServicesLoaded &&
+            (current is ServicesLoaded &&
+                previous is ServicesLoaded &&
                 current.services.length != previous.services.length);
       },
       builder: (context, state) {
         if (state is ServicesLoading) {
-          return _buildLoadingGrid(screenSize);
+          return ListSkeleton(
+            itemCount: 4,
+            itemBuilder: (context, index) => const ServiceCardSkeleton(),
+          );
         }
 
         if (state is ServiceError) {
@@ -1107,12 +1145,19 @@ class _HomePageState extends State<HomePage> {
       buildWhen: (previous, current) {
         // Only rebuild when state type changes or accommodations list changes
         return previous.runtimeType != current.runtimeType ||
-            (current is AccommodationsLoaded && previous is AccommodationsLoaded &&
-                current.accommodations.length != previous.accommodations.length);
+            (current is AccommodationsLoaded &&
+                previous is AccommodationsLoaded &&
+                current.accommodations.length !=
+                    previous.accommodations.length);
       },
       builder: (context, state) {
         if (state is AccommodationsLoading) {
-          return _buildLoadingGrid(screenSize);
+          return ProductGridSkeleton(
+            itemCount: 4,
+            crossAxisCount: ResponsiveBreakpoints.responsiveGridColumns(
+              context,
+            ),
+          );
         }
 
         if (state is AccommodationError) {
@@ -1605,35 +1650,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ],
-    );
-  }
-
-  Widget _buildLoadingGrid(ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
-      context,
-    );
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: 32,
-      ),
-      child: Center(
-        child: Column(
-          children: [
-            const CircularProgressIndicator(color: kPrimaryColor),
-            const SizedBox(height: 16),
-            Text(
-              'Loading...',
-              style: TextStyle(
-                color: Theme.of(context).brightness == Brightness.dark
-                    ? Colors.grey[400]
-                    : Colors.grey[600],
-                fontSize: 14,
-              ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 

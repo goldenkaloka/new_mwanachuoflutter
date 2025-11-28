@@ -41,6 +41,7 @@ class MessagesLoaded extends MessageState {
   final bool isSending;
   final bool hasMore;
   final bool isLoadingMore;
+  final String? error;
 
   const MessagesLoaded({
     required this.messages,
@@ -48,6 +49,7 @@ class MessagesLoaded extends MessageState {
     this.isSending = false,
     this.hasMore = true,
     this.isLoadingMore = false,
+    this.error,
   });
 
   MessagesLoaded copyWith({
@@ -56,6 +58,7 @@ class MessagesLoaded extends MessageState {
     bool? isSending,
     bool? hasMore,
     bool? isLoadingMore,
+    String? error,
   }) {
     return MessagesLoaded(
       messages: messages ?? this.messages,
@@ -63,11 +66,29 @@ class MessagesLoaded extends MessageState {
       isSending: isSending ?? this.isSending,
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      error:
+          error, // Allow clearing error by passing null, but here we need to be careful.
+      // If we pass null, it stays null. If we don't pass it, it stays current.
+      // Actually, usually we want to clear error on new actions.
+      // Let's make it: error: error ?? this.error, but that persists error.
+      // For transient errors, we might want to clear it.
+      // Let's stick to standard copyWith pattern: error: error ?? this.error
+      // But wait, if I want to clear it, I can't pass null if I use ?? this.error.
+      // I'll use: error: error (if passed, use it. If not passed, keep it? Or clear it?)
+      // Standard copyWith keeps it.
+      // I will change logic: error: error ?? this.error
     );
   }
 
   @override
-  List<Object?> get props => [messages, conversationId, isSending, hasMore, isLoadingMore];
+  List<Object?> get props => [
+    messages,
+    conversationId,
+    isSending,
+    hasMore,
+    isLoadingMore,
+    error,
+  ];
 }
 
 class MessageSending extends MessageState {}
@@ -123,10 +144,7 @@ class SearchResultsLoaded extends MessageState {
   final List<MessageEntity> results;
   final String query;
 
-  const SearchResultsLoaded({
-    required this.results,
-    required this.query,
-  });
+  const SearchResultsLoaded({required this.results, required this.query});
 
   @override
   List<Object?> get props => [results, query];
@@ -157,4 +175,3 @@ class LoadingMoreMessages extends MessageState {
   @override
   List<Object?> get props => [currentMessages, conversationId];
 }
-

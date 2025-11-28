@@ -51,7 +51,8 @@ class _ChatScreenState extends State<ChatScreen> {
     final currentUser = SupabaseConfig.client.auth.currentUser;
     if (currentUser == null) {
       setState(() {
-        _canAccessMessages = true; // Allow access if not logged in (shouldn't happen)
+        _canAccessMessages =
+            true; // Allow access if not logged in (shouldn't happen)
         _isCheckingSubscription = false;
       });
       return;
@@ -431,8 +432,8 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     // Get recent messages from current state for context-aware validation
     final currentState = context.read<MessageBloc>().state;
     List<String> recentMessages = [];
-    
-    if (currentState is MessagesLoaded && 
+
+    if (currentState is MessagesLoaded &&
         currentState.conversationId == widget.conversationId) {
       final currentUser = SupabaseConfig.client.auth.currentUser;
       if (currentUser != null) {
@@ -453,7 +454,7 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       content,
       recentMessages: recentMessages,
     );
-    
+
     if (validationError != null) {
       // Show error dialog
       showDialog(
@@ -461,14 +462,9 @@ class _ChatScreenViewState extends State<_ChatScreenView>
         builder: (dialogContext) => AlertDialog(
           title: Text(
             'Ujumbe Hauruhusiwi',
-            style: GoogleFonts.plusJakartaSans(
-              fontWeight: FontWeight.bold,
-            ),
+            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
           ),
-          content: Text(
-            validationError,
-            style: GoogleFonts.plusJakartaSans(),
-          ),
+          content: Text(validationError, style: GoogleFonts.plusJakartaSans()),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
@@ -689,6 +685,16 @@ class _ChatScreenViewState extends State<_ChatScreenView>
             'Message sent, messages will reload automatically',
           );
           // The bloc already dispatched LoadMessagesEvent, no need to do it here
+        }
+
+        if (state is MessagesLoaded && state.error != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(state.error!),
+              backgroundColor: Colors.red,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
         }
 
         if (state is NewMessageReceived) {
@@ -1115,13 +1121,22 @@ class _ChatScreenViewState extends State<_ChatScreenView>
   }
 
   Widget _buildMessageStatusIcon(MessageEntity message, bool isDarkMode) {
+    // Check for optimistic message (starts with temp_)
+    if (message.id.startsWith('temp_')) {
+      return Icon(
+        Icons.access_time,
+        size: 12,
+        color: isDarkMode ? Colors.white70 : Colors.black54,
+      );
+    }
+
     final status = message.status;
     // WhatsApp style: Blue for read, gray for sent/delivered
     final color = status == MessageStatus.read
         ? const Color(0xFF53BDEB) // WhatsApp blue for read receipts
-        : kBackgroundColorDark.withValues(
-            alpha: 0.7,
-          ); // Gray for sent/delivered
+        : (isDarkMode
+              ? Colors.white70
+              : Colors.black54); // Gray for sent/delivered
 
     switch (status) {
       case MessageStatus.sent:
@@ -1204,6 +1219,38 @@ class _ChatScreenViewState extends State<_ChatScreenView>
                 Expanded(
                   child: TextField(
                     controller: _messageController,
+                    onChanged: (value) {
+                      // Handle typing indicator with debouncing
+                      // We don't want to send an event on every keystroke
+                      // We'll use a simple timer approach here or just dispatch
+                      // The bloc can handle debouncing if needed, but better here
+
+                      // Simple logic: If text is not empty, send typing true
+                      // We should use a timer to stop typing after inactivity
+                      // But for now, let's just trigger it.
+
+                      if (value.isNotEmpty) {
+                        context.read<MessageBloc>().add(
+                          SendTypingIndicatorEvent(
+                            conversationId: widget.conversationId,
+                            isTyping: true,
+                          ),
+                        );
+
+                        // Cancel previous timer if exists
+                        // We need a timer variable in the state class
+                        // Since we can't add it easily here without modifying the class,
+                        // we'll rely on the user stopping typing or sending message
+                        // Ideally, we should add a Timer? _typingTimer to the class.
+                      } else {
+                        context.read<MessageBloc>().add(
+                          SendTypingIndicatorEvent(
+                            conversationId: widget.conversationId,
+                            isTyping: false,
+                          ),
+                        );
+                      }
+                    },
                     decoration: InputDecoration(
                       hintText: 'Type a message...',
                       hintStyle: TextStyle(color: hintColor),

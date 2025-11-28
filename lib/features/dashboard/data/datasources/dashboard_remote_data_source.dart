@@ -18,149 +18,159 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
       final currentUser = supabaseClient.auth.currentUser;
       if (currentUser == null) throw ServerException('User not authenticated');
 
-      // Get product stats
-      final products = await supabaseClient
-          .from(DatabaseConstants.productsTable)
-          .select()
-          .eq('seller_id', currentUser.id);
+      // Parallelize the main data fetching operations
+      final results = await Future.wait([
+        // Query 1: Get products with only required fields
+        supabaseClient
+            .from(DatabaseConstants.productsTable)
+            .select('id, is_active, view_count, updated_at')
+            .eq('seller_id', currentUser.id),
 
-      final activeProducts = (products as List)
-          .where((p) => p['is_active'] == true)
-          .length;
+        // Query 2: Get services with only required fields
+        supabaseClient
+            .from(DatabaseConstants.servicesTable)
+            .select('id, updated_at')
+            .eq('provider_id', currentUser.id),
 
-      // Get service stats  
-      final services = await supabaseClient
-          .from(DatabaseConstants.servicesTable)
-          .select()
-          .eq('provider_id', currentUser.id);
+        // Query 3: Get accommodations with only required fields
+        supabaseClient
+            .from(DatabaseConstants.accommodationsTable)
+            .select('id, updated_at')
+            .eq('owner_id', currentUser.id),
 
-      // Get accommodation stats
-      final accommodations = await supabaseClient
-          .from(DatabaseConstants.accommodationsTable)
-          .select()
-          .eq('owner_id', currentUser.id);
-
-      // Calculate total views
-      int totalViews = 0;
-      for (var product in (products as List)) {
-        totalViews += (product['view_count'] as int? ?? 0);
-      }
-
-      // Get last message time from conversations where user is participant
-      DateTime? lastMessageTime;
-      try {
-        final conversations = await supabaseClient
+        // Query 4: Get last conversation time
+        supabaseClient
             .from(DatabaseConstants.conversationsTable)
             .select('last_message_time')
             .or('user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}')
             .not('last_message_time', 'is', null)
             .order('last_message_time', ascending: false)
-            .limit(1);
-        
-        if ((conversations as List).isNotEmpty && conversations[0]['last_message_time'] != null) {
-          lastMessageTime = DateTime.parse(conversations[0]['last_message_time']).toLocal();
-        }
-      } catch (e) {
-        // Ignore errors, keep lastMessageTime as null
+            .limit(1),
+      ]);
+
+      final products = results[0] as List;
+      final services = results[1] as List;
+      final accommodations = results[2] as List;
+      final conversations = results[3] as List;
+
+      // Calculate stats from products
+      final activeProducts = products
+          .where((p) => p['is_active'] == true)
+          .length;
+      int totalViews = 0;
+      for (var product in products) {
+        totalViews += (product['view_count'] as int? ?? 0);
       }
 
-      // Get last listing update time (most recent updated_at from products, services, accommodations)
+      // Get last message time
+      DateTime? lastMessageTime;
+      if (conversations.isNotEmpty &&
+          conversations[0]['last_message_time'] != null) {
+        lastMessageTime = DateTime.parse(
+          conversations[0]['last_message_time'],
+        ).toLocal();
+      }
+
+      // Get last listing update time - find most recent from all three collections
       DateTime? lastListingUpdateTime;
-      try {
-        final allListings = <Map<String, dynamic>>[];
-        
-        // Get products
-        final productsWithTime = await supabaseClient
-            .from(DatabaseConstants.productsTable)
-            .select('updated_at')
-            .eq('seller_id', currentUser.id)
-            .not('updated_at', 'is', null)
-            .order('updated_at', ascending: false)
-            .limit(1);
-        allListings.addAll((productsWithTime as List).cast<Map<String, dynamic>>());
-        
-        // Get services
-        final servicesWithTime = await supabaseClient
-            .from(DatabaseConstants.servicesTable)
-            .select('updated_at')
-            .eq('provider_id', currentUser.id)
-            .not('updated_at', 'is', null)
-            .order('updated_at', ascending: false)
-            .limit(1);
-        allListings.addAll((servicesWithTime as List).cast<Map<String, dynamic>>());
-        
-        // Get accommodations
-        final accommodationsWithTime = await supabaseClient
-            .from(DatabaseConstants.accommodationsTable)
-            .select('updated_at')
-            .eq('owner_id', currentUser.id)
-            .not('updated_at', 'is', null)
-            .order('updated_at', ascending: false)
-            .limit(1);
-        allListings.addAll((accommodationsWithTime as List).cast<Map<String, dynamic>>());
-        
-        if (allListings.isNotEmpty) {
-          allListings.sort((a, b) {
-            final aTime = a['updated_at'] != null ? DateTime.parse(a['updated_at']) : DateTime(1970);
-            final bTime = b['updated_at'] != null ? DateTime.parse(b['updated_at']) : DateTime(1970);
-            return bTime.compareTo(aTime);
-          });
-          if (allListings[0]['updated_at'] != null) {
-            lastListingUpdateTime = DateTime.parse(allListings[0]['updated_at']).toLocal();
-          }
+      final allUpdatedAts = <DateTime>[];
+
+      for (var product in products) {
+        if (product['updated_at'] != null) {
+          allUpdatedAts.add(DateTime.parse(product['updated_at']));
         }
-      } catch (e) {
-        // Ignore errors, keep lastListingUpdateTime as null
+      }
+      for (var service in services) {
+        if (service['updated_at'] != null) {
+          allUpdatedAts.add(DateTime.parse(service['updated_at']));
+        }
+      }
+      for (var accommodation in accommodations) {
+        if (accommodation['updated_at'] != null) {
+          allUpdatedAts.add(DateTime.parse(accommodation['updated_at']));
+        }
       }
 
-      // Get last review time (most recent review for seller's items)
+      if (allUpdatedAts.isNotEmpty) {
+        allUpdatedAts.sort((a, b) => b.compareTo(a));
+        lastListingUpdateTime = allUpdatedAts.first.toLocal();
+      }
+
+      // Get last review time - parallelize review queries
       DateTime? lastReviewTime;
       try {
-        // Get product reviews
-        final productIds = (products as List).map((p) => p['id'] as String).toList();
-        final serviceIds = (services as List).map((s) => s['id'] as String).toList();
-        final accommodationIds = (accommodations as List).map((a) => a['id'] as String).toList();
-        
-        final allReviews = <Map<String, dynamic>>[];
-        
+        final productIds = products.map((p) => p['id'] as String).toList();
+        final serviceIds = services.map((s) => s['id'] as String).toList();
+        final accommodationIds = accommodations
+            .map((a) => a['id'] as String)
+            .toList();
+
+        final reviewQueries = <Future<List<Map<String, dynamic>>>>[];
+
         if (productIds.isNotEmpty) {
-          final productReviews = await supabaseClient
-              .from('product_reviews')
-              .select('created_at')
-              .inFilter('item_id', productIds)
-              .order('created_at', ascending: false)
-              .limit(1);
-          allReviews.addAll((productReviews as List).cast<Map<String, dynamic>>());
+          reviewQueries.add(
+            supabaseClient
+                .from('product_reviews')
+                .select('created_at')
+                .inFilter('item_id', productIds)
+                .order('created_at', ascending: false)
+                .limit(1)
+                .then(
+                  (result) => (result as List).cast<Map<String, dynamic>>(),
+                ),
+          );
         }
-        
+
         if (serviceIds.isNotEmpty) {
-          final serviceReviews = await supabaseClient
-              .from('service_reviews')
-              .select('created_at')
-              .inFilter('item_id', serviceIds)
-              .order('created_at', ascending: false)
-              .limit(1);
-          allReviews.addAll((serviceReviews as List).cast<Map<String, dynamic>>());
+          reviewQueries.add(
+            supabaseClient
+                .from('service_reviews')
+                .select('created_at')
+                .inFilter('item_id', serviceIds)
+                .order('created_at', ascending: false)
+                .limit(1)
+                .then(
+                  (result) => (result as List).cast<Map<String, dynamic>>(),
+                ),
+          );
         }
-        
+
         if (accommodationIds.isNotEmpty) {
-          final accommodationReviews = await supabaseClient
-              .from('accommodation_reviews')
-              .select('created_at')
-              .inFilter('item_id', accommodationIds)
-              .order('created_at', ascending: false)
-              .limit(1);
-          allReviews.addAll((accommodationReviews as List).cast<Map<String, dynamic>>());
+          reviewQueries.add(
+            supabaseClient
+                .from('accommodation_reviews')
+                .select('created_at')
+                .inFilter('item_id', accommodationIds)
+                .order('created_at', ascending: false)
+                .limit(1)
+                .then(
+                  (result) => (result as List).cast<Map<String, dynamic>>(),
+                ),
+          );
         }
-        
-        if (allReviews.isNotEmpty) {
-          allReviews.sort((a, b) {
-            final aTime = a['created_at'] != null ? DateTime.parse(a['created_at']) : DateTime(1970);
-            final bTime = b['created_at'] != null ? DateTime.parse(b['created_at']) : DateTime(1970);
-            return bTime.compareTo(aTime);
-          });
-          if (allReviews[0]['created_at'] != null) {
-            lastReviewTime = DateTime.parse(allReviews[0]['created_at']).toLocal();
+
+        if (reviewQueries.isNotEmpty) {
+          final reviewResults = await Future.wait(reviewQueries);
+          final allReviews = <Map<String, dynamic>>[];
+          for (var result in reviewResults) {
+            allReviews.addAll(result);
+          }
+
+          if (allReviews.isNotEmpty) {
+            allReviews.sort((a, b) {
+              final aTime = a['created_at'] != null
+                  ? DateTime.parse(a['created_at'])
+                  : DateTime(1970);
+              final bTime = b['created_at'] != null
+                  ? DateTime.parse(b['created_at'])
+                  : DateTime(1970);
+              return bTime.compareTo(aTime);
+            });
+            if (allReviews[0]['created_at'] != null) {
+              lastReviewTime = DateTime.parse(
+                allReviews[0]['created_at'],
+              ).toLocal();
+            }
           }
         }
       } catch (e) {
@@ -169,8 +179,8 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
 
       return DashboardStatsModel(
         totalProducts: products.length,
-        totalServices: (services as List).length,
-        totalAccommodations: (accommodations as List).length,
+        totalServices: services.length,
+        totalAccommodations: accommodations.length,
         activeListings: activeProducts,
         totalViews: totalViews,
         lastMessageTime: lastMessageTime,
@@ -184,4 +194,3 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
     }
   }
 }
-

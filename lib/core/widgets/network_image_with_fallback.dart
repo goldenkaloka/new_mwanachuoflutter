@@ -119,12 +119,19 @@ class NetworkImageWithFallback extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: kPrimaryColor.withValues(alpha: 0.3),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              kPrimaryColor.withValues(alpha: 0.2),
+              kPrimaryColor.withValues(alpha: 0.4),
+            ],
+          ),
           borderRadius: borderRadius,
         ),
         child: Icon(
           Icons.person,
-          color: Colors.white.withValues(alpha: 0.7),
+          color: Colors.white.withValues(alpha: 0.9),
           size: (width != null && height != null)
               ? (width! < height! ? width! * 0.3 : height! * 0.3)
               : 24,
@@ -138,12 +145,19 @@ class NetworkImageWithFallback extends StatelessWidget {
       width: width,
       height: height,
       decoration: BoxDecoration(
-        color: kPrimaryColor.withValues(alpha: 0.3),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.grey.withValues(alpha: 0.3),
+            Colors.grey.withValues(alpha: 0.5),
+          ],
+        ),
         borderRadius: borderRadius,
       ),
       child: Icon(
         Icons.image_not_supported,
-        color: Colors.white.withValues(alpha: 0.7),
+        color: Colors.white.withValues(alpha: 0.9),
         size: (width != null && height != null)
             ? (width! < height! ? width! * 0.3 : height! * 0.3)
             : 24,

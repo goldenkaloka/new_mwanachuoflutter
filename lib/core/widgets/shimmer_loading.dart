@@ -3,9 +3,9 @@ import 'package:shimmer/shimmer.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 
 /// A base shimmer loading widget with consistent styling
-/// 
+///
 /// Provides a skeleton loader with shimmer animation effect.
-/// 
+///
 /// Example:
 /// ```dart
 /// ShimmerLoading(
@@ -28,10 +28,12 @@ class ShimmerLoading extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Shimmer.fromColors(
       baseColor: isDarkMode ? const Color(0xFF2A2A2A) : const Color(0xFFE0E0E0),
-      highlightColor: isDarkMode ? const Color(0xFF3A3A3A) : const Color(0xFFF5F5F5),
+      highlightColor: isDarkMode
+          ? const Color(0xFF3A3A3A)
+          : const Color(0xFFF5F5F5),
       period: kAnimationSlow,
       child: Container(
         width: width,
@@ -46,7 +48,7 @@ class ShimmerLoading extends StatelessWidget {
 }
 
 /// Product card skeleton loader
-/// 
+///
 /// A shimmer placeholder for product cards while loading.
 class ProductCardSkeleton extends StatelessWidget {
   const ProductCardSkeleton({super.key});
@@ -66,17 +68,14 @@ class ProductCardSkeleton extends StatelessWidget {
             ),
           ),
         ),
-        
+
         Padding(
           padding: const EdgeInsets.all(kSpacingMd),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Title skeleton
-              const ShimmerLoading(
-                width: double.infinity,
-                height: 16,
-              ),
+              const ShimmerLoading(width: double.infinity, height: 16),
               const SizedBox(height: kSpacingSm),
               // Price skeleton
               ShimmerLoading(
@@ -100,7 +99,7 @@ class ProductCardSkeleton extends StatelessWidget {
 }
 
 /// Service card skeleton loader
-/// 
+///
 /// A shimmer placeholder for service cards while loading.
 class ServiceCardSkeleton extends StatelessWidget {
   const ServiceCardSkeleton({super.key});
@@ -113,22 +112,16 @@ class ServiceCardSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Image skeleton
-          const ShimmerLoading(
-            width: 90,
-            height: 90,
-          ),
+          const ShimmerLoading(width: 90, height: 90),
           const SizedBox(width: kSpacingMd),
-          
+
           // Content skeleton
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Title skeleton
-                const ShimmerLoading(
-                  width: double.infinity,
-                  height: 16,
-                ),
+                const ShimmerLoading(width: double.infinity, height: 16),
                 const SizedBox(height: kSpacingSm),
                 // Category skeleton
                 ShimmerLoading(
@@ -170,7 +163,7 @@ class ServiceCardSkeleton extends StatelessWidget {
 }
 
 /// List item skeleton loader
-/// 
+///
 /// A shimmer placeholder for list items while loading.
 class ListItemSkeleton extends StatelessWidget {
   const ListItemSkeleton({super.key});
@@ -191,17 +184,14 @@ class ListItemSkeleton extends StatelessWidget {
             borderRadius: BorderRadius.circular(kRadiusFull),
           ),
           const SizedBox(width: kSpacingMd),
-          
+
           // Content skeleton
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Title skeleton
-                const ShimmerLoading(
-                  width: double.infinity,
-                  height: 16,
-                ),
+                const ShimmerLoading(width: double.infinity, height: 16),
                 const SizedBox(height: kSpacingSm),
                 // Subtitle skeleton
                 ShimmerLoading(
@@ -219,7 +209,7 @@ class ListItemSkeleton extends StatelessWidget {
 }
 
 /// Grid of product card skeletons
-/// 
+///
 /// Displays multiple product card skeletons in a grid layout.
 class ProductGridSkeleton extends StatelessWidget {
   final int itemCount;
@@ -234,6 +224,8 @@ class ProductGridSkeleton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       padding: const EdgeInsets.all(kSpacingLg),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
@@ -248,17 +240,13 @@ class ProductGridSkeleton extends StatelessWidget {
 }
 
 /// List of skeletons
-/// 
+///
 /// Displays multiple skeleton items in a list layout.
 class ListSkeleton extends StatelessWidget {
   final int itemCount;
   final Widget Function(BuildContext, int)? itemBuilder;
 
-  const ListSkeleton({
-    super.key,
-    this.itemCount = 5,
-    this.itemBuilder,
-  });
+  const ListSkeleton({super.key, this.itemCount = 5, this.itemBuilder});
 
   @override
   Widget build(BuildContext context) {
@@ -270,7 +258,7 @@ class ListSkeleton extends StatelessWidget {
 }
 
 /// Profile header skeleton
-/// 
+///
 /// A shimmer placeholder for profile headers.
 class ProfileHeaderSkeleton extends StatelessWidget {
   const ProfileHeaderSkeleton({super.key});
@@ -286,7 +274,7 @@ class ProfileHeaderSkeleton extends StatelessWidget {
           borderRadius: BorderRadius.circular(kRadiusFull),
         ),
         const SizedBox(height: kSpacingLg),
-        
+
         // Name skeleton
         ShimmerLoading(
           width: 200,
@@ -294,7 +282,7 @@ class ProfileHeaderSkeleton extends StatelessWidget {
           borderRadius: BorderRadius.circular(kRadiusSm),
         ),
         const SizedBox(height: kSpacingSm),
-        
+
         // Email skeleton
         ShimmerLoading(
           width: 150,
@@ -302,7 +290,7 @@ class ProfileHeaderSkeleton extends StatelessWidget {
           borderRadius: BorderRadius.circular(kRadiusSm),
         ),
         const SizedBox(height: kSpacingLg),
-        
+
         // Stats skeleton
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
@@ -330,7 +318,7 @@ class ProfileHeaderSkeleton extends StatelessWidget {
 }
 
 /// Detail page skeleton
-/// 
+///
 /// A shimmer placeholder for detail pages (product, service, accommodation).
 class DetailPageSkeleton extends StatelessWidget {
   const DetailPageSkeleton({super.key});
@@ -343,19 +331,13 @@ class DetailPageSkeleton extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Image carousel skeleton
-          const ShimmerLoading(
-            width: double.infinity,
-            height: 300,
-          ),
+          const ShimmerLoading(width: double.infinity, height: 300),
           const SizedBox(height: kSpacingLg),
-          
+
           // Title skeleton
-          const ShimmerLoading(
-            width: double.infinity,
-            height: 24,
-          ),
+          const ShimmerLoading(width: double.infinity, height: 24),
           const SizedBox(height: kSpacingMd),
-          
+
           // Price skeleton
           ShimmerLoading(
             width: 150,
@@ -363,7 +345,7 @@ class DetailPageSkeleton extends StatelessWidget {
             borderRadius: BorderRadius.circular(kRadiusSm),
           ),
           const SizedBox(height: kSpacingLg),
-          
+
           // Description skeleton
           Column(
             children: List.generate(
@@ -379,7 +361,7 @@ class DetailPageSkeleton extends StatelessWidget {
             ),
           ),
           const SizedBox(height: kSpacingLg),
-          
+
           // Features skeleton
           Row(
             children: [
@@ -403,7 +385,7 @@ class DetailPageSkeleton extends StatelessWidget {
 }
 
 /// Chat conversation skeleton
-/// 
+///
 /// A shimmer placeholder for conversation lists.
 class ConversationSkeleton extends StatelessWidget {
   const ConversationSkeleton({super.key});
@@ -424,17 +406,14 @@ class ConversationSkeleton extends StatelessWidget {
             borderRadius: BorderRadius.circular(kRadiusFull),
           ),
           const SizedBox(width: kSpacingMd),
-          
+
           // Content
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Name
-                const ShimmerLoading(
-                  width: double.infinity,
-                  height: 16,
-                ),
+                const ShimmerLoading(width: double.infinity, height: 16),
                 const SizedBox(height: kSpacingXs),
                 // Message preview
                 ShimmerLoading(
@@ -445,7 +424,7 @@ class ConversationSkeleton extends StatelessWidget {
               ],
             ),
           ),
-          
+
           // Time & badge
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
@@ -468,4 +447,3 @@ class ConversationSkeleton extends StatelessWidget {
     );
   }
 }
-

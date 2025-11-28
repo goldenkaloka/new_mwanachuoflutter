@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:mwanachuo/features/messages/domain/entities/message_entity.dart';
 
 abstract class MessageEvent extends Equatable {
   const MessageEvent();
@@ -60,7 +61,12 @@ class SendMessageEvent extends MessageEvent {
   });
 
   @override
-  List<Object?> get props => [conversationId, content, imageUrl, repliedToMessageId];
+  List<Object?> get props => [
+    conversationId,
+    content,
+    imageUrl,
+    repliedToMessageId,
+  ];
 }
 
 class MarkMessagesAsReadEvent extends MessageEvent {
@@ -111,10 +117,7 @@ class SearchMessagesEvent extends MessageEvent {
   final String query;
   final int? limit;
 
-  const SearchMessagesEvent({
-    required this.query,
-    this.limit,
-  });
+  const SearchMessagesEvent({required this.query, this.limit});
 
   @override
   List<Object?> get props => [query, limit];
@@ -149,9 +152,7 @@ class RetryMessageEvent extends MessageEvent {
 class DeleteConversationEvent extends MessageEvent {
   final String conversationId;
 
-  const DeleteConversationEvent({
-    required this.conversationId,
-  });
+  const DeleteConversationEvent({required this.conversationId});
 
   @override
   List<Object?> get props => [conversationId];
@@ -160,10 +161,21 @@ class DeleteConversationEvent extends MessageEvent {
 class DeleteMessageForUserEvent extends MessageEvent {
   final String messageId;
 
-  const DeleteMessageForUserEvent({
-    required this.messageId,
-  });
+  const DeleteMessageForUserEvent({required this.messageId});
 
   @override
   List<Object?> get props => [messageId];
+}
+
+class MessagesUpdatedEvent extends MessageEvent {
+  final List<MessageEntity> messages;
+  final String conversationId;
+
+  const MessagesUpdatedEvent({
+    required this.messages,
+    required this.conversationId,
+  });
+
+  @override
+  List<Object?> get props => [messages, conversationId];
 }

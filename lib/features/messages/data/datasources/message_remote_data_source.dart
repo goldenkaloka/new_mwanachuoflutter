@@ -27,7 +27,7 @@ abstract class MessageRemoteDataSource {
   Future<void> deleteMessage(String messageId);
   Future<void> deleteMessageForUser(String messageId);
   Future<void> deleteConversation(String conversationId);
-  Stream<MessageModel> subscribeToMessages(String conversationId);
+  Stream<List<MessageModel>> subscribeToMessages(String conversationId);
   Stream<ConversationModel> subscribeToConversations();
   Future<void> sendTypingIndicator({
     required String conversationId,
@@ -64,7 +64,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
               .eq('conversation_id', convId)
               .neq('sender_id', currentUserId)
               .eq('is_read', false);
-          
+
           final count = (response as List).length;
           return MapEntry(convId, count);
         }),
@@ -99,12 +99,12 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .limit(limit ?? 50);
 
       final List<dynamic> data = response as List<dynamic>;
-      
+
       // Filter out conversations deleted by current user (soft delete)
       final filteredData = data.where((json) {
         final isUser1 = json['user1_id'] == currentUser.id;
         final isUser2 = json['user2_id'] == currentUser.id;
-        
+
         if (isUser1) {
           // Check if user1 has deleted this conversation
           return json['user1_deleted_at'] == null;
@@ -114,13 +114,15 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
         }
         return false; // Should never reach here
       }).toList();
-      
+
       if (filteredData.isEmpty) {
         return [];
       }
 
       // Batch fetch unread counts for all conversations
-      final conversationIds = filteredData.map((json) => json['id'] as String).toList();
+      final conversationIds = filteredData
+          .map((json) => json['id'] as String)
+          .toList();
       final unreadCounts = await _getUnreadCounts(
         conversationIds,
         currentUser.id,
@@ -291,13 +293,14 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   }
 
   /// Mark messages as delivered when fetched by recipient
-  Future<void> _markMessagesAsDelivered(String conversationId, String currentUserId) async {
+  Future<void> _markMessagesAsDelivered(
+    String conversationId,
+    String currentUserId,
+  ) async {
     try {
       await supabaseClient
           .from(DatabaseConstants.messagesTable)
-          .update({
-            'delivered_at': DateTime.now().toIso8601String(),
-          })
+          .update({'delivered_at': DateTime.now().toIso8601String()})
           .eq('conversation_id', conversationId)
           .neq('sender_id', currentUserId)
           .filter('delivered_at', 'is', null);
@@ -385,9 +388,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           },
         );
       } catch (e) {
-        debugPrint(
-          '⚠️ Failed to send push notification for message: $e',
-        );
+        debugPrint('⚠️ Failed to send push notification for message: $e');
         // Don't throw - message was sent successfully, just push notification failed
       }
 
@@ -419,7 +420,6 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .eq('conversation_id', conversationId)
           .neq('sender_id', currentUser.id)
           .eq('is_read', false);
-          
     } on PostgrestException catch (e) {
       LoggerService.error('PostgrestException marking messages as read', e);
       throw ServerException(e.message);
@@ -460,12 +460,13 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .eq('id', messageId)
           .single();
 
-      final List<dynamic> currentDeletedBy = message['deleted_by'] as List<dynamic>? ?? [];
-      
+      final List<dynamic> currentDeletedBy =
+          message['deleted_by'] as List<dynamic>? ?? [];
+
       // Add current user to deleted_by array if not already present
       if (!currentDeletedBy.contains(currentUser.id)) {
         final updatedDeletedBy = [...currentDeletedBy, currentUser.id];
-        
+
         await supabaseClient
             .from(DatabaseConstants.messagesTable)
             .update({'deleted_by': updatedDeletedBy})
@@ -505,14 +506,15 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       // Soft delete: Mark conversation as deleted for this user only
       // Messages remain in database, other user can still see conversation
       final deleteField = isUser1 ? 'user1_deleted_at' : 'user2_deleted_at';
-      
+
       await supabaseClient
           .from(DatabaseConstants.conversationsTable)
           .update({deleteField: DateTime.now().toUtc().toIso8601String()})
           .eq('id', conversationId);
 
-      LoggerService.debug('Conversation soft-deleted for current user (field: $deleteField)');
-          
+      LoggerService.debug(
+        'Conversation soft-deleted for current user (field: $deleteField)',
+      );
     } on PostgrestException catch (e) {
       LoggerService.error('PostgrestException deleting conversation', e);
       throw ServerException(e.message);
@@ -523,13 +525,14 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
   }
 
   @override
-  Stream<MessageModel> subscribeToMessages(String conversationId) {
+  Stream<List<MessageModel>> subscribeToMessages(String conversationId) {
     try {
       return supabaseClient
           .from(DatabaseConstants.messagesTable)
           .stream(primaryKey: ['id'])
           .eq('conversation_id', conversationId)
           .order('created_at', ascending: false)
+          .limit(50)
           .asyncMap((rows) async {
             if (rows.isEmpty) return <MessageModel>[];
 
@@ -559,8 +562,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
                 'sender_avatar': user?['avatar_url'],
               });
             }).toList();
-          })
-          .expand((messages) => messages);
+          });
     } catch (e) {
       throw ServerException('Failed to subscribe to messages: $e');
     }
@@ -588,54 +590,57 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
 
             if (userConversations.isEmpty) return <ConversationModel>[];
 
-            // For each conversation, fetch online status
-            final conversations = await Future.wait(
-              userConversations.map((json) async {
-                final isUser1 = json['user1_id'] == currentUser.id;
-                final otherUserId = isUser1
-                    ? json['user2_id']
-                    : json['user1_id'];
+            // Collect all other user IDs to fetch status in batch
+            final otherUserIds = userConversations
+                .map((json) {
+                  final isUser1 = json['user1_id'] == currentUser.id;
+                  return isUser1
+                      ? json['user2_id'] as String
+                      : json['user1_id'] as String;
+                })
+                .toSet()
+                .toList();
 
-                // Fetch other user's online status
-                try {
-                  final otherUser = await supabaseClient
-                      .from('users')
-                      .select('is_online, last_seen_at')
-                      .eq('id', otherUserId)
-                      .single();
+            // Batch fetch user statuses
+            Map<String, Map<String, dynamic>> userStatusMap = {};
+            if (otherUserIds.isNotEmpty) {
+              try {
+                final usersData = await supabaseClient
+                    .from('users')
+                    .select('id, is_online, last_seen_at')
+                    .inFilter('id', otherUserIds);
 
-                  return ConversationModel.fromJson({
-                    ...json,
-                    'user_id': currentUser.id,
-                    'other_user_id': otherUserId,
-                    'other_user_name': isUser1
-                        ? json['user2_name']
-                        : json['user1_name'],
-                    'other_user_avatar': isUser1
-                        ? json['user2_avatar']
-                        : json['user1_avatar'],
-                    'is_online': otherUser['is_online'] ?? false,
-                    'last_seen_at': otherUser['last_seen_at'],
-                  });
-                } catch (e) {
-                  debugPrint('⚠️ Failed to fetch user status: $e');
-                  return ConversationModel.fromJson({
-                    ...json,
-                    'user_id': currentUser.id,
-                    'other_user_id': otherUserId,
-                    'other_user_name': isUser1
-                        ? json['user2_name']
-                        : json['user1_name'],
-                    'other_user_avatar': isUser1
-                        ? json['user2_avatar']
-                        : json['user1_avatar'],
-                    'is_online': false,
-                  });
+                for (var user in usersData) {
+                  userStatusMap[user['id'] as String] = user;
                 }
-              }).toList(),
-            );
+              } catch (e) {
+                debugPrint('⚠️ Failed to batch fetch user statuses: $e');
+              }
+            }
 
-            return conversations;
+            // Map conversations with status from the batch map
+            return userConversations.map((json) {
+              final isUser1 = json['user1_id'] == currentUser.id;
+              final otherUserId = isUser1
+                  ? json['user2_id'] as String
+                  : json['user1_id'] as String;
+
+              final otherUser = userStatusMap[otherUserId];
+
+              return ConversationModel.fromJson({
+                ...json,
+                'user_id': currentUser.id,
+                'other_user_id': otherUserId,
+                'other_user_name': isUser1
+                    ? json['user2_name']
+                    : json['user1_name'],
+                'other_user_avatar': isUser1
+                    ? json['user2_avatar']
+                    : json['user1_avatar'],
+                'is_online': otherUser?['is_online'] ?? false,
+                'last_seen_at': otherUser?['last_seen_at'],
+              });
+            }).toList();
           })
           .expand((conversations) => conversations);
     } catch (e) {

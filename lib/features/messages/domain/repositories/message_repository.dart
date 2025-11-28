@@ -46,7 +46,7 @@ abstract class MessageRepository {
   Future<Either<Failure, void>> deleteConversation(String conversationId);
 
   /// Subscribe to messages in a conversation (real-time)
-  Stream<MessageEntity> subscribeToMessages(String conversationId);
+  Stream<List<MessageEntity>> subscribeToMessages(String conversationId);
 
   /// Subscribe to conversations (real-time updates)
   Stream<ConversationEntity> subscribeToConversations();
@@ -69,4 +69,3 @@ abstract class MessageRepository {
     int? limit,
   });
 }
-
