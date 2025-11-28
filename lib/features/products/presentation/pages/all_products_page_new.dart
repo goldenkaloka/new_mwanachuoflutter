@@ -108,6 +108,9 @@ class _AllProductsView extends StatelessWidget {
 
             return GridView.builder(
               padding: const EdgeInsets.all(16),
+              physics: const BouncingScrollPhysics(),
+              addAutomaticKeepAlives: false,
+              addRepaintBoundaries: true,
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 2,
                 childAspectRatio: 0.75,
@@ -118,6 +121,7 @@ class _AllProductsView extends StatelessWidget {
               itemBuilder: (context, index) {
                 final product = state.products[index];
                 return GestureDetector(
+                  key: ValueKey('product_${product.id}'),
                   onTap: () => Navigator.pushNamed(
                     context,
                     '/product-details',

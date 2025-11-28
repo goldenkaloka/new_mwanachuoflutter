@@ -496,15 +496,18 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
         itemBuilder: (context, index) {
           return Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-            child: Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16.0),
-                color: kPrimaryColor.withValues(alpha: 0.3),
-              ),
-              child: NetworkImageWithFallback(
-                imageUrl: images[index],
-                fit: BoxFit.cover,
-                borderRadius: BorderRadius.circular(16.0),
+            child: Hero(
+              tag: 'product_${images[index]}',
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16.0),
+                  color: kPrimaryColor.withValues(alpha: 0.3),
+                ),
+                child: NetworkImageWithFallback(
+                  imageUrl: images[index],
+                  fit: BoxFit.cover,
+                  borderRadius: BorderRadius.circular(16.0),
+                ),
               ),
             ),
           );

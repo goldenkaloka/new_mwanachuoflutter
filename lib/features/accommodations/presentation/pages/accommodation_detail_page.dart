@@ -500,11 +500,14 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
               });
             },
             itemBuilder: (context, index) {
-              return NetworkImageWithFallback(
-                imageUrl: images[index],
-                width: double.infinity,
-                height: double.infinity,
-                fit: BoxFit.cover,
+              return Hero(
+                tag: 'accommodation_${images[index]}',
+                child: NetworkImageWithFallback(
+                  imageUrl: images[index],
+                  width: double.infinity,
+                  height: double.infinity,
+                  fit: BoxFit.cover,
+                ),
               );
             },
           ),

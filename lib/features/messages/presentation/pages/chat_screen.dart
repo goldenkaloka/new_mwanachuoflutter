@@ -4,6 +4,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/constants/database_constants.dart';
@@ -977,39 +978,34 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: Image.network(
-                message.imageUrl!,
+              child: CachedNetworkImage(
+                imageUrl: message.imageUrl!,
                 fit: BoxFit.cover,
                 width: double.infinity,
-                loadingBuilder: (context, child, loadingProgress) {
-                  if (loadingProgress == null) return child;
-                  return Container(
-                    height: 200,
-                    color: isDarkMode ? kBorderColorDark : kBorderColor,
-                    child: Center(
-                      child: CircularProgressIndicator(
-                        value: loadingProgress.expectedTotalBytes != null
-                            ? loadingProgress.cumulativeBytesLoaded /
-                                  loadingProgress.expectedTotalBytes!
-                            : null,
-                        color: kPrimaryColor,
-                      ),
+                memCacheWidth: 800, // Optimize memory usage
+                maxWidthDiskCache: 1200, // Limit disk cache size
+                placeholder: (context, url) => Container(
+                  height: 200,
+                  color: isDarkMode ? kBorderColorDark : kBorderColor,
+                  child: const Center(
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
                     ),
-                  );
-                },
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
-                    height: 200,
-                    color: isDarkMode ? kBorderColorDark : kBorderColor,
-                    child: Center(
-                      child: Icon(
-                        Icons.broken_image,
-                        size: 48,
-                        color: isDarkMode ? kTextSecondaryDark : kTextSecondary,
-                      ),
+                  ),
+                ),
+                errorWidget: (context, url, error) => Container(
+                  height: 200,
+                  color: isDarkMode ? kBorderColorDark : kBorderColor,
+                  child: Center(
+                    child: Icon(
+                      Icons.broken_image,
+                      size: 48,
+                      color: isDarkMode ? kTextSecondaryDark : kTextSecondary,
                     ),
-                  );
-                },
+                  ),
+                ),
+                fadeInDuration: const Duration(milliseconds: 200),
               ),
             ),
             if (message.content.isNotEmpty) const SizedBox(height: 8),

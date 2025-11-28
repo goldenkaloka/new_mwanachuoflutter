@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 
 /// Card size options
@@ -144,9 +145,10 @@ class ProductCard extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
         decoration: BoxDecoration(
           color: kSurfaceColorLight,
           borderRadius: BorderRadius.circular(kRadiusSm),
@@ -158,16 +160,28 @@ class ProductCard extends StatelessWidget {
             // Image
             Expanded(
               flex: isSmallScreen ? 3 : 2,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusSm),
-                ),
-                child: Image.network(
-                  imageUrl,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
+              child: Hero(
+                tag: 'product_$imageUrl',
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(kRadiusSm),
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 600,
+                    maxWidthDiskCache: 800,
+                    placeholder: (context, url) => Container(
+                      color: kBorderColor,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
                       color: kBorderColor,
                       child: const Center(
                         child: Icon(
@@ -176,24 +190,9 @@ class ProductCard extends StatelessWidget {
                           color: kTextSecondary,
                         ),
                       ),
-                    );
-                  },
-                  loadingBuilder: (context, child, loadingProgress) {
-                    if (loadingProgress == null) return child;
-                    return Container(
-                      color: kBorderColor,
-                      child: Center(
-                        child: CircularProgressIndicator(
-                          value: loadingProgress.expectedTotalBytes != null
-                              ? loadingProgress.cumulativeBytesLoaded /
-                                    loadingProgress.expectedTotalBytes!
-                              : null,
-                          color: kPrimaryColor,
-                          strokeWidth: 2,
-                        ),
-                      ),
-                    );
-                  },
+                    ),
+                    fadeInDuration: const Duration(milliseconds: 200),
+                  ),
                 ),
               ),
             ),
@@ -280,6 +279,7 @@ class ProductCard extends StatelessWidget {
           ],
         ),
       ),
+      ), // RepaintBoundary closing
     );
   }
 }
@@ -309,8 +309,9 @@ class ServiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: kSurfaceColorLight,
@@ -322,15 +323,29 @@ class ServiceCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // Image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(kRadiusSm),
-              child: Image.network(
-                imageUrl,
-                width: 90,
-                height: 90,
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) {
-                  return Container(
+            Hero(
+              tag: 'service_$imageUrl',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(kRadiusSm),
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  width: 90,
+                  height: 90,
+                  fit: BoxFit.cover,
+                  memCacheWidth: 180,
+                  memCacheHeight: 180,
+                  placeholder: (context, url) => Container(
+                    width: 90,
+                    height: 90,
+                    color: kBorderColor,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
                     width: 90,
                     height: 90,
                     color: kBorderColor,
@@ -341,8 +356,9 @@ class ServiceCard extends StatelessWidget {
                         color: kTextSecondary,
                       ),
                     ),
-                  );
-                },
+                  ),
+                  fadeInDuration: const Duration(milliseconds: 200),
+                ),
               ),
             ),
             const SizedBox(width: kSpacingMd),
@@ -418,6 +434,7 @@ class ServiceCard extends StatelessWidget {
           ],
         ),
       ),
+      ), // RepaintBoundary closing
     );
   }
 }
@@ -451,8 +468,9 @@ class AccommodationCard extends StatelessWidget {
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
 
-    return GestureDetector(
-      onTap: onTap,
+    return RepaintBoundary(
+      child: GestureDetector(
+        onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
@@ -465,16 +483,28 @@ class AccommodationCard extends StatelessWidget {
             // Image - takes more space on small screens
             Expanded(
               flex: isSmallScreen ? 3 : 2,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(kRadiusSm),
-                ),
-                child: Image.network(
-                  imageUrl,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorBuilder: (context, error, stackTrace) {
-                    return Container(
+              child: Hero(
+                tag: 'accommodation_$imageUrl',
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(kRadiusSm),
+                  ),
+                  child: CachedNetworkImage(
+                    imageUrl: imageUrl,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                    memCacheWidth: 600,
+                    maxWidthDiskCache: 800,
+                    placeholder: (context, url) => Container(
+                      color: isDarkMode ? kBorderColorDark : kBorderColor,
+                      child: const Center(
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
+                        ),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
                       color: isDarkMode ? kBorderColorDark : kBorderColor,
                       child: const Center(
                         child: Icon(
@@ -483,8 +513,9 @@ class AccommodationCard extends StatelessWidget {
                           color: kTextSecondary,
                         ),
                       ),
-                    );
-                  },
+                    ),
+                    fadeInDuration: const Duration(milliseconds: 200),
+                  ),
                 ),
               ),
             ),
@@ -595,6 +626,7 @@ class AccommodationCard extends StatelessWidget {
           ],
         ),
       ),
+      ), // RepaintBoundary closing
     );
   }
 }

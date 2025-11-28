@@ -77,6 +77,9 @@ class _HousingView extends StatelessWidget {
               padding: EdgeInsets.all(
                 ResponsiveBreakpoints.responsiveHorizontalPadding(context),
               ),
+              physics: const BouncingScrollPhysics(),
+              addAutomaticKeepAlives: false,
+              addRepaintBoundaries: true,
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: crossAxisCount,
                 childAspectRatio: 0.75,
@@ -88,6 +91,7 @@ class _HousingView extends StatelessWidget {
                 // Use new AccommodationCard component
                 final accommodation = state.accommodations[index];
                 return AccommodationCard(
+                  key: ValueKey('accommodation_${accommodation.id}'),
                   imageUrl: accommodation.images.isNotEmpty
                       ? accommodation.images.first
                       : '',

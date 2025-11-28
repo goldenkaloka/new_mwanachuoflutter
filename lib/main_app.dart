@@ -41,6 +41,8 @@ import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart'
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:app_links/app_links.dart';
+import 'dart:async';
 
 class MwanachuoshopApp extends StatefulWidget {
   const MwanachuoshopApp({super.key});
@@ -51,14 +53,102 @@ class MwanachuoshopApp extends StatefulWidget {
 
 class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+  late AppLinks _appLinks;
+  StreamSubscription<Uri>? _linkSubscription;
 
   @override
   void initState() {
     super.initState();
+    _appLinks = AppLinks();
+    
     // Check for pending notification data on app start
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handlePendingNotification();
+      _initDeepLinks();
     });
+  }
+
+  void _initDeepLinks() {
+    // Handle initial link (when app is opened from a deep link)
+    _appLinks.getInitialLink().then((uri) {
+      if (uri != null) {
+        _handleDeepLink(uri);
+      }
+    });
+
+    // Listen for deep links while app is running
+    _linkSubscription = _appLinks.uriLinkStream.listen(
+      (uri) => _handleDeepLink(uri),
+      onError: (err) => debugPrint('Deep link error: $err'),
+    );
+  }
+
+  void _handleDeepLink(Uri uri) {
+    debugPrint('Deep link received: $uri');
+    
+    if (uri.scheme != 'mwanachuo') {
+      return;
+    }
+
+    final path = uri.path;
+    final context = navigatorKey.currentContext;
+
+    if (context == null) {
+      // If context is not available yet, wait a bit and try again
+      Future.delayed(const Duration(milliseconds: 500), () {
+        _handleDeepLink(uri);
+      });
+      return;
+    }
+
+    if (path == '/subscription-success') {
+      // Extract session_id from query parameters (can be used for verification later)
+      // final sessionId = uri.queryParameters['session_id'];
+      
+      // Navigate to subscription plans page
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/subscription-plans',
+        (route) => route.isFirst || route.settings.name == '/home',
+      );
+
+      // Show success message
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Payment successful! Your subscription is now active.'),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+        }
+      });
+    } else if (path == '/subscription-cancel') {
+      // Navigate to subscription plans page
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        '/subscription-plans',
+        (route) => route.isFirst || route.settings.name == '/home',
+      );
+
+      // Show cancel message
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Payment was cancelled. You can try again anytime.'),
+              backgroundColor: Colors.orange,
+              duration: Duration(seconds: 5),
+            ),
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription?.cancel();
+    super.dispose();
   }
 
   void _handlePendingNotification() {
@@ -160,6 +250,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
 
       if (!isSeller) {
         // Buyers can always access messages
+        if (!context.mounted) return;
         Navigator.of(context).pushNamed(
           '/chat',
           arguments: conversationId,

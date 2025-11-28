@@ -25,15 +25,17 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   void _checkAdminAccess() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      
+
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
         final userRole = authState.user.role.value;
-        
+
         if (userRole != 'admin') {
-          debugPrint('❌ Non-admin user attempting to create promotion - redirecting');
+          debugPrint(
+            '❌ Non-admin user attempting to create promotion - redirecting',
+          );
           Navigator.of(context).pop();
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -48,6 +50,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
       }
     });
   }
+
   final _formKey = GlobalKey<FormState>();
   final _titleController = TextEditingController();
   final _subtitleController = TextEditingController();
@@ -74,6 +77,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
       lastDate: DateTime(2100),
     );
     if (picked != null) {
+      if (!mounted) return;
       setState(() {
         if (isStartDate) {
           _startDate = picked;
@@ -88,25 +92,36 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
     final borderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: ResponsiveBuilder(
         builder: (context, screenSize) {
           return Column(
             children: [
               // Top App Bar
-              _buildTopAppBar(context, primaryTextColor, secondaryTextColor, screenSize),
-              
+              _buildTopAppBar(
+                context,
+                primaryTextColor,
+                secondaryTextColor,
+                screenSize,
+              ),
+
               // Form
               Expanded(
                 child: SingleChildScrollView(
                   child: ResponsiveContainer(
                     child: Padding(
                       padding: EdgeInsets.all(
-                        ResponsiveBreakpoints.responsiveHorizontalPadding(context),
+                        ResponsiveBreakpoints.responsiveHorizontalPadding(
+                          context,
+                        ),
                       ),
                       child: Form(
                         key: _formKey,
@@ -121,12 +136,16 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                 expanded: 40.0,
                               ),
                             ),
-                            
+
                             // Photo Upload
-                            _buildPhotoUpload(primaryTextColor, secondaryTextColor, borderColor),
-                            
+                            _buildPhotoUpload(
+                              primaryTextColor,
+                              secondaryTextColor,
+                              borderColor,
+                            ),
+
                             const SizedBox(height: 24.0),
-                            
+
                             // Title
                             TextFormField(
                               controller: _titleController,
@@ -149,15 +168,16 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                 return null;
                               },
                             ),
-                            
+
                             const SizedBox(height: 20.0),
-                            
+
                             // Subtitle
                             TextFormField(
                               controller: _subtitleController,
                               decoration: InputDecoration(
                                 labelText: 'Subtitle',
-                                hintText: 'e.g., Up to 50% off on selected items',
+                                hintText:
+                                    'e.g., Up to 50% off on selected items',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
                                   borderSide: BorderSide(color: borderColor),
@@ -168,9 +188,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                 ),
                               ),
                             ),
-                            
+
                             const SizedBox(height: 20.0),
-                            
+
                             // Description
                             TextFormField(
                               controller: _descriptionController,
@@ -188,16 +208,17 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                 ),
                               ),
                             ),
-                            
+
                             const SizedBox(height: 20.0),
-                            
+
                             // Terms & Conditions
                             TextFormField(
                               controller: _termsController,
                               maxLines: 5,
                               decoration: InputDecoration(
                                 labelText: 'Terms & Conditions (one per line)',
-                                hintText: 'Enter each term on a new line...\ne.g.,\nValid until stock lasts\nCannot be combined with other offers',
+                                hintText:
+                                    'Enter each term on a new line...\ne.g.,\nValid until stock lasts\nCannot be combined with other offers',
                                 border: OutlineInputBorder(
                                   borderRadius: BorderRadius.circular(12.0),
                                   borderSide: BorderSide(color: borderColor),
@@ -208,9 +229,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                 ),
                               ),
                             ),
-                            
+
                             const SizedBox(height: 20.0),
-                            
+
                             // Date Range
                             Row(
                               children: [
@@ -235,7 +256,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                 ),
                               ],
                             ),
-                            
+
                             SizedBox(
                               height: ResponsiveBreakpoints.responsiveValue(
                                 context,
@@ -251,7 +272,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                   ),
                 ),
               ),
-              
+
               // Submit Button
               _buildSubmitButton(context, primaryTextColor, screenSize),
             ],
@@ -267,7 +288,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     Color secondaryTextColor,
     ScreenSize screenSize,
   ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return Container(
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
@@ -325,11 +348,19 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     );
   }
 
-  Widget _buildPhotoUpload(Color primaryTextColor, Color secondaryTextColor, Color borderColor) {
+  Widget _buildPhotoUpload(
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color borderColor,
+  ) {
     return Container(
       height: 200,
       decoration: BoxDecoration(
-        border: Border.all(color: borderColor, width: 2.0, style: BorderStyle.solid),
+        border: Border.all(
+          color: borderColor,
+          width: 2.0,
+          style: BorderStyle.solid,
+        ),
         borderRadius: BorderRadius.circular(16.0),
       ),
       child: Center(
@@ -390,15 +421,17 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           date != null
               ? '${date.day}/${date.month}/${date.year}'
               : 'Select date',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 16.0,
-          ),
+          style: GoogleFonts.plusJakartaSans(fontSize: 16.0),
         ),
       ),
     );
   }
 
-  Widget _buildSubmitButton(BuildContext context, Color primaryTextColor, ScreenSize screenSize) {
+  Widget _buildSubmitButton(
+    BuildContext context,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
     return Container(
       padding: EdgeInsets.all(
         ResponsiveBreakpoints.responsiveHorizontalPadding(context),
@@ -442,27 +475,28 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     final termsText = _termsController.text.trim();
                     final terms = termsText.isNotEmpty
                         ? termsText
-                            .split('\n')
-                            .map((t) => t.trim())
-                            .where((t) => t.isNotEmpty)
-                            .toList()
+                              .split('\n')
+                              .map((t) => t.trim())
+                              .where((t) => t.isNotEmpty)
+                              .toList()
                         : null;
 
                     // Create promotion
                     await context.read<PromotionCubit>().createNewPromotion(
-                          title: _titleController.text.trim(),
-                          subtitle: _subtitleController.text.trim(),
-                          description: _descriptionController.text.trim(),
-                          startDate: _startDate!,
-                          endDate: _endDate!,
-                          image: _selectedImage,
-                          terms: terms,
-                        );
+                      title: _titleController.text.trim(),
+                      subtitle: _subtitleController.text.trim(),
+                      description: _descriptionController.text.trim(),
+                      startDate: _startDate!,
+                      endDate: _endDate!,
+                      image: _selectedImage,
+                      terms: terms,
+                    );
 
-                    if (!mounted) return;
-                    final navigator = Navigator.of(context);
-                    if (!mounted) return;
-                    navigator.pop();
+                    if (!context.mounted) return;
+                    // Use the mounted check to guard the context usage
+                    if (Navigator.canPop(context)) {
+                      Navigator.pop(context);
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(
@@ -472,7 +506,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     borderRadius: BorderRadius.circular(24.0), // M3 standard
                   ),
                   elevation: 2.0, // M3 standard elevation
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0), // M3 standard
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 24.0,
+                  ), // M3 standard
                   minimumSize: const Size(64, 40), // M3 minimum touch target
                 ),
                 child: Text(
@@ -491,4 +527,3 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     );
   }
 }
-

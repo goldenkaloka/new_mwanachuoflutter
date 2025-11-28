@@ -17,6 +17,17 @@ class OneSignalConfig {
       return;
     }
 
+    // OneSignal only supports iOS and Android
+    // Skip initialization on Windows, Linux, macOS (desktop), and Web
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      LoggerService.info(
+        'OneSignal is not supported on ${Platform.operatingSystem}. '
+        'Push notifications will not be available.',
+      );
+      _isInitialized = false;
+      return;
+    }
+
     try {
       // Check if OneSignal App ID is configured
       if (oneSignalAppId == 'YOUR_ONESIGNAL_APP_ID') {
@@ -34,12 +45,12 @@ class OneSignalConfig {
       try {
         OneSignal.initialize(oneSignalAppId);
       } catch (e) {
-        // Handle MissingPluginException - plugin not properly installed
+        // Handle MissingPluginException - plugin not properly installed or unsupported platform
         if (e.toString().contains('MissingPluginException') ||
             e.toString().contains('MissingPlugin')) {
           LoggerService.warning(
-            'OneSignal plugin not properly installed. '
-            'Please run: flutter clean && flutter pub get && flutter run',
+            'OneSignal plugin not available on this platform. '
+            'OneSignal only supports iOS and Android.',
           );
           _isInitialized = false;
           return;
@@ -73,7 +84,9 @@ class OneSignalConfig {
       } catch (e) {
         if (e.toString().contains('MissingPluginException') ||
             e.toString().contains('MissingPlugin')) {
-          LoggerService.warning('OneSignal permission request not available');
+          LoggerService.warning(
+            'OneSignal permission request not available on this platform',
+          );
           _isInitialized = false;
           return;
         } else {
@@ -170,6 +183,11 @@ class OneSignalConfig {
 
   /// Get OneSignal player ID (device token)
   static Future<String?> getPlayerId() async {
+    // Return null immediately on unsupported platforms
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return null;
+    }
+
     try {
       if (!_isInitialized) {
         LoggerService.debug('OneSignal not initialized, cannot get player ID');
@@ -179,8 +197,9 @@ class OneSignalConfig {
       return deviceState;
     } catch (e) {
       // Handle MissingPluginException gracefully
-      if (e.toString().contains('MissingPluginException')) {
-        LoggerService.warning('OneSignal plugin not available');
+      if (e.toString().contains('MissingPluginException') ||
+          e.toString().contains('MissingPlugin')) {
+        LoggerService.debug('OneSignal plugin not available on this platform');
         return null;
       }
       LoggerService.error('Failed to get OneSignal player ID', e);
@@ -190,6 +209,11 @@ class OneSignalConfig {
 
   /// Set user ID for OneSignal (for targeted notifications)
   static Future<void> setUserId(String userId) async {
+    // Skip on unsupported platforms
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return;
+    }
+
     try {
       if (!_isInitialized) {
         LoggerService.debug('OneSignal not initialized, cannot set user ID');
@@ -199,8 +223,9 @@ class OneSignalConfig {
       LoggerService.debug('OneSignal user ID set: $userId');
     } catch (e) {
       // Handle MissingPluginException gracefully
-      if (e.toString().contains('MissingPluginException')) {
-        LoggerService.warning('OneSignal plugin not available');
+      if (e.toString().contains('MissingPluginException') ||
+          e.toString().contains('MissingPlugin')) {
+        LoggerService.debug('OneSignal plugin not available on this platform');
         return;
       }
       LoggerService.error('Failed to set OneSignal user ID', e);
@@ -209,6 +234,11 @@ class OneSignalConfig {
 
   /// Logout user from OneSignal
   static Future<void> logout() async {
+    // Skip on unsupported platforms
+    if (!Platform.isAndroid && !Platform.isIOS) {
+      return;
+    }
+
     try {
       if (!_isInitialized) {
         LoggerService.debug('OneSignal not initialized, cannot logout');
@@ -218,8 +248,9 @@ class OneSignalConfig {
       LoggerService.debug('OneSignal user logged out');
     } catch (e) {
       // Handle MissingPluginException gracefully
-      if (e.toString().contains('MissingPluginException')) {
-        LoggerService.warning('OneSignal plugin not available');
+      if (e.toString().contains('MissingPluginException') ||
+          e.toString().contains('MissingPlugin')) {
+        LoggerService.debug('OneSignal plugin not available on this platform');
         return;
       }
       LoggerService.error('Failed to logout OneSignal user', e);

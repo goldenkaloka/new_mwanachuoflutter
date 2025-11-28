@@ -1016,6 +1016,12 @@ class _HomePageState extends State<HomePage> {
     ScreenSize screenSize,
   ) {
     return BlocBuilder<ProductBloc, ProductState>(
+      buildWhen: (previous, current) {
+        // Only rebuild when state type changes or products list changes
+        return previous.runtimeType != current.runtimeType ||
+            (current is ProductsLoaded && previous is ProductsLoaded &&
+                current.products.length != previous.products.length);
+      },
       builder: (context, state) {
         if (state is ProductsLoading) {
           return _buildLoadingGrid(screenSize);
@@ -1054,6 +1060,12 @@ class _HomePageState extends State<HomePage> {
     ScreenSize screenSize,
   ) {
     return BlocBuilder<ServiceBloc, ServiceState>(
+      buildWhen: (previous, current) {
+        // Only rebuild when state type changes or services list changes
+        return previous.runtimeType != current.runtimeType ||
+            (current is ServicesLoaded && previous is ServicesLoaded &&
+                current.services.length != previous.services.length);
+      },
       builder: (context, state) {
         if (state is ServicesLoading) {
           return _buildLoadingGrid(screenSize);
@@ -1092,6 +1104,12 @@ class _HomePageState extends State<HomePage> {
     ScreenSize screenSize,
   ) {
     return BlocBuilder<AccommodationBloc, AccommodationState>(
+      buildWhen: (previous, current) {
+        // Only rebuild when state type changes or accommodations list changes
+        return previous.runtimeType != current.runtimeType ||
+            (current is AccommodationsLoaded && previous is AccommodationsLoaded &&
+                current.accommodations.length != previous.accommodations.length);
+      },
       builder: (context, state) {
         if (state is AccommodationsLoading) {
           return _buildLoadingGrid(screenSize);
@@ -1302,6 +1320,8 @@ class _HomePageState extends State<HomePage> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: products.take(6).length,
+        addAutomaticKeepAlives: false,
+        addRepaintBoundaries: true,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columns,
           crossAxisSpacing: spacing,
@@ -1311,6 +1331,7 @@ class _HomePageState extends State<HomePage> {
         itemBuilder: (context, index) {
           final product = products[index];
           return ProductCard(
+            key: ValueKey('product_${product.id}'),
             imageUrl: product.images.isNotEmpty ? product.images.first : '',
             title: product.title,
             price: 'TZS ${product.price.toStringAsFixed(2)}',
@@ -1344,9 +1365,12 @@ class _HomePageState extends State<HomePage> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: services.take(6).length,
+        addAutomaticKeepAlives: false,
+        addRepaintBoundaries: true,
         itemBuilder: (context, index) {
           final service = services[index];
           return ListTile(
+            key: ValueKey('service_${service.id}'),
             contentPadding: const EdgeInsets.symmetric(
               horizontal: 16.0,
               vertical: 8.0,
@@ -1455,6 +1479,8 @@ class _HomePageState extends State<HomePage> {
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: accommodations.take(6).length,
+        addAutomaticKeepAlives: false,
+        addRepaintBoundaries: true,
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
           crossAxisCount: columns,
           crossAxisSpacing: spacing,
@@ -1469,6 +1495,7 @@ class _HomePageState extends State<HomePage> {
         itemBuilder: (context, index) {
           final accommodation = accommodations[index];
           return AccommodationCard(
+            key: ValueKey('accommodation_${accommodation.id}'),
             imageUrl: accommodation.images.isNotEmpty
                 ? accommodation.images.first
                 : '',

@@ -449,11 +449,14 @@ class _ServiceDetailView extends StatelessWidget {
     
     return AspectRatio(
       aspectRatio: 16 / 9,
-      child: NetworkImageWithFallback(
-        imageUrl: imageUrl,
-        width: double.infinity,
-        height: double.infinity,
-        fit: BoxFit.cover,
+      child: Hero(
+        tag: 'service_$imageUrl',
+        child: NetworkImageWithFallback(
+          imageUrl: imageUrl,
+          width: double.infinity,
+          height: double.infinity,
+          fit: BoxFit.cover,
+        ),
       ),
     );
   }
