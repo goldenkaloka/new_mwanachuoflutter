@@ -146,26 +146,45 @@ class ProductCard extends StatefulWidget {
 }
 
 class _ProductCardState extends State<ProductCard>
-    with SingleTickerProviderStateMixin {
+    with TickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
+  late AnimationController _floatController;
+  late Animation<double> _floatAnimation;
+  late Animation<double> _shadowAnimation;
 
   @override
   void initState() {
     super.initState();
+    // Tap animation
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 100),
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
-      end: 0.95,
+      end: 0.97,
     ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+
+    // Subtle float animation
+    _floatController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2000),
+    )..repeat(reverse: true);
+
+    _floatAnimation = Tween<double>(begin: 0.0, end: 3.0).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
+    );
+
+    _shadowAnimation = Tween<double>(begin: 2.0, end: 4.0).animate(
+      CurvedAnimation(parent: _floatController, curve: Curves.easeInOut),
+    );
   }
 
   @override
   void dispose() {
     _controller.dispose();
+    _floatController.dispose();
     super.dispose();
   }
 
@@ -175,122 +194,150 @@ class _ProductCardState extends State<ProductCard>
     final isSmallScreen = screenWidth < 600;
 
     return RepaintBoundary(
-      child: GestureDetector(
-        onTapDown: (_) => _controller.forward(),
-        onTapUp: (_) {
-          _controller.reverse();
-          widget.onTap();
-        },
-        onTapCancel: () => _controller.reverse(),
-        child: ScaleTransition(
-          scale: _scaleAnimation,
-          child: Container(
-            decoration: BoxDecoration(
-              color: kSurfaceColorLight,
-              borderRadius: BorderRadius.circular(kRadiusSm),
-              // Removed boxShadow to remove shadows
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Image
-                Expanded(
-                  flex: isSmallScreen ? 3 : 2,
-                  child: Hero(
-                    tag: 'product_${widget.imageUrl}',
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(
-                        top: Radius.circular(kRadiusSm),
+      child: AnimatedBuilder(
+        animation: _floatController,
+        builder: (context, child) {
+          return Transform.translate(
+            offset: Offset(0, -_floatAnimation.value),
+            child: GestureDetector(
+              onTapDown: (_) => _controller.forward(),
+              onTapUp: (_) {
+                _controller.reverse();
+                widget.onTap();
+              },
+              onTapCancel: () => _controller.reverse(),
+              child: ScaleTransition(
+                scale: _scaleAnimation,
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: kSurfaceColorLight,
+                    borderRadius: BorderRadius.circular(kRadiusSm),
+                    boxShadow: [
+                      BoxShadow(
+                        color: kPrimaryColor.withValues(alpha: 0.08),
+                        blurRadius: _shadowAnimation.value,
+                        offset: Offset(0, _shadowAnimation.value / 2),
                       ),
-                      child: NetworkImageWithFallback(
-                        imageUrl: widget.imageUrl,
-                        width: double.infinity,
-                        height: double.infinity,
-                        fit: BoxFit.cover,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(kRadiusSm),
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
-                ),
-                // Content
-                Padding(
-                  padding: EdgeInsets.all(isSmallScreen ? 8 : kSpacingMd),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // Title
-                      Text(
-                        widget.title,
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(
-                              fontSize: isSmallScreen ? 13 : null,
-                              fontWeight: FontWeight.bold,
+                      // Image
+                      Expanded(
+                        flex: isSmallScreen ? 3 : 2,
+                        child: Hero(
+                          tag: 'product_${widget.imageUrl}',
+                          child: ClipRRect(
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(kRadiusSm),
                             ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      SizedBox(height: isSmallScreen ? 2 : kSpacingXs),
-                      // Price
-                      Text(
-                        widget.price,
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: kPrimaryColor,
-                          fontWeight: FontWeight.bold,
-                          fontSize: isSmallScreen ? 12 : null,
+                            child: NetworkImageWithFallback(
+                              imageUrl: widget.imageUrl,
+                              width: double.infinity,
+                              height: double.infinity,
+                              fit: BoxFit.cover,
+                              borderRadius: const BorderRadius.vertical(
+                                top: Radius.circular(kRadiusSm),
+                              ),
+                            ),
+                          ),
                         ),
                       ),
-                      if (widget.showCategory && widget.category != null) ...[
-                        SizedBox(height: isSmallScreen ? 2 : kSpacingXs),
-                        Row(
+                      // Content
+                      Padding(
+                        padding: EdgeInsets.all(isSmallScreen ? 8 : kSpacingMd),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            if (widget.showRating && widget.rating != null) ...[
-                              Icon(
-                                Icons.star,
-                                size: isSmallScreen ? 12 : kIconSizeSm,
-                                color: kWarningColor,
-                              ),
-                              SizedBox(width: isSmallScreen ? 2 : kSpacingXs),
-                              Flexible(
-                                child: Text(
-                                  '${widget.rating!.toStringAsFixed(1)}${widget.reviewCount != null ? ' (${widget.reviewCount})' : ''}',
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        fontSize: isSmallScreen ? 10 : null,
-                                      ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
-                              ),
-                            ],
+                            // Title
+                            Text(
+                              widget.title,
+                              style: Theme.of(context).textTheme.titleMedium
+                                  ?.copyWith(
+                                    fontSize: isSmallScreen ? 13 : null,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                            SizedBox(height: isSmallScreen ? 2 : kSpacingXs),
+                            // Price
+                            Text(
+                              widget.price,
+                              style: Theme.of(context).textTheme.bodyLarge
+                                  ?.copyWith(
+                                    color: kPrimaryColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: isSmallScreen ? 12 : null,
+                                  ),
+                            ),
                             if (widget.showCategory &&
                                 widget.category != null) ...[
-                              if (widget.showRating && widget.rating != null)
-                                const Spacer(),
-                              Flexible(
-                                child: Text(
-                                  widget.category!,
-                                  style: Theme.of(context).textTheme.bodySmall
-                                      ?.copyWith(
-                                        color: kTextSecondary,
-                                        fontSize: isSmallScreen ? 10 : null,
+                              SizedBox(height: isSmallScreen ? 2 : kSpacingXs),
+                              Row(
+                                children: [
+                                  if (widget.showRating &&
+                                      widget.rating != null) ...[
+                                    Icon(
+                                      Icons.star,
+                                      size: isSmallScreen ? 12 : kIconSizeSm,
+                                      color: kWarningColor,
+                                    ),
+                                    SizedBox(
+                                      width: isSmallScreen ? 2 : kSpacingXs,
+                                    ),
+                                    Flexible(
+                                      child: Text(
+                                        '${widget.rating!.toStringAsFixed(1)}${widget.reviewCount != null ? ' (${widget.reviewCount})' : ''}',
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              fontSize: isSmallScreen
+                                                  ? 10
+                                                  : null,
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                       ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                ),
+                                    ),
+                                  ],
+                                  if (widget.showCategory &&
+                                      widget.category != null) ...[
+                                    if (widget.showRating &&
+                                        widget.rating != null)
+                                      const Spacer(),
+                                    Flexible(
+                                      child: Text(
+                                        widget.category!,
+                                        style: Theme.of(context)
+                                            .textTheme
+                                            .bodySmall
+                                            ?.copyWith(
+                                              color: kTextSecondary,
+                                              fontSize: isSmallScreen
+                                                  ? 10
+                                                  : null,
+                                            ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ],
                               ),
                             ],
                           ],
                         ),
-                      ],
+                      ),
                     ],
                   ),
                 ),
-              ],
+              ),
             ),
-          ),
-        ),
+          );
+        },
       ),
     );
   }

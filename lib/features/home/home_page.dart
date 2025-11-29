@@ -825,75 +825,77 @@ class _HomePageState extends State<HomePage> {
           horizontal: horizontalPadding,
           vertical: 8.0,
         ),
-      child: Row(
-        children: List.generate(_chips.length, (index) {
-          final label = _chips[index];
-          final isSelected = index == _selectedChipIndex;
-          final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-          final icon = chipIcons[label] ?? Icons.category_outlined;
+        child: Row(
+          children: List.generate(_chips.length, (index) {
+            final label = _chips[index];
+            final isSelected = index == _selectedChipIndex;
+            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+            final icon = chipIcons[label] ?? Icons.category_outlined;
 
-          return Padding(
-            padding: const EdgeInsets.only(right: 12.0),
-            child: GestureDetector(
-              onTap: () {
-                setState(() {
-                  _selectedChipIndex = index;
-                });
-              },
-              child: Container(
-                height: 40,
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? (isDarkMode ? kPrimaryColor : const Color(0xFF078829))
-                      : (isDarkMode ? kBackgroundColorDark : Colors.white),
-                  borderRadius: BorderRadius.circular(9999.0),
-                  border: Border.all(
+            return Padding(
+              padding: const EdgeInsets.only(right: 12.0),
+              child: GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _selectedChipIndex = index;
+                  });
+                },
+                child: Container(
+                  height: 40,
+                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                  decoration: BoxDecoration(
                     color: isSelected
-                        ? Colors.transparent
-                        : (isDarkMode ? Colors.white10 : Colors.transparent),
-                    width: isDarkMode && !isSelected ? 1.0 : 0.0,
-                  ),
-                  boxShadow: isSelected
-                      ? const [
-                          BoxShadow(
-                            color: Colors.black12,
-                            blurRadius: 4,
-                            offset: Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      icon,
-                      size: 18,
+                        ? (isDarkMode ? kPrimaryColor : const Color(0xFF078829))
+                        : (isDarkMode ? kBackgroundColorDark : Colors.white),
+                    borderRadius: BorderRadius.circular(9999.0),
+                    border: Border.all(
                       color: isSelected
-                          ? (isDarkMode ? kBackgroundColorDark : Colors.white)
-                          : (isDarkMode ? Colors.white70 : kTextSecondary),
+                          ? Colors.transparent
+                          : (isDarkMode ? Colors.white10 : Colors.transparent),
+                      width: isDarkMode && !isSelected ? 1.0 : 0.0,
                     ),
-                    const SizedBox(width: 8),
-                    Text(
-                      label,
-                      style: GoogleFonts.plusJakartaSans(
+                    boxShadow: isSelected
+                        ? const [
+                            BoxShadow(
+                              color: Colors.black12,
+                              blurRadius: 4,
+                              offset: Offset(0, 2),
+                            ),
+                          ]
+                        : null,
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 18,
                         color: isSelected
                             ? (isDarkMode ? kBackgroundColorDark : Colors.white)
                             : (isDarkMode ? Colors.white70 : kTextSecondary),
-                        fontSize: 14,
-                        fontWeight: isSelected
-                            ? FontWeight.bold
-                            : FontWeight.w500,
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 8),
+                      Text(
+                        label,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: isSelected
+                              ? (isDarkMode
+                                    ? kBackgroundColorDark
+                                    : Colors.white)
+                              : (isDarkMode ? Colors.white70 : kTextSecondary),
+                          fontSize: 14,
+                          fontWeight: isSelected
+                              ? FontWeight.bold
+                              : FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          );
-        }),
-      ),
+            );
+          }),
+        ),
       ),
     );
   }
@@ -1771,7 +1773,7 @@ class _StickyChipsDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-// Animated text widget for promotion banners
+// Animated text widget for promotion banners (Nickelodeon-style letter by letter)
 class _AnimatedPromotionText extends StatefulWidget {
   final String text;
   final double fontSize;
@@ -1793,101 +1795,138 @@ class _AnimatedPromotionText extends StatefulWidget {
 
 class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
     with TickerProviderStateMixin {
-  late AnimationController _controller;
-  late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
-  List<String> _words = [];
+  late List<AnimationController> _controllers;
+  late List<Animation<double>> _scaleAnimations;
+  late List<Animation<double>> _rotationAnimations;
+  late List<Animation<Offset>> _slideAnimations;
 
   @override
   void initState() {
     super.initState();
-    _words = widget.text.split(' ');
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 1500),
-      vsync: this,
-    );
+    final letters = widget.text.split('');
 
-    _fadeAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+    _controllers = List.generate(
+      letters.length,
+      (index) => AnimationController(
+        duration: const Duration(milliseconds: 600),
+        vsync: this,
       ),
     );
 
-    _slideAnimation = Tween<Offset>(
-      begin: const Offset(0, 0.3),
-      end: Offset.zero,
-    ).animate(
-      CurvedAnimation(
-        parent: _controller,
-        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
-      ),
-    );
+    _scaleAnimations = _controllers.map((controller) {
+      return TweenSequence<double>([
+        TweenSequenceItem(
+          tween: Tween<double>(
+            begin: 0.0,
+            end: 1.3,
+          ).chain(CurveTween(curve: Curves.easeOutBack)),
+          weight: 40,
+        ),
+        TweenSequenceItem(
+          tween: Tween<double>(
+            begin: 1.3,
+            end: 0.95,
+          ).chain(CurveTween(curve: Curves.easeInOut)),
+          weight: 30,
+        ),
+        TweenSequenceItem(
+          tween: Tween<double>(
+            begin: 0.95,
+            end: 1.0,
+          ).chain(CurveTween(curve: Curves.easeOut)),
+          weight: 30,
+        ),
+      ]).animate(controller);
+    }).toList();
 
-    // Start animation after delay
-    Future.delayed(widget.delay, () {
-      if (mounted) {
-        _controller.forward();
-      }
-    });
+    _rotationAnimations = _controllers.asMap().entries.map((entry) {
+      final controller = entry.value;
+      final index = entry.key;
+      // Alternate rotation direction for playfulness
+      final rotationDirection = index % 2 == 0 ? 1.0 : -1.0;
+      return Tween<double>(
+        begin: 0.25 * rotationDirection,
+        end: 0.0,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.elasticOut));
+    }).toList();
+
+    _slideAnimations = _controllers.map((controller) {
+      return Tween<Offset>(
+        begin: const Offset(0, -1.2),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOutBack));
+    }).toList();
+
+    // Start animations with staggered delay (letter by letter)
+    for (int i = 0; i < _controllers.length; i++) {
+      Future.delayed(
+        widget.delay + Duration(milliseconds: i * 40), // 40ms per letter
+        () {
+          if (mounted) {
+            _controllers[i].forward();
+          }
+        },
+      );
+    }
   }
 
   @override
   void dispose() {
-    _controller.dispose();
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return FadeTransition(
-          opacity: _fadeAnimation,
-          child: SlideTransition(
-            position: _slideAnimation,
-            child: Wrap(
-              spacing: 4.0,
-              runSpacing: 4.0,
-              children: _words.asMap().entries.map((entry) {
-                final index = entry.key;
-                final word = entry.value;
-                final wordDelay = index * 100;
-                final wordProgress = ((_controller.value * 1500) - wordDelay) / 200;
-                final wordOpacity = wordProgress.clamp(0.0, 1.0);
-                final wordOffset = (1.0 - wordOpacity) * 0.3;
+    final letters = widget.text.split('');
 
-                return Opacity(
-                  opacity: wordOpacity,
-                  child: Transform.translate(
-                    offset: Offset(0, wordOffset * 20),
-                    child: Text(
-                      '$word ',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: widget.fontSize,
-                        fontWeight: widget.fontWeight,
-                        shadows: [
-                          Shadow(
-                            color: Colors.black.withValues(alpha: 0.5),
-                            blurRadius: 4,
-                            offset: const Offset(1, 1),
-                          ),
-                        ],
-                      ),
+    return Wrap(
+      alignment: WrapAlignment.start,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: List.generate(letters.length, (index) {
+        final letter = letters[index];
+        final isSpace = letter == ' ';
+
+        if (isSpace) {
+          return SizedBox(width: widget.fontSize * 0.25);
+        }
+
+        return AnimatedBuilder(
+          animation: _controllers[index],
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(
+                _slideAnimations[index].value.dx,
+                _slideAnimations[index].value.dy * widget.fontSize * 0.5,
+              ),
+              child: Transform.scale(
+                scale: _scaleAnimations[index].value,
+                child: Transform.rotate(
+                  angle: _rotationAnimations[index].value,
+                  child: Text(
+                    letter,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: widget.fontSize,
+                      fontWeight: widget.fontWeight,
+                      height: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: Colors.black.withValues(alpha: 0.6),
+                          blurRadius: 6 * _scaleAnimations[index].value,
+                          offset: Offset(1, 2 * _scaleAnimations[index].value),
+                        ),
+                      ],
                     ),
                   ),
-                );
-              }).toList(),
-            ),
-          ),
+                ),
+              ),
+            );
+          },
         );
-      },
+      }),
     );
   }
 }
-

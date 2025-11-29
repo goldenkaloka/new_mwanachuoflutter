@@ -148,21 +148,6 @@ class _SplashScreenState extends State<SplashScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: Padding(
-        padding: const EdgeInsets.only(bottom: 32.0, left: 32.0, right: 32.0),
-        child: SizedBox(
-          width: double.infinity,
-          height: 6,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(9999),
-            child: LinearProgressIndicator(
-              value: 0.4,
-              backgroundColor: kPrimaryColor.withValues(alpha: 0.2),
-              valueColor: const AlwaysStoppedAnimation<Color>(kPrimaryColor),
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
@@ -415,13 +400,6 @@ class _NickelodeonAnimatedTextState extends State<_NickelodeonAnimatedText>
                       fontSize: widget.fontSize,
                       fontWeight: widget.fontWeight,
                       height: 1.2,
-                      shadows: [
-                        Shadow(
-                          color: kPrimaryColor.withValues(alpha: 0.3),
-                          blurRadius: 8 * _scaleAnimations[index].value,
-                          offset: Offset(0, 2 * _scaleAnimations[index].value),
-                        ),
-                      ],
                     ),
                   ),
                 ),
