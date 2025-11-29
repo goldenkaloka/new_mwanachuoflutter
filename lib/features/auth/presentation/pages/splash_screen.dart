@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
@@ -140,7 +141,7 @@ class _SplashScreenState extends State<SplashScreen> {
             const SizedBox(height: 8.0),
             // Animated subtitle
             _NickelodeonAnimatedText(
-              text: 'Your Campus Marketplace',
+              text: 'University Point of Sale',
               fontSize: 16,
               fontWeight: FontWeight.normal,
               delay: const Duration(milliseconds: 400),
@@ -229,7 +230,7 @@ class _AnimatedSplashIconState extends State<_AnimatedSplashIcon>
                 borderRadius: kBaseRadius,
               ),
               child: Icon(
-                Icons.shopping_bag,
+                CupertinoIcons.cart_fill,
                 color: kPrimaryColor, // Green color
                 size: 64,
               ),
