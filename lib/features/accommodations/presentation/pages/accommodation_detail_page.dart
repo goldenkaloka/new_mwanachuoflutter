@@ -216,7 +216,53 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
       children: [
         CustomScrollView(
           slivers: [
-            // Hero image with parallax
+            // App bar with back button and actions
+            SliverAppBar(
+              floating: true,
+              pinned: false,
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              leading: Container(
+                margin: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.3),
+                  shape: BoxShape.circle,
+                ),
+                child: IconButton(
+                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+              actions: [
+                Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.favorite_border, color: Colors.white),
+                    onPressed: () {
+                      // Handle favorite
+                    },
+                  ),
+                ),
+                Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.share, color: Colors.white),
+                    onPressed: () {
+                      // Handle share
+                    },
+                  ),
+                ),
+              ],
+            ),
+            // Hero image carousel - now uses SliverToBoxAdapter for proper gesture handling
             SliverImageCarousel(
               images: images,
               expandedHeight: ResponsiveBreakpoints.responsiveValue(

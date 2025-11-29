@@ -46,6 +46,7 @@ class RecommendationCard extends StatelessWidget {
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min, // Make column adaptive
             children: [
               // Image
               ClipRRect(
@@ -62,48 +63,51 @@ class RecommendationCard extends StatelessWidget {
                   ),
                 ),
               ),
-              // Content
-              Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Title
-                    Text(
-                      title,
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        color: isDarkMode ? Colors.white : kTextPrimary,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    if (subtitle != null) ...[
-                      const SizedBox(height: 4),
+              // Content - use Flexible to prevent overflow
+              Flexible(
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min, // Make inner column adaptive
+                    children: [
+                      // Title
                       Text(
-                        subtitle!,
+                        title,
                         style: TextStyle(
-                          fontSize: 12,
-                          color: isDarkMode
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: isDarkMode ? Colors.white : kTextPrimary,
                         ),
-                        maxLines: 1,
+                        maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
-                    ],
-                    const SizedBox(height: 8),
-                    // Price
-                    Text(
-                      price,
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: kPrimaryColor,
+                      if (subtitle != null) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle!,
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDarkMode
+                                ? Colors.grey[400]
+                                : Colors.grey[600],
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                      const SizedBox(height: 8),
+                      // Price
+                      Text(
+                        price,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: kPrimaryColor,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ],

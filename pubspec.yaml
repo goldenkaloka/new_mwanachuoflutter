@@ -103,6 +103,7 @@ flutter:
   # Assets
   assets:
     - assets/
+    - assets/animations/
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images
 
@@ -130,38 +131,46 @@ flutter:
   # see https://flutter.dev/to/font-from-package
 
 flutter_native_splash:
-  # Background color
-  color: "#0066FF"
-  # Optional background image
-  #background_image: "assets/background.png"
+  # Background color - white to match app design
+  color: "#FFFFFF"
+  # Splash screen image/icon
+  image: assets/icon/app_icon.png
   
-  # Splash screen branding
+  # Android configuration
+  android: true
   android_12:
     # App icon with splash screen background color as shown in Android 12
     # More info: https://developer.android.com/guide/topics/ui/splash-screen
-    color: "#0066FF"
+    color: "#FFFFFF"
     # Icon used for the splash screen
-    image: assets/icon/icon.png
+    image: assets/icon/app_icon.png
     # App icon without background color as shown in Android 12+
     # More info: https://developer.android.com/about/versions/12/features/splash-screen
-    icon_background_color: "#0066FF"
+    icon_background_color: "#FFFFFF"
   
   # iOS specific configuration
-  ios:
-    # Enables the use of the native iOS splash screen
-    enable: true
+  ios: true
+  # iOS background color
+  color_dark: "#FFFFFF"
   
   # Web specific configuration
+  web: true
+  web_image_mode: center
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/app_icon.png"
+  min_sdk_android: 21 # android min sdk min:16, default 21
   web:
-    # Enables the use of the native web splash screen
-    enable: true
-    # Background color for web
-    color: "#0066FF"
-    # Background image for web (optional)
-    #background_image: "assets/background.png"
-  
-  # Customize the info.plist file for iOS
-  info_plist_files:
-    # Add custom keys to the Info.plist file
-    # More info: https://developer.apple.com/documentation/bundleresources/information_property_list
-    UILaunchStoryboardName: LaunchScreen
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    background_color: "#FFFFFF"
+    theme_color: "#FFFFFF"
+  windows:
+    generate: true
+    image_path: "assets/icon/app_icon.png"
+    icon_size: 48 # min:48, max:256, default: 48
+  macos:
+    generate: true
+    image_path: "assets/icon/app_icon.png"

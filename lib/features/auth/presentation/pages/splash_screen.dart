@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:lottie/lottie.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/services/push_notification_service.dart';
@@ -53,12 +55,16 @@ class _SplashScreenState extends State<SplashScreen> {
     } else if (state is Unauthenticated) {
       if (_hasNavigated) return;
       _hasNavigated = true;
+      // Remove native splash before navigation
+      FlutterNativeSplash.remove();
       // User is not authenticated, go to onboarding
       debugPrint('👤 No user authenticated, going to onboarding');
       Navigator.of(context).pushReplacementNamed('/onboarding');
     } else if (state is RegistrationIncomplete) {
       if (_hasNavigated) return;
       _hasNavigated = true;
+      // Remove native splash before navigation
+      FlutterNativeSplash.remove();
       // Account created but needs university selection
       debugPrint(
         '⚠️ Registration incomplete, redirecting to university selection',
@@ -69,6 +75,8 @@ class _SplashScreenState extends State<SplashScreen> {
     } else if (state is RegistrationCheckCompleted) {
       if (_hasNavigated) return;
       _hasNavigated = true;
+      // Remove native splash before navigation
+      FlutterNativeSplash.remove();
 
       if (state.isCompleted) {
         // Registration complete with universities, go to home
@@ -124,12 +132,27 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Widget _buildSplashUI(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // Changed from green to white
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Animated icon
+            // Option 1: Use Lottie animation (if you have a Lottie file)
+            // Uncomment the Lottie widget below and comment out _AnimatedSplashIcon()
+            // Make sure you've downloaded a Lottie JSON file to assets/animations/
+            // Lottie.asset(
+            //   'assets/animations/splash_animation.json',
+            //   width: 200,
+            //   height: 200,
+            //   fit: BoxFit.contain,
+            //   repeat: true,
+            //   errorBuilder: (context, error, stackTrace) {
+            //     // Fallback to icon if Lottie fails to load
+            //     return _AnimatedSplashIcon();
+            //   },
+            // ),
+
+            // Option 2: Keep current animated icon (works without Lottie file)
             _AnimatedSplashIcon(),
             const SizedBox(height: 24.0),
             // Animated title with Nickelodeon style

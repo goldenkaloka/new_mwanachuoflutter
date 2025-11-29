@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 
 /// Sliver widget for displaying an image carousel with parallax effect
+/// Uses SliverToBoxAdapter instead of SliverAppBar to avoid gesture conflicts
 class SliverImageCarousel extends StatefulWidget {
   final List<String> images;
   final double expandedHeight;
@@ -32,59 +33,18 @@ class _SliverImageCarouselState extends State<SliverImageCarousel> {
   Widget build(BuildContext context) {
     final images = widget.images.isNotEmpty ? widget.images : [''];
 
-    return SliverAppBar(
-      expandedHeight: widget.expandedHeight,
-      floating: false,
-      pinned: true,
-      backgroundColor: Colors.transparent,
-      elevation: 0,
-      leading: Container(
-        margin: const EdgeInsets.all(8),
-        decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.3),
-          shape: BoxShape.circle,
-        ),
-        child: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ),
-      actions: [
-        Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.favorite_border, color: Colors.white),
-            onPressed: () {
-              // Handle favorite
-            },
-          ),
-        ),
-        Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.black.withValues(alpha: 0.3),
-            shape: BoxShape.circle,
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.share, color: Colors.white),
-            onPressed: () {
-              // Handle share
-            },
-          ),
-        ),
-      ],
-      flexibleSpace: FlexibleSpaceBar(
-        background: Stack(
+    return SliverToBoxAdapter(
+      child: SizedBox(
+        height: widget.expandedHeight,
+        child: Stack(
           fit: StackFit.expand,
           children: [
-            // Image carousel
+            // Image carousel - PageView that can properly handle horizontal swipes
             PageView.builder(
               controller: _pageController,
               itemCount: images.length,
+              physics: const PageScrollPhysics(), // Enable horizontal swiping
+              scrollDirection: Axis.horizontal,
               onPageChanged: (index) {
                 setState(() {
                   _currentPage = index;
@@ -105,16 +65,22 @@ class _SliverImageCarouselState extends State<SliverImageCarousel> {
                 );
               },
             ),
-            // Gradient overlay
-            Container(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.transparent,
-                    Colors.black.withValues(alpha: 0.3),
-                  ],
+            // Gradient overlay at bottom
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              height: 100,
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      Colors.transparent,
+                      Colors.black.withValues(alpha: 0.3),
+                    ],
+                  ),
                 ),
               ),
             ),

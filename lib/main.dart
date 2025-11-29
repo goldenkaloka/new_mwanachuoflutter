@@ -1,15 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'dart:io' show Platform;
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/config/onesignal_config.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/main_app.dart';
 
 Future<void> main() async {
-  try {
-    WidgetsFlutterBinding.ensureInitialized();
+  // Preserve native splash screen until Flutter is ready
+  WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
+  try {
     // Suppress mouse_tracker.dart debug assertions on Windows
     // These are harmless debug-only warnings that spam the console
     if (kDebugMode && Platform.isWindows) {
@@ -34,6 +37,12 @@ Future<void> main() async {
     await initializeDependencies();
 
     runApp(const MwanachuoshopApp());
+
+    // Remove native splash after a short delay to allow app to initialize
+    // The Flutter SplashScreen will handle the actual navigation
+    Future.delayed(const Duration(milliseconds: 500), () {
+      FlutterNativeSplash.remove();
+    });
   } catch (e, stackTrace) {
     debugPrint('Initialization failed: $e\n$stackTrace');
     // Run a simple error app if initialization fails
