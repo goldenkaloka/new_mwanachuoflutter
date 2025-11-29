@@ -1,76 +1,42 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
-import 'package:mwanachuo/core/di/injection_container.dart';
-import 'package:mwanachuo/features/shared/notifications/presentation/cubit/notification_cubit.dart';
-import 'package:mwanachuo/features/shared/notifications/presentation/cubit/notification_state.dart';
-import 'package:mwanachuo/features/shared/notifications/domain/entities/notification_entity.dart';
-import 'package:intl/intl.dart';
+import 'package:mwanachuo/core/services/notification_grouping_service.dart';
 
-class NotificationsPage extends StatelessWidget {
+import 'package:mwanachuo/features/shared/notifications/domain/entities/notification_group_entity.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
+import 'package:timeago/timeago.dart' as timeago;
+
+class NotificationsPage extends StatefulWidget {
   const NotificationsPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => sl<NotificationCubit>()..loadNotifications(),
-      child: const _NotificationsView(),
-    );
-  }
+  State<NotificationsPage> createState() => _NotificationsPageState();
 }
 
-class _NotificationsView extends StatelessWidget {
-  const _NotificationsView();
+class _NotificationsPageState extends State<NotificationsPage> {
+  final NotificationGroupingService _groupingService =
+      NotificationGroupingService();
+  List<NotificationGroupEntity> _groups = [];
+  bool _isLoading = true;
 
-  IconData _getIconForType(String type) {
-    switch (type.toLowerCase()) {
-      case 'order':
-        return Icons.shopping_bag;
-      case 'message':
-        return Icons.chat_bubble;
-      case 'promotion':
-        return Icons.local_offer;
-      case 'listing':
-        return Icons.check_circle;
-      case 'review':
-        return Icons.star;
-      default:
-        return Icons.notifications;
-    }
+  @override
+  void initState() {
+    super.initState();
+    _loadGroups();
   }
 
-  Color _getColorForType(String type) {
-    switch (type.toLowerCase()) {
-      case 'order':
-        return Colors.green;
-      case 'message':
-        return Colors.blue;
-      case 'promotion':
-        return Colors.orange;
-      case 'listing':
-        return Colors.green;
-      case 'review':
-        return Colors.amber;
-      default:
-        return kPrimaryColor;
-    }
-  }
-
-  String _formatTime(DateTime time) {
-    final now = DateTime.now();
-    final difference = now.difference(time);
-
-    if (difference.inMinutes < 60) {
-      return '${difference.inMinutes} mins ago';
-    } else if (difference.inHours < 24) {
-      return '${difference.inHours} hours ago';
-    } else if (difference.inDays == 1) {
-      return '1 day ago';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
+  Future<void> _loadGroups() async {
+    setState(() => _isLoading = true);
+    final userId = SupabaseConfig.client.auth.currentUser?.id;
+    if (userId != null) {
+      final groups = await _groupingService.getUserGroups(userId: userId);
+      setState(() {
+        _groups = groups;
+        _isLoading = false;
+      });
     } else {
-      return DateFormat('MMM d').format(time);
+      setState(() => _isLoading = false);
     }
   }
 
@@ -81,278 +47,237 @@ class _NotificationsView extends StatelessWidget {
     final secondaryTextColor = isDarkMode
         ? Colors.grey[400]!
         : Colors.grey[600]!;
+    final surfaceColor = isDarkMode
+        ? Colors.grey[800]!.withValues(alpha: 0.5)
+        : Colors.white;
 
     return Scaffold(
       backgroundColor: isDarkMode
           ? kBackgroundColorDark
           : kBackgroundColorLight,
-      appBar: _buildAppBar(context, isDarkMode, primaryTextColor),
-      body: BlocBuilder<NotificationCubit, NotificationState>(
-        builder: (context, state) {
-          if (state is NotificationsLoading) {
-            return Center(
+      appBar: AppBar(
+        title: Text(
+          'Notifications',
+          style: GoogleFonts.plusJakartaSans(
+            color: primaryTextColor,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        leading: IconButton(
+          icon: Icon(Icons.arrow_back, color: primaryTextColor),
+          onPressed: () => Navigator.pop(context),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.settings, color: primaryTextColor),
+            onPressed: () =>
+                Navigator.pushNamed(context, '/notification-settings'),
+          ),
+        ],
+      ),
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator(color: kPrimaryColor))
+          : _groups.isEmpty
+          ? Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const CircularProgressIndicator(color: kPrimaryColor),
+                  Icon(
+                    Icons.notifications_off,
+                    size: 64,
+                    color: secondaryTextColor,
+                  ),
                   const SizedBox(height: 16),
                   Text(
-                    'Loading notifications...',
-                    style: TextStyle(color: secondaryTextColor),
+                    'No notifications yet',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: secondaryTextColor,
+                      fontSize: 16,
+                    ),
                   ),
                 ],
               ),
-            );
-          }
-
-          if (state is NotificationError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.message,
-                    textAlign: TextAlign.center,
-                    style: TextStyle(color: secondaryTextColor),
-                  ),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () {
-                      context.read<NotificationCubit>().loadNotifications();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      foregroundColor: kBackgroundColorDark,
-                    ),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (state is NotificationsLoaded) {
-            if (state.notifications.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.notifications_none,
-                      size: 80,
-                      color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No Notifications',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: primaryTextColor,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'You\'re all caught up!',
-                      style: TextStyle(fontSize: 14, color: secondaryTextColor),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return RefreshIndicator(
-              onRefresh: () async {
-                context.read<NotificationCubit>().loadNotifications();
-              },
+            )
+          : RefreshIndicator(
+              onRefresh: _loadGroups,
+              color: kPrimaryColor,
               child: ListView.separated(
                 padding: const EdgeInsets.all(16),
-                itemCount: state.notifications.length,
-                separatorBuilder: (context, index) => const SizedBox(height: 8),
+                itemCount: _groups.length,
+                separatorBuilder: (context, index) =>
+                    const SizedBox(height: 12),
                 itemBuilder: (context, index) {
-                  final notification = state.notifications[index];
-                  return _buildNotificationCard(
+                  final group = _groups[index];
+                  return _buildGroupItem(
                     context,
-                    notification,
-                    isDarkMode,
+                    group,
                     primaryTextColor,
                     secondaryTextColor,
+                    surfaceColor,
                   );
                 },
               ),
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
-      ),
+            ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(
+  Widget _buildGroupItem(
     BuildContext context,
-    bool isDarkMode,
-    Color primaryTextColor,
-  ) {
-    return AppBar(
-      backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
-      elevation: 0,
-      title: Text(
-        'Notifications',
-        style: GoogleFonts.plusJakartaSans(
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-          color: primaryTextColor,
-        ),
-      ),
-      actions: [
-        BlocBuilder<NotificationCubit, NotificationState>(
-          builder: (context, state) {
-            if (state is NotificationsLoaded && state.unreadCount > 0) {
-              return TextButton(
-                onPressed: () {
-                  context
-                      .read<NotificationCubit>()
-                      .markAllNotificationsAsRead();
-                },
-                child: Text(
-                  'Mark all read',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: kPrimaryColor,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              );
-            }
-            return const SizedBox.shrink();
-          },
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNotificationCard(
-    BuildContext context,
-    NotificationEntity notification,
-    bool isDarkMode,
+    NotificationGroupEntity group,
     Color primaryTextColor,
     Color secondaryTextColor,
+    Color surfaceColor,
   ) {
-    final icon = _getIconForType(notification.type.name);
-    final iconColor = _getColorForType(notification.type.name);
+    IconData icon;
+    Color iconColor;
 
-    return BlocBuilder<NotificationCubit, NotificationState>(
-      builder: (context, state) {
-        return Dismissible(
-          key: Key(notification.id),
-          direction: DismissDirection.endToStart,
-          onDismissed: (direction) {
-            context.read<NotificationCubit>().deleteNotif(notification.id);
-          },
-          background: Container(
-            alignment: Alignment.centerRight,
-            padding: const EdgeInsets.only(right: 20),
-            decoration: BoxDecoration(
-              color: Colors.red,
-              borderRadius: BorderRadius.circular(12),
+    switch (group.category) {
+      case 'message':
+        icon = Icons.chat_bubble;
+        iconColor = Colors.blue;
+        break;
+      case 'review':
+        icon = Icons.star;
+        iconColor = Colors.amber;
+        break;
+      case 'order':
+        icon = Icons.shopping_bag;
+        iconColor = kPrimaryColor;
+        break;
+      default:
+        icon = Icons.notifications;
+        iconColor = kPrimaryColor;
+    }
+
+    return Dismissible(
+      key: Key(group.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        decoration: BoxDecoration(
+          color: Colors.red,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (direction) {
+        _groupingService.deleteGroup(group.id);
+        setState(() {
+          _groups.removeAt(_groups.indexOf(group));
+        });
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: surfaceColor,
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
             ),
-            child: const Icon(Icons.delete, color: Colors.white),
+          ],
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.all(16),
+          leading: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: iconColor.withValues(alpha: 0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(icon, color: iconColor),
           ),
-          child: InkWell(
-            onTap: () {
-              if (!notification.isRead) {
-                context.read<NotificationCubit>().markNotificationAsRead(
-                  notification.id,
-                );
-              }
-              if (notification.actionUrl != null &&
-                  notification.actionUrl!.isNotEmpty) {
-                Navigator.pushNamed(context, notification.actionUrl!);
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: notification.isRead
-                    ? (isDarkMode ? Colors.grey[900] : Colors.white)
-                    : (isDarkMode
-                          ? Colors.grey[850]
-                          : kPrimaryColor.withValues(alpha: 0.05)),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(
-                  color: notification.isRead
-                      ? (isDarkMode ? Colors.grey[800]! : Colors.grey[200]!)
-                      : kPrimaryColor.withValues(alpha: 0.2),
-                  width: 1,
+          title: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  group.title,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: primaryTextColor,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 16,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      color: iconColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(icon, color: iconColor, size: 24),
+              if (group.latestNotificationAt != null)
+                Text(
+                  timeago.format(
+                    group.latestNotificationAt!,
+                    locale: 'en_short',
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          notification.title,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 16,
-                            fontWeight: notification.isRead
-                                ? FontWeight.w600
-                                : FontWeight.bold,
-                            color: primaryTextColor,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          notification.message,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            color: secondaryTextColor,
-                            height: 1.4,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          _formatTime(notification.createdAt),
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            color: secondaryTextColor.withValues(alpha: 0.8),
-                          ),
-                        ),
-                      ],
-                    ),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: secondaryTextColor,
+                    fontSize: 12,
                   ),
-                  if (!notification.isRead)
-                    Container(
-                      width: 8,
-                      height: 8,
-                      margin: const EdgeInsets.only(top: 8, left: 8),
-                      decoration: const BoxDecoration(
-                        color: kPrimaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                ],
-              ),
-            ),
+                ),
+            ],
           ),
-        );
-      },
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const SizedBox(height: 4),
+              if (group.summary != null)
+                Text(
+                  group.summary!,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: secondaryTextColor,
+                    fontSize: 14,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              if (group.unreadCount > 0) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    '${group.unreadCount} new',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          onTap: () {
+            // Handle navigation based on category
+            if (group.category == 'message') {
+              // Extract conversation ID from group key if possible
+              // Format: message_conversation_ID
+              final parts = group.groupKey.split('_');
+              if (parts.length >= 3 && parts[1] == 'conversation') {
+                Navigator.pushNamed(context, '/chat', arguments: parts[2]);
+              }
+            }
+            // Mark as read
+            _groupingService.markGroupAsRead(group.id);
+            setState(() {
+              // Update local state to reflect read status
+              final index = _groups.indexOf(group);
+              if (index != -1) {
+                _groups[index] = group.copyWith(unreadCount: 0);
+              }
+            });
+          },
+        ),
+      ),
     );
   }
 }

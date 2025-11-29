@@ -9,11 +9,30 @@ class RoomTypes {
 }
 
 class PriceTypes {
-  static const perMonth = 'Per Month';
-  static const perSemester = 'Per Semester';
-  static const perYear = 'Per Year';
+  // Stored format (database format)
+  static const perMonth = 'per_month';
+  static const perSemester = 'per_semester';
+  static const perYear = 'per_year';
 
   static List<String> get all => [perMonth, perSemester, perYear];
+
+  // Display format (for UI)
+  static String getDisplayName(String priceType) {
+    switch (priceType) {
+      case perMonth:
+        return 'Per Month';
+      case perSemester:
+        return 'Per Semester';
+      case perYear:
+        return 'Per Year';
+      default:
+        return priceType.replaceAll('_', ' ').split(' ').map((word) {
+          return word.isEmpty
+              ? ''
+              : word[0].toUpperCase() + word.substring(1);
+        }).join(' ');
+    }
+  }
 }
 
 class Amenities {

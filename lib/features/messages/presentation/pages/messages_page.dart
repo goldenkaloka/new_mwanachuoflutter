@@ -1,4 +1,3 @@
-import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -6,6 +5,7 @@ import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
+import 'package:mwanachuo/core/services/subscription_cache_service.dart';
 import 'package:mwanachuo/core/utils/time_formatter.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
@@ -52,7 +52,8 @@ class _MessagesViewState extends State<_MessagesView>
     final currentUser = SupabaseConfig.client.auth.currentUser;
     if (currentUser == null) {
       setState(() {
-        _canAccessMessages = true; // Allow access if not logged in (shouldn't happen)
+        _canAccessMessages =
+            true; // Allow access if not logged in (shouldn't happen)
         _isCheckingSubscription = false;
       });
       _loadConversations();
@@ -80,7 +81,42 @@ class _MessagesViewState extends State<_MessagesView>
         return;
       }
 
-      // For sellers, check subscription
+      // For sellers, check subscription (with cache - won't show loader if cached)
+      // First check cache synchronously to avoid showing loader
+      final cachedAccess = SubscriptionCacheService().getCachedAccess(
+        currentUser.id,
+      );
+      if (cachedAccess != null) {
+        // Cache hit - no loader needed
+        setState(() {
+          _canAccessMessages = cachedAccess;
+          _isCheckingSubscription = false;
+        });
+        if (cachedAccess) {
+          _loadConversations();
+        }
+        // Still refresh in background
+        SubscriptionMiddleware.canAccessMessages(sellerId: currentUser.id);
+        return;
+      }
+
+      // Check persisted cache
+      final persistedAccess = await SubscriptionCacheService()
+          .getPersistedAccess(currentUser.id);
+      if (persistedAccess != null) {
+        setState(() {
+          _canAccessMessages = persistedAccess;
+          _isCheckingSubscription = false;
+        });
+        if (persistedAccess) {
+          _loadConversations();
+        }
+        // Still refresh in background
+        SubscriptionMiddleware.canAccessMessages(sellerId: currentUser.id);
+        return;
+      }
+
+      // Cache miss - show loader and check subscription
       final canAccess = await SubscriptionMiddleware.canAccessMessages(
         sellerId: currentUser.id,
       );
@@ -179,26 +215,29 @@ class _MessagesViewState extends State<_MessagesView>
             return _buildExpandedLayout(context, isDarkMode);
           }
 
+          // Get safe area padding
+          final safeAreaTop = MediaQuery.of(context).padding.top;
+          final appBarHeight = ResponsiveBreakpoints.responsiveValue(
+            context,
+            compact: 70.0,
+            medium: 68.0,
+            expanded: 64.0,
+          );
+          final totalTopPadding = appBarHeight + safeAreaTop;
+
           return Stack(
             children: [
               // Conversation List
               Padding(
                 padding: EdgeInsets.only(
-                  top: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 84.0,
-                    medium: 80.0,
-                    expanded: 0.0,
-                  ),
+                  top: totalTopPadding,
                 ),
                 child: ResponsiveContainer(
                   child: _buildConversationsList(isDarkMode, screenSize),
                 ),
               ),
               // Sticky Top App Bar
-              _buildTopAppBar(isDarkMode, screenSize),
-              // Floating Action Button (only for compact/medium)
-              if (!isExpanded) _buildFloatingActionButton(context, screenSize),
+              _buildTopAppBar(context, isDarkMode, screenSize),
             ],
           );
         },
@@ -306,12 +345,26 @@ class _MessagesViewState extends State<_MessagesView>
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const CircularProgressIndicator(color: kPrimaryColor),
-                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.grey[800]!.withValues(alpha: 0.3)
+                        : kPrimaryColor.withValues(alpha: 0.1),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const CircularProgressIndicator(
+                    color: kPrimaryColor,
+                    strokeWidth: 3,
+                  ),
+                ),
+                const SizedBox(height: 24),
                 Text(
                   'Loading conversations...',
-                  style: TextStyle(
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
                     color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -322,32 +375,64 @@ class _MessagesViewState extends State<_MessagesView>
         // Show error only if we don't have cached conversations
         if (state is MessageError && _cachedConversations.isEmpty) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.error_outline, size: 48, color: Colors.red),
-                const SizedBox(height: 16),
-                Text(
-                  state.message,
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.red.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.error_outline_rounded,
+                      size: 48,
+                      color: Colors.red,
+                    ),
                   ),
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: () {
-                    context.read<MessageBloc>().add(
-                      const LoadConversationsEvent(),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryColor,
-                    foregroundColor: kBackgroundColorDark,
+                  const SizedBox(height: 24),
+                  Text(
+                    'Oops! Something went wrong',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
                   ),
-                  child: const Text('Retry'),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    state.message,
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      context.read<MessageBloc>().add(
+                        const LoadConversationsEvent(),
+                      );
+                    },
+                    icon: const Icon(Icons.refresh_rounded, size: 20),
+                    label: const Text('Retry'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryColor,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -364,31 +449,47 @@ class _MessagesViewState extends State<_MessagesView>
         // Show empty state only if we truly have no conversations
         if (conversationsToShow.isEmpty && !_isInitialLoad) {
           return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.chat_bubble_outline,
-                  size: 64,
-                  color: isDarkMode ? Colors.grey[600] : Colors.grey[400],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'No conversations yet',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+            child: Padding(
+              padding: const EdgeInsets.all(32.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: isDarkMode
+                          ? Colors.grey[800]!.withValues(alpha: 0.3)
+                          : kPrimaryColor.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      size: 64,
+                      color: isDarkMode
+                          ? Colors.grey[500]
+                          : kPrimaryColor.withValues(alpha: 0.7),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Start browsing to connect with sellers',
-                  style: TextStyle(
-                    color: isDarkMode ? Colors.grey[500] : Colors.grey[500],
+                  const SizedBox(height: 24),
+                  Text(
+                    'No conversations yet',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    'Start browsing to connect with sellers',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    ),
+                  ),
+                ],
+              ),
             ),
           );
         }
@@ -404,17 +505,17 @@ class _MessagesViewState extends State<_MessagesView>
           color: kPrimaryColor,
           child: ListView.separated(
             physics: const AlwaysScrollableScrollPhysics(),
-            itemCount: conversationsToShow.length,
-            separatorBuilder: (context, index) => Divider(
-              height: 1,
-              thickness: 0,
-              indent: ResponsiveBreakpoints.responsiveValue(
+            padding: EdgeInsets.symmetric(
+              vertical: 8,
+              horizontal: ResponsiveBreakpoints.responsiveValue(
                 context,
-                compact: 88.0,
-                medium: 96.0,
-                expanded: 104.0,
+                compact: 0,
+                medium: 8,
+                expanded: 16,
               ),
             ),
+            itemCount: conversationsToShow.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final conversation = conversationsToShow[index];
               return ConversationListItem(
@@ -476,7 +577,7 @@ class _MessagesViewState extends State<_MessagesView>
           ),
           child: Column(
             children: [
-              _buildTopAppBar(isDarkMode, ScreenSize.expanded),
+              _buildTopAppBar(context, isDarkMode, ScreenSize.expanded),
               Expanded(
                 child: _buildConversationsList(isDarkMode, ScreenSize.expanded),
               ),
@@ -523,42 +624,64 @@ class _MessagesViewState extends State<_MessagesView>
     );
   }
 
-  Widget _buildTopAppBar(bool isDarkMode, ScreenSize screenSize) {
+  Widget _buildTopAppBar(
+    BuildContext context,
+    bool isDarkMode,
+    ScreenSize screenSize,
+  ) {
     final horizontalPadding = screenSize == ScreenSize.expanded
         ? 16.0
         : ResponsiveBreakpoints.responsiveHorizontalPadding(context);
     final isExpanded = screenSize == ScreenSize.expanded;
+    final surfaceColor = isDarkMode
+        ? Colors.grey[900]!.withValues(alpha: 0.95)
+        : Colors.white.withValues(alpha: 0.95);
 
-    return ClipRect(
-      child: BackdropFilter(
-        filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
+    return Container(
+      decoration: BoxDecoration(
+        color: surfaceColor,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: SafeArea(
+        bottom: false,
         child: Container(
           height: ResponsiveBreakpoints.responsiveValue(
             context,
-            compact: 84.0,
-            medium: 80.0,
+            compact: 70.0,
+            medium: 68.0,
             expanded: 64.0,
           ),
-          color: isDarkMode
-              ? kBackgroundColorDark.withValues(alpha: 0.8)
-              : kBackgroundColorLight.withValues(alpha: 0.8),
           padding: EdgeInsets.fromLTRB(
             horizontalPadding,
-            screenSize == ScreenSize.expanded ? 16.0 : 48.0,
+            screenSize == ScreenSize.expanded ? 12.0 : 8.0,
             horizontalPadding,
-            8.0,
+            12.0,
           ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Back/Home Button
-              SizedBox(
-                width: 48,
+              // Back/Home Button with better styling
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.grey[800]!.withValues(alpha: 0.5)
+                      : Colors.grey[100]!.withValues(alpha: 0.8),
+                  shape: BoxShape.circle,
+                ),
                 child: IconButton(
                   icon: Icon(
-                    isExpanded ? Icons.home : Icons.arrow_back,
+                    isExpanded ? Icons.home_rounded : Icons.arrow_back_rounded,
+                    size: 20,
                     color: isDarkMode ? Colors.white : Colors.black87,
                   ),
+                  padding: EdgeInsets.zero,
                   onPressed: () {
                     if (isExpanded) {
                       Navigator.pushReplacementNamed(context, '/home');
@@ -568,29 +691,38 @@ class _MessagesViewState extends State<_MessagesView>
                   },
                 ),
               ),
+              const SizedBox(width: 16),
               // Title
               Expanded(
                 child: Text(
                   'Messages',
-                  textAlign: TextAlign.center,
                   style: GoogleFonts.plusJakartaSans(
                     fontSize: ResponsiveBreakpoints.responsiveValue(
                       context,
-                      compact: 20.0,
-                      medium: 22.0,
-                      expanded: 20.0,
+                      compact: 22.0,
+                      medium: 24.0,
+                      expanded: 22.0,
                     ),
                     fontWeight: FontWeight.bold,
                     color: isDarkMode ? Colors.white : Colors.black87,
+                    letterSpacing: -0.5,
                   ),
                 ),
               ),
-              // Search Button
-              SizedBox(
-                width: 48,
+              // Search Button with better styling
+              Container(
+                width: 40,
+                height: 40,
+                decoration: BoxDecoration(
+                  color: isDarkMode
+                      ? Colors.grey[800]!.withValues(alpha: 0.5)
+                      : Colors.grey[100]!.withValues(alpha: 0.8),
+                  shape: BoxShape.circle,
+                ),
                 child: IconButton(
-                  icon: Icon(Icons.search),
+                  icon: const Icon(Icons.search_rounded, size: 20),
                   color: isDarkMode ? Colors.white : Colors.black87,
+                  padding: EdgeInsets.zero,
                   onPressed: () {
                     // Handle search action
                   },
@@ -598,61 +730,6 @@ class _MessagesViewState extends State<_MessagesView>
               ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildFloatingActionButton(
-    BuildContext context,
-    ScreenSize screenSize,
-  ) {
-    final fabPosition = ResponsiveBreakpoints.responsiveValue(
-      context,
-      compact: 24.0,
-      medium: 32.0,
-      expanded: 40.0,
-    );
-
-    return Positioned(
-      bottom: fabPosition,
-      right: fabPosition,
-      child: Container(
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(9999),
-          boxShadow: [
-            BoxShadow(
-              color: kPrimaryColor.withValues(alpha: 0.3),
-              spreadRadius: 2,
-              blurRadius: 8,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: FloatingActionButton.extended(
-          onPressed: () {
-            // Handle new chat action
-          },
-          backgroundColor: kPrimaryColor,
-          foregroundColor: kBackgroundColorDark,
-          label: Text(
-            'New Chat',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 17.0,
-                expanded: 18.0,
-              ),
-              fontWeight: FontWeight.bold,
-              color: kBackgroundColorDark,
-            ),
-          ),
-          icon: Icon(Icons.edit, color: kBackgroundColorDark),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(9999),
-          ),
-          elevation: 0,
         ),
       ),
     );
@@ -710,210 +787,154 @@ class ConversationListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Use the isDarkMode parameter passed to the widget
     final primaryTextColor = isDarkMode ? Colors.white : Colors.black87;
-    // Use effectiveUnreadCount which returns 0 for self-conversations
+    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
     final hasUnread = conversation.effectiveUnreadCount > 0;
-    final lastMessageColor = hasUnread 
-        ? (isDarkMode ? Colors.white : Colors.black87)
-        : (isDarkMode ? Colors.grey[400]! : Colors.grey[600]!);
-    final lastMessageWeight = hasUnread ? FontWeight.bold : FontWeight.normal;
     final horizontalPadding = screenSize == ScreenSize.expanded
         ? 16.0
         : ResponsiveBreakpoints.responsiveHorizontalPadding(context);
-    final avatarSize = ResponsiveBreakpoints.responsiveValue(
-      context,
-      compact: 56.0,
-      medium: 64.0,
-      expanded: 56.0,
-    );
 
-    return InkWell(
-      onTap: onTap,
-      onLongPress: () => _showDeleteDialog(context),
-      child: Container(
-        color: isSelected ? Colors.grey[100] : Colors.transparent,
-        child: Padding(
-          padding: EdgeInsets.symmetric(
-            horizontal: horizontalPadding,
-            vertical: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 8.0,
-              medium: 12.0,
-              expanded: 12.0,
-            ),
+    return Dismissible(
+      key: Key(conversation.id),
+      direction: DismissDirection.endToStart,
+      background: Container(
+        alignment: Alignment.centerRight,
+        padding: const EdgeInsets.only(right: 20),
+        color: Colors.red,
+        child: const Icon(Icons.delete, color: Colors.white),
+      ),
+      onDismissed: (direction) {
+        context.read<MessageBloc>().add(
+          DeleteConversationEvent(conversationId: conversation.id),
+        );
+      },
+      child: Padding(
+        padding: EdgeInsets.symmetric(
+          horizontal: screenSize == ScreenSize.expanded ? 0 : horizontalPadding,
+        ),
+        child: ListTile(
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 16.0,
+            vertical: 8.0,
           ),
-          child: Row(
+          leading: Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(8),
+                child: NetworkImageWithFallback(
+                  imageUrl: conversation.otherUserAvatar ?? '',
+                  width: 56,
+                  height: 56,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              if (conversation.isOnline)
+                Positioned(
+                  right: 0,
+                  bottom: 0,
+                  child: Container(
+                    width: 14,
+                    height: 14,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4CAF50),
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isDarkMode ? kBackgroundColorDark : Colors.white,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          title: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  conversation.otherUserName,
+                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                    fontWeight: hasUnread ? FontWeight.bold : FontWeight.w600,
+                    color: primaryTextColor,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              if (hasUnread)
+                Container(
+                  width: 8,
+                  height: 8,
+                  margin: const EdgeInsets.only(left: 8),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor,
+                    shape: BoxShape.circle,
+                  ),
+                ),
+            ],
+          ),
+          subtitle: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Profile Picture with Online Indicator
-              Stack(
-                children: [
-                  Container(
-                    width: avatarSize,
-                    height: avatarSize,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: kPrimaryColor.withValues(alpha: 0.3),
-                    ),
-                    child: ClipOval(
-                      child: NetworkImageWithFallback(
-                        imageUrl: conversation.otherUserAvatar ?? '',
-                        width: avatarSize,
-                        height: avatarSize,
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                  if (conversation.isOnline)
-                    Positioned(
-                      right: 2,
-                      bottom: 2,
-                      child: Container(
-                        width: 14,
-                        height: 14,
-                        decoration: BoxDecoration(
-                          color: Colors.green,
-                          shape: BoxShape.circle,
-                          border: Border.all(color: Colors.white, width: 2.5),
-                        ),
-                      ),
-                    ),
-                ],
-              ),
-              SizedBox(
-                width: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 16.0,
-                  medium: 20.0,
-                  expanded: 24.0,
+              const SizedBox(height: 4),
+              Text(
+                conversation.lastMessage ?? 'No messages yet',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  fontWeight: hasUnread ? FontWeight.w600 : FontWeight.normal,
+                  color: hasUnread ? primaryTextColor : secondaryTextColor,
                 ),
-              ),
-              // Message Details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  children: [
-                    SizedBox(height: 4),
-                    Text(
-                      conversation.otherUserName,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 16.0,
-                          medium: 17.0,
-                          expanded: 18.0,
-                        ),
-                        fontWeight: hasUnread
-                            ? FontWeight.bold
-                            : FontWeight.w500,
-                        color: primaryTextColor,
-                      ),
-                    ),
-                    SizedBox(
-                      height: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 4.0,
-                        medium: 6.0,
-                        expanded: 8.0,
-                      ),
-                    ),
-                    Text(
-                      conversation.lastMessage ?? 'No messages yet',
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 14.0,
-                          medium: 15.0,
-                          expanded: 16.0,
-                        ),
-                        fontWeight: lastMessageWeight,
-                        color: lastMessageColor,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              // Timestamp and Unread Badge
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                mainAxisAlignment: MainAxisAlignment.start,
-                children: [
-                  SizedBox(height: 4),
-                  Text(
-                    _formatTime(conversation.lastMessageTime),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 12.0,
-                        medium: 13.0,
-                        expanded: 14.0,
-                      ),
-                      fontWeight: FontWeight.normal,
-                      color: isDarkMode ? Colors.grey[400]! : Colors.grey[600]!,
-                    ),
-                  ),
-                  // Only show badge for actual unread messages (not self-conversations)
-                  if (conversation.effectiveUnreadCount > 0) ...[
-                    SizedBox(
-                      height: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 6.0,
-                        medium: 8.0,
-                        expanded: 10.0,
-                      ),
-                    ),
-                    Container(
-                      width: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 24.0,
-                        medium: 28.0,
-                        expanded: 32.0,
-                      ),
-                      height: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 24.0,
-                        medium: 28.0,
-                        expanded: 32.0,
-                      ),
-                      alignment: Alignment.center,
-                      decoration: BoxDecoration(
-                        color: kPrimaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                      child: Text(
-                        conversation.effectiveUnreadCount.toString(),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: 12.0,
-                            medium: 13.0,
-                            expanded: 14.0,
-                          ),
-                          fontWeight: FontWeight.bold,
-                          color: kBackgroundColorDark,
-                        ),
-                      ),
-                    ),
-                  ] else ...[
-                    SizedBox(
-                      height: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 30.0,
-                        medium: 36.0,
-                        expanded: 42.0,
-                      ),
-                    ),
-                  ],
-                ],
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
               ),
             ],
           ),
+          trailing: SizedBox(
+            width: 60,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _formatTime(conversation.lastMessageTime),
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: secondaryTextColor,
+                    fontSize: 12,
+                  ),
+                  textAlign: TextAlign.end,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (conversation.effectiveUnreadCount > 0) ...[
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: kPrimaryColor,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    constraints: const BoxConstraints(minWidth: 20, minHeight: 20),
+                    child: Center(
+                      child: Text(
+                        conversation.effectiveUnreadCount > 99
+                            ? '99+'
+                            : conversation.effectiveUnreadCount.toString(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          onTap: onTap,
+          onLongPress: () => _showDeleteDialog(context),
         ),
       ),
     );
   }
 }
+
+

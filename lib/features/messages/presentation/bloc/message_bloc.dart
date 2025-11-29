@@ -87,10 +87,83 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       GetOrCreateConversationParams(otherUserId: event.otherUserId),
     );
 
-    result.fold(
-      (failure) => emit(MessageError(message: failure.message)),
-      (conversation) => emit(ConversationLoaded(conversation: conversation)),
-    );
+    // Handle the result properly without async callbacks in fold
+    final conversation = result.fold((failure) {
+      emit(MessageError(message: failure.message));
+      return null;
+    }, (conv) => conv);
+
+    // If we got a failure, return early
+    if (conversation == null) return;
+
+    // If listing details are provided and this is a new conversation,
+    // send an initial message with the listing information
+    if (event.listingId != null &&
+        event.listingType != null &&
+        event.listingTitle != null) {
+      // Check if conversation has any messages (new conversation)
+      final messagesResult = await getMessages(
+        GetMessagesParams(conversationId: conversation.id, limit: 1),
+      );
+
+      final isNewConversation = messagesResult.fold(
+        (failure) => true, // Assume new if we can't check
+        (messages) => messages.isEmpty,
+      );
+
+      if (isNewConversation) {
+        // Build listing message content
+        String messageContent =
+            'Hi! I\'m interested in this ${event.listingType}: ${event.listingTitle}';
+        if (event.listingPrice != null) {
+          messageContent += '\nPrice: ${event.listingPrice}';
+          if (event.listingPriceType != null &&
+              event.listingPriceType!.isNotEmpty) {
+            messageContent +=
+                '/${event.listingPriceType!.replaceAll('_', ' ')}';
+          }
+        }
+
+        // Build metadata
+        final metadata = {
+          'listingId': event.listingId,
+          'listingType': event.listingType,
+          'listingTitle': event.listingTitle,
+          if (event.listingImageUrl != null)
+            'listingImageUrl': event.listingImageUrl,
+          if (event.listingPrice != null) 'listingPrice': event.listingPrice,
+          if (event.listingPriceType != null)
+            'listingPriceType': event.listingPriceType,
+        };
+
+        // Send the initial message with listing details
+        // We don't need to check the result - just try to send it
+        await sendMessage(
+          SendMessageParams(
+            conversationId: conversation.id,
+            content: messageContent,
+            imageUrl: event.listingImageUrl,
+            metadata: metadata,
+          ),
+        );
+
+        // Check if emit is still valid before emitting
+        if (!emit.isDone) {
+          // Emit conversation loaded regardless of message send result
+          emit(ConversationLoaded(conversation: conversation));
+        }
+      } else {
+        // Existing conversation, just emit loaded
+        if (!emit.isDone) {
+          emit(ConversationLoaded(conversation: conversation));
+        }
+      }
+    } else {
+      // No listing details, just emit conversation loaded
+      if (!emit.isDone) {
+        emit(ConversationLoaded(conversation: conversation));
+      }
+    }
   }
 
   Future<void> _onLoadMessages(
@@ -166,15 +239,17 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
 
     if (messagesLoadedState != null &&
         messagesLoadedState.messages.isNotEmpty) {
-      final myMessage = messagesLoadedState.messages.firstWhere(
-        (m) => m.senderId == currentUser.id,
-        orElse: () => messagesLoadedState
-            .messages
-            .first, // Fallback (risky if no my messages)
-      );
-      if (myMessage.senderId == currentUser.id) {
+      try {
+        final myMessage = messagesLoadedState.messages.firstWhere(
+          (m) => m.senderId == currentUser.id,
+        );
         senderName = myMessage.senderName;
         senderAvatar = myMessage.senderAvatar;
+      } catch (e) {
+        // No message from current user found, use first message as fallback
+        final firstMessage = messagesLoadedState.messages.first;
+        senderName = firstMessage.senderName;
+        senderAvatar = firstMessage.senderAvatar;
       }
     }
 
@@ -230,6 +305,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         senderAvatar: senderAvatar,
         content: event.content,
         imageUrl: event.imageUrl,
+        metadata: event.metadata,
         createdAt: DateTime.now(),
         isRead: false,
         repliedToMessageId: event.repliedToMessageId,
@@ -259,6 +335,7 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
         content: event.content,
         imageUrl: event.imageUrl,
         repliedToMessageId: event.repliedToMessageId,
+        metadata: event.metadata,
         recentMessages: recentMessages, // Pass context for validation
       ),
     );

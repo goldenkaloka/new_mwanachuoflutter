@@ -16,6 +16,7 @@ class MessageEntity extends Equatable {
   final String? senderAvatar;
   final String content;
   final String? imageUrl;
+  final Map<String, dynamic>? metadata;
   final bool isRead;
   final DateTime createdAt;
   final DateTime? readAt;
@@ -31,6 +32,7 @@ class MessageEntity extends Equatable {
     this.senderAvatar,
     required this.content,
     this.imageUrl,
+    this.metadata,
     this.isRead = false,
     required this.createdAt,
     this.readAt,
@@ -60,6 +62,7 @@ class MessageEntity extends Equatable {
         senderAvatar,
         content,
         imageUrl,
+        metadata,
         isRead,
         createdAt,
         readAt,

@@ -76,7 +76,10 @@ class PromotionCubit extends Cubit<PromotionState> {
         emit(PromotionError(message: failure.message));
       },
       (promotion) {
-        debugPrint('✅ Promotion created successfully');
+        debugPrint('✅ Promotion created successfully: ${promotion.title}');
+        debugPrint('   Start Date: ${promotion.startDate}');
+        debugPrint('   End Date: ${promotion.endDate}');
+        debugPrint('   Is Active: ${promotion.isActive}');
         // Reload promotions to include the new one
         loadActivePromotions();
       },

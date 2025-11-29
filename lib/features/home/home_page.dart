@@ -26,6 +26,9 @@ import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.d
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/features/shared/notifications/presentation/cubit/notification_cubit.dart';
+import 'package:mwanachuo/features/shared/notifications/presentation/cubit/notification_state.dart';
 
 // --- HOME PAGE WIDGET ---
 
@@ -45,6 +48,7 @@ class _HomePageState extends State<HomePage> {
   String _userRole = 'buyer';
   bool _dataLoaded = false; // Flag to prevent double loading
   final TextEditingController _searchController = TextEditingController();
+  int _unreadNotificationCount = 0;
 
   @override
   void initState() {
@@ -60,6 +64,27 @@ class _HomePageState extends State<HomePage> {
 
     // Load promotions immediately (universal, no university required)
     context.read<PromotionCubit>().loadActivePromotions();
+
+    // Load unread notification count
+    _loadUnreadNotificationCount();
+  }
+
+  Future<void> _loadUnreadNotificationCount() async {
+    try {
+      final cubit = sl<NotificationCubit>();
+      await cubit.loadUnreadCount();
+      if (mounted) {
+        cubit.stream.listen((state) {
+          if (state is UnreadCountLoaded && mounted) {
+            setState(() {
+              _unreadNotificationCount = state.count;
+            });
+          }
+        });
+      }
+    } catch (e) {
+      debugPrint('Failed to load unread count: $e');
+    }
   }
 
   void _verifyUserHasUniversities() {
@@ -158,147 +183,166 @@ class _HomePageState extends State<HomePage> {
     final searchBorderColor = isDarkMode ? Colors.white10 : Colors.transparent;
     final isExpanded = ResponsiveBreakpoints.isExpanded(context);
 
-    return MultiBlocListener(
-      listeners: [
-        BlocListener<AuthBloc, AuthState>(
-          listener: (context, state) {
-            if (state is Authenticated) {
-              // Only update if data actually changed to prevent rebuilds
-              if (_userName != state.user.name ||
-                  _userRole != state.user.role.value ||
-                  _isLoadingUser) {
-                setState(() {
-                  _userName = state.user.name;
-                  _userRole = state.user.role.value;
-                  _isLoadingUser = false;
-                });
+    return RepaintBoundary(
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<AuthBloc, AuthState>(
+            listener: (context, state) {
+              if (state is Authenticated) {
+                // Only update if data actually changed to prevent rebuilds
+                if (_userName != state.user.name ||
+                    _userRole != state.user.role.value ||
+                    _isLoadingUser) {
+                  setState(() {
+                    _userName = state.user.name;
+                    _userRole = state.user.role.value;
+                    _isLoadingUser = false;
+                  });
+                }
               }
-            }
-          },
-        ),
-        BlocListener<ProductBloc, ProductState>(
-          listener: (context, state) {
-            // Reload products when a new product is created
-            if (state is ProductCreated) {
-              debugPrint(
-                '🔄 Product created, reloading products on homepage...',
-              );
-              context.read<ProductBloc>().add(
-                const LoadProductsEvent(limit: 10),
-              );
-            }
-          },
-        ),
-      ],
-      child: Scaffold(
-        backgroundColor: isDarkMode
-            ? kBackgroundColorDark
-            : kBackgroundColorLight,
-        body: ResponsiveBuilder(
-          builder: (context, screenSize) {
-            // For expanded screens, use a different layout structure
-            if (isExpanded) {
-              return _buildExpandedLayout(
-                context,
-                primaryTextColor,
-                secondaryTextColor,
-                searchBgColor,
-                searchBorderColor,
-                isDarkMode,
-              );
-            }
+            },
+          ),
+          BlocListener<ProductBloc, ProductState>(
+            listener: (context, state) {
+              // Reload products when a new product is created
+              if (state is ProductCreated) {
+                debugPrint(
+                  '🔄 Product created, reloading products on homepage...',
+                );
+                context.read<ProductBloc>().add(
+                  const LoadProductsEvent(limit: 10),
+                );
+              }
+            },
+          ),
+        ],
+        child: Scaffold(
+          backgroundColor: isDarkMode
+              ? kBackgroundColorDark
+              : kBackgroundColorLight,
+          body: ResponsiveBuilder(
+            builder: (context, screenSize) {
+              // For expanded screens, use a different layout structure
+              if (isExpanded) {
+                return _buildExpandedLayout(
+                  context,
+                  primaryTextColor,
+                  secondaryTextColor,
+                  searchBgColor,
+                  searchBorderColor,
+                  isDarkMode,
+                );
+              }
 
-            // Compact and Medium layouts
-            final isMedium = screenSize == ScreenSize.medium;
+              // Compact and Medium layouts
+              final isMedium = screenSize == ScreenSize.medium;
 
-            return Stack(
-              children: [
-                // Main Scrollable Content
-                SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    bottom: ResponsiveBreakpoints.isCompact(context)
-                        ? 120
-                        : (isMedium ? 80 : 0),
-                  ),
-                  child: ResponsiveContainer(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // 1. Top App Bar
-                        _buildTopAppBar(context, primaryTextColor, screenSize),
-
-                        // 2. Search Bar
-                        _buildSearchBar(
-                          searchBgColor,
-                          searchBorderColor,
-                          primaryTextColor,
-                          secondaryTextColor,
-                          screenSize,
-                        ),
-
-                        // 3. Promotions Section
-                        _buildPromotionsSection(screenSize),
-
-                        // 4. Chips (Categories)
-                        _buildChipsRow(screenSize),
-
-                        // 5. Products Section
-                        _buildSectionHeader(
-                          'Products',
-                          Icons.shopping_bag,
+              return SafeArea(
+                bottom: false, // Bottom safe area handled by bottom nav
+                child: CustomScrollView(
+                  slivers: [
+                    // 1. Top App Bar (collapsible)
+                    SliverSafeArea(
+                      bottom: false,
+                      sliver: SliverToBoxAdapter(
+                        child: _buildTopAppBar(
+                          context,
                           primaryTextColor,
                           screenSize,
-                          route: '/all-products',
                         ),
-                        _buildProductsSection(
-                          primaryTextColor,
-                          secondaryTextColor,
-                          screenSize,
-                        ),
-
-                        // 6. Accommodations Section
-                        _buildSectionHeader(
-                          'Accommodations',
-                          Icons.home,
-                          primaryTextColor,
-                          screenSize,
-                          route: '/student-housing',
-                        ),
-                        _buildAccommodationsSection(
-                          primaryTextColor,
-                          secondaryTextColor,
-                          screenSize,
-                        ),
-
-                        // 7. Services Section
-                        _buildSectionHeader(
-                          'Services',
-                          Icons.build,
-                          primaryTextColor,
-                          screenSize,
-                          route: '/services',
-                        ),
-                        _buildServicesSection(
-                          primaryTextColor,
-                          secondaryTextColor,
-                          screenSize,
-                        ),
-                      ],
+                      ),
                     ),
-                  ),
-                ),
 
-                // Bottom Navigation Bar (for compact and medium screens)
-                if (ResponsiveBreakpoints.isCompact(context) || isMedium)
-                  Positioned(
-                    bottom: 0,
-                    left: 0,
-                    right: 0,
-                    child: _buildBottomNavBar(isDarkMode, isMedium),
-                  ),
-              ],
-            );
-          },
+                    // 2. Search Bar (collapsible)
+                    SliverToBoxAdapter(
+                      child: _buildSearchBar(
+                        searchBgColor,
+                        searchBorderColor,
+                        primaryTextColor,
+                        secondaryTextColor,
+                        screenSize,
+                      ),
+                    ),
+
+                    // 3. Promotions Section (collapsible)
+                    SliverToBoxAdapter(
+                      child: _buildPromotionsSection(screenSize),
+                    ),
+
+                    // 4. Sticky Chips (Categories) - Pinned at top when scrolling
+                    SliverPersistentHeader(
+                      pinned: true,
+                      delegate: _StickyChipsDelegate(
+                        child: _buildChipsRow(screenSize),
+                        minHeight: 56.0,
+                        maxHeight: 56.0,
+                      ),
+                    ),
+
+                    // 5. Products Section
+                    SliverToBoxAdapter(
+                      child: ResponsiveContainer(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            _buildSectionHeader(
+                              'Products',
+                              Icons.shopping_bag,
+                              primaryTextColor,
+                              screenSize,
+                              route: '/all-products',
+                            ),
+                            _buildProductsSection(
+                              primaryTextColor,
+                              secondaryTextColor,
+                              screenSize,
+                            ),
+
+                            // 6. Accommodations Section
+                            _buildSectionHeader(
+                              'Accommodations',
+                              Icons.home,
+                              primaryTextColor,
+                              screenSize,
+                              route: '/student-housing',
+                            ),
+                            _buildAccommodationsSection(
+                              primaryTextColor,
+                              secondaryTextColor,
+                              screenSize,
+                            ),
+
+                            // 7. Services Section
+                            _buildSectionHeader(
+                              'Services',
+                              Icons.build,
+                              primaryTextColor,
+                              screenSize,
+                              route: '/services',
+                            ),
+                            _buildServicesSection(
+                              primaryTextColor,
+                              secondaryTextColor,
+                              screenSize,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+
+                    // Bottom padding for bottom navigation
+                    SliverPadding(
+                      padding: EdgeInsets.only(
+                        bottom: ResponsiveBreakpoints.isCompact(context)
+                            ? 80
+                            : (isMedium ? 60 : 0),
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
         ),
       ),
     );
@@ -327,73 +371,98 @@ class _HomePageState extends State<HomePage> {
         ),
         // Main Content Area
         Expanded(
-          child: Stack(
-            children: [
-              SingleChildScrollView(
-                child: ResponsiveContainer(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildTopAppBar(
-                        context,
-                        primaryTextColor,
-                        ScreenSize.expanded,
-                      ),
-                      _buildSearchBar(
-                        searchBgColor,
-                        searchBorderColor,
-                        primaryTextColor,
-                        secondaryTextColor,
-                        ScreenSize.expanded,
-                      ),
-                      // Promotions Section
-                      _buildPromotionsSection(ScreenSize.expanded),
-                      // Chips (Categories)
-                      _buildChipsRow(ScreenSize.expanded),
-                      // Products Section
-                      _buildSectionHeader(
-                        'Products',
-                        Icons.shopping_bag,
-                        primaryTextColor,
-                        ScreenSize.expanded,
-                        route: '/all-products',
-                      ),
-                      _buildProductsSection(
-                        primaryTextColor,
-                        secondaryTextColor,
-                        ScreenSize.expanded,
-                      ),
-                      // Accommodations Section
-                      _buildSectionHeader(
-                        'Accommodations',
-                        Icons.home,
-                        primaryTextColor,
-                        ScreenSize.expanded,
-                        route: '/student-housing',
-                      ),
-                      _buildAccommodationsSection(
-                        primaryTextColor,
-                        secondaryTextColor,
-                        ScreenSize.expanded,
-                      ),
-                      // Services Section
-                      _buildSectionHeader(
-                        'Services',
-                        Icons.build,
-                        primaryTextColor,
-                        ScreenSize.expanded,
-                        route: '/services',
-                      ),
-                      _buildServicesSection(
-                        primaryTextColor,
-                        secondaryTextColor,
-                        ScreenSize.expanded,
-                      ),
-                    ],
+          child: SafeArea(
+            bottom: false, // Bottom safe area handled by bottom nav
+            child: CustomScrollView(
+              slivers: [
+                // Top App Bar (collapsible)
+                SliverSafeArea(
+                  bottom: false,
+                  sliver: SliverToBoxAdapter(
+                    child: _buildTopAppBar(
+                      context,
+                      primaryTextColor,
+                      ScreenSize.expanded,
+                    ),
                   ),
                 ),
-              ),
-            ],
+
+                // Search Bar (collapsible)
+                SliverToBoxAdapter(
+                  child: _buildSearchBar(
+                    searchBgColor,
+                    searchBorderColor,
+                    primaryTextColor,
+                    secondaryTextColor,
+                    ScreenSize.expanded,
+                  ),
+                ),
+
+                // Promotions Section (collapsible)
+                SliverToBoxAdapter(
+                  child: _buildPromotionsSection(ScreenSize.expanded),
+                ),
+
+                // Sticky Chips (Categories) - Pinned at top when scrolling
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _StickyChipsDelegate(
+                    child: _buildChipsRow(ScreenSize.expanded),
+                    minHeight: 56.0,
+                    maxHeight: 56.0,
+                  ),
+                ),
+
+                // Products Section
+                SliverToBoxAdapter(
+                  child: ResponsiveContainer(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildSectionHeader(
+                          'Products',
+                          Icons.shopping_bag,
+                          primaryTextColor,
+                          ScreenSize.expanded,
+                          route: '/all-products',
+                        ),
+                        _buildProductsSection(
+                          primaryTextColor,
+                          secondaryTextColor,
+                          ScreenSize.expanded,
+                        ),
+                        // Accommodations Section
+                        _buildSectionHeader(
+                          'Accommodations',
+                          Icons.home,
+                          primaryTextColor,
+                          ScreenSize.expanded,
+                          route: '/student-housing',
+                        ),
+                        _buildAccommodationsSection(
+                          primaryTextColor,
+                          secondaryTextColor,
+                          ScreenSize.expanded,
+                        ),
+                        // Services Section
+                        _buildSectionHeader(
+                          'Services',
+                          Icons.build,
+                          primaryTextColor,
+                          ScreenSize.expanded,
+                          route: '/services',
+                        ),
+                        _buildServicesSection(
+                          primaryTextColor,
+                          secondaryTextColor,
+                          ScreenSize.expanded,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -598,12 +667,44 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          // Notifications Button
-          IconButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/notifications');
-            },
-            icon: Icon(Icons.notifications_none, color: primaryTextColor),
+          // Notifications Button with Badge
+          Stack(
+            clipBehavior: Clip.none,
+            children: [
+              IconButton(
+                onPressed: () {
+                  Navigator.pushNamed(context, '/notifications');
+                },
+                icon: Icon(Icons.notifications_none, color: primaryTextColor),
+              ),
+              if (_unreadNotificationCount > 0)
+                Positioned(
+                  right: 8,
+                  top: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(4),
+                    decoration: const BoxDecoration(
+                      color: Colors.red,
+                      shape: BoxShape.circle,
+                    ),
+                    constraints: const BoxConstraints(
+                      minWidth: 16,
+                      minHeight: 16,
+                    ),
+                    child: Text(
+                      _unreadNotificationCount > 99
+                          ? '99+'
+                          : '$_unreadNotificationCount',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),
@@ -702,6 +803,7 @@ class _HomePageState extends State<HomePage> {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     // Map chip labels to icons
     final Map<String, IconData> chipIcons = {
@@ -712,12 +814,14 @@ class _HomePageState extends State<HomePage> {
       'Events': Icons.event_outlined,
     };
 
-    return SingleChildScrollView(
-      scrollDirection: Axis.horizontal,
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: 4.0,
-      ),
+    return Container(
+      color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(
+          horizontal: horizontalPadding,
+          vertical: 8.0,
+        ),
       child: Row(
         children: List.generate(_chips.length, (index) {
           final label = _chips[index];
@@ -786,6 +890,7 @@ class _HomePageState extends State<HomePage> {
             ),
           );
         }),
+      ),
       ),
     );
   }
@@ -885,125 +990,6 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomNavBar(bool isDarkMode, [bool isMedium = false]) {
-    return Container(
-      height: isMedium ? 70 : 80,
-      decoration: BoxDecoration(
-        color: isDarkMode ? kBackgroundColorDark : Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: isDarkMode
-                ? Colors.black26
-                : Colors.grey.withValues(alpha: 0.2),
-            blurRadius: 10,
-            offset: const Offset(0, -5),
-          ),
-        ],
-      ),
-      child: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        selectedItemColor: isDarkMode ? kPrimaryColor : const Color(0xFF078829),
-        unselectedItemColor: isDarkMode ? Colors.white70 : kTextSecondary,
-        selectedLabelStyle: GoogleFonts.plusJakartaSans(
-          fontWeight: FontWeight.w600,
-          fontSize: isMedium ? 13.0 : 12.0,
-        ),
-        unselectedLabelStyle: GoogleFonts.plusJakartaSans(
-          fontWeight: FontWeight.normal,
-          fontSize: isMedium ? 13.0 : 12.0,
-        ),
-        iconSize: isMedium ? 26.0 : 24.0,
-        onTap: (index) {
-          final isSeller = _userRole == 'seller' || _userRole == 'admin';
-
-          if (index == 0) {
-            // Home tab - stay here
-            setState(() {
-              _selectedIndex = index;
-            });
-          } else if (index == 1) {
-            // Search tab (same for all roles)
-            Navigator.pushNamed(context, '/search', arguments: null);
-          } else if (isSeller && index == 2) {
-            // Dashboard tab (only for sellers/admin)
-            Navigator.pushNamed(context, '/dashboard');
-          } else if (isSeller && index == 3) {
-            // Messages tab (sellers/admin)
-            Navigator.pushNamed(context, '/messages');
-          } else if (isSeller && index == 4) {
-            // Profile tab (sellers/admin)
-            Navigator.pushNamed(context, '/profile').then((_) {
-              _loadSelectedUniversity();
-            });
-          } else if (!isSeller && index == 2) {
-            // Messages tab (buyers)
-            Navigator.pushNamed(context, '/messages');
-          } else if (!isSeller && index == 3) {
-            // Profile tab (buyers)
-            Navigator.pushNamed(context, '/profile').then((_) {
-              _loadSelectedUniversity();
-            });
-          } else {
-            setState(() {
-              _selectedIndex = index;
-            });
-          }
-        },
-        items: _userRole == 'seller' || _userRole == 'admin'
-            ? const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home),
-                  label: 'Home',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.search),
-                  label: 'Search',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.dashboard_outlined),
-                  activeIcon: Icon(Icons.dashboard),
-                  label: 'Dashboard',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.chat_bubble_outline),
-                  activeIcon: Icon(Icons.chat_bubble),
-                  label: 'Messages',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person),
-                  label: 'Profile',
-                ),
-              ]
-            : const [
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.home_outlined),
-                  activeIcon: Icon(Icons.home),
-                  label: 'Home',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.search),
-                  label: 'Search',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.chat_bubble_outline),
-                  activeIcon: Icon(Icons.chat_bubble),
-                  label: 'Messages',
-                ),
-                BottomNavigationBarItem(
-                  icon: Icon(Icons.person_outline),
-                  activeIcon: Icon(Icons.person),
-                  label: 'Profile',
-                ),
-              ],
       ),
     );
   }
@@ -1205,9 +1191,9 @@ class _HomePageState extends State<HomePage> {
           options: CarouselOptions(
             height: ResponsiveBreakpoints.responsiveValue(
               context,
-              compact: 220.0,
-              medium: 260.0,
-              expanded: 320.0,
+              compact: 160.0,
+              medium: 180.0,
+              expanded: 220.0,
             ),
             autoPlay: true,
             autoPlayInterval: const Duration(seconds: 5),
@@ -1255,9 +1241,9 @@ class _HomePageState extends State<HomePage> {
     );
     final cardHeight = ResponsiveBreakpoints.responsiveValue(
       context,
-      compact: 200.0,
-      medium: 240.0,
-      expanded: 300.0,
+      compact: 140.0,
+      medium: 160.0,
+      expanded: 200.0,
     );
 
     return GestureDetector(
@@ -1270,7 +1256,7 @@ class _HomePageState extends State<HomePage> {
         width: cardWidth,
         height: cardHeight,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(16.0),
+          borderRadius: BorderRadius.circular(8.0),
           color: kPrimaryColor.withValues(alpha: 0.3),
         ),
         child: Stack(
@@ -1278,7 +1264,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             if (promotion.imageUrl != null)
               ClipRRect(
-                borderRadius: BorderRadius.circular(16.0),
+                borderRadius: BorderRadius.circular(8.0),
                 child: NetworkImageWithFallback(
                   imageUrl: promotion.imageUrl!,
                   width: cardWidth,
@@ -1288,7 +1274,7 @@ class _HomePageState extends State<HomePage> {
               ),
             Container(
               decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16.0),
+                borderRadius: BorderRadius.circular(8.0),
                 color: Colors.black.withValues(alpha: 0.4),
               ),
               padding: EdgeInsets.all(
@@ -1571,16 +1557,16 @@ class _HomePageState extends State<HomePage> {
     );
     final cardHeight = ResponsiveBreakpoints.responsiveValue(
       context,
-      compact: 200.0,
-      medium: 240.0,
-      expanded: 320.0,
+      compact: 140.0,
+      medium: 160.0,
+      expanded: 200.0,
     );
 
     return Container(
       width: cardWidth,
       height: cardHeight,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24.0),
+        borderRadius: BorderRadius.circular(8.0),
         color: Theme.of(context).brightness == Brightness.dark
             ? Colors.grey[800]
             : Colors.grey[300],
@@ -1616,9 +1602,9 @@ class _HomePageState extends State<HomePage> {
         SizedBox(
           height: ResponsiveBreakpoints.responsiveValue(
             context,
-            compact: 220.0,
-            medium: 260.0,
-            expanded: 340.0,
+            compact: 160.0,
+            medium: 180.0,
+            expanded: 220.0,
           ),
           child: PageView.builder(
             itemCount: 3,
@@ -1729,5 +1715,59 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+}
+
+/// Delegate for sticky chips header
+class _StickyChipsDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final double minHeight;
+  final double maxHeight;
+
+  _StickyChipsDelegate({
+    required this.child,
+    required this.minHeight,
+    required this.maxHeight,
+  });
+
+  @override
+  Widget build(
+    BuildContext context,
+    double shrinkOffset,
+    bool overlapsContent,
+  ) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+        border: Border(
+          bottom: BorderSide(
+            color: isDarkMode ? Colors.grey[800]! : Colors.grey[200]!,
+            width: 1.0,
+          ),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  @override
+  double get maxExtent => maxHeight;
+
+  @override
+  double get minExtent => minHeight;
+
+  @override
+  bool shouldRebuild(_StickyChipsDelegate oldDelegate) {
+    return child != oldDelegate.child ||
+        minHeight != oldDelegate.minHeight ||
+        maxHeight != oldDelegate.maxHeight;
   }
 }

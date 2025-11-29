@@ -199,7 +199,7 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('${newFiles.length} image(s) selected'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: kPrimaryColor,
                 ),
               );
             }

@@ -1,12 +1,16 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
+import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
 
 class CreatePromotionScreen extends StatefulWidget {
   const CreatePromotionScreen({super.key});
@@ -97,7 +101,54 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
         : Colors.grey[600]!;
     final borderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
 
-    return Scaffold(
+    return BlocConsumer<PromotionCubit, PromotionState>(
+      listener: (context, state) {
+        if (state is PromotionError) {
+          // Close loading dialog if open
+          if (Navigator.canPop(context)) {
+            Navigator.of(context).pop();
+          }
+          
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Failed to create promotion: ${state.message}',
+                style: GoogleFonts.plusJakartaSans(),
+              ),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        } else if (state is PromotionsLoaded) {
+          // Check if we just created a promotion (by checking if loading dialog is open)
+          // This is a simple heuristic - if we're on this screen and promotions loaded,
+          // it's likely after a creation
+          final navigator = Navigator.of(context);
+          if (navigator.canPop()) {
+            // Close loading dialog
+            navigator.pop();
+            
+            // Show success message and pop screen
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Promotion created successfully!',
+                  style: GoogleFonts.plusJakartaSans(),
+                ),
+                backgroundColor: Colors.green,
+                duration: const Duration(seconds: 2),
+              ),
+            );
+            
+            // Pop the create screen
+            if (navigator.canPop()) {
+              navigator.pop();
+            }
+          }
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
       backgroundColor: isDarkMode
           ? kBackgroundColorDark
           : kBackgroundColorLight,
@@ -279,6 +330,8 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           );
         },
       ),
+        );
+      },
     );
   }
 
@@ -348,49 +401,163 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     );
   }
 
+  Future<void> _pickImage() async {
+    try {
+      // Check if running on desktop (Windows, macOS, Linux)
+      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+      
+      if (isDesktop) {
+        // Use file_picker for desktop platforms
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.image,
+          allowMultiple: false,
+          dialogTitle: 'Select promotion banner image',
+        );
+        
+        if (result != null && result.files.single.path != null) {
+          setState(() {
+            _selectedImage = File(result.files.single.path!);
+          });
+        }
+      } else {
+        // Use WeChat Assets Picker for mobile platforms
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        
+        final List<AssetEntity>? result = await AssetPicker.pickAssets(
+          context,
+          pickerConfig: AssetPickerConfig(
+            maxAssets: 1,
+            requestType: RequestType.image,
+            textDelegate: const EnglishAssetPickerTextDelegate(),
+            pickerTheme: ThemeData(
+              brightness: isDarkMode ? Brightness.dark : Brightness.light,
+              primaryColor: kPrimaryColor,
+              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              appBarTheme: AppBarTheme(
+                backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+                foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                elevation: 0,
+                iconTheme: IconThemeData(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: kPrimaryColor,
+                brightness: isDarkMode ? Brightness.dark : Brightness.light,
+              ),
+            ),
+            gridCount: 4,
+            pageSize: 80,
+            pathNameBuilder: (path) {
+              if (path.name == 'Recent') return 'Camera Roll';
+              if (path.name == 'Screenshots') return 'Screenshots';
+              return path.name;
+            },
+          ),
+        );
+
+        if (result != null && result.isNotEmpty) {
+          final File? file = await result.first.file;
+          if (file != null && mounted) {
+            setState(() {
+              _selectedImage = file;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to pick image: $e',
+              style: GoogleFonts.plusJakartaSans(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Widget _buildPhotoUpload(
     Color primaryTextColor,
     Color secondaryTextColor,
     Color borderColor,
   ) {
-    return Container(
-      height: 200,
-      decoration: BoxDecoration(
-        border: Border.all(
-          color: borderColor,
-          width: 2.0,
-          style: BorderStyle.solid,
+    return InkWell(
+      onTap: _pickImage,
+      borderRadius: BorderRadius.circular(16.0),
+      child: Container(
+        height: 200,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: borderColor,
+            width: 2.0,
+            style: BorderStyle.solid,
+          ),
+          borderRadius: BorderRadius.circular(16.0),
         ),
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.add_photo_alternate,
-              size: 48.0,
-              color: secondaryTextColor,
-            ),
-            const SizedBox(height: 12.0),
-            Text(
-              'Upload Promotion Banner',
-              style: GoogleFonts.plusJakartaSans(
-                color: primaryTextColor,
-                fontSize: 16.0,
-                fontWeight: FontWeight.w500,
+        child: _selectedImage != null
+            ? ClipRRect(
+                borderRadius: BorderRadius.circular(14.0),
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    Image.file(
+                      _selectedImage!,
+                      fit: BoxFit.cover,
+                    ),
+                    Positioned(
+                      top: 8,
+                      right: 8,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: Colors.black.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                        child: IconButton(
+                          icon: const Icon(Icons.close, color: Colors.white),
+                          onPressed: () {
+                            setState(() {
+                              _selectedImage = null;
+                            });
+                          },
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            : Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.add_photo_alternate,
+                      size: 48.0,
+                      color: secondaryTextColor,
+                    ),
+                    const SizedBox(height: 12.0),
+                    Text(
+                      'Upload Promotion Banner',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: primaryTextColor,
+                        fontSize: 16.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4.0),
+                    Text(
+                      'Tap to select an image',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: secondaryTextColor,
+                        fontSize: 14.0,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            const SizedBox(height: 4.0),
-            Text(
-              'Tap to select an image',
-              style: GoogleFonts.plusJakartaSans(
-                color: secondaryTextColor,
-                fontSize: 14.0,
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -481,7 +648,17 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                               .toList()
                         : null;
 
+                    // Show loading indicator
+                    showDialog(
+                      context: context,
+                      barrierDismissible: false,
+                      builder: (context) => const Center(
+                        child: CircularProgressIndicator(color: kPrimaryColor),
+                      ),
+                    );
+
                     // Create promotion
+                    // Note: Loading dialog will be closed by BlocListener
                     await context.read<PromotionCubit>().createNewPromotion(
                       title: _titleController.text.trim(),
                       subtitle: _subtitleController.text.trim(),
@@ -491,12 +668,8 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                       image: _selectedImage,
                       terms: terms,
                     );
-
-                    if (!context.mounted) return;
-                    // Use the mounted check to guard the context usage
-                    if (Navigator.canPop(context)) {
-                      Navigator.pop(context);
-                    }
+                    
+                    // Note: Don't pop the screen here - let BlocListener handle it on success
                   }
                 },
                 style: ElevatedButton.styleFrom(

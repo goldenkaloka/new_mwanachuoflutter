@@ -50,6 +50,14 @@ abstract class NotificationRepository {
     bool? listingsEnabled,
     bool? promotionsEnabled,
     bool? sellerRequestsEnabled,
+    bool? soundEnabled,
+    bool? vibrationEnabled,
+    bool? badgeEnabled,
+    bool? inAppBannerEnabled,
+    bool? groupNotifications,
+    bool? groupByCategory,
+    DateTime? quietHoursStart,
+    DateTime? quietHoursEnd,
   });
 }
 

@@ -1,8 +1,11 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
@@ -38,6 +41,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
   final _locationController = TextEditingController();
   File? _selectedImage;
   String? _currentAvatarUrl;
+  bool _hasInitialized = false;
 
   @override
   void dispose() {
@@ -49,40 +53,112 @@ class _EditProfileViewState extends State<_EditProfileView> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 1024,
-      maxHeight: 1024,
-      imageQuality: 85,
-    );
+    try {
+      // Check if running on desktop (Windows, macOS, Linux)
+      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
-    if (pickedFile != null) {
-      setState(() {
-        _selectedImage = File(pickedFile.path);
-      });
+      if (isDesktop) {
+        // Use file_picker for desktop platforms
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.image,
+          allowMultiple: false,
+          dialogTitle: 'Select profile picture',
+        );
+
+        if (result != null && result.files.single.path != null) {
+          setState(() {
+            _selectedImage = File(result.files.single.path!);
+          });
+        }
+      } else {
+        // Use WeChat Assets Picker for mobile platforms
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+        final List<AssetEntity>? result = await AssetPicker.pickAssets(
+          context,
+          pickerConfig: AssetPickerConfig(
+            maxAssets: 1,
+            requestType: RequestType.image,
+            textDelegate: const EnglishAssetPickerTextDelegate(),
+            pickerTheme: ThemeData(
+              brightness: isDarkMode ? Brightness.dark : Brightness.light,
+              primaryColor: kPrimaryColor,
+              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              appBarTheme: AppBarTheme(
+                backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+                foregroundColor: isDarkMode ? Colors.white : Colors.black,
+                elevation: 0,
+                iconTheme: IconThemeData(
+                  color: isDarkMode ? Colors.white : Colors.black,
+                ),
+              ),
+              colorScheme: ColorScheme.fromSeed(
+                seedColor: kPrimaryColor,
+                brightness: isDarkMode ? Brightness.dark : Brightness.light,
+              ),
+            ),
+            gridCount: 4,
+            pageSize: 80,
+            pathNameBuilder: (path) {
+              if (path.name == 'Recent') return 'Camera Roll';
+              if (path.name == 'Screenshots') return 'Screenshots';
+              return path.name;
+            },
+          ),
+        );
+
+        if (result != null && result.isNotEmpty) {
+          final File? file = await result.first.file;
+          if (file != null && mounted) {
+            setState(() {
+              _selectedImage = file;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Failed to pick image: $e',
+              style: GoogleFonts.plusJakartaSans(),
+            ),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
   void _saveProfile() {
     if (_formKey.currentState?.validate() ?? false) {
+      // Always send at least the full name, even if empty (to ensure update happens)
+      final fullName = _fullNameController.text.trim();
+      final phoneNumber = _phoneNumberController.text.trim();
+      final bio = _bioController.text.trim();
+      final location = _locationController.text.trim();
+      
       context.read<ProfileBloc>().add(
             UpdateProfileEvent(
-              fullName: _fullNameController.text.trim().isEmpty 
-                  ? null 
-                  : _fullNameController.text.trim(),
-              phoneNumber: _phoneNumberController.text.trim().isEmpty 
-                  ? null 
-                  : _phoneNumberController.text.trim(),
-              bio: _bioController.text.trim().isEmpty 
-                  ? null 
-                  : _bioController.text.trim(),
-              location: _locationController.text.trim().isEmpty 
-                  ? null 
-                  : _locationController.text.trim(),
+              fullName: fullName.isEmpty ? null : fullName,
+              phoneNumber: phoneNumber.isEmpty ? null : phoneNumber,
+              bio: bio.isEmpty ? null : bio,
+              location: location.isEmpty ? null : location,
               avatarImage: _selectedImage,
             ),
           );
+    } else {
+      // Form validation failed - show error
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Please fix the errors in the form',
+            style: GoogleFonts.plusJakartaSans(),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -94,13 +170,14 @@ class _EditProfileViewState extends State<_EditProfileView> {
 
     return BlocConsumer<ProfileBloc, ProfileState>(
       listener: (context, state) {
-        if (state is ProfileLoaded) {
-          // Initialize controllers with loaded data
+        if (state is ProfileLoaded && !_hasInitialized) {
+          // Initialize controllers with loaded data only once
           _fullNameController.text = state.profile.fullName;
           _phoneNumberController.text = state.profile.phoneNumber ?? '';
           _bioController.text = state.profile.bio ?? '';
           _locationController.text = state.profile.location ?? '';
           _currentAvatarUrl = state.profile.avatarUrl;
+          _hasInitialized = true;
         } else if (state is ProfileUpdated) {
           // Show success message and navigate back
           ScaffoldMessenger.of(context).showSnackBar(
@@ -428,6 +505,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
               isDarkMode: isDarkMode,
               screenSize: screenSize,
               maxLines: 4,
+              isRequired: false,
             ),
             
             SizedBox(
@@ -449,6 +527,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
               borderColor: borderColor,
               isDarkMode: isDarkMode,
               screenSize: screenSize,
+              isRequired: false,
             ),
           ],
         ),
@@ -466,6 +545,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
     required bool isDarkMode,
     required ScreenSize screenSize,
     int maxLines = 1,
+    bool isRequired = true,
   }) {
     return ConstrainedBox(
       constraints: BoxConstraints(
@@ -550,12 +630,14 @@ class _EditProfileViewState extends State<_EditProfileView> {
                 ),
               ),
             ),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter $label';
-              }
-              return null;
-            },
+            validator: isRequired
+                ? (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter $label';
+                    }
+                    return null;
+                  }
+                : null,
           ),
         ],
       ),
@@ -689,6 +771,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
               ),
               onTap: () async {
                 Navigator.pop(context);
+                // Use ImagePicker for direct camera capture
                 final picker = ImagePicker();
                 final pickedFile = await picker.pickImage(
                   source: ImageSource.camera,
@@ -696,7 +779,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
                   maxHeight: 1024,
                   imageQuality: 85,
                 );
-                if (pickedFile != null) {
+                if (pickedFile != null && mounted) {
                   setState(() {
                     _selectedImage = File(pickedFile.path);
                   });

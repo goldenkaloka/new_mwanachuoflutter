@@ -234,6 +234,14 @@ class NotificationRepositoryImpl implements NotificationRepository {
     bool? listingsEnabled,
     bool? promotionsEnabled,
     bool? sellerRequestsEnabled,
+    bool? soundEnabled,
+    bool? vibrationEnabled,
+    bool? badgeEnabled,
+    bool? inAppBannerEnabled,
+    bool? groupNotifications,
+    bool? groupByCategory,
+    DateTime? quietHoursStart,
+    DateTime? quietHoursEnd,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -247,6 +255,14 @@ class NotificationRepositoryImpl implements NotificationRepository {
         listingsEnabled: listingsEnabled,
         promotionsEnabled: promotionsEnabled,
         sellerRequestsEnabled: sellerRequestsEnabled,
+        soundEnabled: soundEnabled,
+        vibrationEnabled: vibrationEnabled,
+        badgeEnabled: badgeEnabled,
+        inAppBannerEnabled: inAppBannerEnabled,
+        groupNotifications: groupNotifications,
+        groupByCategory: groupByCategory,
+        quietHoursStart: quietHoursStart,
+        quietHoursEnd: quietHoursEnd,
       );
       return const Right(null);
     } on ServerException catch (e) {

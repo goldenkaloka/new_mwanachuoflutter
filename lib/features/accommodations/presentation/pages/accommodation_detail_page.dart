@@ -3,8 +3,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
-import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/widgets/comments_and_ratings_section.dart';
+import 'package:mwanachuo/core/widgets/sliver_image_carousel.dart';
+import 'package:mwanachuo/core/widgets/sliver_section.dart';
+import 'package:mwanachuo/core/widgets/sticky_action_bar.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_bloc.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_event.dart';
@@ -12,6 +14,9 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_type.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_criteria_entity.dart';
+import 'package:mwanachuo/features/shared/recommendations/presentation/widgets/recommendation_section.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
@@ -22,7 +27,8 @@ class AccommodationDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Get accommodation ID from route arguments
-    final accommodationId = ModalRoute.of(context)?.settings.arguments as String?;
+    final accommodationId =
+        ModalRoute.of(context)?.settings.arguments as String?;
 
     if (accommodationId == null) {
       return Scaffold(
@@ -58,9 +64,7 @@ class AccommodationDetailPage extends StatelessWidget {
               limit: 10,
             ),
         ),
-        BlocProvider(
-          create: (context) => sl<MessageBloc>(),
-        ),
+        BlocProvider(create: (context) => sl<MessageBloc>()),
       ],
       child: const _AccommodationDetailView(),
     );
@@ -71,17 +75,18 @@ class _AccommodationDetailView extends StatefulWidget {
   const _AccommodationDetailView();
 
   @override
-  State<_AccommodationDetailView> createState() => _AccommodationDetailViewState();
+  State<_AccommodationDetailView> createState() =>
+      _AccommodationDetailViewState();
 }
 
 class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
-  int _currentImageIndex = 0;
-
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
     final surfaceColor = isDarkMode ? Colors.grey[900]! : Colors.white;
 
     return BlocBuilder<AccommodationBloc, AccommodationState>(
@@ -174,525 +179,404 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
     Color secondaryTextColor,
     Color surfaceColor,
   ) {
-
     return Scaffold(
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: ResponsiveBuilder(
         builder: (context, screenSize) {
-          return Column(
-            children: [
-              // Top App Bar
-              _buildTopAppBar(context, primaryTextColor, screenSize),
-              
-              // Content
-              Expanded(
-                child: SingleChildScrollView(
-                  child: ResponsiveContainer(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Image Gallery
-                        _buildImageGallery(context, accommodation, screenSize),
-                        
-                        Padding(
-                          padding: EdgeInsets.all(
-                            ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                height: ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 20.0,
-                                  medium: 24.0,
-                                  expanded: 28.0,
-                                ),
-                              ),
-                              
-                              // Room Type Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12.0,
-                                  vertical: 6.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: kPrimaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(20.0),
-                                ),
-                                child: Text(
-                                  accommodation.roomType,
-                                  style: GoogleFonts.inter(
-                                    color: kPrimaryColor,
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 16.0),
-                              
-                              // Property Title
-                              Text(
-                                accommodation.name,
-                                style: GoogleFonts.inter(
-                                  color: primaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 24.0,
-                                    medium: 28.0,
-                                    expanded: 32.0,
-                                  ),
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 12.0),
-                              
-                              // Location and Rating
-                              Row(
-                                children: [
-                                  Icon(Icons.location_on, color: secondaryTextColor, size: 18.0),
-                                  const SizedBox(width: 4.0),
-                                  Expanded(
-                                    child: Text(
-                                      accommodation.location,
-                                      style: GoogleFonts.inter(
-                                        color: secondaryTextColor,
-                                        fontSize: 14.0,
-                                      ),
-                                    ),
-                                  ),
-                                  if (accommodation.rating != null) ...[
-                                    Icon(Icons.star, color: Colors.amber[600], size: 18.0),
-                                    const SizedBox(width: 4.0),
-                                    Text(
-                                      accommodation.rating!.toStringAsFixed(1),
-                                      style: GoogleFonts.inter(
-                                        color: primaryTextColor,
-                                        fontSize: 14.0,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                    if (accommodation.reviewCount != null && accommodation.reviewCount! > 0)
-                                      Text(
-                                        ' (${accommodation.reviewCount})',
-                                        style: GoogleFonts.inter(
-                                          color: secondaryTextColor,
-                                          fontSize: 13.0,
-                                        ),
-                                      ),
-                                  ],
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 20.0),
-                              
-                              // Price
-                              Row(
-                                children: [
-                                  Text(
-                                    'TZS ${accommodation.price.toStringAsFixed(0)}',
-                                    style: GoogleFonts.inter(
-                                      color: kPrimaryColor,
-                                      fontSize: 32.0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    '/${accommodation.priceType.replaceAll('_', ' ')}',
-                                    style: GoogleFonts.inter(
-                                      color: secondaryTextColor,
-                                      fontSize: 16.0,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 24.0),
-                              
-                              // Quick Stats
-                              _buildQuickStats(
-                                context,
-                                accommodation,
-                                primaryTextColor,
-                                secondaryTextColor,
-                                surfaceColor,
-                              ),
-                              
-                              const SizedBox(height: 24.0),
-                              
-                              // Description
-                              Text(
-                                'About This Property',
-                                style: GoogleFonts.inter(
-                                  color: primaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 18.0,
-                                    medium: 20.0,
-                                    expanded: 22.0,
-                                  ),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 12.0),
-                              
-                              Text(
-                                accommodation.description,
-                                style: GoogleFonts.inter(
-                                  color: secondaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 14.0,
-                                    medium: 15.0,
-                                    expanded: 16.0,
-                                  ),
-                                  height: 1.6,
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 24.0),
-                              
-                              // Amenities
-                              if (accommodation.amenities.isNotEmpty) ...[
-                                Text(
-                                  'Amenities',
-                                  style: GoogleFonts.inter(
-                                    color: primaryTextColor,
-                                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                                      context,
-                                      compact: 18.0,
-                                      medium: 20.0,
-                                      expanded: 22.0,
-                                    ),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                
-                                const SizedBox(height: 16.0),
-                                
-                                _buildAmenitiesGrid(
-                                  context,
-                                  accommodation.amenities,
-                                  primaryTextColor,
-                                  surfaceColor,
-                                ),
-                              ],
-                              
-                              const SizedBox(height: 24.0),
-                              
-                              // Landlord Info
-                              _buildLandlordInfo(
-                                context,
-                                accommodation,
-                                primaryTextColor,
-                                secondaryTextColor,
-                                surfaceColor,
-                              ),
-                              
-                              const SizedBox(height: 32.0),
-                              
-                              // Comments and Ratings
-                              CommentsAndRatingsSection(
-                                itemId: accommodation.id,
-                                itemType: 'accommodation',
-                              ),
-                              
-                              SizedBox(
-                                height: ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 100.0,
-                                  medium: 80.0,
-                                  expanded: 60.0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Bottom CTA
-              _buildBottomCTA(context, accommodation, screenSize),
-            ],
+          return _buildSliverLayout(
+            context,
+            accommodation,
+            isDarkMode,
+            primaryTextColor,
+            secondaryTextColor,
+            surfaceColor,
+            screenSize,
           );
         },
       ),
     );
   }
 
-  Widget _buildTopAppBar(BuildContext context, Color primaryTextColor, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
-        screenSize == ScreenSize.expanded ? 24.0 : 48.0,
-        horizontalPadding,
-        16.0,
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[800]!
-                : Colors.grey[200]!,
-            width: 1.0,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-            iconSize: 24.0,
-          ),
-          const SizedBox(width: 8.0),
-          Expanded(
-            child: Text(
-              'Accommodation Details',
-              style: GoogleFonts.inter(
-                color: primaryTextColor,
-                fontSize: 18.0,
-                fontWeight: FontWeight.bold,
+  Widget _buildSliverLayout(
+    BuildContext context,
+    AccommodationEntity accommodation,
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color surfaceColor,
+    ScreenSize screenSize,
+  ) {
+    final images = accommodation.images.isNotEmpty
+        ? accommodation.images
+        : [''];
+
+    return Stack(
+      children: [
+        CustomScrollView(
+          slivers: [
+            // Hero image with parallax
+            SliverImageCarousel(
+              images: images,
+              expandedHeight: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 400.0,
+                medium: 420.0,
+                expanded: 600.0,
               ),
             ),
+            // Accommodation info section
+            SliverSection(
+              child: _buildAccommodationInfoSliver(
+                context,
+                accommodation,
+                primaryTextColor,
+                secondaryTextColor,
+                screenSize,
+              ),
+            ),
+            // Similar accommodations (mid-page recommendations)
+            SliverToBoxAdapter(
+              child: RecommendationSection(
+                currentItemId: accommodation.id,
+                type: RecommendationType.accommodation,
+                title: 'Similar Accommodations',
+                onItemTap: (itemId, type) {
+                  Navigator.pushNamed(
+                    context,
+                    '/accommodation-details',
+                    arguments: itemId,
+                  );
+                },
+              ),
+            ),
+            // Owner info section
+            SliverSection(
+              child: _buildOwnerInfo(
+                context,
+                accommodation,
+                primaryTextColor,
+                secondaryTextColor,
+                surfaceColor,
+              ),
+            ),
+            // Description section
+            SliverSection(
+              child: _buildDescriptionSliver(
+                context,
+                accommodation,
+                primaryTextColor,
+                secondaryTextColor,
+                screenSize,
+              ),
+            ),
+            // Amenities section
+            if (accommodation.amenities.isNotEmpty)
+              SliverSection(
+                child: _buildAmenitiesSliver(
+                  context,
+                  accommodation,
+                  primaryTextColor,
+                  secondaryTextColor,
+                  surfaceColor,
+                ),
+              ),
+            // Reviews section
+            SliverSection(
+              child: CommentsAndRatingsSection(
+                itemId: accommodation.id,
+                itemType: 'accommodation',
+              ),
+            ),
+            // More recommendations (bottom)
+            SliverToBoxAdapter(
+              child: RecommendationSection(
+                currentItemId: accommodation.id,
+                type: RecommendationType.accommodation,
+                title: 'More Recommendations',
+                criteria: RecommendationCriteriaEntity(limit: 8),
+                onItemTap: (itemId, type) {
+                  Navigator.pushNamed(
+                    context,
+                    '/accommodation-details',
+                    arguments: itemId,
+                  );
+                },
+              ),
+            ),
+            // Bottom padding
+            SliverPadding(
+              padding: EdgeInsets.only(
+                bottom: ResponsiveBreakpoints.isCompact(context) ? 112 : 80,
+              ),
+            ),
+          ],
+        ),
+        // Sticky action bar (only for compact)
+        if (ResponsiveBreakpoints.isCompact(context))
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: StickyActionBar(
+              price:
+                  'TZS ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType}',
+              actionButtonText: 'Contact Owner',
+              onActionTap: () {
+                // Handle contact owner
+                context.read<MessageBloc>().add(
+                  GetOrCreateConversationEvent(
+                    otherUserId: accommodation.ownerId,
+                    listingId: accommodation.id,
+                    listingType: 'accommodation',
+                    listingTitle: accommodation.name,
+                    listingImageUrl: accommodation.images.isNotEmpty
+                        ? accommodation.images.first
+                        : null,
+                    listingPrice:
+                        'TZS ${accommodation.price.toStringAsFixed(2)}',
+                    listingPriceType: accommodation.priceType,
+                  ),
+                );
+              },
+            ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.favorite_border),
-            iconSize: 24.0,
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.share),
-            iconSize: 24.0,
-          ),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildImageGallery(BuildContext context, AccommodationEntity accommodation, ScreenSize screenSize) {
-    final images = accommodation.images.isNotEmpty ? accommodation.images : [''];
-    
-    return Stack(
+  Widget _buildAccommodationInfoSliver(
+    BuildContext context,
+    AccommodationEntity accommodation,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SizedBox(
-          height: ResponsiveBreakpoints.responsiveValue(
-            context,
-            compact: 300.0,
-            medium: 400.0,
-            expanded: 500.0,
+        // Room type badge
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
+          decoration: BoxDecoration(
+            color: kPrimaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20.0),
           ),
-          child: PageView.builder(
-            itemCount: images.length,
-            onPageChanged: (index) {
-              setState(() {
-                _currentImageIndex = index;
-              });
-            },
-            itemBuilder: (context, index) {
-              return Hero(
-                tag: 'accommodation_${images[index]}',
-                child: NetworkImageWithFallback(
-                  imageUrl: images[index],
-                  width: double.infinity,
-                  height: double.infinity,
-                  fit: BoxFit.cover,
-                ),
-              );
-            },
+          child: Text(
+            accommodation.roomType,
+            style: GoogleFonts.inter(
+              color: kPrimaryColor,
+              fontSize: 12.0,
+              fontWeight: FontWeight.w600,
+            ),
           ),
         ),
-        
-        // Image Counter
-        Positioned(
-          bottom: 16.0,
-          right: 16.0,
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
-            decoration: BoxDecoration(
-              color: Colors.black.withValues(alpha: 0.6),
-              borderRadius: BorderRadius.circular(20.0),
+        const SizedBox(height: 16.0),
+        // Title
+        Text(
+          accommodation.name,
+          style: GoogleFonts.inter(
+            color: primaryTextColor,
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 24.0,
+              medium: 28.0,
+              expanded: 32.0,
             ),
-              child: Text(
-                '${_currentImageIndex + 1}/${images.length}',
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 12.0),
+        // Rating and Price
+        Row(
+          children: [
+            if (accommodation.rating != null) ...[
+              Icon(Icons.star, color: Colors.amber[600], size: 20.0),
+              const SizedBox(width: 4.0),
+              Text(
+                accommodation.rating!.toStringAsFixed(1),
+                style: GoogleFonts.inter(
+                  color: primaryTextColor,
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                ' (${accommodation.reviewCount} reviews)',
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 14.0,
+                ),
+              ),
+            ],
+            const Spacer(),
+            Text(
+              'TZS ${accommodation.price.toStringAsFixed(2)}',
               style: GoogleFonts.inter(
-                color: Colors.white,
-                fontSize: 13.0,
-                fontWeight: FontWeight.w600,
+                color: kPrimaryColor,
+                fontSize: 24.0,
+                fontWeight: FontWeight.bold,
               ),
             ),
+            Text(
+              '/${accommodation.priceType}',
+              style: GoogleFonts.inter(
+                color: secondaryTextColor,
+                fontSize: 14.0,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16.0),
+        // Location
+        Row(
+          children: [
+            Icon(Icons.location_on, color: kPrimaryColor, size: 20.0),
+            const SizedBox(width: 8.0),
+            Expanded(
+              child: Text(
+                accommodation.location,
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 14.0,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16.0),
+        // Room details
+        Row(
+          children: [
+            if (accommodation.bedrooms > 0) ...[
+              Icon(Icons.bed, color: primaryTextColor, size: 20.0),
+              const SizedBox(width: 4.0),
+              Text(
+                '${accommodation.bedrooms} Bed${accommodation.bedrooms > 1 ? 's' : ''}',
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 14.0,
+                ),
+              ),
+              const SizedBox(width: 16.0),
+            ],
+            if (accommodation.bathrooms > 0) ...[
+              Icon(Icons.bathroom, color: primaryTextColor, size: 20.0),
+              const SizedBox(width: 4.0),
+              Text(
+                '${accommodation.bathrooms} Bath${accommodation.bathrooms > 1 ? 's' : ''}',
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 14.0,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionSliver(
+    BuildContext context,
+    AccommodationEntity accommodation,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'About This Accommodation',
+          style: GoogleFonts.inter(
+            color: primaryTextColor,
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 18.0,
+              medium: 20.0,
+              expanded: 22.0,
+            ),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12.0),
+        Text(
+          accommodation.description,
+          style: GoogleFonts.inter(
+            color: secondaryTextColor,
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 14.0,
+              medium: 15.0,
+              expanded: 16.0,
+            ),
+            height: 1.6,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildQuickStats(
+  Widget _buildAmenitiesSliver(
     BuildContext context,
     AccommodationEntity accommodation,
     Color primaryTextColor,
     Color secondaryTextColor,
     Color surfaceColor,
   ) {
-    return Container(
-      padding: const EdgeInsets.all(16.0),
-      decoration: BoxDecoration(
-        color: surfaceColor,
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(
-          color: Theme.of(context).brightness == Brightness.dark
-              ? Colors.grey[800]!
-              : Colors.grey[200]!,
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _buildStatItem(
-            Icons.bed,
-            '${accommodation.bedrooms} ${accommodation.bedrooms == 1 ? 'Bed' : 'Beds'}',
-            primaryTextColor,
-            secondaryTextColor,
-          ),
-          _buildStatItem(
-            Icons.bathtub,
-            '${accommodation.bathrooms} ${accommodation.bathrooms == 1 ? 'Bath' : 'Baths'}',
-            primaryTextColor,
-            secondaryTextColor,
-          ),
-          if (accommodation.metadata != null && accommodation.metadata!['area'] != null)
-            _buildStatItem(
-              Icons.square_foot,
-              '${accommodation.metadata!['area']} sqft',
-              primaryTextColor,
-              secondaryTextColor,
-            )
-          else
-            _buildStatItem(
-              Icons.home,
-              accommodation.roomType,
-              primaryTextColor,
-              secondaryTextColor,
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildStatItem(IconData icon, String label, Color primaryTextColor, Color secondaryTextColor) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: kPrimaryColor, size: 28.0),
-        const SizedBox(height: 8.0),
         Text(
-          label,
+          'Amenities',
           style: GoogleFonts.inter(
-            color: secondaryTextColor,
-            fontSize: 13.0,
-            fontWeight: FontWeight.w500,
+            color: primaryTextColor,
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 18.0,
+              medium: 20.0,
+              expanded: 22.0,
+            ),
+            fontWeight: FontWeight.bold,
           ),
+        ),
+        const SizedBox(height: 12.0),
+        Wrap(
+          spacing: 8.0,
+          runSpacing: 8.0,
+          children: accommodation.amenities.map((amenity) {
+            return Container(
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12.0,
+                vertical: 8.0,
+              ),
+              decoration: BoxDecoration(
+                color: surfaceColor,
+                borderRadius: BorderRadius.circular(8.0),
+                border: Border.all(
+                  color: Theme.of(context).brightness == Brightness.dark
+                      ? Colors.grey[800]!
+                      : Colors.grey[200]!,
+                ),
+              ),
+              child: Text(
+                amenity,
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 14.0,
+                ),
+              ),
+            );
+          }).toList(),
         ),
       ],
     );
   }
 
-  Widget _buildAmenitiesGrid(
-    BuildContext context,
-    List<String> amenities,
-    Color primaryTextColor,
-    Color surfaceColor,
-  ) {
-    // Map amenity names to icons
-    IconData getAmenityIcon(String amenity) {
-      final lowerAmenity = amenity.toLowerCase();
-      if (lowerAmenity.contains('wifi') || lowerAmenity.contains('internet')) {
-        return Icons.wifi;
-      } else if (lowerAmenity.contains('parking')) {
-        return Icons.local_parking;
-      } else if (lowerAmenity.contains('security')) {
-        return Icons.security;
-      } else if (lowerAmenity.contains('kitchen')) {
-        return Icons.kitchen;
-      } else if (lowerAmenity.contains('ac') || lowerAmenity.contains('air')) {
-        return Icons.ac_unit;
-      } else if (lowerAmenity.contains('water')) {
-        return Icons.water_drop;
-      } else if (lowerAmenity.contains('furnished')) {
-        return Icons.chair;
-      } else if (lowerAmenity.contains('gym') || lowerAmenity.contains('fitness')) {
-        return Icons.fitness_center;
-      } else if (lowerAmenity.contains('laundry')) {
-        return Icons.local_laundry_service;
-      } else {
-        return Icons.check_circle;
-      }
-    }
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 3,
-          medium: 4,
-          expanded: 6,
-        ),
-        crossAxisSpacing: 12.0,
-        mainAxisSpacing: 12.0,
-        childAspectRatio: 1.2,
-      ),
-      itemCount: amenities.length,
-      itemBuilder: (context, index) {
-        final amenity = amenities[index];
-        return Container(
-          padding: const EdgeInsets.all(12.0),
-          decoration: BoxDecoration(
-            color: surfaceColor,
-            borderRadius: BorderRadius.circular(12.0),
-            border: Border.all(
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? Colors.grey[800]!
-                  : Colors.grey[200]!,
-            ),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(
-                getAmenityIcon(amenity),
-                color: kPrimaryColor,
-                size: 28.0,
-              ),
-              const SizedBox(height: 6.0),
-              Text(
-                amenity,
-                style: GoogleFonts.inter(
-                  color: primaryTextColor,
-                  fontSize: 12.0,
-                ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildLandlordInfo(
+  Widget _buildOwnerInfo(
     BuildContext context,
     AccommodationEntity accommodation,
     Color primaryTextColor,
@@ -715,10 +599,14 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
           CircleAvatar(
             radius: 30.0,
             backgroundColor: kPrimaryColor.withValues(alpha: 0.2),
-            backgroundImage: accommodation.ownerAvatar != null && accommodation.ownerAvatar!.isNotEmpty
+            backgroundImage:
+                accommodation.ownerAvatar != null &&
+                    accommodation.ownerAvatar!.isNotEmpty
                 ? NetworkImage(accommodation.ownerAvatar!)
                 : null,
-            child: accommodation.ownerAvatar == null || accommodation.ownerAvatar!.isEmpty
+            child:
+                accommodation.ownerAvatar == null ||
+                    accommodation.ownerAvatar!.isEmpty
                 ? Text(
                     accommodation.ownerName.isNotEmpty
                         ? accommodation.ownerName[0].toUpperCase()
@@ -779,10 +667,7 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
               } else if (state is MessageError) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   SnackBar(
-                    content: Text(
-                      state.message,
-                      style: GoogleFonts.inter(),
-                    ),
+                    content: Text(state.message, style: GoogleFonts.inter()),
                     backgroundColor: Colors.red,
                   ),
                 );
@@ -791,10 +676,19 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
             child: IconButton(
               onPressed: () {
                 context.read<MessageBloc>().add(
-                      GetOrCreateConversationEvent(
-                        otherUserId: accommodation.ownerId,
-                      ),
-                    );
+                  GetOrCreateConversationEvent(
+                    otherUserId: accommodation.ownerId,
+                    listingId: accommodation.id,
+                    listingType: 'accommodation',
+                    listingTitle: accommodation.name,
+                    listingImageUrl: accommodation.images.isNotEmpty
+                        ? accommodation.images.first
+                        : null,
+                    listingPrice:
+                        'TZS ${accommodation.price.toStringAsFixed(2)}',
+                    listingPriceType: accommodation.priceType,
+                  ),
+                );
               },
               icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
             ),
@@ -803,93 +697,4 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
       ),
     );
   }
-
-  Widget _buildBottomCTA(BuildContext context, AccommodationEntity accommodation, ScreenSize screenSize) {
-    return Container(
-      padding: EdgeInsets.all(
-        ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[800]!
-                : Colors.grey[200]!,
-            width: 1.0,
-          ),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          children: [
-            OutlinedButton(
-              onPressed: () {
-                // Phone call functionality (optional)
-                // You can implement tel: URL launcher here
-              },
-              style: OutlinedButton.styleFrom(
-                side: BorderSide(color: kPrimaryColor),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 16.0),
-              ),
-              child: Icon(Icons.phone, color: kPrimaryColor),
-            ),
-            const SizedBox(width: 12.0),
-            Expanded(
-              child: BlocListener<MessageBloc, MessageState>(
-                listener: (context, state) {
-                  if (state is ConversationLoaded) {
-                    Navigator.pushNamed(
-                      context,
-                      '/chat',
-                      arguments: state.conversation.id,
-                    );
-                  } else if (state is MessageError) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          state.message,
-                          style: GoogleFonts.inter(),
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
-                },
-                child: ElevatedButton(
-                  onPressed: () {
-                    context.read<MessageBloc>().add(
-                          GetOrCreateConversationEvent(
-                            otherUserId: accommodation.ownerId,
-                          ),
-                        );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryColor,
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                  ),
-                  child: Text(
-                    'Contact Owner',
-                    style: GoogleFonts.inter(
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
 }
-

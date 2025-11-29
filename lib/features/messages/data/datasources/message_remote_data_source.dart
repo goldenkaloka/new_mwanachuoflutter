@@ -22,6 +22,7 @@ abstract class MessageRemoteDataSource {
     required String content,
     String? imageUrl,
     String? repliedToMessageId,
+    Map<String, dynamic>? metadata,
   });
   Future<void> markMessagesAsRead({required String conversationId});
   Future<void> deleteMessage(String messageId);
@@ -316,6 +317,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
     required String content,
     String? imageUrl,
     String? repliedToMessageId,
+    Map<String, dynamic>? metadata,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -329,6 +331,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
             'content': content,
             'image_url': imageUrl,
             'replied_to_message_id': repliedToMessageId,
+            'metadata': metadata ?? {},
             'created_at': DateTime.now().toIso8601String(),
           })
           .select('*, users!inner(full_name, avatar_url)')

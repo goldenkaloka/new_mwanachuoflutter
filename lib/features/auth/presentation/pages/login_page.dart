@@ -9,6 +9,8 @@ import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
+import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -34,10 +36,7 @@ class _LoginPageState extends State<LoginPage> {
     }
 
     // Dispatch sign in event to BLoC
-    context.read<AuthBloc>().add(SignInEvent(
-      email: email,
-      password: password,
-    ));
+    context.read<AuthBloc>().add(SignInEvent(email: email, password: password));
   }
 
   @override
@@ -47,11 +46,13 @@ class _LoginPageState extends State<LoginPage> {
         if (state is Authenticated) {
           // Register device token for push notifications
           PushNotificationService().registerDeviceTokenForUser(state.user.id);
+          // Pre-check subscription status in background for seamless flow
+          _preCheckSubscription(state.user.id);
           Navigator.pushReplacementNamed(context, '/home');
         } else if (state is AuthError) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text(state.message)),
-          );
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text(state.message)));
         }
       },
       builder: (context, authState) {
@@ -67,9 +68,7 @@ class _LoginPageState extends State<LoginPage> {
     final secondaryTextColor = isDarkMode
         ? Colors.grey.shade400
         : kTextSecondary;
-    final cardColor = isDarkMode
-        ? const Color(0xFF1E293B)
-        : Colors.white;
+    final cardColor = isDarkMode ? const Color(0xFF1E293B) : Colors.white;
 
     return Scaffold(
       body: ResponsiveBuilder(
@@ -240,7 +239,8 @@ class _LoginPageState extends State<LoginPage> {
                                     ),
                                     onPressed: () {
                                       setState(() {
-                                        _isPasswordVisible = !_isPasswordVisible;
+                                        _isPasswordVisible =
+                                            !_isPasswordVisible;
                                       });
                                     },
                                   ),
@@ -253,12 +253,13 @@ class _LoginPageState extends State<LoginPage> {
                                     'Forgot Password?',
                                     style: GoogleFonts.plusJakartaSans(
                                       color: secondaryTextColor,
-                                      fontSize: ResponsiveBreakpoints.responsiveValue(
-                                        context,
-                                        compact: 14.0,
-                                        medium: 15.0,
-                                        expanded: 16.0,
-                                      ),
+                                      fontSize:
+                                          ResponsiveBreakpoints.responsiveValue(
+                                            context,
+                                            compact: 14.0,
+                                            medium: 15.0,
+                                            expanded: 16.0,
+                                          ),
                                       fontWeight: FontWeight.w500,
                                     ),
                                   ),
@@ -276,42 +277,56 @@ class _LoginPageState extends State<LoginPage> {
                             // Login Button
                             Padding(
                               padding: EdgeInsets.symmetric(
-                                horizontal: ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 16.0, // M3 standard margin for mobile
-                                  medium: 0.0,
-                                  expanded: 0.0,
-                                ),
+                                horizontal:
+                                    ResponsiveBreakpoints.responsiveValue(
+                                      context,
+                                      compact:
+                                          16.0, // M3 standard margin for mobile
+                                      medium: 0.0,
+                                      expanded: 0.0,
+                                    ),
                               ),
                               child: Center(
                                 child: ConstrainedBox(
                                   constraints: BoxConstraints(
-                                    maxWidth: ResponsiveBreakpoints.responsiveValue(
-                                      context,
-                                      compact: 600.0,
-                                      medium: 400.0,
-                                      expanded: 450.0,
-                                    ),
+                                    maxWidth:
+                                        ResponsiveBreakpoints.responsiveValue(
+                                          context,
+                                          compact: 600.0,
+                                          medium: 400.0,
+                                          expanded: 450.0,
+                                        ),
                                   ),
                                   child: SizedBox(
                                     width: double.infinity,
-                                    height: ResponsiveBreakpoints.responsiveValue(
-                                      context,
-                                      compact: 48.0, // M3 standard button height
-                                      medium: 48.0,
-                                      expanded: 52.0,
-                                    ),
+                                    height:
+                                        ResponsiveBreakpoints.responsiveValue(
+                                          context,
+                                          compact:
+                                              48.0, // M3 standard button height
+                                          medium: 48.0,
+                                          expanded: 52.0,
+                                        ),
                                     child: ElevatedButton(
-                                      onPressed: authState is AuthLoading ? null : _handleLogin,
+                                      onPressed: authState is AuthLoading
+                                          ? null
+                                          : _handleLogin,
                                       style: ElevatedButton.styleFrom(
                                         backgroundColor: kPrimaryColor,
                                         foregroundColor: kBackgroundColorDark,
                                         shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(24.0), // M3 standard
+                                          borderRadius: BorderRadius.circular(
+                                            24.0,
+                                          ), // M3 standard
                                         ),
                                         elevation: 2.0, // M3 standard elevation
-                                        padding: const EdgeInsets.symmetric(horizontal: 24.0), // M3 standard
-                                        minimumSize: const Size(64, 40), // M3 minimum touch target
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 24.0,
+                                        ), // M3 standard
+                                        minimumSize: const Size(
+                                          64,
+                                          40,
+                                        ), // M3 minimum touch target
                                       ),
                                       child: authState is AuthLoading
                                           ? const SizedBox(
@@ -323,13 +338,16 @@ class _LoginPageState extends State<LoginPage> {
                                               ),
                                             )
                                           : Text(
-                                        'Login',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 16.0, // M3 standard button text size
-                                          fontWeight: FontWeight.w600, // M3 medium weight
-                                          letterSpacing: 0.1, // M3 standard tracking
-                                        ),
-                                      ),
+                                              'Login',
+                                              style: GoogleFonts.plusJakartaSans(
+                                                fontSize:
+                                                    16.0, // M3 standard button text size
+                                                fontWeight: FontWeight
+                                                    .w600, // M3 medium weight
+                                                letterSpacing:
+                                                    0.1, // M3 standard tracking
+                                              ),
+                                            ),
                                     ),
                                   ),
                                 ),
@@ -391,19 +409,22 @@ class _LoginPageState extends State<LoginPage> {
                                     'assets/google_logo.jpg',
                                     height: 24.0,
                                     width: 24.0,
-                                    errorBuilder: (context, error, stackTrace) =>
-                                        const Icon(
-                                          Icons.g_mobiledata,
-                                          size: 28.0,
-                                        ),
+                                    errorBuilder:
+                                        (context, error, stackTrace) =>
+                                            const Icon(
+                                              Icons.g_mobiledata,
+                                              size: 28.0,
+                                            ),
                                   ),
                                   label: Text(
                                     'Login with Google',
                                     style: GoogleFonts.plusJakartaSans(
                                       color: primaryTextColor,
-                                      fontSize: 16.0, // M3 standard button text size
+                                      fontSize:
+                                          16.0, // M3 standard button text size
                                       fontWeight: FontWeight.w500,
-                                      letterSpacing: 0.1, // M3 standard tracking
+                                      letterSpacing:
+                                          0.1, // M3 standard tracking
                                     ),
                                   ),
                                   style: OutlinedButton.styleFrom(
@@ -415,11 +436,19 @@ class _LoginPageState extends State<LoginPage> {
                                       width: 1.0, // M3 standard border width
                                     ),
                                     shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(24.0), // M3 standard
+                                      borderRadius: BorderRadius.circular(
+                                        24.0,
+                                      ), // M3 standard
                                     ),
-                                    elevation: 0.0, // M3 outlined buttons have no elevation
-                                    padding: const EdgeInsets.symmetric(horizontal: 24.0), // M3 standard
-                                    minimumSize: const Size(64, 40), // M3 minimum touch target
+                                    elevation:
+                                        0.0, // M3 outlined buttons have no elevation
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 24.0,
+                                    ), // M3 standard
+                                    minimumSize: const Size(
+                                      64,
+                                      40,
+                                    ), // M3 minimum touch target
                                   ),
                                 ),
                               ),
@@ -657,5 +686,25 @@ class _LoginPageState extends State<LoginPage> {
       ],
     );
   }
-}
 
+  Future<void> _preCheckSubscription(String userId) async {
+    // Pre-check subscription in background to cache result
+    try {
+      final userData = await SupabaseConfig.client
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .single();
+
+      final role = userData['role'] as String?;
+      final isSeller = role == 'seller' || role == 'admin';
+
+      if (isSeller) {
+        // Pre-check and cache subscription status
+        SubscriptionMiddleware.canAccessMessages(sellerId: userId);
+      }
+    } catch (e) {
+      // Ignore errors - will check when needed
+    }
+  }
+}

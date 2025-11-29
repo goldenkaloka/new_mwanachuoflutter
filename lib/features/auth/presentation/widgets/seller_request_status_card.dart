@@ -42,7 +42,7 @@ class SellerRequestStatusCard extends StatelessWidget {
             statusText = 'Your seller request is being reviewed...';
             break;
           case 'approved':
-            statusColor = Colors.green;
+            statusColor = kPrimaryColor;
             statusIcon = Icons.check_circle;
             statusText = 'Congratulations! You\'re now a seller!';
             break;

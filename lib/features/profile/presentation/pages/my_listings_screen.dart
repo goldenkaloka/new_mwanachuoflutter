@@ -250,7 +250,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                         ),
                         decoration: BoxDecoration(
                           color: product.isActive
-                              ? Colors.green.withValues(alpha: 0.2)
+                              ? kPrimaryColor.withValues(alpha: 0.2)
                               : Colors.grey.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -260,7 +260,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: product.isActive
-                                ? Colors.green
+                                ? kPrimaryColor
                                 : Colors.grey,
                           ),
                         ),
@@ -423,7 +423,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                         ),
                         decoration: BoxDecoration(
                           color: service.isActive
-                              ? Colors.green.withValues(alpha: 0.2)
+                              ? kPrimaryColor.withValues(alpha: 0.2)
                               : Colors.grey.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(4),
                         ),
@@ -433,7 +433,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                             fontSize: 10,
                             fontWeight: FontWeight.bold,
                             color: service.isActive
-                                ? Colors.green
+                                ? kPrimaryColor
                                 : Colors.grey,
                           ),
                         ),
@@ -553,7 +553,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Accommodation deleted successfully!'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: kPrimaryColor,
                   ),
                 );
                 // Reload accommodations
@@ -620,7 +620,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                               ),
                               decoration: BoxDecoration(
                                 color: accommodation.isActive
-                                    ? Colors.green.withValues(alpha: 0.2)
+                                    ? kPrimaryColor.withValues(alpha: 0.2)
                                     : Colors.grey.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(4),
                               ),
@@ -630,7 +630,7 @@ class _MyListingsViewState extends State<_MyListingsView>
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
                                   color: accommodation.isActive
-                                      ? Colors.green
+                                      ? kPrimaryColor
                                       : Colors.grey,
                                 ),
                               ),

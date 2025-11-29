@@ -29,11 +29,23 @@ class ChatScreen extends StatefulWidget {
 class _ChatScreenState extends State<ChatScreen> {
   bool? _canAccessMessages;
   bool _isCheckingSubscription = true;
+  bool _hasCheckedSubscription = false;
 
   @override
   void initState() {
     super.initState();
-    _checkSubscription();
+    // Don't access ModalRoute here - wait for didChangeDependencies
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Now we can safely access ModalRoute
+    // Only check once to avoid multiple calls
+    if (!_hasCheckedSubscription && _canAccessMessages == null) {
+      _hasCheckedSubscription = true;
+      _checkSubscription();
+    }
   }
 
   Future<void> _checkSubscription() async {
@@ -925,26 +937,23 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           }
         }
 
-        // Wrap the content with a Stack to add background image
-        return Stack(
-          children: [
-            // Background image
-            Container(
-              decoration: const BoxDecoration(
-                image: DecorationImage(
-                  image: AssetImage('assets/icon/chat_background.jpg'),
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            // Content on top of background
-            Container(
-              color: backgroundColor.withValues(
-                alpha: 0.9,
-              ), // Add slight overlay for better text readability
-              child: content,
-            ),
-          ],
+        // Wrap the content with a Stack to add background
+        return Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            // Optional: Add a subtle gradient instead of image
+            gradient: isDarkMode
+                ? LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      backgroundColor,
+                      backgroundColor.withValues(alpha: 0.95),
+                    ],
+                  )
+                : null,
+          ),
+          child: content,
         );
       },
     );
@@ -981,7 +990,18 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          if (message.imageUrl != null && message.imageUrl!.isNotEmpty) ...[
+          // Display listing card if metadata contains listing information
+          if (message.metadata != null &&
+              message.metadata!.containsKey('listingId') &&
+              message.metadata!.containsKey('listingType')) ...[
+            _buildListingCard(message.metadata!, isDarkMode),
+            if (message.content.isNotEmpty) const SizedBox(height: 8),
+          ],
+          // Display image if present (and not already shown in listing card)
+          if (message.imageUrl != null &&
+              message.imageUrl!.isNotEmpty &&
+              (message.metadata == null ||
+                  !message.metadata!.containsKey('listingId'))) ...[
             ClipRRect(
               borderRadius: BorderRadius.circular(8),
               child: CachedNetworkImage(
@@ -1149,6 +1169,185 @@ class _ChatScreenViewState extends State<_ChatScreenView>
         // Double tick (blue)
         return Icon(Icons.done_all, size: 14, color: color);
     }
+  }
+
+  Widget _buildListingCard(
+    Map<String, dynamic> metadata,
+    bool isDarkMode,
+  ) {
+    final listingId = metadata['listingId'] as String?;
+    final listingType = metadata['listingType'] as String?;
+    final listingTitle = metadata['listingTitle'] as String?;
+    final listingImageUrl = metadata['listingImageUrl'] as String?;
+    final listingPrice = metadata['listingPrice'] as String?;
+    final listingPriceType = metadata['listingPriceType'] as String?;
+
+    if (listingId == null || listingType == null || listingTitle == null) {
+      return const SizedBox.shrink();
+    }
+
+    final theme = Theme.of(context);
+    final primaryTextColor = isDarkMode ? kTextPrimaryDark : kTextPrimary;
+    final secondaryTextColor = isDarkMode ? kTextSecondaryDark : kTextSecondary;
+    final backgroundColor = isDarkMode ? kSurfaceColorDark : kSurfaceColorLight;
+
+    // Determine route based on listing type
+    String route = '/';
+    IconData icon = Icons.shopping_bag;
+    switch (listingType) {
+      case 'product':
+        route = '/product-details';
+        icon = Icons.shopping_bag;
+        break;
+      case 'service':
+        route = '/service-details';
+        icon = Icons.build;
+        break;
+      case 'accommodation':
+        route = '/accommodation-details';
+        icon = Icons.home;
+        break;
+    }
+
+    // Format price type for display
+    String? displayPriceType;
+    if (listingPriceType != null && listingPriceType.isNotEmpty) {
+      displayPriceType = listingPriceType.replaceAll('_', ' ');
+      displayPriceType = displayPriceType
+          .split(' ')
+          .map((word) => word.isEmpty
+              ? ''
+              : word[0].toUpperCase() + word.substring(1))
+          .join(' ');
+    }
+
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, route, arguments: listingId);
+      },
+      child: Container(
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: backgroundColor,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isDarkMode ? kBorderColorDark : kBorderColor,
+            width: 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Listing Image
+            if (listingImageUrl != null && listingImageUrl.isNotEmpty)
+              ClipRRect(
+                borderRadius: const BorderRadius.only(
+                  topLeft: Radius.circular(12),
+                  bottomLeft: Radius.circular(12),
+                ),
+                child: CachedNetworkImage(
+                  imageUrl: listingImageUrl,
+                  width: 100,
+                  height: 100,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    width: 100,
+                    height: 100,
+                    color: isDarkMode ? kBorderColorDark : kBorderColor,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
+                      ),
+                    ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    width: 100,
+                    height: 100,
+                    color: isDarkMode ? kBorderColorDark : kBorderColor,
+                    child: Icon(
+                      icon,
+                      size: 32,
+                      color: secondaryTextColor,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Container(
+                width: 100,
+                height: 100,
+                decoration: BoxDecoration(
+                  color: isDarkMode ? kBorderColorDark : kBorderColor,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    bottomLeft: Radius.circular(12),
+                  ),
+                ),
+                child: Icon(
+                  icon,
+                  size: 32,
+                  color: secondaryTextColor,
+                ),
+              ),
+            // Listing Details
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          icon,
+                          size: 16,
+                          color: kPrimaryColor,
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          listingType.toUpperCase(),
+                          style: theme.textTheme.bodySmall?.copyWith(
+                            color: kPrimaryColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      listingTitle,
+                      style: theme.textTheme.titleSmall?.copyWith(
+                        color: primaryTextColor,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (listingPrice != null) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        displayPriceType != null
+                            ? '$listingPrice/$displayPriceType'
+                            : listingPrice,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: kPrimaryColor,
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 
   Widget _buildDateSeparator(DateTime date, bool isDarkMode) {

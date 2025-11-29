@@ -149,7 +149,7 @@ class _DashboardView extends StatelessWidget {
                             'Services',
                             '${stats.totalServices}',
                             Icons.build,
-                            Colors.green,
+                            kPrimaryColor,
                             isDarkMode,
                           ),
                           _buildStatCard(

@@ -15,6 +15,14 @@ class UpdateNotificationPreferences {
     bool? listingsEnabled,
     bool? promotionsEnabled,
     bool? sellerRequestsEnabled,
+    bool? soundEnabled,
+    bool? vibrationEnabled,
+    bool? badgeEnabled,
+    bool? inAppBannerEnabled,
+    bool? groupNotifications,
+    bool? groupByCategory,
+    DateTime? quietHoursStart,
+    DateTime? quietHoursEnd,
   }) async {
     return await repository.updateNotificationPreferences(
       pushEnabled: pushEnabled,
@@ -23,6 +31,14 @@ class UpdateNotificationPreferences {
       listingsEnabled: listingsEnabled,
       promotionsEnabled: promotionsEnabled,
       sellerRequestsEnabled: sellerRequestsEnabled,
+      soundEnabled: soundEnabled,
+      vibrationEnabled: vibrationEnabled,
+      badgeEnabled: badgeEnabled,
+      inAppBannerEnabled: inAppBannerEnabled,
+      groupNotifications: groupNotifications,
+      groupByCategory: groupByCategory,
+      quietHoursStart: quietHoursStart,
+      quietHoursEnd: quietHoursEnd,
     );
   }
 }

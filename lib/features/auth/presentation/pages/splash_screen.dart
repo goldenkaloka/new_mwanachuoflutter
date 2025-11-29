@@ -6,6 +6,8 @@ import 'package:mwanachuo/core/services/push_notification_service.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
+import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -35,7 +37,10 @@ class _SplashScreenState extends State<SplashScreen> {
     if (state is Authenticated) {
       // Register device token for push notifications
       PushNotificationService().registerDeviceTokenForUser(state.user.id);
-      
+
+      // Pre-check subscription status in background for seamless flow
+      _preCheckSubscription(state.user.id);
+
       // Check if registration is completed using BLoC (only once)
       if (!_hasCheckedRegistration) {
         _hasCheckedRegistration = true;
@@ -77,6 +82,27 @@ class _SplashScreenState extends State<SplashScreen> {
           context,
         ).pushReplacementNamed('/signup-university-selection');
       }
+    }
+  }
+
+  Future<void> _preCheckSubscription(String userId) async {
+    // Pre-check subscription in background to cache result
+    try {
+      final userData = await SupabaseConfig.client
+          .from('users')
+          .select('role')
+          .eq('id', userId)
+          .single();
+
+      final role = userData['role'] as String?;
+      final isSeller = role == 'seller' || role == 'admin';
+
+      if (isSeller) {
+        // Pre-check and cache subscription status
+        SubscriptionMiddleware.canAccessMessages(sellerId: userId);
+      }
+    } catch (e) {
+      // Ignore errors - will check when needed
     }
   }
 

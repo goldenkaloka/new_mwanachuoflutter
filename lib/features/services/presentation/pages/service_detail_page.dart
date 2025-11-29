@@ -6,6 +6,9 @@ import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/widgets/comments_and_ratings_section.dart';
 import 'package:mwanachuo/core/widgets/empty_state.dart';
+import 'package:mwanachuo/core/widgets/sliver_image_carousel.dart';
+import 'package:mwanachuo/core/widgets/sliver_section.dart';
+import 'package:mwanachuo/core/widgets/sticky_action_bar.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_bloc.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_event.dart';
@@ -13,6 +16,9 @@ import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_type.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_criteria_entity.dart';
+import 'package:mwanachuo/features/shared/recommendations/presentation/widgets/recommendation_section.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
@@ -146,318 +152,349 @@ class _ServiceDetailView extends StatelessWidget {
       backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
       body: ResponsiveBuilder(
         builder: (context, screenSize) {
-          return Column(
-            children: [
-              // Top App Bar
-              _buildTopAppBar(context, primaryTextColor, screenSize),
-              
-              // Content
-              Expanded(
-                child: SingleChildScrollView(
-                  child: ResponsiveContainer(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Service Image
-                        _buildServiceImage(context, service, screenSize),
-                        
-                        Padding(
-                          padding: EdgeInsets.all(
-                            ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-                          ),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(
-                                height: ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 20.0,
-                                  medium: 24.0,
-                                  expanded: 28.0,
-                                ),
-                              ),
-                              
-                              // Service Category Badge
-                              Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 12.0,
-                                  vertical: 6.0,
-                                ),
-                                decoration: BoxDecoration(
-                                  color: kPrimaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(20.0),
-                                ),
-                                child: Text(
-                                  service.category,
-                                  style: GoogleFonts.inter(
-                                    color: kPrimaryColor,
-                                    fontSize: 12.0,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 16.0),
-                              
-                              // Service Title
-                              Text(
-                                service.title,
-                                style: GoogleFonts.inter(
-                                  color: primaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 24.0,
-                                    medium: 28.0,
-                                    expanded: 32.0,
-                                  ),
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: -0.5,
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 12.0),
-                              
-                              // Rating and Price
-                              Row(
-                                children: [
-                                  if (service.rating != null) ...[
-                                    Icon(Icons.star, color: Colors.amber[600], size: 20.0),
-                                    const SizedBox(width: 4.0),
-                                    Text(
-                                      service.rating!.toStringAsFixed(1),
-                                      style: GoogleFonts.inter(
-                                      color: primaryTextColor,
-                                      fontSize: 16.0,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                    Text(
-                                      ' (${service.reviewCount} reviews)',
-                                      style: GoogleFonts.inter(
-                                        color: secondaryTextColor,
-                                        fontSize: 14.0,
-                                      ),
-                                    ),
-                                  ],
-                                  const Spacer(),
-                                  Text(
-                                    'TZS ${service.price.toStringAsFixed(2)}',
-                                    style: GoogleFonts.inter(
-                                      color: kPrimaryColor,
-                                      fontSize: 24.0,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  Text(
-                                    '/${service.priceType}',
-                                    style: GoogleFonts.inter(
-                                      color: secondaryTextColor,
-                                      fontSize: 14.0,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              
-                              const SizedBox(height: 24.0),
-                              
-                              // Provider Info
-                              _buildProviderInfo(
-                                context,
-                                service,
-                                primaryTextColor,
-                                secondaryTextColor,
-                                surfaceColor,
-                              ),
-                              
-                              const SizedBox(height: 24.0),
-                              
-                              // Description
-                              Text(
-                                'About This Service',
-                                style: GoogleFonts.inter(
-                                  color: primaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 18.0,
-                                    medium: 20.0,
-                                    expanded: 22.0,
-                                  ),
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 12.0),
-                              
-                              Text(
-                                service.description,
-                                style: GoogleFonts.inter(
-                                  color: secondaryTextColor,
-                                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 14.0,
-                                    medium: 15.0,
-                                    expanded: 16.0,
-                                  ),
-                                  height: 1.6,
-                                ),
-                              ),
-                              
-                              const SizedBox(height: 24.0),
-                              
-                              const SizedBox(height: 24.0),
-                              
-                              // Availability
-                              if (service.availability.isNotEmpty) ...[
-                                Text(
-                                  'Availability',
-                                  style: GoogleFonts.inter(
-                                    color: primaryTextColor,
-                                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                                      context,
-                                      compact: 18.0,
-                                      medium: 20.0,
-                                      expanded: 22.0,
-                                    ),
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                
-                                const SizedBox(height: 12.0),
-                                
-                                Container(
-                                  padding: const EdgeInsets.all(16.0),
-                                  decoration: BoxDecoration(
-                                    color: surfaceColor,
-                                    borderRadius: BorderRadius.circular(12.0),
-                                    border: Border.all(
-                                      color: Theme.of(context).brightness == Brightness.dark
-                                          ? Colors.grey[800]!
-                                          : Colors.grey[200]!,
-                                    ),
-                                  ),
-                                  child: Column(
-                                    children: [
-                                      ...service.availability.asMap().entries.map((entry) {
-                                        final index = entry.key;
-                                        final availabilityItem = entry.value;
-                                        // Parse availability item (format: "Day: Time" or just "Day" or "Time")
-                                        final parts = availabilityItem.split(':');
-                                        final day = parts.length > 1 ? parts[0].trim() : availabilityItem;
-                                        final time = parts.length > 1 ? parts[1].trim() : 'Available';
-                                        
-                                        return Column(
-                                          children: [
-                                            if (index > 0) const Divider(),
-                                            _buildAvailabilityRow(day, time, secondaryTextColor),
-                                          ],
-                                        );
-                                      }),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                              
-                              const SizedBox(height: 32.0),
-                              
-                              // Comments and Ratings
-                              CommentsAndRatingsSection(
-                                itemId: service.id,
-                                itemType: 'service',
-                              ),
-                              
-                              SizedBox(
-                                height: ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 100.0,
-                                  medium: 80.0,
-                                  expanded: 60.0,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
-              
-              // Bottom CTA
-              _buildBottomCTA(context, service, screenSize),
-            ],
+          return _buildSliverLayout(
+            context,
+            service,
+            isDarkMode,
+            primaryTextColor,
+            secondaryTextColor,
+            surfaceColor,
+            screenSize,
           );
         },
       ),
     );
   }
 
-  Widget _buildTopAppBar(BuildContext context, Color primaryTextColor, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
-        screenSize == ScreenSize.expanded ? 24.0 : 48.0,
-        horizontalPadding,
-        16.0,
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          bottom: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[800]!
-                : Colors.grey[200]!,
-            width: 1.0,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          IconButton(
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.arrow_back),
-            iconSize: 24.0,
-          ),
-          const SizedBox(width: 8.0),
-          Expanded(
-            child: Text(
-              'Service Details',
-              style: GoogleFonts.inter(
-                color: primaryTextColor,
-                fontSize: 18.0,
-                fontWeight: FontWeight.bold,
+  Widget _buildSliverLayout(
+    BuildContext context,
+    ServiceEntity service,
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color surfaceColor,
+    ScreenSize screenSize,
+  ) {
+    final images = service.images.isNotEmpty ? service.images : [''];
+
+    return Stack(
+      children: [
+        CustomScrollView(
+          slivers: [
+            // Hero image with parallax
+            SliverImageCarousel(
+              images: images,
+              expandedHeight: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 400.0,
+                medium: 420.0,
+                expanded: 600.0,
               ),
             ),
+            // Service info section
+            SliverSection(
+              child: _buildServiceInfoSliver(
+                context,
+                service,
+                primaryTextColor,
+                secondaryTextColor,
+                screenSize,
+              ),
+            ),
+            // Similar services (mid-page recommendations)
+            SliverToBoxAdapter(
+              child: RecommendationSection(
+                currentItemId: service.id,
+                type: RecommendationType.service,
+                title: 'Similar Services',
+                onItemTap: (itemId, type) {
+                  Navigator.pushNamed(
+                    context,
+                    '/service-details',
+                    arguments: itemId,
+                  );
+                },
+              ),
+            ),
+            // Provider info section
+            SliverSection(
+              child: _buildProviderInfo(
+                context,
+                service,
+                primaryTextColor,
+                secondaryTextColor,
+                surfaceColor,
+              ),
+            ),
+            // Description section
+            SliverSection(
+              child: _buildDescriptionSliver(
+                context,
+                service,
+                primaryTextColor,
+                secondaryTextColor,
+                screenSize,
+              ),
+            ),
+            // Availability section
+            if (service.availability.isNotEmpty)
+              SliverSection(
+                child: _buildAvailabilitySliver(
+                  context,
+                  service,
+                  primaryTextColor,
+                  secondaryTextColor,
+                  surfaceColor,
+                ),
+              ),
+            // Reviews section
+            SliverSection(
+              child: CommentsAndRatingsSection(
+                itemId: service.id,
+                itemType: 'service',
+              ),
+            ),
+            // More recommendations (bottom)
+            SliverToBoxAdapter(
+              child: RecommendationSection(
+                currentItemId: service.id,
+                type: RecommendationType.service,
+                title: 'More Recommendations',
+                criteria: RecommendationCriteriaEntity(
+                  limit: 8,
+                ),
+                onItemTap: (itemId, type) {
+                  Navigator.pushNamed(
+                    context,
+                    '/service-details',
+                    arguments: itemId,
+                  );
+                },
+              ),
+            ),
+            // Bottom padding
+            SliverPadding(
+              padding: EdgeInsets.only(
+                bottom: ResponsiveBreakpoints.isCompact(context) ? 112 : 80,
+              ),
+            ),
+          ],
+        ),
+        // Sticky action bar (only for compact)
+        if (ResponsiveBreakpoints.isCompact(context))
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: StickyActionBar(
+              price: 'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
+              actionButtonText: 'Contact Provider',
+              onActionTap: () {
+                // Handle contact provider
+                context.read<MessageBloc>().add(
+                      GetOrCreateConversationEvent(
+                        otherUserId: service.providerId,
+                        listingId: service.id,
+                        listingType: 'service',
+                        listingTitle: service.title,
+                        listingImageUrl: service.images.isNotEmpty ? service.images.first : null,
+                        listingPrice: 'TZS ${service.price.toStringAsFixed(2)}',
+                        listingPriceType: service.priceType,
+                      ),
+                    );
+              },
+            ),
           ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.favorite_border),
-            iconSize: 24.0,
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(Icons.share),
-            iconSize: 24.0,
-          ),
-        ],
-      ),
+      ],
     );
   }
 
-  Widget _buildServiceImage(BuildContext context, ServiceEntity service, ScreenSize screenSize) {
-    final imageUrl = service.images.isNotEmpty ? service.images.first : '';
-    
-    return AspectRatio(
-      aspectRatio: 16 / 9,
-      child: Hero(
-        tag: 'service_$imageUrl',
-        child: NetworkImageWithFallback(
-          imageUrl: imageUrl,
-          width: double.infinity,
-          height: double.infinity,
-          fit: BoxFit.cover,
+  Widget _buildServiceInfoSliver(
+    BuildContext context,
+    ServiceEntity service,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Service Category Badge
+        Container(
+          padding: const EdgeInsets.symmetric(
+            horizontal: 12.0,
+            vertical: 6.0,
+          ),
+          decoration: BoxDecoration(
+            color: kPrimaryColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          child: Text(
+            service.category,
+            style: GoogleFonts.inter(
+              color: kPrimaryColor,
+              fontSize: 12.0,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
         ),
-      ),
+        const SizedBox(height: 16.0),
+        // Service Title
+        Text(
+          service.title,
+          style: GoogleFonts.inter(
+            color: primaryTextColor,
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 24.0,
+              medium: 28.0,
+              expanded: 32.0,
+            ),
+            fontWeight: FontWeight.bold,
+            letterSpacing: -0.5,
+          ),
+        ),
+        const SizedBox(height: 12.0),
+        // Rating and Price
+        Row(
+          children: [
+            if (service.rating != null) ...[
+              Icon(Icons.star, color: Colors.amber[600], size: 20.0),
+              const SizedBox(width: 4.0),
+              Text(
+                service.rating!.toStringAsFixed(1),
+                style: GoogleFonts.inter(
+                  color: primaryTextColor,
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              Text(
+                ' (${service.reviewCount} reviews)',
+                style: GoogleFonts.inter(
+                  color: secondaryTextColor,
+                  fontSize: 14.0,
+                ),
+              ),
+            ],
+            const Spacer(),
+            Text(
+              'TZS ${service.price.toStringAsFixed(2)}',
+              style: GoogleFonts.inter(
+                color: kPrimaryColor,
+                fontSize: 24.0,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            Text(
+              '/${service.priceType}',
+              style: GoogleFonts.inter(
+                color: secondaryTextColor,
+                fontSize: 14.0,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDescriptionSliver(
+    BuildContext context,
+    ServiceEntity service,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'About This Service',
+          style: GoogleFonts.inter(
+            color: primaryTextColor,
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 18.0,
+              medium: 20.0,
+              expanded: 22.0,
+            ),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12.0),
+        Text(
+          service.description,
+          style: GoogleFonts.inter(
+            color: secondaryTextColor,
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 14.0,
+              medium: 15.0,
+              expanded: 16.0,
+            ),
+            height: 1.6,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildAvailabilitySliver(
+    BuildContext context,
+    ServiceEntity service,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color surfaceColor,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Availability',
+          style: GoogleFonts.inter(
+            color: primaryTextColor,
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 18.0,
+              medium: 20.0,
+              expanded: 22.0,
+            ),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        const SizedBox(height: 12.0),
+        Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(12.0),
+            border: Border.all(
+              color: Theme.of(context).brightness == Brightness.dark
+                  ? Colors.grey[800]!
+                  : Colors.grey[200]!,
+            ),
+          ),
+          child: Column(
+            children: [
+              ...service.availability.asMap().entries.map((entry) {
+                final index = entry.key;
+                final availabilityItem = entry.value;
+                final parts = availabilityItem.split(':');
+                final day = parts.length > 1 ? parts[0].trim() : availabilityItem;
+                final time = parts.length > 1 ? parts[1].trim() : 'Available';
+                
+                return Column(
+                  children: [
+                    if (index > 0) const Divider(),
+                    _buildAvailabilityRow(day, time, secondaryTextColor),
+                  ],
+                );
+              }),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -569,6 +606,12 @@ class _ServiceDetailView extends StatelessWidget {
                 context.read<MessageBloc>().add(
                       GetOrCreateConversationEvent(
                         otherUserId: service.providerId,
+                        listingId: service.id,
+                        listingType: 'service',
+                        listingTitle: service.title,
+                        listingImageUrl: service.images.isNotEmpty ? service.images.first : null,
+                        listingPrice: 'TZS ${service.price.toStringAsFixed(2)}',
+                        listingPriceType: service.priceType,
                       ),
                     );
               },
@@ -603,76 +646,6 @@ class _ServiceDetailView extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildBottomCTA(BuildContext context, ServiceEntity service, ScreenSize screenSize) {
-    return Container(
-      padding: EdgeInsets.all(
-        ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[800]!
-                : Colors.grey[200]!,
-            width: 1.0,
-          ),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 56.0,
-          child: BlocListener<MessageBloc, MessageState>(
-            listener: (context, state) {
-              if (state is ConversationLoaded) {
-                Navigator.pushNamed(
-                  context,
-                  '/chat',
-                  arguments: state.conversation.id,
-                );
-              } else if (state is MessageError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      state.message,
-                      style: GoogleFonts.inter(),
-                    ),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-            child: ElevatedButton(
-              onPressed: () {
-                context.read<MessageBloc>().add(
-                      GetOrCreateConversationEvent(
-                        otherUserId: service.providerId,
-                      ),
-                    );
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16.0),
-                ),
-              ),
-              child: Text(
-                'Contact Provider',
-                style: GoogleFonts.inter(
-                  fontSize: 16.0,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ),
-        ),
       ),
     );
   }

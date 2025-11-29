@@ -1,7 +1,16 @@
 import 'dart:io';
+import 'package:flutter/material.dart';
 import 'package:onesignal_flutter/onesignal_flutter.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
+import 'package:mwanachuo/core/widgets/in_app_notification_banner.dart';
+import 'package:mwanachuo/core/services/notification_grouping_service.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
+import 'package:mwanachuo/features/shared/notifications/data/models/notification_preferences_model.dart';
+import 'package:mwanachuo/core/services/notification_analytics_service.dart';
+import 'package:mwanachuo/core/services/notification_actions_service.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/constants/database_constants.dart';
 
 class OneSignalConfig {
   // OneSignal App ID
@@ -9,6 +18,9 @@ class OneSignalConfig {
   static const String oneSignalAppId = 'b108e16e-0426-4b7f-bd78-20f04056bade';
 
   static bool _isInitialized = false;
+
+  /// Global navigator key for showing in-app notifications
+  static GlobalKey<NavigatorState>? navigatorKey;
 
   /// Initialize OneSignal SDK
   static Future<void> initialize() async {
@@ -124,18 +136,58 @@ class OneSignalConfig {
   /// Set up notification handlers
   static void _setupNotificationHandlers() {
     try {
-      // Note: OneSignal Flutter SDK 5.x API may vary
-      // Foreground notifications are handled automatically by OneSignal
-      // If you need custom foreground handling, check the latest OneSignal SDK docs
-      
+      // Handle foreground notifications - show custom in-app banner
+      OneSignal.Notifications.addForegroundWillDisplayListener((event) async {
+        try {
+          LoggerService.debug(
+            'Foreground notification received: ${event.notification.notificationId}',
+          );
+
+          // Check user preferences before showing notification
+          final shouldShow = await _shouldShowNotification(event.notification);
+          if (!shouldShow) {
+            LoggerService.debug(
+              'Notification suppressed by user preferences: ${event.notification.notificationId}',
+            );
+            event.preventDefault();
+            return;
+          }
+
+          // Track notification delivery
+          _trackNotificationDelivery(event.notification);
+
+          // Create/update notification group if grouping is enabled
+          await _handleNotificationGrouping(event.notification);
+
+          // Prevent default notification display
+          event.preventDefault();
+
+          // Show custom in-app banner
+          _showInAppBanner(event.notification);
+        } catch (e) {
+          LoggerService.error('Error handling foreground notification', e);
+          // Fallback: display notification normally
+          event.notification.display();
+        }
+      });
+
       // Handle notification tapped/opened
       OneSignal.Notifications.addClickListener((event) {
         try {
-          LoggerService.debug('Notification tapped: ${event.notification.notificationId}');
+          LoggerService.debug(
+            'Notification tapped: ${event.notification.notificationId}',
+          );
           final notification = event.notification;
           final additionalData = notification.additionalData;
+          final actionId = event.result.actionId;
 
-          if (additionalData != null) {
+          // Track notification tap
+          _trackNotificationTap(notification, additionalData);
+
+          if (actionId != null && actionId.isNotEmpty) {
+            // Handle specific action button clicks
+            _handleNotificationAction(actionId, notification, additionalData);
+          } else if (additionalData != null) {
             final notificationType = additionalData['type'] as String?;
             final actionUrl = additionalData['actionUrl'] as String?;
 
@@ -143,14 +195,129 @@ class OneSignalConfig {
             _handleNotificationTap(notificationType, actionUrl, additionalData);
           } else {
             // Fallback: try to parse from notification title/body
-            LoggerService.debug('No additional data in notification, using default handling');
+            LoggerService.debug(
+              'No additional data in notification, using default handling',
+            );
           }
         } catch (e) {
           LoggerService.error('Error handling notification tap', e);
         }
       });
     } catch (e) {
-      LoggerService.warning('Failed to setup OneSignal notification handlers: $e');
+      LoggerService.warning(
+        'Failed to setup OneSignal notification handlers: $e',
+      );
+    }
+  }
+
+  /// Show custom in-app notification banner for foreground notifications
+  static void _showInAppBanner(OSNotification notification) {
+    final context = navigatorKey?.currentContext;
+    if (context == null) {
+      LoggerService.warning(
+        'Cannot show in-app banner: Navigator context not available',
+      );
+      // Fallback: show system notification
+      notification.display();
+      return;
+    }
+
+    final title = notification.title ?? 'Notification';
+    final body = notification.body ?? '';
+    final imageUrl = notification.bigPicture;
+    final additionalData = notification.additionalData;
+
+    // Determine icon and color based on notification type
+    IconData icon = Icons.notifications;
+    Color? iconColor;
+
+    if (additionalData != null) {
+      final type = additionalData['type'] as String?;
+      switch (type) {
+        case 'message':
+          icon = Icons.chat_bubble;
+          iconColor = Colors.blue;
+          break;
+        case 'review':
+          icon = Icons.star;
+          iconColor = Colors.amber;
+          break;
+        case 'order':
+          icon = Icons.shopping_bag;
+          iconColor = kPrimaryColor;
+          break;
+        case 'promotion':
+          icon = Icons.local_offer;
+          iconColor = Colors.orange;
+          break;
+        default:
+          icon = Icons.notifications;
+      }
+    }
+
+    InAppNotificationBanner.show(
+      context,
+      title: title,
+      body: body,
+      imageUrl: imageUrl,
+      icon: icon,
+      iconColor: iconColor,
+      onTap: () {
+        // Track notification tap
+        _trackNotificationTap(notification, additionalData);
+
+        // Handle tap - navigate based on notification data
+        if (additionalData != null) {
+          final notificationType = additionalData['type'] as String?;
+          final actionUrl = additionalData['actionUrl'] as String?;
+          _handleNotificationTap(notificationType, actionUrl, additionalData);
+        }
+      },
+    );
+  }
+
+  /// Track notification delivery for analytics
+  static void _trackNotificationDelivery(OSNotification notification) {
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final notificationId = notification.notificationId;
+      final type = notification.additionalData?['type'] as String? ?? 'unknown';
+
+      NotificationAnalyticsService().trackNotificationDelivery(
+        notificationId: notificationId,
+        userId: userId,
+        type: type,
+        metadata: notification.additionalData,
+      );
+    } catch (e) {
+      LoggerService.debug('Failed to track notification delivery: $e');
+    }
+  }
+
+  /// Track notification tap for analytics
+  static void _trackNotificationTap(
+    OSNotification notification,
+    Map<String, dynamic>? additionalData,
+  ) {
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final notificationId = notification.notificationId;
+      final type = additionalData?['type'] as String? ?? 'unknown';
+      final targetScreen = additionalData?['actionUrl'] as String?;
+
+      NotificationAnalyticsService().trackNotificationTap(
+        notificationId: notificationId,
+        userId: userId,
+        type: type,
+        targetScreen: targetScreen,
+        metadata: additionalData,
+      );
+    } catch (e) {
+      LoggerService.debug('Failed to track notification tap: $e');
     }
   }
 
@@ -170,7 +337,75 @@ class OneSignalConfig {
       'data': additionalData,
     };
 
-    LoggerService.debug('Notification tap handled: type=$type, actionUrl=$actionUrl');
+    LoggerService.debug(
+      'Notification tap handled: type=$type, actionUrl=$actionUrl',
+    );
+  }
+
+  /// Handle notification action button clicks
+  static Future<void> _handleNotificationAction(
+    String actionId,
+    OSNotification notification,
+    Map<String, dynamic>? additionalData,
+  ) async {
+    LoggerService.debug('Handling notification action: $actionId');
+
+    // Track conversion for specific actions
+    final userId = SupabaseConfig.client.auth.currentUser?.id;
+    if (userId != null) {
+      final notificationId = notification.notificationId;
+      final type = additionalData?['type'] as String? ?? 'unknown';
+
+      NotificationAnalyticsService().trackNotificationConversion(
+        notificationId: notificationId,
+        userId: userId,
+        type: type,
+        conversionAction: actionId,
+        metadata: additionalData,
+      );
+    }
+
+    switch (actionId) {
+      case 'reply':
+      case 'chat_reply':
+        // Navigate to chat
+        if (additionalData != null) {
+          final conversationId =
+              additionalData['data']?['conversationId'] as String?;
+          if (conversationId != null) {
+            final context = navigatorKey?.currentContext;
+            if (context != null) {
+              Navigator.of(
+                context,
+              ).pushNamed('/chat', arguments: conversationId);
+            }
+          }
+        }
+        break;
+
+      case 'view':
+      case 'view_details':
+        // Navigate to details (same as tapping notification)
+        if (additionalData != null) {
+          final type = additionalData['type'] as String?;
+          final actionUrl = additionalData['actionUrl'] as String?;
+          _handleNotificationTap(type, actionUrl, additionalData);
+        }
+        break;
+
+      case 'dismiss':
+      case 'close':
+        // Just dismiss (already handled by OS)
+        break;
+
+      case 'mark_read':
+        // Mark notification as read in database
+        await _markNotificationAsRead(notification, additionalData);
+        break;
+
+      default:
+        LoggerService.warning('Unknown notification action: $actionId');
+    }
   }
 
   /// Get pending notification data (for navigation)
@@ -266,11 +501,228 @@ class OneSignalConfig {
         return;
       }
 
-      LoggerService.debug('Test notification would be sent to player: $playerId');
+      LoggerService.debug(
+        'Test notification would be sent to player: $playerId',
+      );
       // Actual sending is done via backend/OneSignal dashboard
     } catch (e) {
       LoggerService.error('Failed to send test notification', e);
     }
   }
-}
 
+  /// Check if notification should be shown based on user preferences
+  static Future<bool> _shouldShowNotification(
+    OSNotification notification,
+  ) async {
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId == null) return true; // Default: show if not logged in
+
+      // Get user preferences
+      final prefsResponse = await SupabaseConfig.client
+          .from('notification_preferences')
+          .select()
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      if (prefsResponse == null) {
+        // No preferences set, default to showing
+        return true;
+      }
+
+      final preferences = NotificationPreferencesModel.fromJson(prefsResponse);
+
+      // Extract notification category from additional data
+      final additionalData = notification.additionalData;
+      final category = additionalData?['type'] as String? ?? 'unknown';
+
+      // Check if notification should be delivered
+      return preferences.shouldDeliverNotification(category);
+    } catch (e) {
+      LoggerService.debug('Error checking notification preferences: $e');
+      // Default: show notification on error
+      return true;
+    }
+  }
+
+  /// Handle notification grouping
+  static Future<void> _handleNotificationGrouping(
+    OSNotification notification,
+  ) async {
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      // Check if grouping is enabled
+      final prefsResponse = await SupabaseConfig.client
+          .from('notification_preferences')
+          .select('group_notifications')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+      final groupNotifications =
+          prefsResponse?['group_notifications'] as bool? ?? true;
+      if (!groupNotifications) return;
+
+      final additionalData = notification.additionalData;
+      final category = additionalData?['type'] as String? ?? 'unknown';
+      final notificationId = notification.notificationId;
+
+      // Generate group key
+      final groupKey = NotificationGroupingService.generateGroupKey(
+        category: category,
+        additionalData: additionalData ?? {},
+      );
+
+      // Create or update group
+      final title = notification.title ?? 'Notification';
+      final summary = notification.body;
+
+      await NotificationGroupingService().createOrUpdateGroup(
+        userId: userId,
+        groupKey: groupKey,
+        category: category,
+        title: title,
+        summary: summary,
+        notificationId: notificationId,
+      );
+
+      LoggerService.debug(
+        'Notification grouped: $notificationId in group $groupKey',
+      );
+    } catch (e) {
+      LoggerService.debug('Error handling notification grouping: $e');
+      // Don't throw - grouping failure shouldn't prevent notification display
+    }
+  }
+
+  /// Mark a notification as read in the database
+  static Future<void> _markNotificationAsRead(
+    OSNotification notification,
+    Map<String, dynamic>? additionalData,
+  ) async {
+    try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId == null) {
+        LoggerService.debug('Cannot mark as read: User not authenticated');
+        return;
+      }
+
+      final oneSignalNotificationId = notification.notificationId;
+
+      // Track the action first
+      await NotificationActionsService().trackMarkAsRead(
+        notificationId: oneSignalNotificationId,
+        metadata: {
+          ...?additionalData,
+          'onesignal_notification_id': oneSignalNotificationId,
+        },
+      );
+
+      // Try to find the database notification by searching for the OneSignal ID in metadata
+      // The OneSignal notification ID might be stored in the notification's data/metadata field
+      try {
+        // First, try to find by searching the data JSONB field for the OneSignal notification ID
+        // Check multiple possible field names where the OneSignal ID might be stored
+        List<String> notificationIds = [];
+
+        // Try searching in data->onesignal_notification_id
+        try {
+          final response1 = await SupabaseConfig.client
+              .from(DatabaseConstants.notificationsTable)
+              .select('id')
+              .eq('user_id', userId)
+              .eq('is_read', false)
+              .eq('data->onesignal_notification_id', oneSignalNotificationId);
+          notificationIds.addAll(response1.map((n) => n['id'] as String));
+        } catch (_) {
+          // Field might not exist or query failed, continue
+        }
+
+        // Try searching in data->notification_id
+        if (notificationIds.isEmpty) {
+          try {
+            final response2 = await SupabaseConfig.client
+                .from(DatabaseConstants.notificationsTable)
+                .select('id')
+                .eq('user_id', userId)
+                .eq('is_read', false)
+                .eq('data->notification_id', oneSignalNotificationId);
+            notificationIds.addAll(response2.map((n) => n['id'] as String));
+          } catch (_) {
+            // Field might not exist or query failed, continue
+          }
+        }
+
+        if (notificationIds.isNotEmpty) {
+          // Found matching notification(s), mark them as read
+          await SupabaseConfig.client
+              .from(DatabaseConstants.notificationsTable)
+              .update({
+                'is_read': true,
+                'read_at': DateTime.now().toIso8601String(),
+              })
+              .inFilter('id', notificationIds)
+              .eq('user_id', userId);
+
+          LoggerService.debug(
+            'Marked ${notificationIds.length} notification(s) as read: $notificationIds',
+          );
+        } else {
+          // If not found by metadata, try to find by matching title/message
+          // This is a fallback for cases where the OneSignal notification
+          // corresponds to a database notification but the ID isn't stored in metadata
+          final title = notification.title;
+          final message = notification.body;
+
+          if (title != null || message != null) {
+            var query = SupabaseConfig.client
+                .from(DatabaseConstants.notificationsTable)
+                .select('id')
+                .eq('user_id', userId)
+                .eq('is_read', false);
+
+            if (title != null) {
+              query = query.eq('title', title);
+            }
+            if (message != null) {
+              query = query.eq('message', message);
+            }
+
+            final matchingNotifications = await query.limit(1);
+
+            if (matchingNotifications.isNotEmpty) {
+              final notificationId =
+                  matchingNotifications.first['id'] as String;
+              await SupabaseConfig.client
+                  .from(DatabaseConstants.notificationsTable)
+                  .update({
+                    'is_read': true,
+                    'read_at': DateTime.now().toIso8601String(),
+                  })
+                  .eq('id', notificationId)
+                  .eq('user_id', userId);
+
+              LoggerService.debug(
+                'Marked notification as read by title/message match: $notificationId',
+              );
+            } else {
+              LoggerService.debug(
+                'No matching database notification found for OneSignal notification: $oneSignalNotificationId',
+              );
+            }
+          } else {
+            LoggerService.debug(
+              'No matching database notification found for OneSignal notification: $oneSignalNotificationId',
+            );
+          }
+        }
+      } catch (e) {
+        LoggerService.debug('Error finding/marking database notification: $e');
+        // Continue - action was already tracked
+      }
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to mark notification as read', e, stackTrace);
+    }
+  }
+}

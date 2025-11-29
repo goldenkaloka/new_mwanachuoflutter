@@ -17,7 +17,8 @@ class TimeFormatter {
       final difference = now.difference(localTime);
 
       // Handle negative differences (future times due to clock sync issues)
-      if (difference.isNegative || difference.inSeconds < 60) {
+      // Only show "Just now" for very recent messages (less than 10 seconds)
+      if (difference.isNegative || difference.inSeconds < 10) {
         return 'Just now';
       }
 

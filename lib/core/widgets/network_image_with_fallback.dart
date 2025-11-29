@@ -72,6 +72,22 @@ class NetworkImageWithFallback extends StatelessWidget {
     // Get optimized URL
     final optimizedUrl = _getOptimizedImageUrl(imageUrl);
 
+    // Helper function to safely convert double to int
+    int? safeToInt(dynamic value) {
+      if (value == null) return null;
+      if (value is int) return value;
+      if (value is double) {
+        // Check if value is finite and not NaN before converting
+        if (!value.isFinite || value.isNaN) return null;
+        return value.toInt();
+      }
+      if (value is String) {
+        final parsed = int.tryParse(value);
+        return parsed;
+      }
+      return null;
+    }
+
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
       child: CachedNetworkImage(
@@ -80,8 +96,8 @@ class NetworkImageWithFallback extends StatelessWidget {
         height: height,
         fit: fit ?? BoxFit.cover,
         // Memory cache configuration
-        memCacheWidth: maxWidth ?? width?.toInt(),
-        memCacheHeight: maxHeight ?? height?.toInt(),
+        memCacheWidth: maxWidth ?? safeToInt(width),
+        memCacheHeight: maxHeight ?? safeToInt(height),
         // Placeholder while loading
         placeholder: usePlaceholder
             ? (context, url) => Container(
@@ -112,6 +128,24 @@ class NetworkImageWithFallback extends StatelessWidget {
     );
   }
 
+  /// Calculate a safe icon size that is always finite
+  double _calculateIconSize(double? width, double? height) {
+    if (width != null && height != null) {
+      // Ensure both values are finite before using them
+      if (width.isFinite && height.isFinite) {
+        final calculatedSize = (width < height ? width * 0.3 : height * 0.3);
+        // Ensure the result is finite and within reasonable bounds
+        if (calculatedSize.isFinite &&
+            calculatedSize > 0 &&
+            calculatedSize < 1000) {
+          return calculatedSize;
+        }
+      }
+    }
+    // Default safe size
+    return 24.0;
+  }
+
   Widget _buildPlaceholder() {
     return ClipRRect(
       borderRadius: borderRadius ?? BorderRadius.zero,
@@ -132,9 +166,7 @@ class NetworkImageWithFallback extends StatelessWidget {
         child: Icon(
           Icons.person,
           color: Colors.white.withValues(alpha: 0.9),
-          size: (width != null && height != null)
-              ? (width! < height! ? width! * 0.3 : height! * 0.3)
-              : 24,
+          size: _calculateIconSize(width, height),
         ),
       ),
     );
@@ -158,9 +190,7 @@ class NetworkImageWithFallback extends StatelessWidget {
       child: Icon(
         Icons.image_not_supported,
         color: Colors.white.withValues(alpha: 0.9),
-        size: (width != null && height != null)
-            ? (width! < height! ? width! * 0.3 : height! * 0.3)
-            : 24,
+        size: _calculateIconSize(width, height),
       ),
     );
   }

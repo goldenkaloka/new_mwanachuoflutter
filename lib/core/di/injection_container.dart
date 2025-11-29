@@ -64,6 +64,13 @@ import 'package:mwanachuo/features/shared/search/domain/usecases/get_search_sugg
 import 'package:mwanachuo/features/shared/search/domain/usecases/save_search_query.dart';
 import 'package:mwanachuo/features/shared/search/domain/usecases/search_content.dart';
 import 'package:mwanachuo/features/shared/search/presentation/cubit/search_cubit.dart';
+import 'package:mwanachuo/features/shared/recommendations/data/datasources/recommendation_remote_data_source.dart';
+import 'package:mwanachuo/features/shared/recommendations/data/repositories/recommendation_repository_impl.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/repositories/recommendation_repository.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/usecases/get_product_recommendations.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/usecases/get_service_recommendations.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/usecases/get_accommodation_recommendations.dart';
+import 'package:mwanachuo/features/shared/recommendations/presentation/cubit/recommendation_cubit.dart';
 import 'package:mwanachuo/features/shared/notifications/data/datasources/notification_local_data_source.dart';
 import 'package:mwanachuo/features/shared/notifications/data/datasources/notification_remote_data_source.dart';
 import 'package:mwanachuo/features/shared/notifications/data/repositories/notification_repository_impl.dart';
@@ -183,6 +190,7 @@ Future<void> initializeDependencies() async {
   await _initMediaFeature();
   await _initReviewsFeature();
   await _initSearchFeature();
+  await _initRecommendationsFeature();
   await _initNotificationsFeature();
   await _initSubscriptionsFeature();
 
@@ -413,6 +421,38 @@ Future<void> _initSearchFeature() async {
       saveSearchQuery: sl(),
       clearSearchHistory: sl(),
       getPopularSearches: sl(),
+    ),
+  );
+}
+
+// ============================================
+// RECOMMENDATIONS FEATURE (SHARED)
+// ============================================
+Future<void> _initRecommendationsFeature() async {
+  // Use Cases
+  sl.registerLazySingleton(() => GetProductRecommendations(sl()));
+  sl.registerLazySingleton(() => GetServiceRecommendations(sl()));
+  sl.registerLazySingleton(() => GetAccommodationRecommendations(sl()));
+
+  // Repository
+  sl.registerLazySingleton<RecommendationRepository>(
+    () => RecommendationRepositoryImpl(
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
+  // Data Sources
+  sl.registerLazySingleton<RecommendationRemoteDataSource>(
+    () => RecommendationRemoteDataSourceImpl(supabaseClient: sl()),
+  );
+
+  // Cubit
+  sl.registerFactory(
+    () => RecommendationCubit(
+      getProductRecommendations: sl(),
+      getServiceRecommendations: sl(),
+      getAccommodationRecommendations: sl(),
     ),
   );
 }

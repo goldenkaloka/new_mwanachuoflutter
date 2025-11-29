@@ -378,11 +378,11 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
 
           const SizedBox(height: 16.0),
 
-          // Submit Button
+          // Submit Button (Secondary style - outlined)
           SizedBox(
             width: double.infinity,
-            height: 48.0,
-            child: ElevatedButton(
+            height: 44.0,
+            child: OutlinedButton(
               onPressed: isSubmitting
                   ? null
                   : () {
@@ -405,27 +405,31 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                         );
                       }
                     },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimaryColor,
-                foregroundColor: Colors.white,
+              style: OutlinedButton.styleFrom(
+                foregroundColor: kPrimaryColor,
+                side: BorderSide(
+                  color: kPrimaryColor,
+                  width: 1.5,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12.0),
                 ),
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
               ),
               child: isSubmitting
-                  ? const SizedBox(
-                      height: 24,
-                      width: 24,
+                  ? SizedBox(
+                      height: 20,
+                      width: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
                       ),
                     )
                   : Text(
                       'Submit Review',
                       style: GoogleFonts.inter(
-                        fontSize: 16.0,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 15.0,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
             ),
@@ -622,13 +626,18 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                     const SizedBox(height: 2.0),
                     Row(
                       children: [
-                        _buildStarRating(review.rating, 14.0),
+                        Flexible(
+                          child: _buildStarRating(review.rating, 14.0),
+                        ),
                         const SizedBox(width: 8.0),
-                        Text(
-                          _formatDate(review.createdAt),
-                          style: GoogleFonts.inter(
-                            color: secondaryTextColor,
-                            fontSize: 13.0,
+                        Flexible(
+                          child: Text(
+                            _formatDate(review.createdAt),
+                            style: GoogleFonts.inter(
+                              color: secondaryTextColor,
+                              fontSize: 13.0,
+                            ),
+                            overflow: TextOverflow.ellipsis,
                           ),
                         ),
                       ],
@@ -683,16 +692,29 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
   }
 
   Widget _buildStarRating(double rating, double size) {
+    // Make icon size adaptive based on screen size
+    final adaptiveSize = ResponsiveBreakpoints.responsiveValue(
+      context,
+      compact: size * 0.85,
+      medium: size,
+      expanded: size,
+    );
+    
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: List.generate(5, (index) {
+        Widget icon;
         if (index < rating.floor()) {
-          return Icon(Icons.star, size: size, color: Colors.amber[600]);
+          icon = Icon(Icons.star, size: adaptiveSize, color: Colors.amber[600]);
         } else if (index < rating) {
-          return Icon(Icons.star_half, size: size, color: Colors.amber[600]);
+          icon = Icon(Icons.star_half, size: adaptiveSize, color: Colors.amber[600]);
         } else {
-          return Icon(Icons.star_border, size: size, color: Colors.amber[600]);
+          icon = Icon(Icons.star_border, size: adaptiveSize, color: Colors.amber[600]);
         }
+        return Padding(
+          padding: EdgeInsets.only(right: index < 4 ? 2.0 : 0),
+          child: icon,
+        );
       }),
     );
   }

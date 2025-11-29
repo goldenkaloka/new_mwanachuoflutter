@@ -185,7 +185,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
                   content: Text('${newFiles.length} image(s) selected'),
-                  backgroundColor: Colors.green,
+                  backgroundColor: kPrimaryColor,
                 ),
               );
             }

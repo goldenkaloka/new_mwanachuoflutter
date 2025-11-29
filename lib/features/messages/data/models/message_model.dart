@@ -9,6 +9,7 @@ class MessageModel extends MessageEntity {
     super.senderAvatar,
     required super.content,
     super.imageUrl,
+    super.metadata,
     super.isRead,
     required super.createdAt,
     super.readAt,
@@ -26,6 +27,9 @@ class MessageModel extends MessageEntity {
       senderAvatar: json['sender_avatar'] as String?,
       content: json['content'] as String,
       imageUrl: json['image_url'] as String?,
+      metadata: json['metadata'] != null
+          ? Map<String, dynamic>.from(json['metadata'] as Map)
+          : null,
       isRead: json['is_read'] as bool? ?? false,
       createdAt: DateTime.parse(json['created_at'] as String),
       readAt: json['read_at'] != null
@@ -50,6 +54,7 @@ class MessageModel extends MessageEntity {
       'sender_avatar': senderAvatar,
       'content': content,
       'image_url': imageUrl,
+      'metadata': metadata,
       'is_read': isRead,
       'created_at': createdAt.toIso8601String(),
       'read_at': readAt?.toIso8601String(),

@@ -182,7 +182,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text('Accommodation updated successfully!'),
-                backgroundColor: Colors.green,
+                backgroundColor: kPrimaryColor,
               ),
             );
             Navigator.pop(context, true); // Return true to indicate success
@@ -281,7 +281,9 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                                     .map(
                                       (type) => DropdownMenuItem(
                                         value: type,
-                                        child: Text(type),
+                                        child: Text(
+                                          PriceTypes.getDisplayName(type),
+                                        ),
                                       ),
                                     )
                                     .toList(),

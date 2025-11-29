@@ -11,15 +11,22 @@ class NotificationSettingsScreen extends StatefulWidget {
   const NotificationSettingsScreen({super.key});
 
   @override
-  State<NotificationSettingsScreen> createState() => _NotificationSettingsScreenState();
+  State<NotificationSettingsScreen> createState() =>
+      _NotificationSettingsScreenState();
 }
 
-class _NotificationSettingsScreenState extends State<NotificationSettingsScreen> {
-  final GetNotificationPreferences _getNotificationPreferences = sl<GetNotificationPreferences>();
-  final UpdateNotificationPreferences _updateNotificationPreferences = sl<UpdateNotificationPreferences>();
-  
+class _NotificationSettingsScreenState
+    extends State<NotificationSettingsScreen> {
+  final GetNotificationPreferences _getNotificationPreferences =
+      sl<GetNotificationPreferences>();
+  final UpdateNotificationPreferences _updateNotificationPreferences =
+      sl<UpdateNotificationPreferences>();
+
   NotificationPreferencesEntity? _preferences;
   bool _isLoading = true;
+  bool _quietHoursEnabled = false;
+  TimeOfDay? _quietHoursStart;
+  TimeOfDay? _quietHoursEnd;
 
   @override
   void initState() {
@@ -46,6 +53,18 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
         setState(() {
           _preferences = preferences;
           _isLoading = false;
+
+          // Load quiet hours
+          if (preferences.quietHoursStart != null) {
+            _quietHoursStart = TimeOfDay.fromDateTime(
+              preferences.quietHoursStart!,
+            );
+            _quietHoursEnabled = true;
+          }
+          if (preferences.quietHoursEnd != null) {
+            _quietHoursEnd = TimeOfDay.fromDateTime(preferences.quietHoursEnd!);
+            _quietHoursEnabled = true;
+          }
         });
       },
     );
@@ -58,7 +77,19 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     bool? listingsEnabled,
     bool? promotionsEnabled,
     bool? sellerRequestsEnabled,
+    bool? soundEnabled,
+    bool? vibrationEnabled,
+    bool? badgeEnabled,
+    bool? inAppBannerEnabled,
+    bool? groupNotifications,
+    bool? groupByCategory,
+    DateTime? quietHoursStart,
+    DateTime? quietHoursEnd,
   }) async {
+    // If disabling quiet hours (passing null), we need to handle it carefully
+    // The repository handles nulls as "no change", so we might need a specific flag or logic
+    // But assuming the repository handles explicit nulls if we pass them
+
     final result = await _updateNotificationPreferences(
       pushEnabled: pushEnabled,
       messagesEnabled: messagesEnabled,
@@ -66,6 +97,14 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
       listingsEnabled: listingsEnabled,
       promotionsEnabled: promotionsEnabled,
       sellerRequestsEnabled: sellerRequestsEnabled,
+      quietHoursStart: quietHoursStart,
+      quietHoursEnd: quietHoursEnd,
+      soundEnabled: soundEnabled,
+      vibrationEnabled: vibrationEnabled,
+      badgeEnabled: badgeEnabled,
+      inAppBannerEnabled: inAppBannerEnabled,
+      groupNotifications: groupNotifications,
+      groupByCategory: groupByCategory,
     );
 
     result.fold(
@@ -85,12 +124,18 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
-    final surfaceColor = isDarkMode ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.white;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
+    final surfaceColor = isDarkMode
+        ? Colors.grey[800]!.withValues(alpha: 0.5)
+        : Colors.white;
     final borderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
 
     return Scaffold(
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: ResponsiveBuilder(
         builder: (context, screenSize) {
           return Column(
@@ -105,7 +150,9 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                         child: ResponsiveContainer(
                           child: Padding(
                             padding: EdgeInsets.all(
-                              ResponsiveBreakpoints.responsiveHorizontalPadding(context),
+                              ResponsiveBreakpoints.responsiveHorizontalPadding(
+                                context,
+                              ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,7 +178,8 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                                     _NotificationItem(
                                       icon: Icons.notifications_active,
                                       title: 'Enable Push Notifications',
-                                      description: 'Receive push notifications on your device',
+                                      description:
+                                          'Receive push notifications on your device',
                                       value: _preferences?.pushEnabled ?? true,
                                       onChanged: (value) {
                                         _updatePreference(pushEnabled: value);
@@ -160,54 +208,118 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
                                     _NotificationItem(
                                       icon: Icons.message,
                                       title: 'Messages',
-                                      description: 'New messages from other users',
-                                      value: _preferences?.messagesEnabled ?? true,
-                                      enabled: _preferences?.pushEnabled ?? true,
+                                      description:
+                                          'New messages from other users',
+                                      value:
+                                          _preferences?.messagesEnabled ?? true,
+                                      enabled:
+                                          _preferences?.pushEnabled ?? true,
                                       onChanged: (value) {
-                                        _updatePreference(messagesEnabled: value);
+                                        _updatePreference(
+                                          messagesEnabled: value,
+                                        );
                                       },
                                     ),
                                     _NotificationItem(
                                       icon: Icons.star,
                                       title: 'Reviews',
-                                      description: 'New reviews on your listings',
-                                      value: _preferences?.reviewsEnabled ?? true,
-                                      enabled: _preferences?.pushEnabled ?? true,
+                                      description:
+                                          'New reviews on your listings',
+                                      value:
+                                          _preferences?.reviewsEnabled ?? true,
+                                      enabled:
+                                          _preferences?.pushEnabled ?? true,
                                       onChanged: (value) {
-                                        _updatePreference(reviewsEnabled: value);
+                                        _updatePreference(
+                                          reviewsEnabled: value,
+                                        );
                                       },
                                     ),
                                     _NotificationItem(
                                       icon: Icons.store,
                                       title: 'New Listings',
-                                      description: 'New products, services, and accommodations',
-                                      value: _preferences?.listingsEnabled ?? true,
-                                      enabled: _preferences?.pushEnabled ?? true,
+                                      description:
+                                          'New products, services, and accommodations',
+                                      value:
+                                          _preferences?.listingsEnabled ?? true,
+                                      enabled:
+                                          _preferences?.pushEnabled ?? true,
                                       onChanged: (value) {
-                                        _updatePreference(listingsEnabled: value);
+                                        _updatePreference(
+                                          listingsEnabled: value,
+                                        );
                                       },
                                     ),
                                     _NotificationItem(
                                       icon: Icons.local_offer,
                                       title: 'Promotions',
-                                      description: 'Special offers and promotions',
-                                      value: _preferences?.promotionsEnabled ?? true,
-                                      enabled: _preferences?.pushEnabled ?? true,
+                                      description:
+                                          'Special offers and promotions',
+                                      value:
+                                          _preferences?.promotionsEnabled ??
+                                          true,
+                                      enabled:
+                                          _preferences?.pushEnabled ?? true,
                                       onChanged: (value) {
-                                        _updatePreference(promotionsEnabled: value);
+                                        _updatePreference(
+                                          promotionsEnabled: value,
+                                        );
                                       },
                                     ),
                                     _NotificationItem(
                                       icon: Icons.verified_user,
                                       title: 'Seller Requests',
-                                      description: 'Seller access requests and approvals',
-                                      value: _preferences?.sellerRequestsEnabled ?? true,
-                                      enabled: _preferences?.pushEnabled ?? true,
+                                      description:
+                                          'Seller access requests and approvals',
+                                      value:
+                                          _preferences?.sellerRequestsEnabled ??
+                                          true,
+                                      enabled:
+                                          _preferences?.pushEnabled ?? true,
                                       onChanged: (value) {
-                                        _updatePreference(sellerRequestsEnabled: value);
+                                        _updatePreference(
+                                          sellerRequestsEnabled: value,
+                                        );
                                       },
                                     ),
                                   ],
+                                ),
+                                SizedBox(
+                                  height: ResponsiveBreakpoints.responsiveValue(
+                                    context,
+                                    compact: 24.0,
+                                    medium: 32.0,
+                                    expanded: 40.0,
+                                  ),
+                                ),
+
+                                // Quiet Hours Section
+                                _buildQuietHoursSection(
+                                  context,
+                                  primaryTextColor,
+                                  secondaryTextColor,
+                                  surfaceColor,
+                                  borderColor,
+                                  isDarkMode,
+                                  screenSize,
+                                ),
+                                SizedBox(
+                                  height: ResponsiveBreakpoints.responsiveValue(
+                                    context,
+                                    compact: 24.0,
+                                    medium: 32.0,
+                                    expanded: 40.0,
+                                  ),
+                                ),
+                                // Enhanced Preferences Section
+                                _buildEnhancedPreferencesSection(
+                                  context,
+                                  primaryTextColor,
+                                  secondaryTextColor,
+                                  surfaceColor,
+                                  borderColor,
+                                  isDarkMode,
+                                  screenSize,
                                 ),
                               ],
                             ),
@@ -222,8 +334,327 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
     );
   }
 
-  Widget _buildTopAppBar(BuildContext context, Color primaryTextColor, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+  Widget _buildQuietHoursSection(
+    BuildContext context,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color surfaceColor,
+    Color borderColor,
+    bool isDarkMode,
+    ScreenSize screenSize,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSection(
+          context,
+          'Quiet Hours',
+          primaryTextColor,
+          secondaryTextColor,
+          surfaceColor,
+          borderColor,
+          isDarkMode,
+          screenSize,
+          [
+            _NotificationItem(
+              icon: Icons.bedtime,
+              title: 'Enable Quiet Hours',
+              description: 'Silence notifications during selected hours',
+              value: _quietHoursEnabled,
+              enabled: _preferences?.pushEnabled ?? true,
+              onChanged: (value) {
+                setState(() {
+                  _quietHoursEnabled = value;
+                  if (!value) {
+                    _quietHoursStart = null;
+                    _quietHoursEnd = null;
+                    _updateQuietHours(null, null);
+                  }
+                });
+              },
+            ),
+          ],
+        ),
+        if (_quietHoursEnabled) ...[
+          SizedBox(
+            height: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 16.0,
+              medium: 20.0,
+              expanded: 24.0,
+            ),
+          ),
+          Container(
+            decoration: BoxDecoration(
+              color: surfaceColor,
+              borderRadius: BorderRadius.circular(16.0),
+            ),
+            padding: EdgeInsets.all(
+              ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 20.0,
+                expanded: 24.0,
+              ),
+            ),
+            child: Column(
+              children: [
+                _buildTimePicker(
+                  context,
+                  'Start Time',
+                  _quietHoursStart ?? const TimeOfDay(hour: 22, minute: 0),
+                  primaryTextColor,
+                  borderColor,
+                  (time) {
+                    setState(() {
+                      _quietHoursStart = time;
+                    });
+                    _updateQuietHours(time, _quietHoursEnd);
+                  },
+                ),
+                SizedBox(
+                  height: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 16.0,
+                    medium: 20.0,
+                    expanded: 24.0,
+                  ),
+                ),
+                _buildTimePicker(
+                  context,
+                  'End Time',
+                  _quietHoursEnd ?? const TimeOfDay(hour: 8, minute: 0),
+                  primaryTextColor,
+                  borderColor,
+                  (time) {
+                    setState(() {
+                      _quietHoursEnd = time;
+                    });
+                    _updateQuietHours(_quietHoursStart, time);
+                  },
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTimePicker(
+    BuildContext context,
+    String label,
+    TimeOfDay initialTime,
+    Color primaryTextColor,
+    Color borderColor,
+    ValueChanged<TimeOfDay> onTimeSelected,
+  ) {
+    return InkWell(
+      onTap: () async {
+        final TimeOfDay? picked = await showTimePicker(
+          context: context,
+          initialTime: initialTime,
+          builder: (context, child) {
+            return Theme(
+              data: Theme.of(context).copyWith(
+                colorScheme: ColorScheme.light(
+                  primary: kPrimaryColor,
+                  onPrimary: Colors.white,
+                  onSurface: primaryTextColor,
+                ),
+              ),
+              child: child!,
+            );
+          },
+        );
+        if (picked != null) {
+          onTimeSelected(picked);
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 16.0),
+        decoration: BoxDecoration(
+          border: Border.all(color: borderColor),
+          borderRadius: BorderRadius.circular(12.0),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: primaryTextColor,
+                fontSize: 16.0,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Row(
+              children: [
+                Text(
+                  initialTime.format(context),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: primaryTextColor,
+                    fontSize: 16.0,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.access_time, color: primaryTextColor),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _updateQuietHours(TimeOfDay? start, TimeOfDay? end) async {
+    if (start == null || end == null) {
+      // Disable quiet hours
+      await _updatePreference(quietHoursStart: null, quietHoursEnd: null);
+      return;
+    }
+
+    // Convert TimeOfDay to DateTime for storage
+    final now = DateTime.now();
+    final startDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      start.hour,
+      start.minute,
+    );
+    final endDateTime = DateTime(
+      now.year,
+      now.month,
+      now.day,
+      end.hour,
+      end.minute,
+    );
+
+    await _updatePreference(
+      quietHoursStart: startDateTime,
+      quietHoursEnd: endDateTime,
+    );
+  }
+
+  Widget _buildEnhancedPreferencesSection(
+    BuildContext context,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color surfaceColor,
+    Color borderColor,
+    bool isDarkMode,
+    ScreenSize screenSize,
+  ) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildSection(
+          context,
+          'Display Preferences',
+          primaryTextColor,
+          secondaryTextColor,
+          surfaceColor,
+          borderColor,
+          isDarkMode,
+          screenSize,
+          [
+            _NotificationItem(
+              icon: Icons.volume_up,
+              title: 'Sound',
+              description: 'Play sound for notifications',
+              value: _preferences?.soundEnabled ?? true,
+              enabled: _preferences?.pushEnabled ?? true,
+              onChanged: (value) {
+                _updatePreference(soundEnabled: value);
+              },
+            ),
+            _NotificationItem(
+              icon: Icons.vibration,
+              title: 'Vibration',
+              description: 'Vibrate device for notifications',
+              value: _preferences?.vibrationEnabled ?? true,
+              enabled: _preferences?.pushEnabled ?? true,
+              onChanged: (value) {
+                _updatePreference(vibrationEnabled: value);
+              },
+            ),
+            _NotificationItem(
+              icon: Icons.badge,
+              title: 'Badge Count',
+              description: 'Show unread count on app icon',
+              value: _preferences?.badgeEnabled ?? true,
+              enabled: _preferences?.pushEnabled ?? true,
+              onChanged: (value) {
+                _updatePreference(badgeEnabled: value);
+              },
+            ),
+            _NotificationItem(
+              icon: Icons.notifications_active,
+              title: 'In-App Banners',
+              description: 'Show banners when app is open',
+              value: _preferences?.inAppBannerEnabled ?? true,
+              enabled: _preferences?.pushEnabled ?? true,
+              onChanged: (value) {
+                _updatePreference(inAppBannerEnabled: value);
+              },
+            ),
+          ],
+        ),
+        SizedBox(
+          height: ResponsiveBreakpoints.responsiveValue(
+            context,
+            compact: 24.0,
+            medium: 32.0,
+            expanded: 40.0,
+          ),
+        ),
+        _buildSection(
+          context,
+          'Grouping',
+          primaryTextColor,
+          secondaryTextColor,
+          surfaceColor,
+          borderColor,
+          isDarkMode,
+          screenSize,
+          [
+            _NotificationItem(
+              icon: Icons.group,
+              title: 'Group Notifications',
+              description: 'Group related notifications together',
+              value: _preferences?.groupNotifications ?? true,
+              enabled: _preferences?.pushEnabled ?? true,
+              onChanged: (value) {
+                _updatePreference(groupNotifications: value);
+              },
+            ),
+            _NotificationItem(
+              icon: Icons.category,
+              title: 'Group by Category',
+              description: 'Group notifications by type',
+              value: _preferences?.groupByCategory ?? true,
+              enabled:
+                  _preferences?.pushEnabled ??
+                  true && (_preferences?.groupNotifications ?? true),
+              onChanged: (value) {
+                _updatePreference(groupByCategory: value);
+              },
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTopAppBar(
+    BuildContext context,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return Container(
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
@@ -353,7 +784,7 @@ class _NotificationSettingsScreenState extends State<NotificationSettingsScreen>
             children: List.generate(items.length, (index) {
               final item = items[index];
               final isLast = index == items.length - 1;
-              
+
               return Column(
                 children: [
                   _buildNotificationItem(
@@ -532,4 +963,3 @@ class _NotificationItem {
     required this.onChanged,
   });
 }
-

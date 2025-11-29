@@ -209,7 +209,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             'status': 'rejected',
             'reviewed_by': adminId,
             'review_notes': notes,
-            'updated_at': DateTime.now().toIso8601String(),
+            'reviewed_at': DateTime.now().toIso8601String(),
           })
           .eq('id', requestId);
     } catch (e) {

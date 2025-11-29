@@ -29,6 +29,7 @@ abstract class MessageRepository {
     required String content,
     String? imageUrl,
     String? repliedToMessageId,
+    Map<String, dynamic>? metadata,
   });
 
   /// Mark messages as read

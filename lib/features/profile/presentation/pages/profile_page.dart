@@ -38,19 +38,23 @@ class ProfilePage extends StatelessWidget {
           } else if (state is Authenticated) {
             // User authenticated - always reload profile to ensure we have the correct user's data
             // This handles both new logins and user switches
-            debugPrint('🔄 User authenticated, reloading profile for user: ${state.user.id}');
+            debugPrint(
+              '🔄 User authenticated, reloading profile for user: ${state.user.id}',
+            );
             context.read<ProfileBloc>().add(LoadMyProfileEvent());
           } else if (state is AuthError) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text(state.message)),
-            );
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.message)));
           }
         },
         child: BlocBuilder<ProfileBloc, ProfileState>(
           builder: (context, state) {
             if (state is ProfileLoading) {
               return Scaffold(
-                backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+                backgroundColor: isDarkMode
+                    ? kBackgroundColorDark
+                    : kBackgroundColorLight,
                 body: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
@@ -69,12 +73,18 @@ class ProfilePage extends StatelessWidget {
 
             if (state is ProfileError) {
               return Scaffold(
-                backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+                backgroundColor: isDarkMode
+                    ? kBackgroundColorDark
+                    : kBackgroundColorLight,
                 body: Center(
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Icon(Icons.error_outline, size: 64, color: Colors.red),
+                      const Icon(
+                        Icons.error_outline,
+                        size: 64,
+                        color: Colors.red,
+                      ),
                       const SizedBox(height: 16),
                       Text(
                         state.message,
@@ -109,7 +119,9 @@ class ProfilePage extends StatelessWidget {
             }
 
             return Scaffold(
-              backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+              backgroundColor: isDarkMode
+                  ? kBackgroundColorDark
+                  : kBackgroundColorLight,
               body: const Center(child: Text('Unexpected state')),
             );
           },
@@ -118,31 +130,62 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildProfileUI(BuildContext context, bool isDarkMode, Color primaryTextColor, Color secondaryTextColor, UserProfileEntity profile) {
+  Widget _buildProfileUI(
+    BuildContext context,
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    UserProfileEntity profile,
+  ) {
     return Scaffold(
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: ResponsiveBuilder(
         builder: (context, screenSize) {
           return Column(
             children: [
               // Top App Bar (Sticky)
-              _buildTopAppBar(context, primaryTextColor, isDarkMode, screenSize),
-              
+              _buildTopAppBar(
+                context,
+                primaryTextColor,
+                isDarkMode,
+                screenSize,
+              ),
+
               // Scrollable Content
               Expanded(
                 child: SingleChildScrollView(
+                  padding: EdgeInsets.only(
+                    bottom: ResponsiveBreakpoints.isCompact(context) ||
+                            ResponsiveBreakpoints.isMedium(context)
+                        ? 80.0 // Space for bottom navbar
+                        : 0.0,
+                  ),
                   child: ResponsiveContainer(
                     child: Column(
                       children: [
                         // Profile Header
-                        _buildProfileHeader(context, primaryTextColor, secondaryTextColor, screenSize, profile),
-                        
+                        _buildProfileHeader(
+                          context,
+                          primaryTextColor,
+                          secondaryTextColor,
+                          screenSize,
+                          profile,
+                        ),
+
                         // Content Section
                         Column(
                           children: [
                             // Membership Status Card
-                            _buildMembershipCard(context, primaryTextColor, secondaryTextColor, isDarkMode, screenSize),
-                            
+                            _buildMembershipCard(
+                              context,
+                              primaryTextColor,
+                              secondaryTextColor,
+                              isDarkMode,
+                              screenSize,
+                            ),
+
                             SizedBox(
                               height: ResponsiveBreakpoints.responsiveValue(
                                 context,
@@ -151,10 +194,17 @@ class ProfilePage extends StatelessWidget {
                                 expanded: 20.0,
                               ),
                             ),
-                            
+
                             // Navigation List Group
-                            _buildNavigationList(context, primaryTextColor, secondaryTextColor, isDarkMode, screenSize, profile),
-                            
+                            _buildNavigationList(
+                              context,
+                              primaryTextColor,
+                              secondaryTextColor,
+                              isDarkMode,
+                              screenSize,
+                              profile,
+                            ),
+
                             SizedBox(
                               height: ResponsiveBreakpoints.responsiveValue(
                                 context,
@@ -163,7 +213,7 @@ class ProfilePage extends StatelessWidget {
                                 expanded: 24.0,
                               ),
                             ),
-                            
+
                             // Logout Button
                             _buildLogoutButton(context, isDarkMode, screenSize),
                           ],
@@ -180,8 +230,15 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildTopAppBar(BuildContext context, Color primaryTextColor, bool isDarkMode, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+  Widget _buildTopAppBar(
+    BuildContext context,
+    Color primaryTextColor,
+    bool isDarkMode,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
@@ -193,7 +250,9 @@ class ProfilePage extends StatelessWidget {
             8.0,
           ),
           decoration: BoxDecoration(
-            color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: 0.8),
+            color: Theme.of(
+              context,
+            ).scaffoldBackgroundColor.withValues(alpha: 0.8),
             border: Border(
               bottom: BorderSide(
                 color: kPrimaryColor.withValues(alpha: 0.2),
@@ -261,7 +320,7 @@ class ProfilePage extends StatelessWidget {
       medium: 136.0,
       expanded: 160.0,
     );
-    
+
     return Padding(
       padding: EdgeInsets.all(
         ResponsiveBreakpoints.responsiveValue(
@@ -513,20 +572,23 @@ class ProfilePage extends StatelessWidget {
     dynamic profile,
   ) {
     final menuItems = <_MenuItem>[];
-    
+
     // Show "Become a Seller" for buyers only
     if (profile.role.toString().contains('buyer')) {
-      menuItems.add(_MenuItem(
-        icon: Icons.storefront,
-        title: 'Become a Seller',
-        onTap: () {
-          Navigator.pushNamed(context, '/become-seller');
-        },
-      ));
+      menuItems.add(
+        _MenuItem(
+          icon: Icons.storefront,
+          title: 'Become a Seller',
+          onTap: () {
+            Navigator.pushNamed(context, '/become-seller');
+          },
+        ),
+      );
     }
-    
+
     // Show "My Listings", "Dashboard", and "Subscription" for sellers only
-    if (profile.role.toString().contains('seller') || profile.role.toString().contains('admin')) {
+    if (profile.role.toString().contains('seller') ||
+        profile.role.toString().contains('admin')) {
       menuItems.addAll([
         _MenuItem(
           icon: Icons.dashboard_outlined,
@@ -551,7 +613,20 @@ class ProfilePage extends StatelessWidget {
         ),
       ]);
     }
-    
+
+    // Show "Seller Requests" for admin only
+    if (profile.role.toString().contains('admin')) {
+      menuItems.add(
+        _MenuItem(
+          icon: Icons.verified_user,
+          title: 'Seller Requests',
+          onTap: () {
+            Navigator.pushNamed(context, '/seller-requests');
+          },
+        ),
+      );
+    }
+
     // Common menu items for all users
     menuItems.addAll([
       _MenuItem(
@@ -572,14 +647,16 @@ class ProfilePage extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey[800]!.withValues(alpha: 0.5) : Colors.white,
+        color: isDarkMode
+            ? Colors.grey[800]!.withValues(alpha: 0.5)
+            : Colors.white,
         borderRadius: BorderRadius.circular(16.0),
       ),
       child: Column(
         children: List.generate(menuItems.length, (index) {
           final item = menuItems[index];
           final isLast = index == menuItems.length - 1;
-          
+
           return Column(
             children: [
               InkWell(
@@ -618,7 +695,9 @@ class ProfilePage extends StatelessWidget {
                           expanded: 56.0,
                         ),
                         decoration: BoxDecoration(
-                          color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+                          color: isDarkMode
+                              ? kBackgroundColorDark
+                              : kBackgroundColorLight,
                           borderRadius: BorderRadius.circular(16.0),
                         ),
                         child: Icon(
@@ -705,7 +784,11 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _buildLogoutButton(BuildContext context, bool isDarkMode, ScreenSize screenSize) {
+  Widget _buildLogoutButton(
+    BuildContext context,
+    bool isDarkMode,
+    ScreenSize screenSize,
+  ) {
     return Padding(
       padding: EdgeInsets.symmetric(
         horizontal: ResponsiveBreakpoints.responsiveValue(
@@ -749,7 +832,9 @@ class ProfilePage extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimaryColor,
                 foregroundColor: kBackgroundColorDark,
-                padding: const EdgeInsets.symmetric(horizontal: 24.0), // M3 standard
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 24.0,
+                ), // M3 standard
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(24.0), // M3 standard
                 ),
@@ -769,7 +854,7 @@ class ProfilePage extends StatelessWidget {
       builder: (BuildContext context) {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-        
+
         return AlertDialog(
           backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
           shape: RoundedRectangleBorder(
@@ -784,18 +869,14 @@ class ProfilePage extends StatelessWidget {
           ),
           content: Text(
             'Are you sure you want to logout?',
-            style: GoogleFonts.plusJakartaSans(
-              color: primaryTextColor,
-            ),
+            style: GoogleFonts.plusJakartaSans(color: primaryTextColor),
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(context),
               child: Text(
                 'Cancel',
-                style: GoogleFonts.plusJakartaSans(
-                  color: primaryTextColor,
-                ),
+                style: GoogleFonts.plusJakartaSans(color: primaryTextColor),
               ),
             ),
             BlocBuilder<AuthBloc, AuthState>(
@@ -814,10 +895,15 @@ class ProfilePage extends StatelessWidget {
                     backgroundColor: kPrimaryColor,
                     foregroundColor: kBackgroundColorDark,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0), // M3 dialog button
+                      borderRadius: BorderRadius.circular(
+                        20.0,
+                      ), // M3 dialog button
                     ),
                     elevation: 2.0, // M3 standard elevation
-                    padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 12.0), // M3 standard
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24.0,
+                      vertical: 12.0,
+                    ), // M3 standard
                     minimumSize: const Size(64, 40), // M3 minimum touch target
                   ),
                   child: state is AuthLoading
@@ -851,11 +937,5 @@ class _MenuItem {
   final String title;
   final VoidCallback onTap;
 
-  _MenuItem({
-    required this.icon,
-    required this.title,
-    required this.onTap,
-  });
+  _MenuItem({required this.icon, required this.title, required this.onTap});
 }
-
-

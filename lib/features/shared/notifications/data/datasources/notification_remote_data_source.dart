@@ -51,6 +51,14 @@ abstract class NotificationRemoteDataSource {
     bool? listingsEnabled,
     bool? promotionsEnabled,
     bool? sellerRequestsEnabled,
+    bool? soundEnabled,
+    bool? vibrationEnabled,
+    bool? badgeEnabled,
+    bool? inAppBannerEnabled,
+    bool? groupNotifications,
+    bool? groupByCategory,
+    DateTime? quietHoursStart,
+    DateTime? quietHoursEnd,
   });
 }
 
@@ -235,33 +243,16 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         throw ServerException('User not authenticated');
       }
 
-      // Check if device token already exists
-      final existing = await supabaseClient
+      // Use upsert to handle both insert and update atomically
+      // This prevents race conditions where multiple requests try to insert the same player_id
+      await supabaseClient
           .from(DatabaseConstants.deviceTokensTable)
-          .select()
-          .eq('player_id', playerId)
-          .maybeSingle();
-
-      if (existing != null) {
-        // Update existing token
-        await supabaseClient
-            .from(DatabaseConstants.deviceTokensTable)
-            .update({
-              'user_id': currentUser.id,
-              'platform': platform,
-              'updated_at': DateTime.now().toIso8601String(),
-            })
-            .eq('player_id', playerId);
-      } else {
-        // Insert new token
-        await supabaseClient
-            .from(DatabaseConstants.deviceTokensTable)
-            .insert({
-              'user_id': currentUser.id,
-              'player_id': playerId,
-              'platform': platform,
-            });
-      }
+          .upsert({
+            'user_id': currentUser.id,
+            'player_id': playerId,
+            'platform': platform,
+            'updated_at': DateTime.now().toIso8601String(),
+          }, onConflict: 'player_id');
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
@@ -338,6 +329,14 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     bool? listingsEnabled,
     bool? promotionsEnabled,
     bool? sellerRequestsEnabled,
+    bool? soundEnabled,
+    bool? vibrationEnabled,
+    bool? badgeEnabled,
+    bool? inAppBannerEnabled,
+    bool? groupNotifications,
+    bool? groupByCategory,
+    DateTime? quietHoursStart,
+    DateTime? quietHoursEnd,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -356,6 +355,32 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
       if (promotionsEnabled != null) updateData['promotions_enabled'] = promotionsEnabled;
       if (sellerRequestsEnabled != null) {
         updateData['seller_requests_enabled'] = sellerRequestsEnabled;
+      }
+      if (soundEnabled != null) updateData['sound_enabled'] = soundEnabled;
+      if (vibrationEnabled != null) updateData['vibration_enabled'] = vibrationEnabled;
+      if (badgeEnabled != null) updateData['badge_enabled'] = badgeEnabled;
+      if (inAppBannerEnabled != null) {
+        updateData['in_app_banner_enabled'] = inAppBannerEnabled;
+      }
+      if (groupNotifications != null) {
+        updateData['group_notifications'] = groupNotifications;
+      }
+      if (groupByCategory != null) {
+        updateData['group_by_category'] = groupByCategory;
+      }
+      if (quietHoursStart != null) {
+        // Store as TIME format (HH:mm)
+        updateData['quiet_hours_start'] =
+            '${quietHoursStart.hour.toString().padLeft(2, '0')}:${quietHoursStart.minute.toString().padLeft(2, '0')}';
+      } else if (quietHoursStart == null && quietHoursEnd == null) {
+        // Both null means disable quiet hours
+        updateData['quiet_hours_start'] = null;
+        updateData['quiet_hours_end'] = null;
+      }
+      if (quietHoursEnd != null) {
+        // Store as TIME format (HH:mm)
+        updateData['quiet_hours_end'] =
+            '${quietHoursEnd.hour.toString().padLeft(2, '0')}:${quietHoursEnd.minute.toString().padLeft(2, '0')}';
       }
 
       final response = await supabaseClient

@@ -25,11 +25,33 @@ class LoadConversationsEvent extends MessageEvent {
 
 class GetOrCreateConversationEvent extends MessageEvent {
   final String otherUserId;
+  final String? listingId;
+  final String? listingType; // 'product', 'service', 'accommodation'
+  final String? listingTitle;
+  final String? listingImageUrl;
+  final String? listingPrice;
+  final String? listingPriceType; // For accommodations: 'per_month', etc.
 
-  const GetOrCreateConversationEvent({required this.otherUserId});
+  const GetOrCreateConversationEvent({
+    required this.otherUserId,
+    this.listingId,
+    this.listingType,
+    this.listingTitle,
+    this.listingImageUrl,
+    this.listingPrice,
+    this.listingPriceType,
+  });
 
   @override
-  List<Object?> get props => [otherUserId];
+  List<Object?> get props => [
+        otherUserId,
+        listingId,
+        listingType,
+        listingTitle,
+        listingImageUrl,
+        listingPrice,
+        listingPriceType,
+      ];
 }
 
 class LoadMessagesEvent extends MessageEvent {
@@ -52,12 +74,14 @@ class SendMessageEvent extends MessageEvent {
   final String content;
   final String? imageUrl;
   final String? repliedToMessageId;
+  final Map<String, dynamic>? metadata;
 
   const SendMessageEvent({
     required this.conversationId,
     required this.content,
     this.imageUrl,
     this.repliedToMessageId,
+    this.metadata,
   });
 
   @override
@@ -66,6 +90,7 @@ class SendMessageEvent extends MessageEvent {
     content,
     imageUrl,
     repliedToMessageId,
+    metadata,
   ];
 }
 

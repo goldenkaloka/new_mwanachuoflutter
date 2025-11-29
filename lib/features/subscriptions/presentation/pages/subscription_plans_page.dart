@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
@@ -166,7 +167,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                               Text(
                                 'Save \$${((plan.priceMonthly * 12) - plan.priceYearly).toStringAsFixed(2)} per year!',
                                 style: TextStyle(
-                                  color: Colors.green,
+                                  color: kPrimaryColor,
                                   fontWeight: FontWeight.bold,
                                 ),
                               ),

@@ -44,7 +44,9 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
 
     return Scaffold(
       appBar: AppBar(
@@ -54,18 +56,24 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
         ),
         backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
       ),
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is SellerRequestSubmitted) {
-            Navigator.pop(context);
+            // Don't pop - show status card instead
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
-                content: Text('Seller request submitted! We\'ll review it soon.'),
-                backgroundColor: Colors.green,
+                content: Text(
+                  'Seller request submitted! We\'ll review it soon.',
+                ),
+                backgroundColor: kPrimaryColor,
                 duration: Duration(seconds: 4),
               ),
             );
+            // Reload status to show the pending status card
+            context.read<AuthBloc>().add(const GetSellerRequestStatusEvent());
           } else if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -86,10 +94,10 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const SizedBox(height: 24),
-                  
+
                   // Show request status if exists
                   const SellerRequestStatusCard(),
-                  
+
                   // Icon
                   Center(
                     child: Container(
@@ -106,9 +114,9 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Title
                   Text(
                     'Start Selling Today!',
@@ -119,9 +127,9 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                     ),
                     textAlign: TextAlign.center,
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Description
                   Text(
                     'As a seller, you can:',
@@ -131,9 +139,9 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                       color: primaryTextColor,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   // Benefits List
                   ...[
                     '📦 Post unlimited products',
@@ -142,23 +150,25 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                     '📊 Access seller dashboard',
                     '💬 Manage customer messages',
                     '⭐ Build your reputation',
-                  ].map((benefit) => Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
-                        child: Row(
-                          children: [
-                            Text(
-                              benefit,
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: 15,
-                                color: secondaryTextColor,
-                              ),
+                  ].map(
+                    (benefit) => Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Row(
+                        children: [
+                          Text(
+                            benefit,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 15,
+                              color: secondaryTextColor,
                             ),
-                          ],
-                        ),
-                      )),
-                  
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+
                   const SizedBox(height: 32),
-                  
+
                   // Reason Field
                   Text(
                     'Why do you want to become a seller?',
@@ -168,14 +178,15 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                       color: primaryTextColor,
                     ),
                   ),
-                  
+
                   const SizedBox(height: 12),
-                  
+
                   TextFormField(
                     controller: _reasonController,
                     maxLines: 4,
                     decoration: InputDecoration(
-                      hintText: 'Tell us why you want to sell on Mwanachuoshop...',
+                      hintText:
+                          'Tell us why you want to sell on Mwanachuoshop...',
                       filled: true,
                       fillColor: isDarkMode
                           ? const Color(0xFF334155)
@@ -195,9 +206,9 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                       return null;
                     },
                   ),
-                  
+
                   const SizedBox(height: 32),
-                  
+
                   // Submit Button - M3 compliant
                   Center(
                     child: ConstrainedBox(
@@ -206,16 +217,25 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                         width: double.infinity,
                         height: 48.0, // M3 standard button height
                         child: ElevatedButton(
-                          onPressed: state is AuthLoading ? null : _submitRequest,
+                          onPressed: state is AuthLoading
+                              ? null
+                              : _submitRequest,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: kPrimaryColor,
                             foregroundColor: kBackgroundColorDark,
-                            padding: const EdgeInsets.symmetric(horizontal: 24.0), // M3 standard
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 24.0,
+                            ), // M3 standard
                             shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(24.0), // M3 standard
+                              borderRadius: BorderRadius.circular(
+                                24.0,
+                              ), // M3 standard
                             ),
                             elevation: 2.0, // M3 standard elevation
-                            minimumSize: const Size(64, 40), // M3 minimum touch target
+                            minimumSize: const Size(
+                              64,
+                              40,
+                            ), // M3 minimum touch target
                           ),
                           child: state is AuthLoading
                               ? const SizedBox(
@@ -229,8 +249,10 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                               : Text(
                                   'Submit Request',
                                   style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 16.0, // M3 standard button text size
-                                    fontWeight: FontWeight.w600, // M3 medium weight
+                                    fontSize:
+                                        16.0, // M3 standard button text size
+                                    fontWeight:
+                                        FontWeight.w600, // M3 medium weight
                                     letterSpacing: 0.1, // M3 standard tracking
                                   ),
                                 ),
@@ -238,9 +260,9 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                       ),
                     ),
                   ),
-                  
+
                   const SizedBox(height: 16),
-                  
+
                   // Note
                   Container(
                     padding: const EdgeInsets.all(16),
@@ -250,7 +272,11 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                     ),
                     child: Row(
                       children: [
-                        const Icon(Icons.info_outline, color: Colors.blue, size: 20),
+                        const Icon(
+                          Icons.info_outline,
+                          color: Colors.blue,
+                          size: 20,
+                        ),
                         const SizedBox(width: 12),
                         Expanded(
                           child: Text(
@@ -273,4 +299,3 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
     );
   }
 }
-

@@ -7,6 +7,9 @@ import 'package:mwanachuo/core/constants/typography_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/widgets/comments_and_ratings_section.dart';
 import 'package:mwanachuo/core/widgets/empty_state.dart';
+import 'package:mwanachuo/core/widgets/sliver_image_carousel.dart';
+import 'package:mwanachuo/core/widgets/sliver_section.dart';
+import 'package:mwanachuo/core/widgets/sticky_action_bar.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
@@ -15,6 +18,9 @@ import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_type.dart';
+import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_criteria_entity.dart';
+import 'package:mwanachuo/features/shared/recommendations/presentation/widgets/recommendation_section.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
@@ -185,90 +191,218 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             );
           }
 
-          return Stack(
-            children: [
-              // Main Scrollable Content
-              SingleChildScrollView(
-                padding: EdgeInsets.only(
-                  bottom: ResponsiveBreakpoints.isCompact(context) ? 112 : 0,
-                ),
-                child: ResponsiveContainer(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 100.0,
-                          medium: 80.0,
-                          expanded: 0.0,
-                        ),
-                      ),
-                      // Image Carousel
-                      _buildImageCarousel(product, screenSize),
-                      // Page Indicators
-                      _buildPageIndicators(product, isDarkMode, screenSize),
-                      // Core Product Info
-                      _buildProductInfo(product, primaryTextColor, screenSize),
-                      // Description
-                      _buildSectionDivider(isDarkMode),
-                      _buildDescription(
-                        product,
-                        primaryTextColor,
-                        secondaryTextColor,
-                        screenSize,
-                      ),
-                      // Seller Information
-                      _buildSectionDivider(isDarkMode),
-                      _buildSellerInfo(
-                        product,
-                        primaryTextColor,
-                        secondaryTextColor,
-                        cardBgColor,
-                        screenSize,
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 32.0,
-                          medium: 40.0,
-                          expanded: 48.0,
-                        ),
-                      ),
-                      // Comments and Ratings Section
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal:
-                              ResponsiveBreakpoints.responsiveHorizontalPadding(
-                                context,
-                              ),
-                        ),
-                        child: CommentsAndRatingsSection(
-                          itemId: product.id,
-                          itemType: 'product',
-                        ),
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 100.0,
-                          medium: 80.0,
-                          expanded: 60.0,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              // Sticky Top App Bar
-              _buildTopAppBar(isDarkMode, primaryTextColor, screenSize),
-              // Sticky CTA Button (only for compact)
-              if (ResponsiveBreakpoints.isCompact(context))
-                _buildCtaButton(product, isDarkMode),
-            ],
+          // Use sliver layout for compact/medium screens
+          return _buildSliverLayout(
+            context,
+            product,
+            isDarkMode,
+            primaryTextColor,
+            secondaryTextColor,
+            cardBgColor,
+            screenSize,
           );
         },
       ),
+    );
+  }
+
+  Widget _buildSliverLayout(
+    BuildContext context,
+    ProductEntity product,
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color cardBgColor,
+    ScreenSize screenSize,
+  ) {
+    final images = product.images.isNotEmpty ? product.images : [''];
+
+    return Scaffold(
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              // Hero image with parallax
+              SliverImageCarousel(
+                images: images,
+                expandedHeight: ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 400.0,
+                  medium: 420.0,
+                  expanded: 600.0,
+                ),
+              ),
+              // Product info section
+              SliverSection(
+                child: _buildProductInfoSliver(
+                  product,
+                  primaryTextColor,
+                  screenSize,
+                ),
+              ),
+              // Similar items (mid-page recommendations)
+              SliverToBoxAdapter(
+                child: RecommendationSection(
+                  currentItemId: product.id,
+                  type: RecommendationType.product,
+                  title: 'Similar Items',
+                  onItemTap: (itemId, type) {
+                    Navigator.pushNamed(
+                      context,
+                      '/product-details',
+                      arguments: itemId,
+                    );
+                  },
+                ),
+              ),
+              // Description section
+              SliverSection(
+                child: _buildDescription(
+                  product,
+                  primaryTextColor,
+                  secondaryTextColor,
+                  screenSize,
+                ),
+              ),
+              // Seller info section
+              SliverSection(
+                child: _buildSellerInfo(
+                  product,
+                  primaryTextColor,
+                  secondaryTextColor,
+                  cardBgColor,
+                  screenSize,
+                ),
+              ),
+              // Reviews section
+              SliverSection(
+                child: CommentsAndRatingsSection(
+                  itemId: product.id,
+                  itemType: 'product',
+                ),
+              ),
+              // More recommendations (bottom)
+              SliverToBoxAdapter(
+                child: RecommendationSection(
+                  currentItemId: product.id,
+                  type: RecommendationType.product,
+                  title: 'More Recommendations',
+                  criteria: RecommendationCriteriaEntity(limit: 8),
+                  onItemTap: (itemId, type) {
+                    Navigator.pushNamed(
+                      context,
+                      '/product-details',
+                      arguments: itemId,
+                    );
+                  },
+                ),
+              ),
+              // Bottom padding
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  bottom: ResponsiveBreakpoints.isCompact(context) ? 112 : 80,
+                ),
+              ),
+            ],
+          ),
+          // Sticky action bar (only for compact)
+          if (ResponsiveBreakpoints.isCompact(context))
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: StickyActionBar(
+                price: 'TZS ${product.price.toStringAsFixed(2)}',
+                actionButtonText: 'Message Seller',
+                onActionTap: () {
+                  // Handle message seller
+                  context.read<MessageBloc>().add(
+                    GetOrCreateConversationEvent(otherUserId: product.sellerId),
+                  );
+                  Navigator.pushNamed(context, '/chat');
+                },
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildProductInfoSliver(
+    ProductEntity product,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    final textTheme = Theme.of(context).textTheme;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Category Chip
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: kSpacingMd,
+            vertical: kSpacingXs,
+          ),
+          decoration: BoxDecoration(
+            color: kPrimaryColor.withValues(alpha: 0.2),
+            borderRadius: kBaseRadiusFull,
+          ),
+          child: Text(
+            product.category,
+            style: textTheme.labelMedium?.copyWith(
+              color: primaryTextColor.withValues(alpha: kOpacityHigh),
+            ),
+          ),
+        ),
+        SizedBox(height: kSpacingMd),
+        // Title
+        Text(
+          product.title,
+          style: textTheme.headlineMedium?.copyWith(color: primaryTextColor),
+        ),
+        SizedBox(height: kSpacingMd),
+        // Rating and reviews
+        if (product.rating != null && product.reviewCount != null)
+          Row(
+            children: [
+              ...List.generate(5, (index) {
+                final rating = product.rating ?? 0.0;
+                if (index < rating.floor()) {
+                  return const Icon(Icons.star, color: Colors.amber, size: 20);
+                } else if (index < rating) {
+                  return const Icon(
+                    Icons.star_half,
+                    color: Colors.amber,
+                    size: 20,
+                  );
+                } else {
+                  return Icon(
+                    Icons.star_border,
+                    color: primaryTextColor.withValues(alpha: 0.3),
+                    size: 20,
+                  );
+                }
+              }),
+              const SizedBox(width: 8),
+              Text(
+                '${product.rating!.toStringAsFixed(1)} (${product.reviewCount} ${product.reviewCount == 1 ? 'review' : 'reviews'})',
+                style: textTheme.bodyMedium?.copyWith(
+                  color: primaryTextColor.withValues(alpha: kOpacityMedium),
+                ),
+              ),
+            ],
+          ),
+        SizedBox(height: kSpacingLg),
+        // Price
+        Text(
+          'TZS ${product.price.toStringAsFixed(2)}',
+          style: textTheme.headlineSmall?.copyWith(
+            color: kPrimaryColor,
+            fontWeight: AppTypography.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -971,10 +1105,17 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                 },
                 child: ElevatedButton(
                   onPressed: () {
-                    // Get or create conversation with seller
+                    // Get or create conversation with seller, including listing details
                     context.read<MessageBloc>().add(
                       GetOrCreateConversationEvent(
                         otherUserId: product.sellerId,
+                        listingId: product.id,
+                        listingType: 'product',
+                        listingTitle: product.title,
+                        listingImageUrl: product.images.isNotEmpty
+                            ? product.images.first
+                            : null,
+                        listingPrice: 'TZS ${product.price.toStringAsFixed(2)}',
                       ),
                     );
                   },

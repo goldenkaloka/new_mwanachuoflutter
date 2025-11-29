@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 // ========================================
 // PRIMARY COLORS
 // ========================================
-const Color kPrimaryColor = Color(0xFF95F9C3); // Main brand green
+const Color kPrimaryColor = Color(0xFF078829); // Main brand green (matching accommodation card price)
 const Color kPrimaryColorDark = Color(0xFF6BD89F); // Darker shade
 const Color kPrimaryColorLight = Color(0xFFB6FCDA); // Lighter shade
 

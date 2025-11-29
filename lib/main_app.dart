@@ -40,9 +40,12 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
+import 'package:mwanachuo/core/widgets/persistent_bottom_nav_wrapper.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:app_links/app_links.dart';
 import 'dart:async';
+import 'dart:io';
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class MwanachuoshopApp extends StatefulWidget {
   const MwanachuoshopApp({super.key});
@@ -53,39 +56,65 @@ class MwanachuoshopApp extends StatefulWidget {
 
 class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
-  late AppLinks _appLinks;
+  AppLinks? _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
 
   @override
   void initState() {
     super.initState();
-    _appLinks = AppLinks();
-    
+
+    // Set navigator key for OneSignal in-app notifications
+    OneSignalConfig.navigatorKey = navigatorKey;
+
+    // AppLinks only works on mobile platforms (iOS/Android)
+    // Skip initialization on Windows, Linux, macOS, and Web
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      try {
+        _appLinks = AppLinks();
+      } catch (e) {
+        debugPrint('AppLinks initialization failed: $e');
+        _appLinks = null;
+      }
+    }
+
     // Check for pending notification data on app start
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _handlePendingNotification();
-      _initDeepLinks();
+      if (_appLinks != null) {
+        _initDeepLinks();
+      }
     });
   }
 
   void _initDeepLinks() {
-    // Handle initial link (when app is opened from a deep link)
-    _appLinks.getInitialLink().then((uri) {
-      if (uri != null) {
-        _handleDeepLink(uri);
-      }
-    });
+    if (_appLinks == null) return;
 
-    // Listen for deep links while app is running
-    _linkSubscription = _appLinks.uriLinkStream.listen(
-      (uri) => _handleDeepLink(uri),
-      onError: (err) => debugPrint('Deep link error: $err'),
-    );
+    try {
+      // Handle initial link (when app is opened from a deep link)
+      _appLinks!
+          .getInitialLink()
+          .then((uri) {
+            if (uri != null) {
+              _handleDeepLink(uri);
+            }
+          })
+          .catchError((err) {
+            debugPrint('Error getting initial deep link: $err');
+          });
+
+      // Listen for deep links while app is running
+      _linkSubscription = _appLinks!.uriLinkStream.listen(
+        (uri) => _handleDeepLink(uri),
+        onError: (err) => debugPrint('Deep link error: $err'),
+      );
+    } catch (e) {
+      debugPrint('Error initializing deep links: $e');
+    }
   }
 
   void _handleDeepLink(Uri uri) {
     debugPrint('Deep link received: $uri');
-    
+
     if (uri.scheme != 'mwanachuo') {
       return;
     }
@@ -104,7 +133,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
     if (path == '/subscription-success') {
       // Extract session_id from query parameters (can be used for verification later)
       // final sessionId = uri.queryParameters['session_id'];
-      
+
       // Navigate to subscription plans page
       Navigator.of(context).pushNamedAndRemoveUntil(
         '/subscription-plans',
@@ -116,8 +145,10 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: const Text('Payment successful! Your subscription is now active.'),
-              backgroundColor: Colors.green,
+              content: const Text(
+                'Payment successful! Your subscription is now active.',
+              ),
+              backgroundColor: kPrimaryColor,
               duration: const Duration(seconds: 5),
             ),
           );
@@ -135,7 +166,9 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         if (context.mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('Payment was cancelled. You can try again anytime.'),
+              content: Text(
+                'Payment was cancelled. You can try again anytime.',
+              ),
               backgroundColor: Colors.orange,
               duration: Duration(seconds: 5),
             ),
@@ -178,17 +211,17 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
       case 'review':
         final itemId = notificationData?['itemId'] as String?;
         final itemType = notificationData?['itemType'] as String?;
-        if (itemId != null && itemType != null && navigatorKey.currentContext != null) {
+        if (itemId != null &&
+            itemType != null &&
+            navigatorKey.currentContext != null) {
           if (itemType == 'product') {
-            Navigator.of(navigatorKey.currentContext!).pushNamed(
-              '/product-details',
-              arguments: {'productId': itemId},
-            );
+            Navigator.of(
+              navigatorKey.currentContext!,
+            ).pushNamed('/product-details', arguments: {'productId': itemId});
           } else if (itemType == 'service') {
-            Navigator.of(navigatorKey.currentContext!).pushNamed(
-              '/service-details',
-              arguments: {'serviceId': itemId},
-            );
+            Navigator.of(
+              navigatorKey.currentContext!,
+            ).pushNamed('/service-details', arguments: {'serviceId': itemId});
           } else if (itemType == 'accommodation') {
             Navigator.of(navigatorKey.currentContext!).pushNamed(
               '/accommodation-details',
@@ -230,10 +263,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
     final currentUser = SupabaseConfig.client.auth.currentUser;
     if (currentUser == null) {
       // Not logged in, just navigate
-      Navigator.of(context).pushNamed(
-        '/chat',
-        arguments: conversationId,
-      );
+      Navigator.of(context).pushNamed('/chat', arguments: conversationId);
       return;
     }
 
@@ -251,10 +281,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
       if (!isSeller) {
         // Buyers can always access messages
         if (!context.mounted) return;
-        Navigator.of(context).pushNamed(
-          '/chat',
-          arguments: conversationId,
-        );
+        Navigator.of(context).pushNamed('/chat', arguments: conversationId);
         return;
       }
 
@@ -271,9 +298,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           builder: (dialogContext) => AlertDialog(
             title: Text(
               'Subscription Required',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.bold,
-              ),
+              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
             ),
             content: Text(
               'Your subscription has expired. Please renew to view messages.\n\n'
@@ -283,19 +308,14 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text(
-                  'Cancel',
-                  style: GoogleFonts.plusJakartaSans(),
-                ),
+                child: Text('Cancel', style: GoogleFonts.plusJakartaSans()),
               ),
               TextButton(
                 onPressed: () {
                   Navigator.of(dialogContext).pop();
                   Navigator.pushNamed(context, '/subscription-plans');
                 },
-                style: TextButton.styleFrom(
-                  foregroundColor: kPrimaryColor,
-                ),
+                style: TextButton.styleFrom(foregroundColor: kPrimaryColor),
                 child: Text(
                   'Renew Subscription',
                   style: GoogleFonts.plusJakartaSans(
@@ -311,18 +331,12 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
 
       // Subscription active - navigate to chat
       if (!context.mounted) return;
-      Navigator.of(context).pushNamed(
-        '/chat',
-        arguments: conversationId,
-      );
+      Navigator.of(context).pushNamed('/chat', arguments: conversationId);
     } catch (e) {
       // On error, allow navigation (fail open)
       debugPrint('Error checking subscription for notification: $e');
       if (!context.mounted) return;
-      Navigator.of(context).pushNamed(
-        '/chat',
-        arguments: conversationId,
-      );
+      Navigator.of(context).pushNamed('/chat', arguments: conversationId);
     }
   }
 
@@ -348,32 +362,46 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               const SignupUniversitySelectionScreen(),
           '/become-seller': (context) => const BecomeSellerScreen(),
           '/seller-requests': (context) => const SellerRequestsPage(),
-          '/home': (context) => MultiBlocProvider(
-            providers: [
-              BlocProvider(create: (context) => sl<ProductBloc>()),
-              BlocProvider(create: (context) => sl<ServiceBloc>()),
-              BlocProvider(create: (context) => sl<AccommodationBloc>()),
-              BlocProvider(create: (context) => sl<PromotionCubit>()),
-            ],
-            child: const HomePage(),
+          '/home': (context) => PersistentBottomNavWrapper(
+            initialIndex: 0,
+            child: MultiBlocProvider(
+              providers: [
+                BlocProvider(create: (context) => sl<ProductBloc>()),
+                BlocProvider(create: (context) => sl<ServiceBloc>()),
+                BlocProvider(create: (context) => sl<AccommodationBloc>()),
+                BlocProvider(create: (context) => sl<PromotionCubit>()),
+              ],
+              child: const HomePage(),
+            ),
           ),
           '/product-details': (context) => const ProductDetailsPage(),
           '/post-product': (context) => BlocProvider(
             create: (context) => sl<ProductBloc>(),
             child: const PostProductScreen(),
           ),
-          '/messages': (context) => BlocProvider.value(
-            value: context.read<MessageBloc>(),
-            child: const MessagesPage(),
+          '/messages': (context) => PersistentBottomNavWrapper(
+            initialIndex: 2, // Will be updated based on route
+            child: BlocProvider.value(
+              value: context.read<MessageBloc>(),
+              child: const MessagesPage(),
+            ),
           ),
           '/chat': (context) => BlocProvider.value(
             value: context.read<MessageBloc>(),
             child: const ChatScreen(),
           ),
-          '/profile': (context) => const ProfilePage(),
+          '/profile': (context) => PersistentBottomNavWrapper(
+            initialIndex: 3, // Will be updated based on route
+            child: const ProfilePage(),
+          ),
           '/search': (context) {
             final args = ModalRoute.of(context)!.settings.arguments;
-            return SearchResultsPage(searchQuery: args is String ? args : null);
+            return PersistentBottomNavWrapper(
+              initialIndex: 1,
+              child: SearchResultsPage(
+                searchQuery: args is String ? args : null,
+              ),
+            );
           },
           '/university-selection': (context) {
             final args = ModalRoute.of(context)!.settings.arguments;
@@ -396,7 +424,10 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             ],
             child: const MyListingsScreen(),
           ),
-          '/dashboard': (context) => const SellerDashboardScreen(),
+          '/dashboard': (context) => PersistentBottomNavWrapper(
+            initialIndex: 2,
+            child: const SellerDashboardScreen(),
+          ),
           '/student-housing': (context) => BlocProvider(
             create: (context) => sl<AccommodationBloc>(),
             child: const StudentHousingScreen(),

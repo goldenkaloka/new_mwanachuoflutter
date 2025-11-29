@@ -32,6 +32,7 @@ class SendMessage implements UseCase<MessageEntity, SendMessageParams> {
       content: params.content.trim(),
       imageUrl: params.imageUrl,
       repliedToMessageId: params.repliedToMessageId,
+      metadata: params.metadata,
     );
   }
 }
@@ -41,6 +42,7 @@ class SendMessageParams extends Equatable {
   final String content;
   final String? imageUrl;
   final String? repliedToMessageId;
+  final Map<String, dynamic>? metadata;
   final List<String> recentMessages; // For context-aware validation
 
   const SendMessageParams({
@@ -48,6 +50,7 @@ class SendMessageParams extends Equatable {
     required this.content,
     this.imageUrl,
     this.repliedToMessageId,
+    this.metadata,
     this.recentMessages = const [], // Default to empty list
   });
 
@@ -57,6 +60,7 @@ class SendMessageParams extends Equatable {
         content,
         imageUrl,
         repliedToMessageId,
+        metadata,
         recentMessages,
       ];
 }

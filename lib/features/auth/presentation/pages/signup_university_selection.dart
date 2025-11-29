@@ -155,7 +155,7 @@ class _SignupUniversitySelectionScreenState
                   ),
                 ],
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: kPrimaryColor,
               duration: const Duration(seconds: 2),
             ),
           );
