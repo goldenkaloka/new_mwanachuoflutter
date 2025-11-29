@@ -136,7 +136,9 @@ class OneSignalConfig {
   /// Set up notification handlers
   static void _setupNotificationHandlers() {
     try {
-      // Handle foreground notifications - show custom in-app banner
+      // Handle foreground notifications
+      // IMPORTANT: We allow system notifications to show even in foreground (like WhatsApp)
+      // This ensures users always see notifications with sound and banner
       OneSignal.Notifications.addForegroundWillDisplayListener((event) async {
         try {
           LoggerService.debug(
@@ -159,23 +161,33 @@ class OneSignalConfig {
           // Create/update notification group if grouping is enabled
           await _handleNotificationGrouping(event.notification);
 
-          // Prevent default notification display
-          event.preventDefault();
-
-          // Show custom in-app banner
-          _showInAppBanner(event.notification);
+          // DON'T prevent default - allow system notification to show with sound and banner
+          // This matches WhatsApp/Instagram behavior where notifications always show
+          // even when app is in foreground
+          
+          // Also show custom in-app banner for better UX (both will show)
+          try {
+            _showInAppBanner(event.notification);
+          } catch (e) {
+            LoggerService.warning('Failed to show in-app banner, system notification will still show', e);
+          }
+          
+          // Let the system notification display normally (with sound and banner)
+          // This ensures users always get alerted, just like WhatsApp
         } catch (e) {
           LoggerService.error('Error handling foreground notification', e);
-          // Fallback: display notification normally
-          event.notification.display();
+          // Fallback: display notification normally (don't prevent)
         }
       });
 
       // Handle notification tapped/opened
+      // NOTE: This works for BOTH foreground and background notifications
+      // When app is closed/background, OneSignal automatically shows system notifications
+      // and this listener is called when user taps the notification
       OneSignal.Notifications.addClickListener((event) {
         try {
           LoggerService.debug(
-            'Notification tapped: ${event.notification.notificationId}',
+            'Notification tapped (app may have been closed/background): ${event.notification.notificationId}',
           );
           final notification = event.notification;
           final additionalData = notification.additionalData;
@@ -202,6 +214,13 @@ class OneSignalConfig {
         } catch (e) {
           LoggerService.error('Error handling notification tap', e);
         }
+      });
+
+      // Monitor notification permission changes
+      OneSignal.Notifications.addPermissionObserver((hasPrompted) {
+        LoggerService.info(
+          'Notification permission has been prompted: $hasPrompted',
+        );
       });
     } catch (e) {
       LoggerService.warning(
@@ -454,6 +473,22 @@ class OneSignalConfig {
         LoggerService.debug('OneSignal not initialized, cannot set user ID');
         return;
       }
+
+      // First, logout to clear any existing user association
+      // This prevents "alias claimed by another user" errors when
+      // a new user logs in on a device previously used by another user
+      try {
+        await OneSignal.logout();
+        LoggerService.debug('OneSignal logged out previous user');
+      } catch (e) {
+        // Ignore logout errors - might not have a previous user
+        LoggerService.debug('OneSignal logout (may not have previous user): $e');
+      }
+
+      // Small delay to ensure logout completes
+      await Future.delayed(const Duration(milliseconds: 100));
+
+      // Now login with the new user ID
       await OneSignal.login(userId);
       LoggerService.debug('OneSignal user ID set: $userId');
     } catch (e) {
@@ -463,6 +498,19 @@ class OneSignalConfig {
         LoggerService.debug('OneSignal plugin not available on this platform');
         return;
       }
+
+      // Handle alias conflict error gracefully
+      if (e.toString().contains('user-2') ||
+          e.toString().contains('Aliases claimed') ||
+          e.toString().contains('409')) {
+        LoggerService.warning(
+          'OneSignal user ID conflict (user may have logged in on another device): $userId. '
+          'This is usually harmless and notifications will still work.',
+        );
+        // Try to continue - the device token is still registered in our database
+        return;
+      }
+
       LoggerService.error('Failed to set OneSignal user ID', e);
     }
   }
@@ -493,8 +541,17 @@ class OneSignalConfig {
   }
 
   /// Send a test notification (for debugging)
-  static Future<void> sendTestNotification() async {
+  static Future<void> sendTestNotification({
+    String? title,
+    String? message,
+  }) async {
     try {
+      final userId = SupabaseConfig.client.auth.currentUser?.id;
+      if (userId == null) {
+        LoggerService.warning('Cannot send test notification: User not authenticated');
+        return;
+      }
+
       final playerId = await getPlayerId();
       if (playerId == null) {
         LoggerService.warning('Cannot send test notification: No player ID');
@@ -502,11 +559,30 @@ class OneSignalConfig {
       }
 
       LoggerService.debug(
-        'Test notification would be sent to player: $playerId',
+        'Sending test notification to player: $playerId',
       );
-      // Actual sending is done via backend/OneSignal dashboard
-    } catch (e) {
-      LoggerService.error('Failed to send test notification', e);
+
+      // Send test notification using the database function
+      await SupabaseConfig.client.rpc(
+        'send_immediate_push_notification',
+        params: {
+          'p_user_id': userId,
+          'p_title': title ?? 'Test Notification',
+          'p_message': message ?? 'This is a test push notification! 🎉',
+          'p_type': 'system',
+          'p_action_url': null,
+          'p_metadata': {
+            'test': true,
+            'player_id': playerId,
+            'timestamp': DateTime.now().toIso8601String(),
+          },
+        },
+      );
+
+      LoggerService.info('Test notification sent successfully!');
+    } catch (e, stackTrace) {
+      LoggerService.error('Failed to send test notification', e, stackTrace);
+      rethrow;
     }
   }
 

@@ -23,8 +23,18 @@ class ConversationModel extends ConversationEntity {
       return value as String?;
     }
 
+    // Handle ID conversion - it might be a UUID object or string
+    final idValue = json['id'];
+    final idString = idValue is String 
+        ? idValue 
+        : idValue?.toString() ?? '';
+    
+    if (idString.isEmpty) {
+      throw FormatException('Conversation ID is missing or invalid: $idValue');
+    }
+
     return ConversationModel(
-      id: json['id'] as String,
+      id: idString,
       userId: json['user_id'] as String,
       otherUserId: json['other_user_id'] as String,
       otherUserName: json['other_user_name'] as String? ?? 'Unknown',

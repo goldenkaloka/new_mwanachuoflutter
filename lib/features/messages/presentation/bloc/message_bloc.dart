@@ -96,6 +96,18 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
     // If we got a failure, return early
     if (conversation == null) return;
 
+    // Validate conversation has an ID
+    if (conversation.id.isEmpty) {
+      LoggerService.error(
+        'Conversation created but ID is empty',
+        'Conversation: ${conversation.toString()}',
+      );
+      emit(MessageError(message: 'Invalid conversation: missing ID'));
+      return;
+    }
+
+    LoggerService.debug('Conversation loaded with ID: ${conversation.id}');
+
     // If listing details are provided and this is a new conversation,
     // send an initial message with the listing information
     if (event.listingId != null &&

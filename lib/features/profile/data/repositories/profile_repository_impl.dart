@@ -136,11 +136,17 @@ class ProfileRepositoryImpl implements ProfileRepository {
 
       // Upload avatar if provided
       if (avatarImage != null) {
+        // Get current user ID for folder structure (RLS policy requires user_id as first folder)
+        final currentUser = supabaseClient.auth.currentUser;
+        if (currentUser == null) {
+          return Left(ServerFailure('User not authenticated'));
+        }
+        
         final uploadResult = await uploadImage(
           UploadImageParams(
             imageFile: avatarImage,
             bucket: DatabaseConstants.profileImagesBucket,
-            folder: 'avatars',
+            folder: currentUser.id, // Use user ID as folder to match RLS policy
           ),
         );
 

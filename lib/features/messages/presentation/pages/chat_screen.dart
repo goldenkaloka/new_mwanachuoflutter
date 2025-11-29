@@ -49,16 +49,23 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   Future<void> _checkSubscription() async {
-    final conversationId =
-        ModalRoute.of(context)?.settings.arguments as String?;
+    final routeArguments = ModalRoute.of(context)?.settings.arguments;
+    final conversationId = routeArguments is String 
+        ? routeArguments 
+        : routeArguments?.toString();
 
-    if (conversationId == null) {
+    if (conversationId == null || conversationId.isEmpty) {
+      LoggerService.warning(
+        '_checkSubscription: conversation ID is null or empty. Route arguments: $routeArguments (type: ${routeArguments.runtimeType})',
+      );
       setState(() {
         _canAccessMessages = true; // Will show invalid conversation error
         _isCheckingSubscription = false;
       });
       return;
     }
+
+    LoggerService.debug('_checkSubscription: conversation ID: $conversationId');
 
     final currentUser = SupabaseConfig.client.auth.currentUser;
     if (currentUser == null) {
@@ -112,10 +119,16 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     // Get conversation ID from route arguments
-    final conversationId =
-        ModalRoute.of(context)?.settings.arguments as String?;
+    final routeArguments = ModalRoute.of(context)?.settings.arguments;
+    final conversationId = routeArguments is String 
+        ? routeArguments 
+        : routeArguments?.toString();
 
-    if (conversationId == null) {
+    // Log for debugging
+    if (conversationId == null || conversationId.isEmpty) {
+      LoggerService.warning(
+        'Chat screen: conversation ID is null or empty. Route arguments: $routeArguments (type: ${routeArguments.runtimeType})',
+      );
       return Scaffold(
         appBar: AppBar(title: const Text('Chat')),
         body: Center(
@@ -135,6 +148,8 @@ class _ChatScreenState extends State<ChatScreen> {
         ),
       );
     }
+
+    LoggerService.debug('Chat screen: conversation ID received: $conversationId');
 
     // Show loading while checking subscription
     if (_isCheckingSubscription) {

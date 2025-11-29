@@ -311,6 +311,12 @@ inspector_port = 8083
 # The Deno major version to use.
 deno_version = 1
 
+# Configure Edge Functions
+# Disable JWT verification for send-notification function
+# This allows database triggers to call it without JWT authentication
+[functions.send-notification]
+verify_jwt = false
+
 # [edge_runtime.secrets]
 # secret_key = "env(SECRET_VALUE)"
 

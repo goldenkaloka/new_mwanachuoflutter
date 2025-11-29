@@ -46,6 +46,7 @@ class _HomePageState extends State<HomePage> {
   String _userName = 'User';
   bool _isLoadingUser = true;
   String _userRole = 'buyer';
+  String? _userAvatarUrl; // Store user avatar URL
   bool _dataLoaded = false; // Flag to prevent double loading
   final TextEditingController _searchController = TextEditingController();
   int _unreadNotificationCount = 0;
@@ -192,10 +193,12 @@ class _HomePageState extends State<HomePage> {
                 // Only update if data actually changed to prevent rebuilds
                 if (_userName != state.user.name ||
                     _userRole != state.user.role.value ||
+                    _userAvatarUrl != state.user.profilePicture ||
                     _isLoadingUser) {
                   setState(() {
                     _userName = state.user.name;
                     _userRole = state.user.role.value;
+                    _userAvatarUrl = state.user.profilePicture;
                     _isLoadingUser = false;
                   });
                 }
@@ -624,7 +627,7 @@ class _HomePageState extends State<HomePage> {
                   ), // Use the same active color as bottom nav
                 ),
                 child: NetworkImageWithFallback(
-                  imageUrl: '', // User avatar will be loaded from profile
+                  imageUrl: _userAvatarUrl ?? '',
                   width: ResponsiveBreakpoints.responsiveValue(
                     context,
                     compact: 40.0,
@@ -1246,6 +1249,10 @@ class _HomePageState extends State<HomePage> {
       expanded: 200.0,
     );
 
+    // Get color combination based on promotion index (for different borders)
+    final colorIndex = promotion.id.hashCode.abs() % 6;
+    final borderColors = _getBorderColorCombination(colorIndex);
+
     return GestureDetector(
       onTap: () => Navigator.pushNamed(
         context,
@@ -1272,6 +1279,11 @@ class _HomePageState extends State<HomePage> {
                   fit: BoxFit.cover,
                 ),
               ),
+            // Animated border
+            _AnimatedPromotionBorder(
+              borderColors: borderColors,
+              borderRadius: 8.0,
+            ),
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8.0),
@@ -1289,36 +1301,32 @@ class _HomePageState extends State<HomePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                  Text(
-                    promotion.title,
-                    style: TextStyle(
-                      color: Colors.white,
+                  _AnimatedPromotionText(
+                    text: promotion.title,
+                    fontSize: ResponsiveBreakpoints.responsiveValue(
+                      context,
+                      compact: 18.0,
+                      medium: 20.0,
+                      expanded: 24.0,
+                    ),
+                    fontWeight: FontWeight.bold,
+                    maxLines: 2,
+                  ),
+                  if (promotion.subtitle.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    _AnimatedPromotionText(
+                      text: promotion.subtitle,
                       fontSize: ResponsiveBreakpoints.responsiveValue(
                         context,
-                        compact: 18.0,
-                        medium: 20.0,
-                        expanded: 24.0,
+                        compact: 14.0,
+                        medium: 16.0,
+                        expanded: 18.0,
                       ),
-                      fontWeight: FontWeight.bold,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  if (promotion.subtitle.isNotEmpty)
-                    Text(
-                      promotion.subtitle,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 14.0,
-                          medium: 16.0,
-                          expanded: 18.0,
-                        ),
-                      ),
+                      fontWeight: FontWeight.normal,
                       maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      delay: const Duration(milliseconds: 300),
                     ),
+                  ],
                 ],
               ),
             ),
@@ -1326,6 +1334,19 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
+  }
+
+  // Get different color combinations for borders based on index
+  List<Color> _getBorderColorCombination(int index) {
+    final combinations = [
+      [Colors.blue, Colors.cyan, Colors.teal],
+      [Colors.purple, Colors.pink, Colors.deepPurple],
+      [Colors.orange, Colors.red, Colors.deepOrange],
+      [Colors.green, Colors.lightGreen, Colors.teal],
+      [Colors.amber, Colors.yellow, Colors.orange],
+      [Colors.indigo, Colors.blue, Colors.purple],
+    ];
+    return combinations[index % combinations.length];
   }
 
   Widget _buildProductsGrid(
@@ -1769,5 +1790,230 @@ class _StickyChipsDelegate extends SliverPersistentHeaderDelegate {
     return child != oldDelegate.child ||
         minHeight != oldDelegate.minHeight ||
         maxHeight != oldDelegate.maxHeight;
+  }
+}
+
+// Animated text widget for promotion banners
+class _AnimatedPromotionText extends StatefulWidget {
+  final String text;
+  final double fontSize;
+  final FontWeight fontWeight;
+  final int maxLines;
+  final Duration delay;
+
+  const _AnimatedPromotionText({
+    required this.text,
+    required this.fontSize,
+    required this.fontWeight,
+    required this.maxLines,
+    this.delay = Duration.zero,
+  });
+
+  @override
+  State<_AnimatedPromotionText> createState() => _AnimatedPromotionTextState();
+}
+
+class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
+    with TickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+  List<String> _words = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _words = widget.text.split(' ');
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.3),
+      end: Offset.zero,
+    ).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.6, curve: Curves.easeOut),
+      ),
+    );
+
+    // Start animation after delay
+    Future.delayed(widget.delay, () {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: Wrap(
+              spacing: 4.0,
+              runSpacing: 4.0,
+              children: _words.asMap().entries.map((entry) {
+                final index = entry.key;
+                final word = entry.value;
+                final wordDelay = index * 100;
+                final wordProgress = ((_controller.value * 1500) - wordDelay) / 200;
+                final wordOpacity = wordProgress.clamp(0.0, 1.0);
+                final wordOffset = (1.0 - wordOpacity) * 0.3;
+
+                return Opacity(
+                  opacity: wordOpacity,
+                  child: Transform.translate(
+                    offset: Offset(0, wordOffset * 20),
+                    child: Text(
+                      word,
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: widget.fontSize,
+                        fontWeight: widget.fontWeight,
+                        shadows: [
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.5),
+                            blurRadius: 4,
+                            offset: const Offset(1, 1),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Animated border widget for promotion banners
+class _AnimatedPromotionBorder extends StatefulWidget {
+  final List<Color> borderColors;
+  final double borderRadius;
+
+  const _AnimatedPromotionBorder({
+    required this.borderColors,
+    required this.borderRadius,
+  });
+
+  @override
+  State<_AnimatedPromotionBorder> createState() =>
+      _AnimatedPromotionBorderState();
+}
+
+class _AnimatedPromotionBorderState extends State<_AnimatedPromotionBorder>
+    with TickerProviderStateMixin {
+  late AnimationController _controller;
+  late List<Animation<double>> _opacityAnimations;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 2000),
+      vsync: this,
+    )..repeat(reverse: true);
+
+    // Create opacity animations for each color with different phases
+    _opacityAnimations = widget.borderColors.asMap().entries.map((entry) {
+      final index = entry.key;
+      final phase = index * 0.3; // Stagger the animations
+      return Tween<double>(
+        begin: 0.3,
+        end: 1.0,
+      ).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: Interval(
+            phase.clamp(0.0, 0.7),
+            (phase + 0.3).clamp(0.0, 1.0),
+            curve: Curves.easeInOut,
+          ),
+        ),
+      );
+    }).toList();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(widget.borderRadius),
+            border: Border.all(
+              width: 4.0, // Thick border
+              color: _getAnimatedBorderColor(),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getAnimatedBorderColor() {
+    // Blend colors based on their current opacity values
+    double r = 0, g = 0, b = 0, a = 0;
+    double totalWeight = 0;
+
+    for (int i = 0; i < widget.borderColors.length; i++) {
+      final color = widget.borderColors[i];
+      final opacity = _opacityAnimations[i].value;
+      final weight = opacity;
+
+      r += color.red * weight;
+      g += color.green * weight;
+      b += color.blue * weight;
+      a += opacity;
+      totalWeight += weight;
+    }
+
+    if (totalWeight > 0) {
+      r = (r / totalWeight).round().clamp(0, 255).toDouble();
+      g = (g / totalWeight).round().clamp(0, 255).toDouble();
+      b = (b / totalWeight).round().clamp(0, 255).toDouble();
+      a = (a / totalWeight).clamp(0.3, 1.0);
+    }
+
+    return Color.fromRGBO(
+      r.toInt(),
+      g.toInt(),
+      b.toInt(),
+      a,
+    );
   }
 }

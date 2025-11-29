@@ -179,7 +179,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
           _currentAvatarUrl = state.profile.avatarUrl;
           _hasInitialized = true;
         } else if (state is ProfileUpdated) {
-          // Show success message and navigate back
+          // Show success message and navigate back with result
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -189,7 +189,8 @@ class _EditProfileViewState extends State<_EditProfileView> {
               backgroundColor: kPrimaryColor,
             ),
           );
-          Navigator.pop(context);
+          // Pass true to indicate profile was updated
+          Navigator.pop(context, true);
         } else if (state is ProfileError) {
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(

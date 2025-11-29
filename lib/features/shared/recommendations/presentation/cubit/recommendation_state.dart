@@ -34,3 +34,5 @@ class RecommendationError extends RecommendationState {
   @override
   List<Object?> get props => [message];
 }
+
+

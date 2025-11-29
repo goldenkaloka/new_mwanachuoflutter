@@ -177,7 +177,43 @@ class _ServiceDetailView extends StatelessWidget {
   ) {
     final images = service.images.isNotEmpty ? service.images : [''];
 
-    return Stack(
+    return BlocListener<MessageBloc, MessageState>(
+      listener: (context, state) {
+        if (state is ConversationLoaded) {
+          // Validate conversation ID before navigation
+          final conversationId = state.conversation.id;
+          if (conversationId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Invalid conversation: missing ID',
+                  style: GoogleFonts.inter(),
+                ),
+                backgroundColor: Colors.red,
+              ),
+            );
+            return;
+          }
+          // Navigate to chat with the conversation ID
+          Navigator.pushNamed(
+            context,
+            '/chat',
+            arguments: conversationId,
+          );
+        } else if (state is MessageError) {
+          // Show error
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                state.message,
+                style: GoogleFonts.inter(),
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+      },
+      child: Stack(
       children: [
         CustomScrollView(
           slivers: [
@@ -306,6 +342,7 @@ class _ServiceDetailView extends StatelessWidget {
             ),
           ),
       ],
+      ),
     );
   }
 
@@ -581,42 +618,22 @@ class _ServiceDetailView extends StatelessWidget {
               ],
             ),
           ),
-          BlocListener<MessageBloc, MessageState>(
-            listener: (context, state) {
-              if (state is ConversationLoaded) {
-                Navigator.pushNamed(
-                  context,
-                  '/chat',
-                  arguments: state.conversation.id,
-                );
-              } else if (state is MessageError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(
-                      state.message,
-                      style: GoogleFonts.inter(),
+          IconButton(
+            onPressed: () {
+              // Dispatch event - navigation will be handled by parent BlocListener
+              context.read<MessageBloc>().add(
+                    GetOrCreateConversationEvent(
+                      otherUserId: service.providerId,
+                      listingId: service.id,
+                      listingType: 'service',
+                      listingTitle: service.title,
+                      listingImageUrl: service.images.isNotEmpty ? service.images.first : null,
+                      listingPrice: 'TZS ${service.price.toStringAsFixed(2)}',
+                      listingPriceType: service.priceType,
                     ),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
+                  );
             },
-            child: IconButton(
-              onPressed: () {
-                context.read<MessageBloc>().add(
-                      GetOrCreateConversationEvent(
-                        otherUserId: service.providerId,
-                        listingId: service.id,
-                        listingType: 'service',
-                        listingTitle: service.title,
-                        listingImageUrl: service.images.isNotEmpty ? service.images.first : null,
-                        listingPrice: 'TZS ${service.price.toStringAsFixed(2)}',
-                        listingPriceType: service.priceType,
-                      ),
-                    );
-              },
-              icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
-            ),
+            icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
           ),
         ],
       ),

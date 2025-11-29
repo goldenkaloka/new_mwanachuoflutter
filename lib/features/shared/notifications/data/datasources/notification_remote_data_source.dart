@@ -243,16 +243,24 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         throw ServerException('User not authenticated');
       }
 
-      // Use upsert to handle both insert and update atomically
-      // This prevents race conditions where multiple requests try to insert the same player_id
+      // Delete any existing row with this player_id first
+      // This handles the case where the player_id was previously registered to another user
+      // We need to delete first because a player_id should be unique per device,
+      // and the current user should be able to take over the device token
       await supabaseClient
           .from(DatabaseConstants.deviceTokensTable)
-          .upsert({
+          .delete()
+          .eq('player_id', playerId);
+
+      // Now insert the new row
+      await supabaseClient
+          .from(DatabaseConstants.deviceTokensTable)
+          .insert({
             'user_id': currentUser.id,
             'player_id': playerId,
             'platform': platform,
             'updated_at': DateTime.now().toIso8601String(),
-          }, onConflict: 'player_id');
+          });
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
@@ -263,16 +271,12 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
   @override
   Future<void> unregisterDeviceToken(String playerId) async {
     try {
-      final currentUser = supabaseClient.auth.currentUser;
-      if (currentUser == null) {
-        throw ServerException('User not authenticated');
-      }
-
+      // Delete by player_id only - this works even if user is logging out
+      // The DELETE policy allows deleting any row by player_id
       await supabaseClient
           .from(DatabaseConstants.deviceTokensTable)
           .delete()
-          .eq('player_id', playerId)
-          .eq('user_id', currentUser.id);
+          .eq('player_id', playerId);
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {

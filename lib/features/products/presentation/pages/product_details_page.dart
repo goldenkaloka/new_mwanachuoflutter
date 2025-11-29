@@ -24,6 +24,7 @@ import 'package:mwanachuo/features/shared/recommendations/presentation/widgets/r
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
+import 'package:mwanachuo/core/services/logger_service.dart';
 
 class ProductDetailsPage extends StatelessWidget {
   const ProductDetailsPage({super.key});
@@ -217,113 +218,162 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
   ) {
     final images = product.images.isNotEmpty ? product.images : [''];
 
-    return Scaffold(
-      body: Stack(
-        children: [
-          CustomScrollView(
-            slivers: [
-              // Hero image with parallax
-              SliverImageCarousel(
-                images: images,
-                expandedHeight: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 400.0,
-                  medium: 420.0,
-                  expanded: 600.0,
+    return BlocListener<MessageBloc, MessageState>(
+      listener: (context, state) {
+        if (state is ConversationLoaded) {
+          // Validate conversation ID before navigation
+          final conversationId = state.conversation.id;
+          if (conversationId.isEmpty) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  'Invalid conversation: missing ID',
+                  style: GoogleFonts.plusJakartaSans(),
                 ),
+                backgroundColor: Colors.red,
               ),
-              // Product info section
-              SliverSection(
-                child: _buildProductInfoSliver(
-                  product,
-                  primaryTextColor,
-                  screenSize,
-                ),
+            );
+            return;
+          }
+          // Navigate to chat with the conversation ID
+          LoggerService.debug(
+            'Navigating to chat with conversation ID: $conversationId (type: ${conversationId.runtimeType})',
+          );
+          Navigator.pushNamed(
+            context,
+            '/chat',
+            arguments: conversationId,
+          );
+        } else if (state is MessageError) {
+          // Show error
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                state.message,
+                style: GoogleFonts.plusJakartaSans(),
               ),
-              // Similar items (mid-page recommendations)
-              SliverToBoxAdapter(
-                child: RecommendationSection(
-                  currentItemId: product.id,
-                  type: RecommendationType.product,
-                  title: 'Similar Items',
-                  onItemTap: (itemId, type) {
-                    Navigator.pushNamed(
-                      context,
-                      '/product-details',
-                      arguments: itemId,
-                    );
-                  },
-                ),
-              ),
-              // Description section
-              SliverSection(
-                child: _buildDescription(
-                  product,
-                  primaryTextColor,
-                  secondaryTextColor,
-                  screenSize,
-                ),
-              ),
-              // Seller info section
-              SliverSection(
-                child: _buildSellerInfo(
-                  product,
-                  primaryTextColor,
-                  secondaryTextColor,
-                  cardBgColor,
-                  screenSize,
-                ),
-              ),
-              // Reviews section
-              SliverSection(
-                child: CommentsAndRatingsSection(
-                  itemId: product.id,
-                  itemType: 'product',
-                ),
-              ),
-              // More recommendations (bottom)
-              SliverToBoxAdapter(
-                child: RecommendationSection(
-                  currentItemId: product.id,
-                  type: RecommendationType.product,
-                  title: 'More Recommendations',
-                  criteria: RecommendationCriteriaEntity(limit: 8),
-                  onItemTap: (itemId, type) {
-                    Navigator.pushNamed(
-                      context,
-                      '/product-details',
-                      arguments: itemId,
-                    );
-                  },
-                ),
-              ),
-              // Bottom padding
-              SliverPadding(
-                padding: EdgeInsets.only(
-                  bottom: ResponsiveBreakpoints.isCompact(context) ? 112 : 80,
-                ),
-              ),
-            ],
-          ),
-          // Sticky action bar (only for compact)
-          if (ResponsiveBreakpoints.isCompact(context))
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: StickyActionBar(
-                price: 'TZS ${product.price.toStringAsFixed(2)}',
-                actionButtonText: 'Message Seller',
-                onActionTap: () {
-                  // Handle message seller
-                  context.read<MessageBloc>().add(
-                    GetOrCreateConversationEvent(otherUserId: product.sellerId),
-                  );
-                  Navigator.pushNamed(context, '/chat');
-                },
-              ),
+              backgroundColor: Colors.red,
             ),
-        ],
+          );
+        }
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            CustomScrollView(
+              slivers: [
+                // Hero image with parallax
+                SliverImageCarousel(
+                  images: images,
+                  expandedHeight: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 400.0,
+                    medium: 420.0,
+                    expanded: 600.0,
+                  ),
+                ),
+                // Product info section
+                SliverSection(
+                  child: _buildProductInfoSliver(
+                    product,
+                    primaryTextColor,
+                    screenSize,
+                  ),
+                ),
+                // Similar items (mid-page recommendations)
+                SliverToBoxAdapter(
+                  child: RecommendationSection(
+                    currentItemId: product.id,
+                    type: RecommendationType.product,
+                    title: 'Similar Items',
+                    onItemTap: (itemId, type) {
+                      Navigator.pushNamed(
+                        context,
+                        '/product-details',
+                        arguments: itemId,
+                      );
+                    },
+                  ),
+                ),
+                // Description section
+                SliverSection(
+                  child: _buildDescription(
+                    product,
+                    primaryTextColor,
+                    secondaryTextColor,
+                    screenSize,
+                  ),
+                ),
+                // Seller info section
+                SliverSection(
+                  child: _buildSellerInfo(
+                    product,
+                    primaryTextColor,
+                    secondaryTextColor,
+                    cardBgColor,
+                    screenSize,
+                  ),
+                ),
+                // Reviews section
+                SliverSection(
+                  child: CommentsAndRatingsSection(
+                    itemId: product.id,
+                    itemType: 'product',
+                  ),
+                ),
+                // More recommendations (bottom)
+                SliverToBoxAdapter(
+                  child: RecommendationSection(
+                    currentItemId: product.id,
+                    type: RecommendationType.product,
+                    title: 'More Recommendations',
+                    criteria: RecommendationCriteriaEntity(limit: 8),
+                    onItemTap: (itemId, type) {
+                      Navigator.pushNamed(
+                        context,
+                        '/product-details',
+                        arguments: itemId,
+                      );
+                    },
+                  ),
+                ),
+                // Bottom padding
+                SliverPadding(
+                  padding: EdgeInsets.only(
+                    bottom: ResponsiveBreakpoints.isCompact(context) ? 112 : 80,
+                  ),
+                ),
+              ],
+            ),
+            // Sticky action bar (only for compact)
+            if (ResponsiveBreakpoints.isCompact(context))
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child: StickyActionBar(
+                  price: 'TZS ${product.price.toStringAsFixed(2)}',
+                  actionButtonText: 'Message Seller',
+                  onActionTap: () {
+                    // Handle message seller - dispatch event and wait for ConversationLoaded
+                    context.read<MessageBloc>().add(
+                      GetOrCreateConversationEvent(
+                        otherUserId: product.sellerId,
+                        listingId: product.id,
+                        listingType: 'product',
+                        listingTitle: product.title,
+                        listingImageUrl: product.images.isNotEmpty
+                            ? product.images.first
+                            : null,
+                        listingPrice: 'TZS ${product.price.toStringAsFixed(2)}',
+                      ),
+                    );
+                    // Navigation will happen in BlocListener when ConversationLoaded is emitted
+                  },
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1084,11 +1134,28 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
               child: BlocListener<MessageBloc, MessageState>(
                 listener: (context, state) {
                   if (state is ConversationLoaded) {
+                    // Validate conversation ID before navigation
+                    final conversationId = state.conversation.id;
+                    if (conversationId.isEmpty) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Invalid conversation: missing ID',
+                            style: GoogleFonts.plusJakartaSans(),
+                          ),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                      return;
+                    }
                     // Navigate to chat with the conversation ID
+                    LoggerService.debug(
+                      'Navigating to chat with conversation ID: $conversationId (type: ${conversationId.runtimeType})',
+                    );
                     Navigator.pushNamed(
                       context,
                       '/chat',
-                      arguments: state.conversation.id,
+                      arguments: conversationId,
                     );
                   } else if (state is MessageError) {
                     // Show error

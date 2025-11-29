@@ -182,6 +182,11 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
       final currentUser = supabaseClient.auth.currentUser;
       if (currentUser == null) throw ServerException('User not authenticated');
 
+      // Prevent users from messaging themselves
+      if (currentUser.id == otherUserId) {
+        throw ServerException('Cannot create conversation with yourself');
+      }
+
       // Try to find existing conversation
       final existing = await supabaseClient
           .from(DatabaseConstants.conversationsTable)
@@ -192,6 +197,12 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .maybeSingle();
 
       if (existing != null) {
+        // Validate that existing conversation has an ID
+        final existingId = existing['id'] as String?;
+        if (existingId == null || existingId.isEmpty) {
+          throw ServerException('Existing conversation missing ID');
+        }
+
         final isUser1 = existing['user1_id'] == currentUser.id;
         return ConversationModel.fromJson({
           ...existing,
@@ -220,6 +231,7 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
           .single();
 
       // Create new conversation
+      // Explicitly select all fields including ID to ensure it's returned
       final response = await supabaseClient
           .from(DatabaseConstants.conversationsTable)
           .insert({
@@ -231,8 +243,20 @@ class MessageRemoteDataSourceImpl implements MessageRemoteDataSource {
             'user2_avatar': otherUser['avatar_url'],
             'created_at': DateTime.now().toIso8601String(),
           })
-          .select()
+          .select('id, user1_id, user2_id, user1_name, user2_name, user1_avatar, user2_avatar, created_at, updated_at, last_message, last_message_time')
           .single();
+
+      // Validate that the created conversation has an ID
+      final conversationId = response['id'];
+      if (conversationId == null) {
+        throw ServerException('Failed to create conversation: missing ID in response. Response: $response');
+      }
+      
+      // Convert to string if it's not already
+      final conversationIdString = conversationId.toString();
+      if (conversationIdString.isEmpty) {
+        throw ServerException('Failed to create conversation: empty ID. Response: $response');
+      }
 
       return ConversationModel.fromJson({
         ...response,

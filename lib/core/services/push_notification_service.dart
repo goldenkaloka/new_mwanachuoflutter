@@ -114,25 +114,30 @@ class PushNotificationService {
         return;
       }
 
-      // Logout from OneSignal
-      await OneSignalConfig.logout();
-
-      // Unregister device token from database
+      // Unregister device token from database FIRST (before OneSignal logout)
+      // This ensures we can delete it while user is still authenticated
       final result = await _unregisterDeviceToken.call(playerId);
 
       result.fold(
         (failure) {
-          LoggerService.error(
-            'Failed to unregister device token',
-            failure.message,
+          // Log warning but don't throw - logout should continue even if delete fails
+          LoggerService.warning(
+            'Failed to unregister device token from database: ${failure.message}',
           );
         },
         (_) {
           LoggerService.info('Device token unregistered successfully');
         },
       );
+
+      // Logout from OneSignal after database cleanup
+      await OneSignalConfig.logout();
     } catch (e, stackTrace) {
-      LoggerService.error('Error unregistering device token', e, stackTrace);
+      // Log error but don't throw - logout should continue even if unregister fails
+      LoggerService.warning(
+        'Error unregistering device token: $e',
+        stackTrace,
+      );
     }
   }
 }

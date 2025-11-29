@@ -944,6 +944,7 @@ class _NotificationSettingsScreenState
       ),
     );
   }
+
 }
 
 class _NotificationItem {

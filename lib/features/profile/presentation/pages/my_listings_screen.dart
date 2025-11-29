@@ -15,6 +15,10 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_state.dart';
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 import 'package:mwanachuo/features/accommodations/presentation/pages/edit_accommodation_screen.dart';
+import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
+import 'package:mwanachuo/features/products/presentation/pages/edit_product_screen.dart';
+import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
+import 'package:mwanachuo/features/services/presentation/pages/edit_service_screen.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 
 class MyListingsScreen extends StatelessWidget {
@@ -201,94 +205,173 @@ class _MyListingsViewState extends State<_MyListingsView>
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: myProducts.length,
-            itemBuilder: (context, index) {
-              final product = myProducts[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                color: isDarkMode ? Colors.grey[900] : Colors.white,
-                child: ListTile(
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    '/product-details',
-                    arguments: product.id,
+          return BlocListener<ProductBloc, ProductState>(
+            listener: (context, state) {
+              if (state is ProductDeleted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Product deleted successfully!'),
+                    backgroundColor: kPrimaryColor,
                   ),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: NetworkImageWithFallback(
-                      imageUrl: product.images.isNotEmpty
-                          ? product.images.first
-                          : '',
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                    ),
+                );
+                // Reload products
+                context.read<ProductBloc>().add(
+                  const LoadProductsEvent(limit: 100),
+                );
+              } else if (state is ProductError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
                   ),
-                  title: Text(
-                    product.title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    'TZS ${product.price.toStringAsFixed(2)} • ${product.category}',
-                    style: TextStyle(color: secondaryTextColor),
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                );
+              }
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: myProducts.length,
+              itemBuilder: (context, index) {
+                final product = myProducts[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: isDarkMode ? Colors.grey[900] : Colors.white,
+                  child: Column(
                     children: [
-                      Container(
+                      ListTile(
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          '/product-details',
+                          arguments: product.id,
+                        ),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: NetworkImageWithFallback(
+                            imageUrl: product.images.isNotEmpty
+                                ? product.images.first
+                                : '',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        title: Text(
+                          product.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.bold,
+                            color: primaryTextColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          'TZS ${product.price.toStringAsFixed(2)} • ${product.category}',
+                          style: TextStyle(color: secondaryTextColor),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: product.isActive
+                                    ? kPrimaryColor.withValues(alpha: 0.2)
+                                    : Colors.grey.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                product.isActive ? 'Active' : 'Inactive',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: product.isActive
+                                      ? kPrimaryColor
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.visibility,
+                                  size: 12,
+                                  color: secondaryTextColor,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${product.viewCount}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: secondaryTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(
+                        height: 1,
+                        color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                      ),
+                      Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
-                        decoration: BoxDecoration(
-                          color: product.isActive
-                              ? kPrimaryColor.withValues(alpha: 0.2)
-                              : Colors.grey.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          product.isActive ? 'Active' : 'Inactive',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: product.isActive
-                                ? kPrimaryColor
-                                : Colors.grey,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.visibility,
-                            size: 12,
-                            color: secondaryTextColor,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${product.viewCount}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: secondaryTextColor,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        _buildEditProductScreen(product),
+                                  ),
+                                );
+                                if (result == true) {
+                                  // Reload products if edit was successful
+                                  if (context.mounted) {
+                                    context.read<ProductBloc>().add(
+                                      const LoadProductsEvent(limit: 100),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text('Edit'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: kPrimaryColor,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: () => _showDeleteProductConfirmation(
+                                context,
+                                product.id,
+                                product.title,
+                              ),
+                              icon: const Icon(Icons.delete, size: 18),
+                              label: const Text('Delete'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         }
 
@@ -374,94 +457,173 @@ class _MyListingsViewState extends State<_MyListingsView>
             );
           }
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: myServices.length,
-            itemBuilder: (context, index) {
-              final service = myServices[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12),
-                color: isDarkMode ? Colors.grey[900] : Colors.white,
-                child: ListTile(
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    '/service-details',
-                    arguments: service.id,
+          return BlocListener<ServiceBloc, ServiceState>(
+            listener: (context, state) {
+              if (state is ServiceDeleted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Service deleted successfully!'),
+                    backgroundColor: kPrimaryColor,
                   ),
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: NetworkImageWithFallback(
-                      imageUrl: service.images.isNotEmpty
-                          ? service.images.first
-                          : '',
-                      width: 60,
-                      height: 60,
-                      fit: BoxFit.cover,
-                    ),
+                );
+                // Reload services
+                context.read<ServiceBloc>().add(
+                  const LoadServicesEvent(limit: 100),
+                );
+              } else if (state is ServiceError) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(state.message),
+                    backgroundColor: Colors.red,
                   ),
-                  title: Text(
-                    service.title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  subtitle: Text(
-                    'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
-                    style: TextStyle(color: secondaryTextColor),
-                  ),
-                  trailing: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.end,
+                );
+              }
+            },
+            child: ListView.builder(
+              padding: const EdgeInsets.all(16),
+              itemCount: myServices.length,
+              itemBuilder: (context, index) {
+                final service = myServices[index];
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  color: isDarkMode ? Colors.grey[900] : Colors.white,
+                  child: Column(
                     children: [
-                      Container(
+                      ListTile(
+                        onTap: () => Navigator.pushNamed(
+                          context,
+                          '/service-details',
+                          arguments: service.id,
+                        ),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: NetworkImageWithFallback(
+                            imageUrl: service.images.isNotEmpty
+                                ? service.images.first
+                                : '',
+                            width: 60,
+                            height: 60,
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+                        title: Text(
+                          service.title,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: FontWeight.bold,
+                            color: primaryTextColor,
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
+                          style: TextStyle(color: secondaryTextColor),
+                        ),
+                        trailing: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: service.isActive
+                                    ? kPrimaryColor.withValues(alpha: 0.2)
+                                    : Colors.grey.withValues(alpha: 0.2),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(
+                                service.isActive ? 'Active' : 'Inactive',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                  color: service.isActive
+                                      ? kPrimaryColor
+                                      : Colors.grey,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.visibility,
+                                  size: 12,
+                                  color: secondaryTextColor,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${service.viewCount}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: secondaryTextColor,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                      Divider(
+                        height: 1,
+                        color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
+                      ),
+                      Padding(
                         padding: const EdgeInsets.symmetric(
                           horizontal: 8,
                           vertical: 4,
                         ),
-                        decoration: BoxDecoration(
-                          color: service.isActive
-                              ? kPrimaryColor.withValues(alpha: 0.2)
-                              : Colors.grey.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(4),
-                        ),
-                        child: Text(
-                          service.isActive ? 'Active' : 'Inactive',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            color: service.isActive
-                                ? kPrimaryColor
-                                : Colors.grey,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.visibility,
-                            size: 12,
-                            color: secondaryTextColor,
-                          ),
-                          const SizedBox(width: 2),
-                          Text(
-                            '${service.viewCount}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: secondaryTextColor,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            TextButton.icon(
+                              onPressed: () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        _buildEditServiceScreen(service),
+                                  ),
+                                );
+                                if (result == true) {
+                                  // Reload services if edit was successful
+                                  if (context.mounted) {
+                                    context.read<ServiceBloc>().add(
+                                      const LoadServicesEvent(limit: 100),
+                                    );
+                                  }
+                                }
+                              },
+                              icon: const Icon(Icons.edit, size: 18),
+                              label: const Text('Edit'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: kPrimaryColor,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            TextButton.icon(
+                              onPressed: () => _showDeleteServiceConfirmation(
+                                context,
+                                service.id,
+                                service.title,
+                              ),
+                              icon: const Icon(Icons.delete, size: 18),
+                              label: const Text('Delete'),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.red,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ],
                   ),
-                ),
-              );
-            },
+                );
+              },
+            ),
           );
         }
 
@@ -728,6 +890,14 @@ class _MyListingsViewState extends State<_MyListingsView>
     return EditAccommodationScreen(accommodation: accommodation);
   }
 
+  Widget _buildEditProductScreen(ProductEntity product) {
+    return EditProductScreen(product: product);
+  }
+
+  Widget _buildEditServiceScreen(ServiceEntity service) {
+    return EditServiceScreen(service: service);
+  }
+
   void _showDeleteConfirmation(
     BuildContext context,
     String accommodationId,
@@ -750,6 +920,70 @@ class _MyListingsViewState extends State<_MyListingsView>
               Navigator.pop(dialogContext);
               context.read<AccommodationBloc>().add(
                 DeleteAccommodationEvent(accommodationId: accommodationId),
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteProductConfirmation(
+    BuildContext context,
+    String productId,
+    String productTitle,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Product'),
+        content: Text(
+          'Are you sure you want to delete "$productTitle"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.read<ProductBloc>().add(
+                DeleteProductEvent(productId: productId),
+              );
+            },
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteServiceConfirmation(
+    BuildContext context,
+    String serviceId,
+    String serviceTitle,
+  ) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Delete Service'),
+        content: Text(
+          'Are you sure you want to delete "$serviceTitle"? This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(dialogContext);
+              context.read<ServiceBloc>().add(
+                DeleteServiceEvent(serviceId: serviceId),
               );
             },
             style: TextButton.styleFrom(foregroundColor: Colors.red),

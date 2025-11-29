@@ -19,3 +19,5 @@ class RecommendationEntity extends Equatable {
   @override
   List<Object?> get props => [itemId, type, similarityScore, matchReasons];
 }
+
+

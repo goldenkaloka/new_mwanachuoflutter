@@ -12,11 +12,44 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_event.dart';
-import 'package:mwanachuo/features/profile/presentation/bloc/profile_state.dart';
+import 'package:mwanachuo/features/profile/presentation/bloc/profile_state.dart' as profile_state;
 import 'package:mwanachuo/features/profile/domain/entities/user_profile_entity.dart';
 
-class ProfilePage extends StatelessWidget {
+class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  bool _hasLoaded = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Reload profile when returning to this page (e.g., from edit screen)
+    // This ensures the profile image updates after editing
+    if (!_hasLoaded) {
+      _hasLoaded = true;
+      return; // Initial load is handled by BlocProvider
+    }
+    
+    // Only reload when returning from another route
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        final route = ModalRoute.of(context);
+        if (route != null && route.isCurrent) {
+          final bloc = context.read<ProfileBloc>();
+          // Only reload if not already loading and we have a loaded state
+          if (bloc.state is! profile_state.ProfileLoading && 
+              bloc.state is profile_state.ProfileLoaded) {
+            bloc.add(LoadMyProfileEvent());
+          }
+        }
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,9 +81,19 @@ class ProfilePage extends StatelessWidget {
             ).showSnackBar(SnackBar(content: Text(state.message)));
           }
         },
-        child: BlocBuilder<ProfileBloc, ProfileState>(
+        child: BlocListener<ProfileBloc, profile_state.ProfileState>(
+          listener: (context, state) {
+            // Reload profile when it's updated (e.g., after editing)
+            if (state is profile_state.ProfileUpdated) {
+              debugPrint('🔄 Profile updated, reloading profile and refreshing auth state');
+              // Refresh AuthBloc to update user data (including avatar) in homepage
+              context.read<AuthBloc>().add(const CheckAuthStatusEvent());
+              context.read<ProfileBloc>().add(LoadMyProfileEvent());
+            }
+          },
+          child: BlocBuilder<ProfileBloc, profile_state.ProfileState>(
           builder: (context, state) {
-            if (state is ProfileLoading) {
+            if (state is profile_state.ProfileLoading) {
               return Scaffold(
                 backgroundColor: isDarkMode
                     ? kBackgroundColorDark
@@ -71,7 +114,7 @@ class ProfilePage extends StatelessWidget {
               );
             }
 
-            if (state is ProfileError) {
+            if (state is profile_state.ProfileError) {
               return Scaffold(
                 backgroundColor: isDarkMode
                     ? kBackgroundColorDark
@@ -108,7 +151,7 @@ class ProfilePage extends StatelessWidget {
               );
             }
 
-            if (state is ProfileLoaded) {
+            if (state is profile_state.ProfileLoaded) {
               return _buildProfileUI(
                 context,
                 isDarkMode,
@@ -126,6 +169,7 @@ class ProfilePage extends StatelessWidget {
             );
           },
         ),
+      ),
       ),
     );
   }
@@ -177,24 +221,6 @@ class ProfilePage extends StatelessWidget {
                         // Content Section
                         Column(
                           children: [
-                            // Membership Status Card
-                            _buildMembershipCard(
-                              context,
-                              primaryTextColor,
-                              secondaryTextColor,
-                              isDarkMode,
-                              screenSize,
-                            ),
-
-                            SizedBox(
-                              height: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 12.0,
-                                medium: 16.0,
-                                expanded: 20.0,
-                              ),
-                            ),
-
                             // Navigation List Group
                             _buildNavigationList(
                               context,
@@ -426,137 +452,6 @@ class ProfilePage extends StatelessWidget {
               fontWeight: FontWeight.normal,
             ),
             textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMembershipCard(
-    BuildContext context,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-    bool isDarkMode,
-    ScreenSize screenSize,
-  ) {
-    return Container(
-      padding: EdgeInsets.all(
-        ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 16.0,
-          medium: 18.0,
-          expanded: 24.0,
-        ),
-      ),
-      constraints: BoxConstraints(
-        minHeight: ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 56.0,
-          medium: 60.0,
-          expanded: 72.0,
-        ),
-      ),
-      decoration: BoxDecoration(
-        color: kPrimaryColor.withValues(alpha: isDarkMode ? 0.3 : 0.2),
-        borderRadius: BorderRadius.circular(16.0),
-      ),
-      child: Row(
-        children: [
-          // Icon Container
-          Container(
-            width: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 40.0,
-              medium: 44.0,
-              expanded: 56.0,
-            ),
-            height: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 40.0,
-              medium: 44.0,
-              expanded: 56.0,
-            ),
-            decoration: BoxDecoration(
-              color: kPrimaryColor,
-              borderRadius: BorderRadius.circular(16.0),
-            ),
-            child: Icon(
-              Icons.star,
-              color: kBackgroundColorDark,
-              size: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 24.0,
-                medium: 26.0,
-                expanded: 32.0,
-              ),
-            ),
-          ),
-          SizedBox(
-            width: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 16.0,
-              medium: 20.0,
-              expanded: 24.0,
-            ),
-          ),
-          // Text Content
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  'Premium Member',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: primaryTextColor,
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 16.0,
-                      medium: 17.0,
-                      expanded: 20.0,
-                    ),
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Text(
-                  'Upgrade for more benefits',
-                  style: GoogleFonts.plusJakartaSans(
-                    color: secondaryTextColor,
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 14.0,
-                      medium: 15.0,
-                      expanded: 16.0,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          // Chevron Icon
-          SizedBox(
-            width: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 28.0,
-              medium: 32.0,
-              expanded: 36.0,
-            ),
-            height: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 28.0,
-              medium: 32.0,
-              expanded: 36.0,
-            ),
-            child: Icon(
-              Icons.chevron_right,
-              color: primaryTextColor,
-              size: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 28.0,
-                medium: 32.0,
-                expanded: 36.0,
-              ),
-            ),
           ),
         ],
       ),
@@ -884,12 +779,14 @@ class ProfilePage extends StatelessWidget {
                 return ElevatedButton(
                   onPressed: state is AuthLoading
                       ? null
-                      : () {
+                      : () async {
+                          // Capture AuthBloc reference before async gap
+                          final authBloc = context.read<AuthBloc>();
                           Navigator.pop(context);
-                          // Unregister device token before logout
-                          PushNotificationService().unregisterDeviceToken();
+                          // Unregister device token before logout (await to ensure it completes)
+                          await PushNotificationService().unregisterDeviceToken();
                           // Dispatch sign out event to BLoC
-                          context.read<AuthBloc>().add(const SignOutEvent());
+                          authBloc.add(const SignOutEvent());
                         },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: kPrimaryColor,

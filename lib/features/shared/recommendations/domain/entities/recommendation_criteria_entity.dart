@@ -51,3 +51,5 @@ class RecommendationCriteriaEntity extends Equatable {
     limit,
   ];
 }
+
+
