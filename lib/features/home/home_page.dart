@@ -1249,10 +1249,6 @@ class _HomePageState extends State<HomePage> {
       expanded: 200.0,
     );
 
-    // Get color combination based on promotion index (for different borders)
-    final colorIndex = promotion.id.hashCode.abs() % 6;
-    final borderColors = _getBorderColorCombination(colorIndex);
-
     return GestureDetector(
       onTap: () => Navigator.pushNamed(
         context,
@@ -1279,11 +1275,6 @@ class _HomePageState extends State<HomePage> {
                   fit: BoxFit.cover,
                 ),
               ),
-            // Animated border
-            _AnimatedPromotionBorder(
-              borderColors: borderColors,
-              borderRadius: 8.0,
-            ),
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8.0),
@@ -1334,19 +1325,6 @@ class _HomePageState extends State<HomePage> {
         ),
       ),
     );
-  }
-
-  // Get different color combinations for borders based on index
-  List<Color> _getBorderColorCombination(int index) {
-    final combinations = [
-      [Colors.blue, Colors.cyan, Colors.teal],
-      [Colors.purple, Colors.pink, Colors.deepPurple],
-      [Colors.orange, Colors.red, Colors.deepOrange],
-      [Colors.green, Colors.lightGreen, Colors.teal],
-      [Colors.amber, Colors.yellow, Colors.orange],
-      [Colors.indigo, Colors.blue, Colors.purple],
-    ];
-    return combinations[index % combinations.length];
   }
 
   Widget _buildProductsGrid(
@@ -1888,7 +1866,7 @@ class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
                   child: Transform.translate(
                     offset: Offset(0, wordOffset * 20),
                     child: Text(
-                      word,
+                      '$word ',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: widget.fontSize,
@@ -1913,107 +1891,3 @@ class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
   }
 }
 
-// Animated border widget for promotion banners
-class _AnimatedPromotionBorder extends StatefulWidget {
-  final List<Color> borderColors;
-  final double borderRadius;
-
-  const _AnimatedPromotionBorder({
-    required this.borderColors,
-    required this.borderRadius,
-  });
-
-  @override
-  State<_AnimatedPromotionBorder> createState() =>
-      _AnimatedPromotionBorderState();
-}
-
-class _AnimatedPromotionBorderState extends State<_AnimatedPromotionBorder>
-    with TickerProviderStateMixin {
-  late AnimationController _controller;
-  late List<Animation<double>> _opacityAnimations;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 2000),
-      vsync: this,
-    )..repeat(reverse: true);
-
-    // Create opacity animations for each color with different phases
-    _opacityAnimations = widget.borderColors.asMap().entries.map((entry) {
-      final index = entry.key;
-      final phase = index * 0.3; // Stagger the animations
-      return Tween<double>(
-        begin: 0.3,
-        end: 1.0,
-      ).animate(
-        CurvedAnimation(
-          parent: _controller,
-          curve: Interval(
-            phase.clamp(0.0, 0.7),
-            (phase + 0.3).clamp(0.0, 1.0),
-            curve: Curves.easeInOut,
-          ),
-        ),
-      );
-    }).toList();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return AnimatedBuilder(
-      animation: _controller,
-      builder: (context, child) {
-        return Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(widget.borderRadius),
-            border: Border.all(
-              width: 4.0, // Thick border
-              color: _getAnimatedBorderColor(),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Color _getAnimatedBorderColor() {
-    // Blend colors based on their current opacity values
-    double r = 0, g = 0, b = 0, a = 0;
-    double totalWeight = 0;
-
-    for (int i = 0; i < widget.borderColors.length; i++) {
-      final color = widget.borderColors[i];
-      final opacity = _opacityAnimations[i].value;
-      final weight = opacity;
-
-      r += color.red * weight;
-      g += color.green * weight;
-      b += color.blue * weight;
-      a += opacity;
-      totalWeight += weight;
-    }
-
-    if (totalWeight > 0) {
-      r = (r / totalWeight).round().clamp(0, 255).toDouble();
-      g = (g / totalWeight).round().clamp(0, 255).toDouble();
-      b = (b / totalWeight).round().clamp(0, 255).toDouble();
-      a = (a / totalWeight).clamp(0.3, 1.0);
-    }
-
-    return Color.fromRGBO(
-      r.toInt(),
-      g.toInt(),
-      b.toInt(),
-      a,
-    );
-  }
-}

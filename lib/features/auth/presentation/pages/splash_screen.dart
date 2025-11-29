@@ -123,44 +123,27 @@ class _SplashScreenState extends State<SplashScreen> {
 
   Widget _buildSplashUI(BuildContext context) {
     return Scaffold(
-      backgroundColor: kPrimaryColor,
+      backgroundColor: Colors.white, // Changed from green to white
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              width: 112,
-              height: 112,
-              margin: const EdgeInsets.only(bottom: 24.0),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.2),
-                borderRadius: kBaseRadius,
-              ),
-              child: const Icon(
-                Icons.shopping_bag,
-                color: Colors.white,
-                size: 64,
-              ),
+            // Animated icon
+            _AnimatedSplashIcon(),
+            const SizedBox(height: 24.0),
+            // Animated title with Nickelodeon style
+            _NickelodeonAnimatedText(
+              text: 'Mwanachuoshop',
+              fontSize: 36,
+              fontWeight: FontWeight.w800,
             ),
-            Text(
-              'Mwanachuoshop',
-              style: GoogleFonts.plusJakartaSans(
-                color: kBackgroundColorDark,
-                fontSize: 36,
-                fontWeight: FontWeight.w800,
-                height: 1.2,
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.only(top: 8.0),
-              child: Text(
-                'Your Campus Marketplace',
-                style: GoogleFonts.plusJakartaSans(
-                  color: kBackgroundColorDark.withValues(alpha: 0.8),
-                  fontSize: 16,
-                  fontWeight: FontWeight.normal,
-                ),
-              ),
+            const SizedBox(height: 8.0),
+            // Animated subtitle
+            _NickelodeonAnimatedText(
+              text: 'Your Campus Marketplace',
+              fontSize: 16,
+              fontWeight: FontWeight.normal,
+              delay: const Duration(milliseconds: 400),
             ),
           ],
         ),
@@ -174,14 +157,279 @@ class _SplashScreenState extends State<SplashScreen> {
             borderRadius: BorderRadius.circular(9999),
             child: LinearProgressIndicator(
               value: 0.4,
-              backgroundColor: Colors.white.withValues(alpha: 0.3),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                kBackgroundColorDark,
-              ),
+              backgroundColor: kPrimaryColor.withValues(alpha: 0.2),
+              valueColor: const AlwaysStoppedAnimation<Color>(kPrimaryColor),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+// Animated icon widget
+class _AnimatedSplashIcon extends StatefulWidget {
+  @override
+  State<_AnimatedSplashIcon> createState() => _AnimatedSplashIconState();
+}
+
+class _AnimatedSplashIconState extends State<_AnimatedSplashIcon>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+  late Animation<double> _rotationAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    // Bouncy scale animation (Nickelodeon style)
+    _scaleAnimation = TweenSequence<double>([
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.0,
+          end: 1.2,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1.2,
+          end: 0.9,
+        ).chain(CurveTween(curve: Curves.easeIn)),
+        weight: 20,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0.9,
+          end: 1.0,
+        ).chain(CurveTween(curve: Curves.easeOut)),
+        weight: 40,
+      ),
+    ]).animate(_controller);
+
+    // Slight rotation for playfulness
+    _rotationAnimation = Tween<double>(
+      begin: -0.1,
+      end: 0.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Transform.scale(
+          scale: _scaleAnimation.value,
+          child: Transform.rotate(
+            angle: _rotationAnimation.value,
+            child: Container(
+              width: 112,
+              height: 112,
+              decoration: BoxDecoration(
+                color: kPrimaryColor.withValues(alpha: 0.1),
+                borderRadius: kBaseRadius,
+              ),
+              child: Icon(
+                Icons.shopping_bag,
+                color: kPrimaryColor, // Green color
+                size: 64,
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+}
+
+// Nickelodeon-style animated text widget (letter by letter)
+class _NickelodeonAnimatedText extends StatefulWidget {
+  final String text;
+  final double fontSize;
+  final FontWeight fontWeight;
+  final Duration delay;
+
+  const _NickelodeonAnimatedText({
+    required this.text,
+    required this.fontSize,
+    required this.fontWeight,
+    this.delay = Duration.zero,
+  });
+
+  @override
+  State<_NickelodeonAnimatedText> createState() =>
+      _NickelodeonAnimatedTextState();
+}
+
+class _NickelodeonAnimatedTextState extends State<_NickelodeonAnimatedText>
+    with TickerProviderStateMixin {
+  late List<AnimationController> _controllers;
+  late List<Animation<double>> _scaleAnimations;
+  late List<Animation<double>> _rotationAnimations;
+  late List<Animation<Offset>> _slideAnimations;
+  late List<Animation<Color?>> _colorAnimations;
+
+  @override
+  void initState() {
+    super.initState();
+    final letters = widget.text.split('');
+
+    _controllers = List.generate(
+      letters.length,
+      (index) => AnimationController(
+        duration: const Duration(milliseconds: 800),
+        vsync: this,
+      ),
+    );
+
+    _scaleAnimations = _controllers.map((controller) {
+      return TweenSequence<double>([
+        TweenSequenceItem(
+          tween: Tween<double>(
+            begin: 0.0,
+            end: 1.5,
+          ).chain(CurveTween(curve: Curves.easeOutBack)),
+          weight: 40,
+        ),
+        TweenSequenceItem(
+          tween: Tween<double>(
+            begin: 1.5,
+            end: 0.85,
+          ).chain(CurveTween(curve: Curves.easeInOut)),
+          weight: 20,
+        ),
+        TweenSequenceItem(
+          tween: Tween<double>(
+            begin: 0.85,
+            end: 1.05,
+          ).chain(CurveTween(curve: Curves.easeOut)),
+          weight: 20,
+        ),
+        TweenSequenceItem(
+          tween: Tween<double>(
+            begin: 1.05,
+            end: 1.0,
+          ).chain(CurveTween(curve: Curves.easeInOut)),
+          weight: 20,
+        ),
+      ]).animate(controller);
+    }).toList();
+
+    _rotationAnimations = _controllers.asMap().entries.map((entry) {
+      final controller = entry.value;
+      final index = entry.key;
+      // Alternate rotation direction for playfulness
+      final rotationDirection = index % 2 == 0 ? 1.0 : -1.0;
+      return Tween<double>(
+        begin: 0.4 * rotationDirection,
+        end: 0.0,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.elasticOut));
+    }).toList();
+
+    _slideAnimations = _controllers.map((controller) {
+      return Tween<Offset>(
+        begin: const Offset(0, -1.5),
+        end: Offset.zero,
+      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOutBack));
+    }).toList();
+
+    // Color animations for splash effect
+    _colorAnimations = _controllers.map((controller) {
+      return ColorTween(
+        begin: kPrimaryColor.withValues(alpha: 0.3),
+        end: kPrimaryColor,
+      ).animate(
+        CurvedAnimation(
+          parent: controller,
+          curve: const Interval(0.3, 1.0, curve: Curves.easeIn),
+        ),
+      );
+    }).toList();
+
+    // Start animations with staggered delay (letter by letter)
+    for (int i = 0; i < _controllers.length; i++) {
+      Future.delayed(
+        widget.delay + Duration(milliseconds: i * 50), // 50ms per letter
+        () {
+          if (mounted) {
+            _controllers[i].forward();
+          }
+        },
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    for (var controller in _controllers) {
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final letters = widget.text.split('');
+
+    return Wrap(
+      alignment: WrapAlignment.center,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: List.generate(letters.length, (index) {
+        final letter = letters[index];
+        final isSpace = letter == ' ';
+
+        if (isSpace) {
+          return SizedBox(width: widget.fontSize * 0.3);
+        }
+
+        return AnimatedBuilder(
+          animation: _controllers[index],
+          builder: (context, child) {
+            return Transform.translate(
+              offset: Offset(
+                _slideAnimations[index].value.dx,
+                _slideAnimations[index].value.dy * widget.fontSize,
+              ),
+              child: Transform.scale(
+                scale: _scaleAnimations[index].value,
+                child: Transform.rotate(
+                  angle: _rotationAnimations[index].value,
+                  child: Text(
+                    letter,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: _colorAnimations[index].value ?? kPrimaryColor,
+                      fontSize: widget.fontSize,
+                      fontWeight: widget.fontWeight,
+                      height: 1.2,
+                      shadows: [
+                        Shadow(
+                          color: kPrimaryColor.withValues(alpha: 0.3),
+                          blurRadius: 8 * _scaleAnimations[index].value,
+                          offset: Offset(0, 2 * _scaleAnimations[index].value),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      }),
     );
   }
 }
