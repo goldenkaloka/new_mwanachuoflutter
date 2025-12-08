@@ -11,6 +11,14 @@ abstract class AccommodationRepository {
     bool? isFeatured,
     int? limit,
     int? offset,
+    String? searchQuery,
+    double? minPrice,
+    double? maxPrice,
+    String? location,
+    List<String>? amenities,
+    String? priceType,
+    String? sortBy,
+    bool sortAscending = true,
   });
 
   Future<Either<Failure, AccommodationEntity>> getAccommodationById(

@@ -40,10 +40,11 @@ class _SliverImageCarouselState extends State<SliverImageCarousel> {
           fit: StackFit.expand,
           children: [
             // Image carousel - PageView that can properly handle horizontal swipes
+            // PageScrollPhysics is optimized for PageView horizontal scrolling
             PageView.builder(
               controller: _pageController,
               itemCount: images.length,
-              physics: const PageScrollPhysics(), // Enable horizontal swiping
+              physics: const PageScrollPhysics(), // Optimized for PageView
               scrollDirection: Axis.horizontal,
               onPageChanged: (index) {
                 setState(() {

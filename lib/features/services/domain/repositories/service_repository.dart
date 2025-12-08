@@ -13,6 +13,12 @@ abstract class ServiceRepository {
     bool? isFeatured,
     int? limit,
     int? offset,
+    String? searchQuery,
+    double? minPrice,
+    double? maxPrice,
+    String? location,
+    String? sortBy,
+    bool sortAscending = true,
   });
 
   /// Get a single service by ID

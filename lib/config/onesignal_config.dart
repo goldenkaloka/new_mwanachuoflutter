@@ -247,15 +247,17 @@ class OneSignalConfig {
     final additionalData = notification.additionalData;
 
     // Determine icon and color based on notification type
+    // Use brand colors for all notifications
     IconData icon = Icons.notifications;
-    Color? iconColor;
+    Color? iconColor = kPrimaryColor; // Default to brand color
 
     if (additionalData != null) {
       final type = additionalData['type'] as String?;
       switch (type) {
         case 'message':
+        case 'chat':
           icon = Icons.chat_bubble;
-          iconColor = Colors.blue;
+          iconColor = kPrimaryColor; // Brand green for messages
           break;
         case 'review':
           icon = Icons.star;
@@ -263,14 +265,15 @@ class OneSignalConfig {
           break;
         case 'order':
           icon = Icons.shopping_bag;
-          iconColor = kPrimaryColor;
+          iconColor = kPrimaryColor; // Brand green
           break;
         case 'promotion':
           icon = Icons.local_offer;
-          iconColor = Colors.orange;
+          iconColor = kPrimaryColor; // Brand green
           break;
         default:
           icon = Icons.notifications;
+          iconColor = kPrimaryColor; // Brand green for all
       }
     }
 
@@ -387,9 +390,10 @@ class OneSignalConfig {
     switch (actionId) {
       case 'reply':
       case 'chat_reply':
-        // Navigate to chat
+        // Handle reply action - navigate to chat screen
+        // The conversationId can be in data.conversationId or directly in additionalData
         if (additionalData != null) {
-          final conversationId =
+          final conversationId = additionalData['conversationId'] as String? ??
               additionalData['data']?['conversationId'] as String?;
           if (conversationId != null) {
             final context = navigatorKey?.currentContext;
@@ -397,6 +401,15 @@ class OneSignalConfig {
               Navigator.of(
                 context,
               ).pushNamed('/chat', arguments: conversationId);
+            }
+          } else {
+            // Fallback: try to navigate to general chat if conversation ID not found
+            LoggerService.warning(
+              'Reply action triggered but no conversationId found',
+            );
+            final context = navigatorKey?.currentContext;
+            if (context != null) {
+              Navigator.of(context).pushNamed('/chat');
             }
           }
         }

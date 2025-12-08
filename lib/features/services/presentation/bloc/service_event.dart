@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:equatable/equatable.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 
 abstract class ServiceEvent extends Equatable {
   const ServiceEvent();
@@ -15,6 +16,7 @@ class LoadServicesEvent extends ServiceEvent {
   final bool? isFeatured;
   final int? limit;
   final int? offset;
+  final ServiceFilter? filter;
 
   const LoadServicesEvent({
     this.category,
@@ -23,10 +25,26 @@ class LoadServicesEvent extends ServiceEvent {
     this.isFeatured,
     this.limit,
     this.offset,
+    this.filter,
   });
 
   @override
-  List<Object?> get props => [category, universityId, providerId, isFeatured, limit, offset];
+  List<Object?> get props => [category, universityId, providerId, isFeatured, limit, offset, filter];
+}
+
+/// Apply filter event
+class ApplyServiceFilterEvent extends ServiceEvent {
+  final ServiceFilter filter;
+
+  const ApplyServiceFilterEvent({required this.filter});
+
+  @override
+  List<Object?> get props => [filter];
+}
+
+/// Clear filter event
+class ClearServiceFilterEvent extends ServiceEvent {
+  const ClearServiceFilterEvent();
 }
 
 class LoadServiceByIdEvent extends ServiceEvent {
@@ -165,14 +183,16 @@ class LoadMoreServicesEvent extends ServiceEvent {
   final String? category;
   final String? universityId;
   final int offset;
+  final ServiceFilter? filter;
 
   const LoadMoreServicesEvent({
     this.category,
     this.universityId,
     required this.offset,
+    this.filter,
   });
 
   @override
-  List<Object?> get props => [category, universityId, offset];
+  List<Object?> get props => [category, universityId, offset, filter];
 }
 

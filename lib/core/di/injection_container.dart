@@ -71,6 +71,12 @@ import 'package:mwanachuo/features/shared/recommendations/domain/usecases/get_pr
 import 'package:mwanachuo/features/shared/recommendations/domain/usecases/get_service_recommendations.dart';
 import 'package:mwanachuo/features/shared/recommendations/domain/usecases/get_accommodation_recommendations.dart';
 import 'package:mwanachuo/features/shared/recommendations/presentation/cubit/recommendation_cubit.dart';
+import 'package:mwanachuo/features/shared/categories/data/datasources/category_remote_data_source.dart';
+import 'package:mwanachuo/features/shared/categories/data/repositories/category_repository_impl.dart';
+import 'package:mwanachuo/features/shared/categories/domain/repositories/category_repository.dart';
+import 'package:mwanachuo/features/shared/categories/domain/usecases/get_product_categories.dart';
+import 'package:mwanachuo/features/shared/categories/domain/usecases/get_product_conditions.dart';
+import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
 import 'package:mwanachuo/features/shared/notifications/data/datasources/notification_local_data_source.dart';
 import 'package:mwanachuo/features/shared/notifications/data/datasources/notification_remote_data_source.dart';
 import 'package:mwanachuo/features/shared/notifications/data/repositories/notification_repository_impl.dart';
@@ -193,6 +199,7 @@ Future<void> initializeDependencies() async {
   await _initRecommendationsFeature();
   await _initNotificationsFeature();
   await _initSubscriptionsFeature();
+  await _initCategoriesFeature();
 
   // ============================================================================
   // STANDALONE FEATURES
@@ -543,6 +550,36 @@ Future<void> _initSubscriptionsFeature() async {
       updateSubscription: sl(),
       getPaymentHistory: sl(),
       createCheckoutSession: sl(),
+    ),
+  );
+}
+
+// ============================================
+// CATEGORIES FEATURE (SHARED)
+// ============================================
+Future<void> _initCategoriesFeature() async {
+  // Use Cases
+  sl.registerLazySingleton(() => GetProductCategories(sl()));
+  sl.registerLazySingleton(() => GetProductConditions(sl()));
+
+  // Repository
+  sl.registerLazySingleton<CategoryRepository>(
+    () => CategoryRepositoryImpl(
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
+  // Data Sources
+  sl.registerLazySingleton<CategoryRemoteDataSource>(
+    () => CategoryRemoteDataSourceImpl(supabaseClient: sl()),
+  );
+
+  // Cubit
+  sl.registerFactory(
+    () => CategoryCubit(
+      getProductCategories: sl(),
+      getProductConditions: sl(),
     ),
   );
 }

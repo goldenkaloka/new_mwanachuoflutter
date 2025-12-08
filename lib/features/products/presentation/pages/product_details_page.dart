@@ -18,9 +18,6 @@ import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_type.dart';
-import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_criteria_entity.dart';
-import 'package:mwanachuo/features/shared/recommendations/presentation/widgets/recommendation_section.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
@@ -326,21 +323,6 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                     screenSize,
                   ),
                 ),
-                // Similar items (mid-page recommendations)
-                SliverToBoxAdapter(
-                  child: RecommendationSection(
-                    currentItemId: product.id,
-                    type: RecommendationType.product,
-                    title: 'Similar Items',
-                    onItemTap: (itemId, type) {
-                      Navigator.pushNamed(
-                        context,
-                        '/product-details',
-                        arguments: itemId,
-                      );
-                    },
-                  ),
-                ),
                 // Description section
                 SliverSection(
                   child: _buildDescription(
@@ -365,22 +347,6 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                   child: CommentsAndRatingsSection(
                     itemId: product.id,
                     itemType: 'product',
-                  ),
-                ),
-                // More recommendations (bottom)
-                SliverToBoxAdapter(
-                  child: RecommendationSection(
-                    currentItemId: product.id,
-                    type: RecommendationType.product,
-                    title: 'More Recommendations',
-                    criteria: RecommendationCriteriaEntity(limit: 8),
-                    onItemTap: (itemId, type) {
-                      Navigator.pushNamed(
-                        context,
-                        '/product-details',
-                        arguments: itemId,
-                      );
-                    },
                   ),
                 ),
                 // Bottom padding

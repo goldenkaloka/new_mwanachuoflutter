@@ -4,6 +4,14 @@ import { createClient } from 'jsr:@supabase/supabase-js@2';
 const ONESIGNAL_APP_ID = Deno.env.get('ONESIGNAL_APP_ID') || '';
 const ONESIGNAL_REST_API_KEY = Deno.env.get('ONESIGNAL_REST_API_KEY') || '';
 
+// Brand colors - Mwanachuo green
+const BRAND_COLOR = '#078829'; // Primary brand green
+const BRAND_COLOR_LIGHT = '#B6FCDA'; // Light shade for backgrounds
+
+// App icon URL - Update this with your hosted app icon URL
+// For now, using a placeholder. You should host your app icon and update this URL
+const APP_ICON_URL = Deno.env.get('APP_ICON_URL') || 'https://via.placeholder.com/256/078829/FFFFFF?text=M';
+
 interface NotificationPayload {
   user_id: string;
   title: string;
@@ -11,6 +19,8 @@ interface NotificationPayload {
   type: string;
   action_url?: string;
   metadata?: Record<string, any>;
+  conversation_id?: string; // For message notifications with reply
+  sender_id?: string; // For message notifications
 }
 
 Deno.serve(async (req) => {
@@ -35,7 +45,7 @@ Deno.serve(async (req) => {
     // Since this function is called internally by database triggers, we accept all calls
 
     const payload: NotificationPayload = await req.json();
-    const { user_id, title, message, type, action_url, metadata } = payload;
+    const { user_id, title, message, type, action_url, metadata, conversation_id, sender_id } = payload;
 
     if (!user_id || !title || !message) {
       return new Response(
@@ -87,8 +97,28 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Prepare OneSignal notification payload
-    const oneSignalPayload = {
+    // Determine if this is a message notification that should have reply action
+    const isMessageNotification = type === 'message' || type === 'chat';
+    const shouldShowReply = isMessageNotification && conversation_id;
+
+    // Build action buttons for message notifications (like WhatsApp)
+    // OneSignal button format: array of objects with id and text
+    const buttons: any[] = [];
+    if (shouldShowReply) {
+      buttons.push(
+        {
+          id: 'reply',
+          text: 'Reply',
+        },
+        {
+          id: 'view',
+          text: 'View',
+        }
+      );
+    }
+
+    // Prepare OneSignal notification payload with brand colors and icon
+    const oneSignalPayload: any = {
       app_id: ONESIGNAL_APP_ID,
       include_player_ids: playerIds,
       headings: { en: title },
@@ -96,8 +126,14 @@ Deno.serve(async (req) => {
       data: {
         type: type,
         actionUrl: action_url,
+        conversationId: conversation_id,
+        senderId: sender_id,
         ...metadata,
       },
+      // Brand colors
+      android_accent_color: BRAND_COLOR, // Brand green for Android notification accent
+      // App icon
+      large_icon: APP_ICON_URL, // Large icon shown in notification
       // Ensure notifications show with sound and banner
       priority: 10, // High priority
       sound: 'default', // Play default notification sound
@@ -105,7 +141,17 @@ Deno.serve(async (req) => {
       ios_sound: 'default',
       ios_badgeType: 'Increase',
       ios_badgeCount: 1,
+      // iOS accent color (for notification banner)
+      ios_category: isMessageNotification ? 'MESSAGE_CATEGORY' : undefined,
     };
+
+    // Add action buttons for message notifications
+    if (buttons.length > 0) {
+      oneSignalPayload.buttons = buttons;
+      // Android specific: Enable inline reply for messages
+      oneSignalPayload.android_visibility = 1; // Public visibility
+      oneSignalPayload.android_group = conversation_id ? `conversation_${conversation_id}` : undefined;
+    }
 
     // Send notification via OneSignal API
     const oneSignalResponse = await fetch('https://onesignal.com/api/v1/notifications', {

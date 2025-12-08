@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/features/products/domain/usecases/create_product.dart';
 import 'package:mwanachuo/features/products/domain/usecases/delete_product.dart';
 import 'package:mwanachuo/features/products/domain/usecases/get_my_products.dart';
@@ -37,6 +38,32 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     on<DeleteProductEvent>(_onDeleteProduct);
     on<IncrementViewCountEvent>(_onIncrementViewCount);
     on<LoadMoreProductsEvent>(_onLoadMoreProducts);
+    on<ApplyProductFilterEvent>(_onApplyFilter);
+    on<ClearProductFilterEvent>(_onClearFilter);
+  }
+
+  ProductFilter? _currentFilter;
+
+  Future<void> _onApplyFilter(
+    ApplyProductFilterEvent event,
+    Emitter<ProductState> emit,
+  ) async {
+    _currentFilter = event.filter;
+    debugPrint('🔍 Applying filter: searchQuery="${event.filter.searchQuery}", category="${event.filter.category}", condition="${event.filter.condition}"');
+    // Reload products with new filter
+    add(LoadProductsEvent(
+      limit: 50,
+      filter: _currentFilter,
+    ));
+  }
+
+  Future<void> _onClearFilter(
+    ClearProductFilterEvent event,
+    Emitter<ProductState> emit,
+  ) async {
+    _currentFilter = null;
+    // Reload products without filter
+    add(const LoadProductsEvent(limit: 50));
   }
 
   Future<void> _onLoadProducts(
@@ -49,7 +76,8 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       return;
     }
     
-    debugPrint('📦 Loading products...');
+    final filterToUse = event.filter ?? _currentFilter;
+    debugPrint('📦 Loading products with filter: searchQuery="${filterToUse?.searchQuery}", category="${filterToUse?.category}"');
     emit(ProductsLoading());
 
     final result = await getProducts(
@@ -60,6 +88,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         isFeatured: event.isFeatured,
         limit: event.limit,
         offset: event.offset,
+        filter: filterToUse,
       ),
     );
 
@@ -75,7 +104,9 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         emit(ProductsLoaded(
           products: products,
           hasMore: products.length == (event.limit ?? 20),
+          currentFilter: event.filter ?? _currentFilter,
         ));
+        _currentFilter = event.filter ?? _currentFilter;
       },
     );
   }
@@ -106,6 +137,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       GetMyProductsParams(
         limit: event.limit,
         offset: event.offset,
+        filter: event.filter,
       ),
     );
 
@@ -231,6 +263,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         universityId: event.universityId,
         isFeatured: event.isFeatured,
         offset: event.offset,
+        filter: event.filter ?? currentState.currentFilter,
       ),
     );
 
@@ -241,6 +274,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         emit(ProductsLoaded(
           products: allProducts,
           hasMore: products.length == 20,
+          currentFilter: currentState.currentFilter,
         ));
       },
     );

@@ -38,11 +38,7 @@ Future<void> main() async {
 
     runApp(const MwanachuoshopApp());
 
-    // Remove native splash after a short delay to allow app to initialize
-    // The Flutter SplashScreen will handle the actual navigation
-    Future.delayed(const Duration(milliseconds: 500), () {
-      FlutterNativeSplash.remove();
-    });
+    // Native splash will be removed by InitialRouteHandler when navigation occurs
   } catch (e, stackTrace) {
     debugPrint('Initialization failed: $e\n$stackTrace');
     // Run a simple error app if initialization fails

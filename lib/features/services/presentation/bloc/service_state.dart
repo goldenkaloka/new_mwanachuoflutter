@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 
 abstract class ServiceState extends Equatable {
@@ -16,27 +17,31 @@ class ServicesLoaded extends ServiceState {
   final List<ServiceEntity> services;
   final bool hasMore;
   final bool isLoadingMore;
+  final ServiceFilter? currentFilter;
 
   const ServicesLoaded({
     required this.services,
     this.hasMore = false,
     this.isLoadingMore = false,
+    this.currentFilter,
   });
 
   ServicesLoaded copyWith({
     List<ServiceEntity>? services,
     bool? hasMore,
     bool? isLoadingMore,
+    ServiceFilter? currentFilter,
   }) {
     return ServicesLoaded(
       services: services ?? this.services,
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      currentFilter: currentFilter ?? this.currentFilter,
     );
   }
 
   @override
-  List<Object?> get props => [services, hasMore, isLoadingMore];
+  List<Object?> get props => [services, hasMore, isLoadingMore, currentFilter];
 }
 
 class ServiceLoading extends ServiceState {}

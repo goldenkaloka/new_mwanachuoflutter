@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:dartz/dartz.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 
 /// Product repository interface
@@ -13,6 +14,7 @@ abstract class ProductRepository {
     bool? isFeatured,
     int? limit,
     int? offset,
+    ProductFilter? filter,
   });
 
   /// Get a single product by ID
@@ -22,6 +24,7 @@ abstract class ProductRepository {
   Future<Either<Failure, List<ProductEntity>>> getMyProducts({
     int? limit,
     int? offset,
+    ProductFilter? filter,
   });
 
   /// Create a new product

@@ -19,6 +19,19 @@ class BecomeSellerScreen extends StatefulWidget {
 class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
   final TextEditingController _reasonController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _hasSubmitted = false; // Flag to prevent multiple submissions
+  String? _currentRequestStatus; // Track current request status
+
+  @override
+  void initState() {
+    super.initState();
+    // Load request status on screen load
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        context.read<AuthBloc>().add(const GetSellerRequestStatusEvent());
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -26,10 +39,24 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
     super.dispose();
   }
 
+  bool _canSubmit() {
+    // Can't submit if already submitted, loading, or has existing request
+    if (_hasSubmitted) return false;
+    if (_currentRequestStatus == 'pending') return false;
+    if (_currentRequestStatus == 'approved') return false;
+    return true;
+  }
+
   void _submitRequest() {
+    if (!_canSubmit()) return;
+    
     if (_formKey.currentState!.validate()) {
       final userId = SupabaseConfig.client.auth.currentUser?.id;
       if (userId == null) return;
+
+      setState(() {
+        _hasSubmitted = true; // Prevent multiple submissions
+      });
 
       context.read<AuthBloc>().add(
         RequestSellerAccessEvent(
@@ -62,7 +89,12 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
       body: BlocConsumer<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is SellerRequestSubmitted) {
-            // Don't pop - show status card instead
+            // Clear form and update UI
+            setState(() {
+              _reasonController.clear();
+              _currentRequestStatus = 'pending'; // Set status to pending
+            });
+            
             ScaffoldMessenger.of(context).showSnackBar(
               const SnackBar(
                 content: Text(
@@ -74,7 +106,20 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
             );
             // Reload status to show the pending status card
             context.read<AuthBloc>().add(const GetSellerRequestStatusEvent());
+          } else if (state is SellerRequestStatusLoaded) {
+            // Update current status to enable/disable form
+            setState(() {
+              _currentRequestStatus = state.status;
+              // If status is null (no request) or rejected, allow submission
+              if (state.status == null || state.status == 'rejected') {
+                _hasSubmitted = false;
+              }
+            });
           } else if (state is AuthError) {
+            // On error, allow resubmission
+            setState(() {
+              _hasSubmitted = false;
+            });
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(state.message),
@@ -184,6 +229,7 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                   TextFormField(
                     controller: _reasonController,
                     maxLines: 4,
+                    enabled: _canSubmit() && state is! AuthLoading,
                     decoration: InputDecoration(
                       hintText:
                           'Tell us why you want to sell on Mwanachuoshop...',
@@ -217,12 +263,16 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                         width: double.infinity,
                         height: 48.0, // M3 standard button height
                         child: ElevatedButton(
-                          onPressed: state is AuthLoading
+                          onPressed: (state is AuthLoading || !_canSubmit())
                               ? null
                               : _submitRequest,
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimaryColor,
-                            foregroundColor: kBackgroundColorDark,
+                            backgroundColor: _canSubmit()
+                                ? kPrimaryColor
+                                : Colors.grey,
+                            foregroundColor: _canSubmit()
+                                ? kBackgroundColorDark
+                                : Colors.white70,
                             padding: const EdgeInsets.symmetric(
                               horizontal: 24.0,
                             ), // M3 standard
@@ -247,7 +297,11 @@ class _BecomeSellerScreenState extends State<BecomeSellerScreen> {
                                   ),
                                 )
                               : Text(
-                                  'Submit Request',
+                                  _currentRequestStatus == 'pending'
+                                      ? 'Request Pending'
+                                      : _currentRequestStatus == 'approved'
+                                          ? 'Already a Seller'
+                                          : 'Submit Request',
                                   style: GoogleFonts.plusJakartaSans(
                                     fontSize:
                                         16.0, // M3 standard button text size

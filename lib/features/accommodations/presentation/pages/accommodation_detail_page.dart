@@ -14,9 +14,6 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_type.dart';
-import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_criteria_entity.dart';
-import 'package:mwanachuo/features/shared/recommendations/presentation/widgets/recommendation_section.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
@@ -282,21 +279,6 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                 screenSize,
               ),
             ),
-            // Similar accommodations (mid-page recommendations)
-            SliverToBoxAdapter(
-              child: RecommendationSection(
-                currentItemId: accommodation.id,
-                type: RecommendationType.accommodation,
-                title: 'Similar Accommodations',
-                onItemTap: (itemId, type) {
-                  Navigator.pushNamed(
-                    context,
-                    '/accommodation-details',
-                    arguments: itemId,
-                  );
-                },
-              ),
-            ),
             // Owner info section
             SliverSection(
               child: _buildOwnerInfo(
@@ -333,22 +315,6 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
               child: CommentsAndRatingsSection(
                 itemId: accommodation.id,
                 itemType: 'accommodation',
-              ),
-            ),
-            // More recommendations (bottom)
-            SliverToBoxAdapter(
-              child: RecommendationSection(
-                currentItemId: accommodation.id,
-                type: RecommendationType.accommodation,
-                title: 'More Recommendations',
-                criteria: RecommendationCriteriaEntity(limit: 8),
-                onItemTap: (itemId, type) {
-                  Navigator.pushNamed(
-                    context,
-                    '/accommodation-details',
-                    arguments: itemId,
-                  );
-                },
               ),
             ),
             // Bottom padding

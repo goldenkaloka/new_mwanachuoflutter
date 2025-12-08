@@ -17,6 +17,47 @@ import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
 import 'package:mwanachuo/features/messages/domain/entities/message_entity.dart';
 
+/// Widget that detects horizontal swipe and triggers reply immediately (WhatsApp-style)
+class _WhatsAppSwipeToReply extends StatefulWidget {
+  final Widget child;
+  final VoidCallback onSwipeDetected;
+
+  const _WhatsAppSwipeToReply({
+    required this.child,
+    required this.onSwipeDetected,
+  });
+
+  @override
+  State<_WhatsAppSwipeToReply> createState() => _WhatsAppSwipeToReplyState();
+}
+
+class _WhatsAppSwipeToReplyState extends State<_WhatsAppSwipeToReply> {
+  double _dragStartX = 0.0;
+  bool _hasTriggeredReply = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onHorizontalDragStart: (details) {
+        _dragStartX = details.globalPosition.dx;
+        _hasTriggeredReply = false;
+      },
+      onHorizontalDragUpdate: (details) {
+        final dragDistance = (details.globalPosition.dx - _dragStartX).abs();
+        // Trigger reply when swipe reaches 50px threshold (WhatsApp-style)
+        if (dragDistance > 50 && !_hasTriggeredReply) {
+          _hasTriggeredReply = true;
+          widget.onSwipeDetected();
+        }
+      },
+      onHorizontalDragEnd: (_) {
+        _hasTriggeredReply = false;
+      },
+      child: widget.child,
+    );
+  }
+}
+
 // --- CHAT SCREEN WIDGET ---
 
 class ChatScreen extends StatefulWidget {
@@ -981,6 +1022,22 @@ class _ChatScreenViewState extends State<_ChatScreenView>
     final theme = Theme.of(context);
     final isDarkMode = theme.brightness == Brightness.dark;
 
+    // Get the replied-to message if this message is a reply
+    MessageEntity? repliedToMessage;
+    if (message.repliedToMessageId != null) {
+      final currentState = context.read<MessageBloc>().state;
+      if (currentState is MessagesLoaded) {
+        try {
+          repliedToMessage = currentState.messages.firstWhere(
+            (m) => m.id == message.repliedToMessageId,
+          );
+        } catch (e) {
+          // Message not found, ignore
+          repliedToMessage = null;
+        }
+      }
+    }
+
     Widget bubbleContent = Container(
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -1005,6 +1062,19 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Display replied message (WhatsApp-style) - attached to the bubble
+          if (repliedToMessage != null) ...[
+            _buildRepliedMessagePreview(repliedToMessage, isSent, isDarkMode),
+            const SizedBox(height: 8),
+            // Divider line
+            Container(
+              height: 1,
+              color: isSent
+                  ? Colors.white.withValues(alpha: 0.2)
+                  : (isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.1)),
+            ),
+            const SizedBox(height: 8),
+          ],
           // Display listing card if metadata contains listing information
           if (message.metadata != null &&
               message.metadata!.containsKey('listingId') &&
@@ -1085,55 +1155,53 @@ class _ChatScreenViewState extends State<_ChatScreenView>
       child: bubbleContent,
     );
 
-    bubbleContent = Slidable(
-      key: ValueKey(message.id),
-      startActionPane: isSent
-          ? null
-          : ActionPane(
-              motion: const BehindMotion(),
-              extentRatio: 0.35,
-              children: [
-                SlidableAction(
-                  onPressed: (_) {
-                    // Add a small delay to mimic WhatsApp's behavior
-                    Future.delayed(const Duration(milliseconds: 100), () {
+    // WhatsApp-style: Wrap in swipe detector that triggers reply immediately on swipe
+    bubbleContent = _WhatsAppSwipeToReply(
+      onSwipeDetected: () => _handleReply(message),
+      child: Slidable(
+        key: ValueKey(message.id),
+        startActionPane: isSent
+            ? null
+            : ActionPane(
+                motion: const BehindMotion(),
+                extentRatio: 0.35,
+                children: [
+                  SlidableAction(
+                    onPressed: (_) {
                       _handleReply(message);
-                    });
-                  },
-                  backgroundColor: const Color(0xFF008069), // WhatsApp green
-                  foregroundColor: Colors.white,
-                  icon: Icons.reply,
-                  label: 'Reply',
-                  spacing: 8.0,
-                  flex: 2,
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-              ],
-            ),
-      endActionPane: isSent
-          ? ActionPane(
-              motion: const BehindMotion(),
-              extentRatio: 0.35,
-              children: [
-                SlidableAction(
-                  onPressed: (_) {
-                    // Add a small delay to mimic WhatsApp's behavior
-                    Future.delayed(const Duration(milliseconds: 100), () {
+                    },
+                    backgroundColor: const Color(0xFF008069), // WhatsApp green
+                    foregroundColor: Colors.white,
+                    icon: Icons.reply,
+                    label: 'Reply',
+                    spacing: 8.0,
+                    flex: 2,
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ],
+              ),
+        endActionPane: isSent
+            ? ActionPane(
+                motion: const BehindMotion(),
+                extentRatio: 0.35,
+                children: [
+                  SlidableAction(
+                    onPressed: (_) {
                       _handleReply(message);
-                    });
-                  },
-                  backgroundColor: const Color(0xFF008069), // WhatsApp green
-                  foregroundColor: Colors.white,
-                  icon: Icons.reply,
-                  label: 'Reply',
-                  spacing: 8.0,
-                  flex: 2,
-                  borderRadius: BorderRadius.circular(8.0),
-                ),
-              ],
-            )
-          : null,
-      child: bubbleContent,
+                    },
+                    backgroundColor: const Color(0xFF008069), // WhatsApp green
+                    foregroundColor: Colors.white,
+                    icon: Icons.reply,
+                    label: 'Reply',
+                    spacing: 8.0,
+                    flex: 2,
+                    borderRadius: BorderRadius.circular(8.0),
+                  ),
+                ],
+              )
+            : null,
+        child: bubbleContent,
+      ),
     );
 
     // Use a custom approach for better alignment control
@@ -1500,6 +1568,103 @@ class _ChatScreenViewState extends State<_ChatScreenView>
           ),
         ],
       ),
+    );
+  }
+
+  /// Build replied message preview inside the message bubble (WhatsApp-style)
+  Widget _buildRepliedMessagePreview(
+    MessageEntity repliedMessage,
+    bool isSent,
+    bool isDarkMode,
+  ) {
+    final theme = Theme.of(context);
+    final currentUserId = SupabaseConfig.client.auth.currentUser?.id ?? '';
+    final isRepliedMessageSent = repliedMessage.senderId == currentUserId;
+    
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: isSent
+            ? Colors.white.withValues(alpha: 0.15)
+            : (isDarkMode 
+                ? Colors.black.withValues(alpha: 0.2)
+                : Colors.grey.withValues(alpha: 0.1)),
+        borderRadius: BorderRadius.circular(6),
+        border: Border(
+          left: BorderSide(
+            color: isRepliedMessageSent
+                ? Colors.white.withValues(alpha: 0.5)
+                : kPrimaryColor,
+            width: 3,
+          ),
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+            // Sender name
+            Text(
+              isRepliedMessageSent ? 'You' : repliedMessage.senderName,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: isRepliedMessageSent
+                    ? (isSent ? Colors.white : kPrimaryColor)
+                    : kPrimaryColor,
+                fontWeight: FontWeight.w600,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Message content preview
+            if (repliedMessage.content.isNotEmpty)
+              Text(
+                repliedMessage.content.length > 60
+                    ? '${repliedMessage.content.substring(0, 60)}...'
+                    : repliedMessage.content,
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isSent
+                      ? Colors.white.withValues(alpha: 0.8)
+                      : (isDarkMode ? kTextSecondaryDark : kTextSecondary),
+                  fontSize: 13,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              )
+            else if (repliedMessage.imageUrl != null)
+              Row(
+                children: [
+                  Icon(
+                    Icons.image,
+                    size: 14,
+                    color: isSent
+                        ? Colors.white.withValues(alpha: 0.7)
+                        : (isDarkMode ? kTextSecondaryDark : kTextSecondary),
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'Photo',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: isSent
+                          ? Colors.white.withValues(alpha: 0.8)
+                          : (isDarkMode ? kTextSecondaryDark : kTextSecondary),
+                      fontSize: 13,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ],
+              )
+            else
+              Text(
+                'Message',
+                style: theme.textTheme.bodySmall?.copyWith(
+                  color: isSent
+                      ? Colors.white.withValues(alpha: 0.8)
+                      : (isDarkMode ? kTextSecondaryDark : kTextSecondary),
+                  fontSize: 13,
+                  fontStyle: FontStyle.italic,
+                ),
+              ),
+          ],
+        ),
     );
   }
 

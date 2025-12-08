@@ -1,4 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/create_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/domain/usecases/delete_accommodation.dart';
@@ -36,6 +37,29 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
     on<DeleteAccommodationEvent>(_onDeleteAccommodation);
     on<IncrementViewCountEvent>(_onIncrementViewCount);
     on<LoadMoreAccommodationsEvent>(_onLoadMoreAccommodations);
+    on<ApplyAccommodationFilterEvent>(_onApplyFilter);
+    on<ClearAccommodationFilterEvent>(_onClearFilter);
+  }
+
+  AccommodationFilter? _currentFilter;
+
+  Future<void> _onApplyFilter(
+    ApplyAccommodationFilterEvent event,
+    Emitter<AccommodationState> emit,
+  ) async {
+    _currentFilter = event.filter;
+    add(LoadAccommodationsEvent(
+      limit: 50,
+      filter: _currentFilter,
+    ));
+  }
+
+  Future<void> _onClearFilter(
+    ClearAccommodationFilterEvent event,
+    Emitter<AccommodationState> emit,
+  ) async {
+    _currentFilter = null;
+    add(const LoadAccommodationsEvent(limit: 50));
   }
 
   Future<void> _onLoadAccommodations(
@@ -74,7 +98,9 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
         emit(AccommodationsLoaded(
           accommodations: accommodations,
           hasMore: accommodations.length == (event.limit ?? 20),
+          currentFilter: event.filter ?? _currentFilter,
         ));
+        _currentFilter = event.filter ?? _currentFilter;
       },
     );
   }
@@ -231,6 +257,7 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
         universityId: event.universityId,
         limit: 20,
         offset: event.offset,
+        filter: event.filter ?? currentState.currentFilter,
       ),
     );
 
@@ -245,6 +272,7 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
           accommodations: allAccommodations,
           hasMore: newAccommodations.length == 20,
           isLoadingMore: false,
+          currentFilter: currentState.currentFilter,
         ));
       },
     );

@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 
 /// Base class for all product states
@@ -20,27 +21,31 @@ class ProductsLoaded extends ProductState {
   final List<ProductEntity> products;
   final bool hasMore;
   final bool isLoadingMore;
+  final ProductFilter? currentFilter;
 
   const ProductsLoaded({
     required this.products,
     this.hasMore = false,
     this.isLoadingMore = false,
+    this.currentFilter,
   });
 
   ProductsLoaded copyWith({
     List<ProductEntity>? products,
     bool? hasMore,
     bool? isLoadingMore,
+    ProductFilter? currentFilter,
   }) {
     return ProductsLoaded(
       products: products ?? this.products,
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      currentFilter: currentFilter ?? this.currentFilter,
     );
   }
 
   @override
-  List<Object?> get props => [products, hasMore, isLoadingMore];
+  List<Object?> get props => [products, hasMore, isLoadingMore, currentFilter];
 }
 
 /// Loading single product

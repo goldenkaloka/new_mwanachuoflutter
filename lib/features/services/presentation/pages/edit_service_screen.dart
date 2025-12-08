@@ -12,6 +12,8 @@ import 'package:mwanachuo/features/services/domain/entities/service_entity.dart'
 import 'package:mwanachuo/features/services/presentation/bloc/service_bloc.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_event.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart';
+import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
+import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_state.dart';
 
 class EditServiceScreen extends StatelessWidget {
   final ServiceEntity service;
@@ -20,8 +22,15 @@ class EditServiceScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => sl<ServiceBloc>(),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => sl<ServiceBloc>(),
+        ),
+        BlocProvider(
+          create: (context) => sl<CategoryCubit>()..loadAll(),
+        ),
+      ],
       child: _EditServiceView(service: service),
     );
   }
@@ -51,18 +60,6 @@ class _EditServiceViewState extends State<_EditServiceView> {
   final List<File> _newImages = [];
   List<String> _availability = [];
   bool _isActive = true;
-
-  final List<String> _categories = [
-    'Tutoring',
-    'Photography',
-    'Event Planning',
-    'Graphic Design',
-    'Web Development',
-    'Writing & Editing',
-    'Music Lessons',
-    'Fitness Training',
-    'Other',
-  ];
 
   final List<String> _priceTypes = [
     'hourly',
@@ -325,32 +322,41 @@ class _EditServiceViewState extends State<_EditServiceView> {
                         Row(
                           children: [
                             Expanded(
-                              child: DropdownButtonFormField<String>(
-                                initialValue: _selectedCategory,
-                                decoration: InputDecoration(
-                                  labelText: 'Category *',
-                                  border: OutlineInputBorder(
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                ),
-                                items: _categories
-                                    .map(
-                                      (category) => DropdownMenuItem(
-                                        value: category,
-                                        child: Text(category),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (value) {
-                                  setState(() {
-                                    _selectedCategory = value;
-                                  });
-                                },
-                                validator: (value) {
-                                  if (value == null || value.isEmpty) {
-                                    return 'Please select category';
+                              child: BlocBuilder<CategoryCubit, CategoryState>(
+                                builder: (context, categoryState) {
+                                  List<String> categories = ['Select category'];
+                                  if (categoryState is CategoriesLoaded) {
+                                    categories.addAll(
+                                      categoryState.categories.map((c) => c.name).toList(),
+                                    );
                                   }
-                                  return null;
+                                  
+                                  return DropdownButtonFormField<String>(
+                                    initialValue: _selectedCategory,
+                                    decoration: InputDecoration(
+                                      labelText: 'Category *',
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    items: categories.map((category) {
+                                      return DropdownMenuItem(
+                                        value: category == 'Select category' ? null : category,
+                                        child: Text(category),
+                                      );
+                                    }).toList(),
+                                    onChanged: (value) {
+                                      setState(() {
+                                        _selectedCategory = value;
+                                      });
+                                    },
+                                    validator: (value) {
+                                      if (value == null || value.isEmpty) {
+                                        return 'Please select category';
+                                      }
+                                      return null;
+                                    },
+                                  );
                                 },
                               ),
                             ),

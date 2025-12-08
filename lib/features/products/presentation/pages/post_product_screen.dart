@@ -10,18 +10,33 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
+import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
+import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_state.dart';
 
-class PostProductScreen extends StatefulWidget {
+class PostProductScreen extends StatelessWidget {
   const PostProductScreen({super.key});
 
   @override
-  State<PostProductScreen> createState() => _PostProductScreenState();
+  Widget build(BuildContext context) {
+    return BlocProvider(
+      create: (context) => sl<CategoryCubit>()..loadAll(),
+      child: const _PostProductScreenContent(),
+    );
+  }
 }
 
-class _PostProductScreenState extends State<PostProductScreen> {
+class _PostProductScreenContent extends StatefulWidget {
+  const _PostProductScreenContent();
+
+  @override
+  State<_PostProductScreenContent> createState() => _PostProductScreenState();
+}
+
+class _PostProductScreenState extends State<_PostProductScreenContent> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
@@ -29,21 +44,6 @@ class _PostProductScreenState extends State<PostProductScreen> {
   String? _selectedCategory;
   String? _selectedCondition;
   final List<File> _selectedImages = [];
-
-  final List<String> _categories = [
-    'Select category',
-    'Textbooks',
-    'Electronics',
-    'Furniture',
-    'Notes & Supplies',
-    'Other',
-  ];
-
-  final List<String> _conditions = [
-    'Select condition',
-    'New',
-    'Used',
-  ];
 
   @override
   void initState() {
@@ -54,15 +54,15 @@ class _PostProductScreenState extends State<PostProductScreen> {
   void _checkSellerAccess() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      
+
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
         final userRole = authState.user.role.value;
-        
+
         if (userRole == 'buyer') {
           debugPrint('❌ Buyer attempting to post product - redirecting');
           Navigator.of(context).pop();
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -107,7 +107,8 @@ class _PostProductScreenState extends State<PostProductScreen> {
       return;
     }
 
-    if (_selectedCondition == null || _selectedCondition == 'Select condition') {
+    if (_selectedCondition == null ||
+        _selectedCondition == 'Select condition') {
       _showError('Please select a condition');
       return;
     }
@@ -131,24 +132,21 @@ class _PostProductScreenState extends State<PostProductScreen> {
 
     // Dispatch create product event
     context.read<ProductBloc>().add(
-          CreateProductEvent(
-            title: _titleController.text.trim(),
-            description: _descriptionController.text.trim(),
-            price: price,
-            category: _selectedCategory!,
-            condition: _selectedCondition!,
-            images: _selectedImages,
-            location: _locationController.text.trim(),
-          ),
-        );
+      CreateProductEvent(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        price: price,
+        category: _selectedCategory!,
+        condition: _selectedCondition!,
+        images: _selectedImages,
+        location: _locationController.text.trim(),
+      ),
+    );
   }
 
   void _showError(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.orange,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.orange),
     );
   }
 
@@ -166,10 +164,12 @@ class _PostProductScreenState extends State<PostProductScreen> {
     try {
       // Calculate remaining slots
       final remainingSlots = 5 - _selectedImages.length;
-      
+
       // Check if running on desktop (Windows, macOS, Linux)
-      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
-      
+      final isDesktop =
+          !kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
       if (isDesktop) {
         // Use file_picker for desktop platforms
         final result = await FilePicker.platform.pickFiles(
@@ -177,24 +177,24 @@ class _PostProductScreenState extends State<PostProductScreen> {
           allowMultiple: true,
           dialogTitle: 'Select product images (max $remainingSlots)',
         );
-        
+
         if (result != null && result.files.isNotEmpty) {
           final List<File> newFiles = [];
-          
+
           // Limit to remaining slots
           final filesToAdd = result.files.take(remainingSlots);
-          
+
           for (var file in filesToAdd) {
             if (file.path != null) {
               newFiles.add(File(file.path!));
             }
           }
-          
+
           if (newFiles.isNotEmpty) {
             setState(() {
               _selectedImages.addAll(newFiles);
             });
-            
+
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -207,7 +207,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
       } else {
         // Use WeChat Assets Picker for mobile platforms
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        
+
         final List<AssetEntity>? result = await AssetPicker.pickAssets(
           context,
           pickerConfig: AssetPickerConfig(
@@ -217,9 +217,13 @@ class _PostProductScreenState extends State<PostProductScreen> {
             pickerTheme: ThemeData(
               brightness: isDarkMode ? Brightness.dark : Brightness.light,
               primaryColor: kPrimaryColor,
-              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              scaffoldBackgroundColor: isDarkMode
+                  ? kBackgroundColorDark
+                  : Colors.white,
               appBarTheme: AppBarTheme(
-                backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+                backgroundColor: isDarkMode
+                    ? kBackgroundColorDark
+                    : Colors.white,
                 foregroundColor: isDarkMode ? Colors.white : Colors.black,
                 elevation: 0,
                 iconTheme: IconThemeData(
@@ -313,7 +317,9 @@ class _PostProductScreenState extends State<PostProductScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : Colors.black87;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
 
     return BlocListener<ProductBloc, ProductState>(
       listener: (context, state) {
@@ -322,14 +328,13 @@ class _PostProductScreenState extends State<PostProductScreen> {
           showDialog(
             context: context,
             barrierDismissible: false,
-            builder: (context) => const Center(
-              child: CircularProgressIndicator(),
-            ),
+            builder: (context) =>
+                const Center(child: CircularProgressIndicator()),
           );
         } else if (state is ProductCreated) {
           // Close loading dialog
           Navigator.of(context).pop();
-          
+
           // Show success message
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
@@ -337,7 +342,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
               backgroundColor: Colors.green,
             ),
           );
-          
+
           // Navigate back
           Navigator.of(context).pop();
         } else if (state is ProductError) {
@@ -345,7 +350,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
           if (Navigator.of(context).canPop()) {
             Navigator.of(context).pop();
           }
-          
+
           // Show error message
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -366,7 +371,9 @@ class _PostProductScreenState extends State<PostProductScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: EdgeInsets.all(
-                      ResponsiveBreakpoints.responsiveHorizontalPadding(context),
+                      ResponsiveBreakpoints.responsiveHorizontalPadding(
+                        context,
+                      ),
                     ),
                     child: ResponsiveContainer(
                       child: Column(
@@ -425,9 +432,15 @@ class _PostProductScreenState extends State<PostProductScreen> {
     );
   }
 
-  Widget _buildHeader(bool isDarkMode, Color primaryTextColor, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
-    
+  Widget _buildHeader(
+    bool isDarkMode,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
+
     return SafeArea(
       child: Container(
         height: ResponsiveBreakpoints.responsiveValue(
@@ -604,18 +617,18 @@ class _PostProductScreenState extends State<PostProductScreen> {
                           expanded: 8.0,
                         ),
                       ),
-                        Text(
-                          'up to 5 images',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: ResponsiveBreakpoints.responsiveValue(
-                              context,
-                              compact: 12.0,
-                              medium: 13.0,
-                              expanded: 14.0,
-                            ),
-                            color: secondaryTextColor,
+                      Text(
+                        'up to 5 images',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: ResponsiveBreakpoints.responsiveValue(
+                            context,
+                            compact: 12.0,
+                            medium: 13.0,
+                            expanded: 14.0,
                           ),
+                          color: secondaryTextColor,
                         ),
+                      ),
                     ],
                   )
                 : Wrap(
@@ -661,12 +674,13 @@ class _PostProductScreenState extends State<PostProductScreen> {
                                   errorBuilder: (context, error, stackTrace) {
                                     return Icon(
                                       Icons.broken_image,
-                                      size: ResponsiveBreakpoints.responsiveValue(
-                                        context,
-                                        compact: 32.0,
-                                        medium: 40.0,
-                                        expanded: 48.0,
-                                      ),
+                                      size:
+                                          ResponsiveBreakpoints.responsiveValue(
+                                            context,
+                                            compact: 32.0,
+                                            medium: 40.0,
+                                            expanded: 48.0,
+                                          ),
                                       color: primaryTextColor,
                                     );
                                   },
@@ -989,10 +1003,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: kPrimaryColor,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: kPrimaryColor, width: 2),
             ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: ResponsiveBreakpoints.responsiveValue(
@@ -1087,10 +1098,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: kPrimaryColor,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: kPrimaryColor, width: 2),
             ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: ResponsiveBreakpoints.responsiveValue(
@@ -1192,10 +1200,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: kPrimaryColor,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: kPrimaryColor, width: 2),
             ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: ResponsiveBreakpoints.responsiveValue(
@@ -1246,80 +1251,66 @@ class _PostProductScreenState extends State<PostProductScreen> {
             expanded: 8.0,
           ),
         ),
-        DropdownButtonFormField<String>(
-          initialValue: _selectedCategory,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: isDarkMode
-                ? kBackgroundColorDark.withValues(alpha: 0.5)
-                : Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+        BlocBuilder<CategoryCubit, CategoryState>(
+          builder: (context, categoryState) {
+            List<String> categories = ['Select category'];
+            if (categoryState is CategoriesLoaded) {
+              categories.addAll(
+                categoryState.categories.map((c) => c.name).toList(),
+              );
+            }
+
+            return DropdownButtonFormField<String>(
+              initialValue: _selectedCategory,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: isDarkMode
+                    ? kBackgroundColorDark.withValues(alpha: 0.5)
+                    : Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: kBaseRadius,
+                  borderSide: BorderSide(
+                    color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: kBaseRadius,
+                  borderSide: BorderSide(
+                    color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: kBaseRadius,
+                  borderSide: BorderSide(color: kPrimaryColor, width: 2),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 16.0,
+                    medium: 20.0,
+                    expanded: 24.0,
+                  ),
+                  vertical: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 16.0,
+                    medium: 18.0,
+                    expanded: 20.0,
+                  ),
+                ),
               ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+              dropdownColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 16.0,
+                  medium: 17.0,
+                  expanded: 18.0,
+                ),
+                color: primaryTextColor,
               ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: kPrimaryColor,
-                width: 2,
-              ),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 20.0,
-                expanded: 24.0,
-              ),
-              vertical: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 18.0,
-                expanded: 20.0,
-              ),
-            ),
-          ),
-          dropdownColor: isDarkMode
-              ? kBackgroundColorDark
-              : Colors.white,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 16.0,
-              medium: 17.0,
-              expanded: 18.0,
-            ),
-            color: primaryTextColor,
-          ),
-          icon: Icon(
-            Icons.expand_more,
-            color: secondaryTextColor,
-          ),
-          hint: Text(
-            'Select category',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 17.0,
-                expanded: 18.0,
-              ),
-              color: secondaryTextColor,
-            ),
-          ),
-          items: _categories.map((category) {
-            return DropdownMenuItem<String>(
-              value: category == 'Select category' ? null : category,
-              child: Text(
-                category,
+              icon: Icon(Icons.expand_more, color: secondaryTextColor),
+              hint: Text(
+                'Select category',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: ResponsiveBreakpoints.responsiveValue(
                     context,
@@ -1327,17 +1318,34 @@ class _PostProductScreenState extends State<PostProductScreen> {
                     medium: 17.0,
                     expanded: 18.0,
                   ),
-                  color: category == 'Select category'
-                      ? secondaryTextColor
-                      : primaryTextColor,
+                  color: secondaryTextColor,
                 ),
               ),
+              items: categories.map((category) {
+                return DropdownMenuItem<String>(
+                  value: category == 'Select category' ? null : category,
+                  child: Text(
+                    category,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 16.0,
+                        medium: 17.0,
+                        expanded: 18.0,
+                      ),
+                      color: category == 'Select category'
+                          ? secondaryTextColor
+                          : primaryTextColor,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCategory = value;
+                });
+              },
             );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedCategory = value;
-            });
           },
         ),
       ],
@@ -1373,80 +1381,66 @@ class _PostProductScreenState extends State<PostProductScreen> {
             expanded: 8.0,
           ),
         ),
-        DropdownButtonFormField<String>(
-          initialValue: _selectedCondition,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: isDarkMode
-                ? kBackgroundColorDark.withValues(alpha: 0.5)
-                : Colors.white,
-            border: OutlineInputBorder(
-              borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+        BlocBuilder<CategoryCubit, CategoryState>(
+          builder: (context, categoryState) {
+            List<String> conditions = ['Select condition'];
+            if (categoryState is CategoriesLoaded) {
+              conditions.addAll(
+                categoryState.conditions.map((c) => c.name).toList(),
+              );
+            }
+
+            return DropdownButtonFormField<String>(
+              initialValue: _selectedCondition,
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: isDarkMode
+                    ? kBackgroundColorDark.withValues(alpha: 0.5)
+                    : Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: kBaseRadius,
+                  borderSide: BorderSide(
+                    color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+                  ),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: kBaseRadius,
+                  borderSide: BorderSide(
+                    color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: kBaseRadius,
+                  borderSide: BorderSide(color: kPrimaryColor, width: 2),
+                ),
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 16.0,
+                    medium: 20.0,
+                    expanded: 24.0,
+                  ),
+                  vertical: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 16.0,
+                    medium: 18.0,
+                    expanded: 20.0,
+                  ),
+                ),
               ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+              dropdownColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 16.0,
+                  medium: 17.0,
+                  expanded: 18.0,
+                ),
+                color: primaryTextColor,
               ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: kPrimaryColor,
-                width: 2,
-              ),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              horizontal: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 20.0,
-                expanded: 24.0,
-              ),
-              vertical: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 18.0,
-                expanded: 20.0,
-              ),
-            ),
-          ),
-          dropdownColor: isDarkMode
-              ? kBackgroundColorDark
-              : Colors.white,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 16.0,
-              medium: 17.0,
-              expanded: 18.0,
-            ),
-            color: primaryTextColor,
-          ),
-          icon: Icon(
-            Icons.expand_more,
-            color: secondaryTextColor,
-          ),
-          hint: Text(
-            'Select condition',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 17.0,
-                expanded: 18.0,
-              ),
-              color: secondaryTextColor,
-            ),
-          ),
-          items: _conditions.map((condition) {
-            return DropdownMenuItem<String>(
-              value: condition == 'Select condition' ? null : condition,
-              child: Text(
-                condition,
+              icon: Icon(Icons.expand_more, color: secondaryTextColor),
+              hint: Text(
+                'Select condition',
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: ResponsiveBreakpoints.responsiveValue(
                     context,
@@ -1454,17 +1448,34 @@ class _PostProductScreenState extends State<PostProductScreen> {
                     medium: 17.0,
                     expanded: 18.0,
                   ),
-                  color: condition == 'Select condition'
-                      ? secondaryTextColor
-                      : primaryTextColor,
+                  color: secondaryTextColor,
                 ),
               ),
+              items: conditions.map((condition) {
+                return DropdownMenuItem<String>(
+                  value: condition == 'Select condition' ? null : condition,
+                  child: Text(
+                    condition,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 16.0,
+                        medium: 17.0,
+                        expanded: 18.0,
+                      ),
+                      color: condition == 'Select condition'
+                          ? secondaryTextColor
+                          : primaryTextColor,
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                setState(() {
+                  _selectedCondition = value;
+                });
+              },
             );
-          }).toList(),
-          onChanged: (value) {
-            setState(() {
-              _selectedCondition = value;
-            });
           },
         ),
       ],
@@ -1540,10 +1551,7 @@ class _PostProductScreenState extends State<PostProductScreen> {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: kBaseRadius,
-              borderSide: BorderSide(
-                color: kPrimaryColor,
-                width: 2,
-              ),
+              borderSide: BorderSide(color: kPrimaryColor, width: 2),
             ),
             contentPadding: EdgeInsets.symmetric(
               horizontal: ResponsiveBreakpoints.responsiveValue(
@@ -1570,8 +1578,10 @@ class _PostProductScreenState extends State<PostProductScreen> {
     Color primaryTextColor,
     ScreenSize screenSize,
   ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
-    
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
+
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
@@ -1613,8 +1623,8 @@ class _PostProductScreenState extends State<PostProductScreen> {
                 ),
               ),
               child: SizedBox(
-                width: ResponsiveBreakpoints.isCompact(context) 
-                    ? double.infinity 
+                width: ResponsiveBreakpoints.isCompact(context)
+                    ? double.infinity
                     : null,
                 height: ResponsiveBreakpoints.responsiveValue(
                   context,
@@ -1669,5 +1679,3 @@ class _PostProductScreenState extends State<PostProductScreen> {
     );
   }
 }
-
-

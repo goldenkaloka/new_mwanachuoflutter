@@ -169,19 +169,16 @@ class _NotificationsPageState extends State<NotificationsPage> {
           _groups.removeAt(_groups.indexOf(group));
         });
       },
-      child: Container(
-        decoration: BoxDecoration(
-          color: surfaceColor,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: ListTile(
+      child: GestureDetector(
+        onLongPress: () {
+          _showDeleteConfirmation(context, group);
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            color: surfaceColor,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: ListTile(
           contentPadding: const EdgeInsets.all(16),
           leading: Container(
             padding: const EdgeInsets.all(12),
@@ -277,6 +274,78 @@ class _NotificationsPageState extends State<NotificationsPage> {
             });
           },
         ),
+      ),
+      ),
+    );
+  }
+
+  void _showDeleteConfirmation(
+    BuildContext context,
+    NotificationGroupEntity group,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        return AlertDialog(
+          backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+          title: Text(
+            'Delete Notification',
+            style: GoogleFonts.plusJakartaSans(
+              color: isDarkMode ? Colors.white : kTextPrimary,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          content: Text(
+            'Are you sure you want to delete this notification?',
+            style: GoogleFonts.plusJakartaSans(
+              color: isDarkMode ? Colors.white70 : kTextSecondary,
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Cancel',
+                style: GoogleFonts.plusJakartaSans(
+                  color: isDarkMode ? Colors.white70 : kTextSecondary,
+                ),
+              ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+                _deleteGroup(group);
+              },
+              child: Text(
+                'Delete',
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  void _deleteGroup(NotificationGroupEntity group) {
+    _groupingService.deleteGroup(group.id);
+    setState(() {
+      _groups.removeWhere((g) => g.id == group.id);
+    });
+    
+    // Show snackbar confirmation
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          'Notification deleted',
+          style: GoogleFonts.plusJakartaSans(),
+        ),
+        backgroundColor: kPrimaryColor,
+        duration: const Duration(seconds: 2),
       ),
     );
   }

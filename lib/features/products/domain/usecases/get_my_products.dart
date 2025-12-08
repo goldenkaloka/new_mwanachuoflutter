@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/core/usecases/usecase.dart';
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/products/domain/repositories/product_repository.dart';
@@ -18,6 +19,7 @@ class GetMyProducts implements UseCase<List<ProductEntity>, GetMyProductsParams>
     return await repository.getMyProducts(
       limit: params.limit,
       offset: params.offset,
+      filter: params.filter,
     );
   }
 }
@@ -25,10 +27,11 @@ class GetMyProducts implements UseCase<List<ProductEntity>, GetMyProductsParams>
 class GetMyProductsParams extends Equatable {
   final int? limit;
   final int? offset;
+  final ProductFilter? filter;
 
-  const GetMyProductsParams({this.limit, this.offset});
+  const GetMyProductsParams({this.limit, this.offset, this.filter});
 
   @override
-  List<Object?> get props => [limit, offset];
+  List<Object?> get props => [limit, offset, filter];
 }
 

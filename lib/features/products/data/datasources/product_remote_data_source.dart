@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:mwanachuo/core/constants/database_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/features/products/data/models/product_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -14,13 +15,18 @@ abstract class ProductRemoteDataSource {
     bool? isFeatured,
     int? limit,
     int? offset,
+    ProductFilter? filter,
   });
 
   /// Get product by ID
   Future<ProductModel> getProductById(String productId);
 
   /// Get user's products
-  Future<List<ProductModel>> getMyProducts({int? limit, int? offset});
+  Future<List<ProductModel>> getMyProducts({
+    int? limit,
+    int? offset,
+    ProductFilter? filter,
+  });
 
   /// Create product
   Future<ProductModel> createProduct({
@@ -69,19 +75,22 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     bool? isFeatured,
     int? limit,
     int? offset,
+    ProductFilter? filter,
   }) async {
     try {
-      var queryBuilder = supabaseClient
+      dynamic queryBuilder = supabaseClient
           .from(DatabaseConstants.productsTable)
           .select('*, users!inner(full_name, avatar_url)')
           .eq('is_active', true);
 
+      // Apply individual parameters first (always apply these)
       if (category != null) {
         queryBuilder = queryBuilder.eq('category', category);
       }
 
       if (universityId != null) {
-        queryBuilder = queryBuilder.eq('university_id', universityId);
+        // Note: university_ids is an array, so we use contains
+        queryBuilder = queryBuilder.contains('university_ids', [universityId]);
       }
 
       if (sellerId != null) {
@@ -92,8 +101,68 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         queryBuilder = queryBuilder.eq('is_featured', true);
       }
 
-      final response = await queryBuilder
-          .order('created_at', ascending: false)
+      // Apply filters from ProductFilter object
+      if (filter != null) {
+        // Text search
+        if (filter.searchQuery != null && filter.searchQuery!.isNotEmpty) {
+          final searchTerm = filter.searchQuery!.trim();
+          debugPrint('🔍 Searching products with query: "$searchTerm"');
+          // Use or() with proper PostgREST syntax: column.operator.value,column.operator.value
+          // The format is: column.operator.value,column.operator.value
+          queryBuilder = queryBuilder.or(
+            'title.ilike.%$searchTerm%,description.ilike.%$searchTerm%',
+          );
+          debugPrint('✅ Search filter applied to query');
+        }
+
+        // Price range
+        if (filter.minPrice != null) {
+          queryBuilder = queryBuilder.gte('price', filter.minPrice!);
+        }
+        if (filter.maxPrice != null) {
+          queryBuilder = queryBuilder.lte('price', filter.maxPrice!);
+        }
+
+        // Category filter (only if not already set by individual parameter)
+        if (filter.category != null && filter.category!.isNotEmpty && category == null) {
+          queryBuilder = queryBuilder.eq('category', filter.category!);
+        }
+
+        // Condition filter
+        if (filter.condition != null && filter.condition!.isNotEmpty) {
+          queryBuilder = queryBuilder.eq('condition', filter.condition!);
+        }
+
+        // Location filter
+        if (filter.location != null && filter.location!.isNotEmpty) {
+          queryBuilder = queryBuilder.ilike('location', '%${filter.location}%');
+        }
+
+        // Apply sorting
+        if (filter.sortBy != null) {
+          if (filter.sortBy == 'popularity') {
+            queryBuilder = queryBuilder
+                .order('view_count', ascending: false)
+                .order('rating', ascending: false);
+          } else if (filter.sortBy == 'price_asc') {
+            queryBuilder = queryBuilder.order('price', ascending: true);
+          } else if (filter.sortBy == 'price_desc') {
+            queryBuilder = queryBuilder.order('price', ascending: false);
+          } else {
+            queryBuilder = queryBuilder.order(filter.sortBy!, ascending: filter.sortAscending);
+          }
+        } else {
+          // Default sort by created_at
+          queryBuilder = queryBuilder.order('created_at', ascending: false);
+        }
+      } else {
+        // Default sort by created_at if no filter
+        queryBuilder = queryBuilder.order('created_at', ascending: false);
+      }
+
+      final finalQuery = queryBuilder;
+
+      final response = await finalQuery
           .limit(limit ?? 20)
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 
@@ -136,6 +205,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   Future<List<ProductModel>> getMyProducts({
     int? limit,
     int? offset,
+    ProductFilter? filter,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -143,11 +213,69 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         throw ServerException('User not authenticated');
       }
 
-      final response = await supabaseClient
+      dynamic queryBuilder = supabaseClient
           .from(DatabaseConstants.productsTable)
           .select('*, users!inner(full_name, avatar_url)')
-          .eq('seller_id', currentUser.id)
-          .order('created_at', ascending: false)
+          .eq('seller_id', currentUser.id);
+
+      // Apply filters from ProductFilter object
+      if (filter != null) {
+        // Text search
+        if (filter.searchQuery != null && filter.searchQuery!.isNotEmpty) {
+          final searchTerm = filter.searchQuery!.trim();
+          debugPrint('🔍 Searching products with query: "$searchTerm"');
+          // Use or() with proper PostgREST syntax: column.operator.value,column.operator.value
+          // The format is: column.operator.value,column.operator.value
+          queryBuilder = queryBuilder.or(
+            'title.ilike.%$searchTerm%,description.ilike.%$searchTerm%',
+          );
+          debugPrint('✅ Search filter applied to query');
+        }
+
+        // Price range
+        if (filter.minPrice != null) {
+          queryBuilder = queryBuilder.gte('price', filter.minPrice!);
+        }
+        if (filter.maxPrice != null) {
+          queryBuilder = queryBuilder.lte('price', filter.maxPrice!);
+        }
+
+        // Category filter
+        if (filter.category != null && filter.category!.isNotEmpty) {
+          queryBuilder = queryBuilder.eq('category', filter.category!);
+        }
+
+        // Condition filter
+        if (filter.condition != null && filter.condition!.isNotEmpty) {
+          queryBuilder = queryBuilder.eq('condition', filter.condition!);
+        }
+
+        // Location filter
+        if (filter.location != null && filter.location!.isNotEmpty) {
+          queryBuilder = queryBuilder.ilike('location', '%${filter.location}%');
+        }
+
+        // Apply sorting
+        if (filter.sortBy != null) {
+          if (filter.sortBy == 'popularity') {
+            queryBuilder = queryBuilder
+                .order('view_count', ascending: false)
+                .order('rating', ascending: false);
+          } else if (filter.sortBy == 'price_asc') {
+            queryBuilder = queryBuilder.order('price', ascending: true);
+          } else if (filter.sortBy == 'price_desc') {
+            queryBuilder = queryBuilder.order('price', ascending: false);
+          } else {
+            queryBuilder = queryBuilder.order(filter.sortBy!, ascending: filter.sortAscending);
+          }
+        } else {
+          queryBuilder = queryBuilder.order('created_at', ascending: false);
+        }
+      } else {
+        queryBuilder = queryBuilder.order('created_at', ascending: false);
+      }
+
+      final response = await queryBuilder
           .limit(limit ?? 20)
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 

@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:equatable/equatable.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 
 /// Base class for all product events
 abstract class ProductEvent extends Equatable {
@@ -17,6 +18,7 @@ class LoadProductsEvent extends ProductEvent {
   final bool? isFeatured;
   final int? limit;
   final int? offset;
+  final ProductFilter? filter;
 
   const LoadProductsEvent({
     this.category,
@@ -25,6 +27,7 @@ class LoadProductsEvent extends ProductEvent {
     this.isFeatured,
     this.limit,
     this.offset,
+    this.filter,
   });
 
   @override
@@ -35,7 +38,23 @@ class LoadProductsEvent extends ProductEvent {
         isFeatured,
         limit,
         offset,
+        filter,
       ];
+}
+
+/// Apply filter event
+class ApplyProductFilterEvent extends ProductEvent {
+  final ProductFilter filter;
+
+  const ApplyProductFilterEvent({required this.filter});
+
+  @override
+  List<Object?> get props => [filter];
+}
+
+/// Clear filter event
+class ClearProductFilterEvent extends ProductEvent {
+  const ClearProductFilterEvent();
 }
 
 /// Load product by ID event
@@ -52,11 +71,12 @@ class LoadProductByIdEvent extends ProductEvent {
 class LoadMyProductsEvent extends ProductEvent {
   final int? limit;
   final int? offset;
+  final ProductFilter? filter;
 
-  const LoadMyProductsEvent({this.limit, this.offset});
+  const LoadMyProductsEvent({this.limit, this.offset, this.filter});
 
   @override
-  List<Object?> get props => [limit, offset];
+  List<Object?> get props => [limit, offset, filter];
 }
 
 /// Create product event
@@ -164,15 +184,17 @@ class LoadMoreProductsEvent extends ProductEvent {
   final String? category;
   final String? universityId;
   final bool? isFeatured;
+  final ProductFilter? filter;
 
   const LoadMoreProductsEvent({
     required this.offset,
     this.category,
     this.universityId,
     this.isFeatured,
+    this.filter,
   });
 
   @override
-  List<Object?> get props => [offset, category, universityId, isFeatured];
+  List<Object?> get props => [offset, category, universityId, isFeatured, filter];
 }
 

@@ -124,17 +124,8 @@ class MessageBloc extends Bloc<MessageEvent, MessageState> {
       );
 
       if (isNewConversation) {
-        // Build listing message content
-        String messageContent =
-            'Hi! I\'m interested in this ${event.listingType}: ${event.listingTitle}';
-        if (event.listingPrice != null) {
-          messageContent += '\nPrice: ${event.listingPrice}';
-          if (event.listingPriceType != null &&
-              event.listingPriceType!.isNotEmpty) {
-            messageContent +=
-                '/${event.listingPriceType!.replaceAll('_', ' ')}';
-          }
-        }
+        // Build short, concise message content
+        String messageContent = 'Hi! I\'m interested in this item.';
 
         // Build metadata
         final metadata = {

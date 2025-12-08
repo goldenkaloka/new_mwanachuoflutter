@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:equatable/equatable.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 
 abstract class AccommodationEvent extends Equatable {
   const AccommodationEvent();
@@ -15,6 +16,7 @@ class LoadAccommodationsEvent extends AccommodationEvent {
   final bool? isFeatured;
   final int? limit;
   final int? offset;
+  final AccommodationFilter? filter;
 
   const LoadAccommodationsEvent({
     this.roomType,
@@ -23,10 +25,26 @@ class LoadAccommodationsEvent extends AccommodationEvent {
     this.isFeatured,
     this.limit,
     this.offset,
+    this.filter,
   });
 
   @override
-  List<Object?> get props => [roomType, universityId, ownerId, isFeatured, limit, offset];
+  List<Object?> get props => [roomType, universityId, ownerId, isFeatured, limit, offset, filter];
+}
+
+/// Apply filter event
+class ApplyAccommodationFilterEvent extends AccommodationEvent {
+  final AccommodationFilter filter;
+
+  const ApplyAccommodationFilterEvent({required this.filter});
+
+  @override
+  List<Object?> get props => [filter];
+}
+
+/// Clear filter event
+class ClearAccommodationFilterEvent extends AccommodationEvent {
+  const ClearAccommodationFilterEvent();
 }
 
 class LoadAccommodationByIdEvent extends AccommodationEvent {
@@ -180,14 +198,16 @@ class LoadMoreAccommodationsEvent extends AccommodationEvent {
   final String? roomType;
   final String? universityId;
   final int offset;
+  final AccommodationFilter? filter;
 
   const LoadMoreAccommodationsEvent({
     this.roomType,
     this.universityId,
     required this.offset,
+    this.filter,
   });
 
   @override
-  List<Object?> get props => [roomType, universityId, offset];
+  List<Object?> get props => [roomType, universityId, offset, filter];
 }
 

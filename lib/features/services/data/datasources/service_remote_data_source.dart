@@ -12,6 +12,12 @@ abstract class ServiceRemoteDataSource {
     bool? isFeatured,
     int? limit,
     int? offset,
+    String? searchQuery,
+    double? minPrice,
+    double? maxPrice,
+    String? location,
+    String? sortBy,
+    bool sortAscending = true,
   });
   Future<ServiceModel> getServiceById(String serviceId);
   Future<List<ServiceModel>> getMyServices({int? limit, int? offset});
@@ -60,6 +66,12 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
     bool? isFeatured,
     int? limit,
     int? offset,
+    String? searchQuery,
+    double? minPrice,
+    double? maxPrice,
+    String? location,
+    String? sortBy,
+    bool sortAscending = true,
   }) async {
     try {
       var queryBuilder = supabaseClient
@@ -72,8 +84,41 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
       if (providerId != null) queryBuilder = queryBuilder.eq('provider_id', providerId);
       if (isFeatured == true) queryBuilder = queryBuilder.eq('is_featured', true);
 
-      final response = await queryBuilder
-          .order('created_at', ascending: false)
+      // Text search
+      if (searchQuery != null && searchQuery.isNotEmpty) {
+        queryBuilder = queryBuilder.or(
+          'title.ilike.%$searchQuery%,description.ilike.%$searchQuery%',
+        );
+      }
+
+      // Price range
+      if (minPrice != null) {
+        queryBuilder = queryBuilder.gte('price', minPrice);
+      }
+      if (maxPrice != null) {
+        queryBuilder = queryBuilder.lte('price', maxPrice);
+      }
+
+      // Location filter
+      if (location != null && location.isNotEmpty) {
+        queryBuilder = queryBuilder.ilike('location', '%$location%');
+      }
+
+      // Sorting
+      dynamic finalQuery;
+      if (sortBy != null) {
+        if (sortBy == 'popularity') {
+          finalQuery = queryBuilder
+              .order('view_count', ascending: false)
+              .order('rating', ascending: false);
+        } else {
+          finalQuery = queryBuilder.order(sortBy, ascending: sortAscending);
+        }
+      } else {
+        finalQuery = queryBuilder.order('created_at', ascending: false);
+      }
+
+      final response = await finalQuery
           .limit(limit ?? 20)
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 

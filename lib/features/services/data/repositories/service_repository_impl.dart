@@ -31,6 +31,12 @@ class ServiceRepositoryImpl implements ServiceRepository {
     bool? isFeatured,
     int? limit,
     int? offset,
+    String? searchQuery,
+    double? minPrice,
+    double? maxPrice,
+    String? location,
+    String? sortBy,
+    bool sortAscending = true,
   }) async {
     if (!await networkInfo.isConnected) {
       try {
@@ -49,6 +55,12 @@ class ServiceRepositoryImpl implements ServiceRepository {
         isFeatured: isFeatured,
         limit: limit,
         offset: offset,
+        searchQuery: searchQuery,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        location: location,
+        sortBy: sortBy,
+        sortAscending: sortAscending,
       );
       await localDataSource.cacheServices(services);
       return Right(services);

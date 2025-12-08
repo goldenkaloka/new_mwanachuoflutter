@@ -6,6 +6,7 @@ import 'package:mwanachuo/core/theme/app_theme.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/auth_pages.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/signup_university_selection.dart';
+import 'package:mwanachuo/features/auth/presentation/pages/initial_route_handler.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/become_seller_screen.dart';
 import 'package:mwanachuo/features/admin/presentation/pages/seller_requests_page.dart';
 import 'package:mwanachuo/features/home/home_page.dart';
@@ -353,7 +354,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         debugShowCheckedModeBanner: false,
         theme: lightTheme(),
         themeMode: ThemeMode.light,
-        home: const SplashScreen(),
+        home: const InitialRouteHandler(),
         routes: {
           '/login': (context) => const LoginPage(),
           '/signup': (context) => const CreateAccountScreen(),

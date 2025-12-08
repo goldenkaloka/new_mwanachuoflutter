@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/widgets/category_chips.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
+import 'package:mwanachuo/core/widgets/search_filter_bar.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
@@ -14,6 +17,7 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_event.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_state.dart';
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
+import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_constants.dart';
 import 'package:mwanachuo/features/accommodations/presentation/pages/edit_accommodation_screen.dart';
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/products/presentation/pages/edit_product_screen.dart';
@@ -41,6 +45,9 @@ class MyListingsScreen extends StatelessWidget {
               sl<AccommodationBloc>()
                 ..add(const LoadAccommodationsEvent(limit: 100)),
         ),
+        BlocProvider(
+          create: (context) => sl<CategoryCubit>()..loadAll(),
+        ),
       ],
       child: const _MyListingsView(),
     );
@@ -57,6 +64,11 @@ class _MyListingsView extends StatefulWidget {
 class _MyListingsViewState extends State<_MyListingsView>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+  String? _selectedProductCategory;
+  String? _selectedServiceCategory;
+  String? _selectedAccommodationType;
 
   @override
   void initState() {
@@ -67,7 +79,24 @@ class _MyListingsViewState extends State<_MyListingsView>
   @override
   void dispose() {
     _tabController.dispose();
+    _searchController.dispose();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+    });
+  }
+
+  bool _matchesSearch(String text) {
+    if (_searchQuery.isEmpty) return true;
+    return text.toLowerCase().contains(_searchQuery);
+  }
+
+  bool _matchesCategory(String category, String? selectedCategory) {
+    if (selectedCategory == null) return true;
+    return category == selectedCategory;
   }
 
   @override
@@ -100,17 +129,137 @@ class _MyListingsViewState extends State<_MyListingsView>
       backgroundColor: isDarkMode
           ? kBackgroundColorDark
           : kBackgroundColorLight,
-      body: TabBarView(
-        controller: _tabController,
+      body: Column(
         children: [
-          _buildProductsTab(isDarkMode, primaryTextColor, secondaryTextColor),
-          _buildServicesTab(isDarkMode, primaryTextColor, secondaryTextColor),
-          _buildAccommodationsTab(
-            isDarkMode,
-            primaryTextColor,
-            secondaryTextColor,
+          // Search Bar
+          SearchFilterBar(
+            controller: _searchController,
+            hintText: 'Search my listings...',
+            onSearchChanged: _onSearchChanged,
+            showFilterButton: false,
+          ),
+          // Category Chips (changes based on selected tab)
+          _buildCategoryChipsForCurrentTab(),
+          // Tab Content
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildProductsTab(isDarkMode, primaryTextColor, secondaryTextColor),
+                _buildServicesTab(isDarkMode, primaryTextColor, secondaryTextColor),
+                _buildAccommodationsTab(
+                  isDarkMode,
+                  primaryTextColor,
+                  secondaryTextColor,
+                ),
+              ],
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildCategoryChipsForCurrentTab() {
+    return AnimatedBuilder(
+      animation: _tabController,
+      builder: (context, child) {
+        final currentIndex = _tabController.index;
+        
+        if (currentIndex == 0) {
+          // Products tab
+          return CategoryChipsWithBloc(
+            selectedCategory: _selectedProductCategory,
+            onCategorySelected: (category) {
+              setState(() {
+                _selectedProductCategory = category;
+              });
+            },
+          );
+        } else if (currentIndex == 1) {
+          // Services tab
+          return CategoryChipsWithBloc(
+            selectedCategory: _selectedServiceCategory,
+            onCategorySelected: (category) {
+              setState(() {
+                _selectedServiceCategory = category;
+              });
+            },
+          );
+        } else {
+          // Accommodations tab - use room types
+          return _buildRoomTypeChipsForMyListings();
+        }
+      },
+    );
+  }
+
+  Widget _buildRoomTypeChipsForMyListings() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDarkMode ? kBackgroundColorDark : kBackgroundColorLight;
+
+    return Container(
+      color: bgColor,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        child: Row(
+          children: [
+            _buildRoomTypeChipForMyListings('All', _selectedAccommodationType == null),
+            ...RoomTypes.all.map((roomType) {
+              return _buildRoomTypeChipForMyListings(
+                roomType,
+                _selectedAccommodationType == roomType,
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRoomTypeChipForMyListings(String label, bool isSelected) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    return Padding(
+      padding: const EdgeInsets.only(right: 12),
+      child: GestureDetector(
+        onTap: () {
+          setState(() {
+            _selectedAccommodationType = label == 'All' ? null : label;
+          });
+        },
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          curve: Curves.easeInOut,
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected
+                ? kPrimaryColor
+                : (isDarkMode ? Colors.grey[800] : Colors.grey[200]),
+            borderRadius: BorderRadius.circular(24),
+            boxShadow: isSelected
+                ? [
+                    BoxShadow(
+                      color: kPrimaryColor.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ]
+                : null,
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+              color: isSelected
+                  ? Colors.white
+                  : (isDarkMode ? Colors.grey[300] : Colors.grey[700]),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -163,6 +312,8 @@ class _MyListingsViewState extends State<_MyListingsView>
               SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myProducts = state.products
               .where((p) => p.sellerId == currentUserId)
+              .where((p) => _matchesSearch(p.title) || _matchesSearch(p.description) || _matchesSearch(p.category))
+              .where((p) => _matchesCategory(p.category, _selectedProductCategory))
               .toList();
 
           if (myProducts.isEmpty) {
@@ -415,6 +566,8 @@ class _MyListingsViewState extends State<_MyListingsView>
               SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myServices = state.services
               .where((s) => s.providerId == currentUserId)
+              .where((s) => _matchesSearch(s.title) || _matchesSearch(s.description) || _matchesSearch(s.category))
+              .where((s) => _matchesCategory(s.category, _selectedServiceCategory))
               .toList();
 
           if (myServices.isEmpty) {
@@ -667,6 +820,8 @@ class _MyListingsViewState extends State<_MyListingsView>
               SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myAccommodations = state.accommodations
               .where((a) => a.ownerId == currentUserId)
+              .where((a) => _matchesSearch(a.name) || _matchesSearch(a.description) || _matchesSearch(a.roomType) || _matchesSearch(a.location))
+              .where((a) => _matchesCategory(a.roomType, _selectedAccommodationType))
               .toList();
 
           if (myAccommodations.isEmpty) {

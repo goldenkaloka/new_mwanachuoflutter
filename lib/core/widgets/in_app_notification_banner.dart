@@ -133,11 +133,20 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner>
                 decoration: BoxDecoration(
                   color: isDarkMode ? kBackgroundColorDark : Colors.white,
                   borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: kPrimaryColor.withValues(alpha: 0.3),
+                    width: 1,
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
+                      color: kPrimaryColor.withValues(alpha: 0.1),
                       blurRadius: 20,
                       offset: const Offset(0, 4),
+                    ),
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.1),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
                     ),
                   ],
                 ),
@@ -236,8 +245,12 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner>
       width: 48,
       height: 48,
       decoration: BoxDecoration(
-        color: (widget.iconColor ?? kPrimaryColor).withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(8),
+        color: (widget.iconColor ?? kPrimaryColor).withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: (widget.iconColor ?? kPrimaryColor).withValues(alpha: 0.3),
+          width: 1.5,
+        ),
       ),
       child: Icon(
         widget.icon,

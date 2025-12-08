@@ -28,6 +28,14 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
     bool? isFeatured,
     int? limit,
     int? offset,
+    String? searchQuery,
+    double? minPrice,
+    double? maxPrice,
+    String? location,
+    List<String>? amenities,
+    String? priceType,
+    String? sortBy,
+    bool sortAscending = true,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -41,6 +49,14 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
         isFeatured: isFeatured,
         limit: limit,
         offset: offset,
+        searchQuery: searchQuery,
+        minPrice: minPrice,
+        maxPrice: maxPrice,
+        location: location,
+        amenities: amenities,
+        priceType: priceType,
+        sortBy: sortBy,
+        sortAscending: sortAscending,
       );
       return Right(accommodations);
     } on ServerException catch (e) {

@@ -16,9 +16,6 @@ import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_type.dart';
-import 'package:mwanachuo/features/shared/recommendations/domain/entities/recommendation_criteria_entity.dart';
-import 'package:mwanachuo/features/shared/recommendations/presentation/widgets/recommendation_section.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
@@ -283,21 +280,6 @@ class _ServiceDetailView extends StatelessWidget {
                 screenSize,
               ),
             ),
-            // Similar services (mid-page recommendations)
-            SliverToBoxAdapter(
-              child: RecommendationSection(
-                currentItemId: service.id,
-                type: RecommendationType.service,
-                title: 'Similar Services',
-                onItemTap: (itemId, type) {
-                  Navigator.pushNamed(
-                    context,
-                    '/service-details',
-                    arguments: itemId,
-                  );
-                },
-              ),
-            ),
             // Provider info section
             SliverSection(
               child: _buildProviderInfo(
@@ -334,24 +316,6 @@ class _ServiceDetailView extends StatelessWidget {
               child: CommentsAndRatingsSection(
                 itemId: service.id,
                 itemType: 'service',
-              ),
-            ),
-            // More recommendations (bottom)
-            SliverToBoxAdapter(
-              child: RecommendationSection(
-                currentItemId: service.id,
-                type: RecommendationType.service,
-                title: 'More Recommendations',
-                criteria: RecommendationCriteriaEntity(
-                  limit: 8,
-                ),
-                onItemTap: (itemId, type) {
-                  Navigator.pushNamed(
-                    context,
-                    '/service-details',
-                    arguments: itemId,
-                  );
-                },
               ),
             ),
             // Bottom padding

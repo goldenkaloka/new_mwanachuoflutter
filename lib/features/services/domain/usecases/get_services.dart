@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/core/usecases/usecase.dart';
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/services/domain/repositories/service_repository.dart';
@@ -15,12 +16,18 @@ class GetServices implements UseCase<List<ServiceEntity>, GetServicesParams> {
     GetServicesParams params,
   ) async {
     return await repository.getServices(
-      category: params.category,
+      category: params.filter?.category ?? params.category,
       universityId: params.universityId,
       providerId: params.providerId,
       isFeatured: params.isFeatured,
       limit: params.limit,
       offset: params.offset,
+      searchQuery: params.filter?.searchQuery,
+      minPrice: params.filter?.minPrice,
+      maxPrice: params.filter?.maxPrice,
+      location: params.filter?.location,
+      sortBy: params.filter?.sortBy,
+      sortAscending: params.filter?.sortAscending ?? true,
     );
   }
 }
@@ -32,6 +39,7 @@ class GetServicesParams extends Equatable {
   final bool? isFeatured;
   final int? limit;
   final int? offset;
+  final ServiceFilter? filter;
 
   const GetServicesParams({
     this.category,
@@ -40,6 +48,7 @@ class GetServicesParams extends Equatable {
     this.isFeatured,
     this.limit,
     this.offset,
+    this.filter,
   });
 
   @override
@@ -50,6 +59,7 @@ class GetServicesParams extends Equatable {
         isFeatured,
         limit,
         offset,
+        filter,
       ];
 }
 

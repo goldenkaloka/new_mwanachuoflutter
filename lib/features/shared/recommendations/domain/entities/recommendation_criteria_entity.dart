@@ -53,3 +53,8 @@ class RecommendationCriteriaEntity extends Equatable {
 }
 
 
+
+
+
+
+

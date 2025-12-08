@@ -24,7 +24,6 @@ import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
 import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/shared/notifications/presentation/cubit/notification_cubit.dart';
@@ -50,18 +49,19 @@ class _HomePageState extends State<HomePage> {
   bool _dataLoaded = false; // Flag to prevent double loading
   final TextEditingController _searchController = TextEditingController();
   int _unreadNotificationCount = 0;
+  bool _hasRedirected = false; // Flag to prevent multiple redirects
+  bool _hasReloadedInDidChangeDependencies =
+      false; // Flag to prevent multiple reloads in didChangeDependencies
 
   @override
   void initState() {
     super.initState();
 
-    // Verify user has completed registration (should never fail due to guards)
-    _verifyUserHasUniversities();
-
     // Load university and user data
     // Note: _loadSelectedUniversity() will call _loadDataForUniversity() when complete
     _loadSelectedUniversity();
-    _loadUserDataFromAuth();
+    // Don't call _loadUserDataFromAuth() here - AuthBloc is already initialized by InitialRouteHandler
+    // We'll get user data from the AuthBloc listener when Authenticated state is emitted
 
     // Load promotions immediately (universal, no university required)
     context.read<PromotionCubit>().loadActivePromotions();
@@ -86,33 +86,6 @@ class _HomePageState extends State<HomePage> {
     } catch (e) {
       debugPrint('Failed to load unread count: $e');
     }
-  }
-
-  void _verifyUserHasUniversities() {
-    // Final safety check - users should have universities to be here
-    // Registration transaction enforces this, but check anyway
-    final authState = context.read<AuthBloc>().state;
-    if (authState is Authenticated) {
-      if (authState.user.universityId == null) {
-        debugPrint('❌ CRITICAL: User on homepage without universities!');
-        debugPrint('🔄 Redirecting to university selection...');
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            Navigator.pushReplacementNamed(
-              context,
-              '/signup-university-selection',
-            );
-          }
-        });
-      } else {
-        debugPrint('✅ User has university: ${authState.user.universityId}');
-      }
-    }
-  }
-
-  void _loadUserDataFromAuth() {
-    // Get user data from AuthBloc by dispatching CheckAuthStatus event
-    context.read<AuthBloc>().add(const CheckAuthStatusEvent());
   }
 
   void _loadDataForUniversity() {
@@ -142,13 +115,21 @@ class _HomePageState extends State<HomePage> {
     super.didChangeDependencies();
     // Reload products when returning to homepage to show newly created products
     // This ensures products are refreshed after navigation (e.g., from post-product screen)
-    if (_dataLoaded && mounted) {
+    // Only reload once per navigation cycle to prevent rebuild loops
+    if (_dataLoaded && mounted && !_hasReloadedInDidChangeDependencies) {
       final route = ModalRoute.of(context);
       if (route != null && route.isCurrent && route.settings.name == '/home') {
+        _hasReloadedInDidChangeDependencies = true;
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (mounted) {
             debugPrint('🔄 Homepage route active, reloading products...');
             context.read<ProductBloc>().add(const LoadProductsEvent(limit: 10));
+            // Reset flag after a delay to allow future reloads when needed
+            Future.delayed(const Duration(seconds: 2), () {
+              if (mounted) {
+                _hasReloadedInDidChangeDependencies = false;
+              }
+            });
           }
         });
       }
@@ -188,8 +169,39 @@ class _HomePageState extends State<HomePage> {
       child: MultiBlocListener(
         listeners: [
           BlocListener<AuthBloc, AuthState>(
+            listenWhen: (previous, current) {
+              // Only listen when state actually changes to Authenticated or user data changes
+              if (current is Authenticated && previous is Authenticated) {
+                // Only rebuild if user data actually changed
+                return previous.user.name != current.user.name ||
+                    previous.user.role.value != current.user.role.value ||
+                    previous.user.profilePicture !=
+                        current.user.profilePicture ||
+                    previous.user.universityId != current.user.universityId;
+              }
+              // Always listen to state type changes
+              return previous.runtimeType != current.runtimeType;
+            },
             listener: (context, state) {
               if (state is Authenticated) {
+                // Safety check: if user doesn't have universities, redirect (only once)
+                if (state.user.universityId == null && !_hasRedirected) {
+                  _hasRedirected = true;
+                  debugPrint(
+                    '❌ CRITICAL: User on homepage without universities!',
+                  );
+                  debugPrint('🔄 Redirecting to university selection...');
+                  WidgetsBinding.instance.addPostFrameCallback((_) {
+                    if (mounted) {
+                      Navigator.pushReplacementNamed(
+                        context,
+                        '/signup-university-selection',
+                      );
+                    }
+                  });
+                  return; // Don't update user data if redirecting
+                }
+
                 // Only update if data actually changed to prevent rebuilds
                 if (_userName != state.user.name ||
                     _userRole != state.user.role.value ||
@@ -1190,7 +1202,11 @@ class _HomePageState extends State<HomePage> {
           itemBuilder: (context, index, realIndex) {
             return Container(
               padding: EdgeInsets.symmetric(horizontal: 2.0),
-              child: _buildPromotionCard(promotions[index], screenSize),
+              child: _buildPromotionCard(
+                promotions[index],
+                screenSize,
+                isActive: index == _currentPromotionPage,
+              ),
             );
           },
           options: CarouselOptions(
@@ -1237,7 +1253,11 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildPromotionCard(PromotionEntity promotion, ScreenSize screenSize) {
+  Widget _buildPromotionCard(
+    PromotionEntity promotion,
+    ScreenSize screenSize, {
+    bool isActive = false,
+  }) {
     final cardWidth = ResponsiveBreakpoints.responsiveValue(
       context,
       compact: 400.0,
@@ -1268,13 +1288,13 @@ class _HomePageState extends State<HomePage> {
           fit: StackFit.expand, // Make stack expand to fill container
           children: [
             if (promotion.imageUrl != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(8.0),
-                child: NetworkImageWithFallback(
-                  imageUrl: promotion.imageUrl!,
-                  width: cardWidth,
-                  height: cardHeight,
-                  fit: BoxFit.cover,
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: NetworkImageWithFallback(
+                    imageUrl: promotion.imageUrl!,
+                    fit: BoxFit.cover,
+                  ),
                 ),
               ),
             Container(
@@ -1295,6 +1315,9 @@ class _HomePageState extends State<HomePage> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   _AnimatedPromotionText(
+                    key: ValueKey(
+                      'promo_${promotion.id}_title_$_currentPromotionPage',
+                    ),
                     text: promotion.title,
                     fontSize: ResponsiveBreakpoints.responsiveValue(
                       context,
@@ -1304,10 +1327,14 @@ class _HomePageState extends State<HomePage> {
                     ),
                     fontWeight: FontWeight.bold,
                     maxLines: 2,
+                    shouldAnimate: isActive,
                   ),
                   if (promotion.subtitle.isNotEmpty) ...[
                     const SizedBox(height: 4),
                     _AnimatedPromotionText(
+                      key: ValueKey(
+                        'promo_${promotion.id}_subtitle_$_currentPromotionPage',
+                      ),
                       text: promotion.subtitle,
                       fontSize: ResponsiveBreakpoints.responsiveValue(
                         context,
@@ -1318,6 +1345,7 @@ class _HomePageState extends State<HomePage> {
                       fontWeight: FontWeight.normal,
                       maxLines: 1,
                       delay: const Duration(milliseconds: 300),
+                      shouldAnimate: isActive,
                     ),
                   ],
                 ],
@@ -1780,13 +1808,16 @@ class _AnimatedPromotionText extends StatefulWidget {
   final FontWeight fontWeight;
   final int maxLines;
   final Duration delay;
+  final bool shouldAnimate;
 
   const _AnimatedPromotionText({
+    super.key,
     required this.text,
     required this.fontSize,
     required this.fontWeight,
     required this.maxLines,
     this.delay = Duration.zero,
+    this.shouldAnimate = true,
   });
 
   @override
@@ -1803,6 +1834,35 @@ class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
   @override
   void initState() {
     super.initState();
+    _initializeAnimations();
+    if (widget.shouldAnimate) {
+      _startAnimations();
+    }
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedPromotionText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // If text changed or shouldAnimate changed from false to true, restart animations
+    if (oldWidget.text != widget.text) {
+      // Dispose old controllers
+      for (var controller in _controllers) {
+        controller.dispose();
+      }
+      _initializeAnimations();
+      if (widget.shouldAnimate) {
+        _startAnimations();
+      }
+    } else if (!oldWidget.shouldAnimate && widget.shouldAnimate) {
+      // Reset and restart animations when card becomes active
+      for (var controller in _controllers) {
+        controller.reset();
+      }
+      _startAnimations();
+    }
+  }
+
+  void _initializeAnimations() {
     final letters = widget.text.split('');
 
     _controllers = List.generate(
@@ -1856,13 +1916,15 @@ class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
         end: Offset.zero,
       ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOutBack));
     }).toList();
+  }
 
+  void _startAnimations() {
     // Start animations with staggered delay (letter by letter)
     for (int i = 0; i < _controllers.length; i++) {
       Future.delayed(
         widget.delay + Duration(milliseconds: i * 40), // 40ms per letter
         () {
-          if (mounted) {
+          if (mounted && widget.shouldAnimate) {
             _controllers[i].forward();
           }
         },
@@ -1905,20 +1967,62 @@ class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
                 scale: _scaleAnimations[index].value,
                 child: Transform.rotate(
                   angle: _rotationAnimations[index].value,
-                  child: Text(
-                    letter,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: widget.fontSize,
-                      fontWeight: widget.fontWeight,
-                      height: 1.2,
-                      shadows: [
-                        Shadow(
-                          color: Colors.black.withValues(alpha: 0.6),
-                          blurRadius: 6 * _scaleAnimations[index].value,
-                          offset: Offset(1, 2 * _scaleAnimations[index].value),
-                        ),
-                      ],
+                  child: ShaderMask(
+                    shaderCallback: (bounds) {
+                      // Create vibrant gradient for title, bright accent for subtitle
+                      final isTitle = widget.fontWeight == FontWeight.bold;
+                      if (isTitle) {
+                        // Vibrant yellow to orange gradient for title
+                        return LinearGradient(
+                          colors: [
+                            const Color(0xFFFFD700), // Gold
+                            const Color(0xFFFFA500), // Orange
+                            const Color(0xFFFF6B35), // Bright orange-red
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ).createShader(bounds);
+                      } else {
+                        // Bright cyan/light blue for subtitle
+                        return LinearGradient(
+                          colors: [
+                            const Color(0xFF00E5FF), // Bright cyan
+                            const Color(0xFF40E0D0), // Turquoise
+                          ],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ).createShader(bounds);
+                      }
+                    },
+                    child: Text(
+                      letter,
+                      style: TextStyle(
+                        color: Colors.white, // Required for ShaderMask
+                        fontSize: widget.fontSize,
+                        fontWeight: widget.fontWeight,
+                        height: 1.2,
+                        shadows: [
+                          // Enhanced shadow for better contrast
+                          Shadow(
+                            color: Colors.black.withValues(alpha: 0.8),
+                            blurRadius: 8 * _scaleAnimations[index].value,
+                            offset: Offset(
+                              2,
+                              3 * _scaleAnimations[index].value,
+                            ),
+                          ),
+                          // Additional glow effect
+                          Shadow(
+                            color: widget.fontWeight == FontWeight.bold
+                                ? const Color(0xFFFFD700).withValues(alpha: 0.5)
+                                : const Color(
+                                    0xFF00E5FF,
+                                  ).withValues(alpha: 0.5),
+                            blurRadius: 12 * _scaleAnimations[index].value,
+                            offset: Offset(0, 0),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

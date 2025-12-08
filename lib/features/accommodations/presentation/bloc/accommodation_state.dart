@@ -1,4 +1,5 @@
 import 'package:equatable/equatable.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 
 abstract class AccommodationState extends Equatable {
@@ -16,27 +17,31 @@ class AccommodationsLoaded extends AccommodationState {
   final List<AccommodationEntity> accommodations;
   final bool hasMore;
   final bool isLoadingMore;
+  final AccommodationFilter? currentFilter;
 
   const AccommodationsLoaded({
     required this.accommodations,
     this.hasMore = false,
     this.isLoadingMore = false,
+    this.currentFilter,
   });
 
   AccommodationsLoaded copyWith({
     List<AccommodationEntity>? accommodations,
     bool? hasMore,
     bool? isLoadingMore,
+    AccommodationFilter? currentFilter,
   }) {
     return AccommodationsLoaded(
       accommodations: accommodations ?? this.accommodations,
       hasMore: hasMore ?? this.hasMore,
       isLoadingMore: isLoadingMore ?? this.isLoadingMore,
+      currentFilter: currentFilter ?? this.currentFilter,
     );
   }
 
   @override
-  List<Object?> get props => [accommodations, hasMore, isLoadingMore];
+  List<Object?> get props => [accommodations, hasMore, isLoadingMore, currentFilter];
 }
 
 class AccommodationLoading extends AccommodationState {}

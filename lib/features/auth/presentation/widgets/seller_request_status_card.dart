@@ -6,19 +6,42 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 
-class SellerRequestStatusCard extends StatelessWidget {
+class SellerRequestStatusCard extends StatefulWidget {
   const SellerRequestStatusCard({super.key});
+
+  @override
+  State<SellerRequestStatusCard> createState() => _SellerRequestStatusCardState();
+}
+
+class _SellerRequestStatusCardState extends State<SellerRequestStatusCard> {
+  bool _hasLoadedStatus = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Load status only once when widget is first built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && !_hasLoadedStatus) {
+        _hasLoadedStatus = true;
+        context.read<AuthBloc>().add(const GetSellerRequestStatusEvent());
+      }
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    // Dispatch event to load status
-    context.read<AuthBloc>().add(const GetSellerRequestStatusEvent());
-
     return BlocBuilder<AuthBloc, AuthState>(
+      buildWhen: (previous, current) {
+        // Only rebuild when status changes or when loading state changes
+        return current is AuthLoading ||
+            current is SellerRequestStatusLoaded ||
+            previous is AuthLoading ||
+            previous is SellerRequestStatusLoaded;
+      },
       builder: (context, state) {
-        if (state is AuthLoading) {
+        if (state is AuthLoading && !_hasLoadedStatus) {
           return const SizedBox(
             height: 60,
             child: Center(child: CircularProgressIndicator(color: kPrimaryColor, strokeWidth: 2)),

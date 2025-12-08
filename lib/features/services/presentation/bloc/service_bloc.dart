@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/features/services/domain/usecases/create_service.dart';
 import 'package:mwanachuo/features/services/domain/usecases/delete_service.dart';
 import 'package:mwanachuo/features/services/domain/usecases/get_my_services.dart';
@@ -32,6 +33,29 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
     on<UpdateServiceEvent>(_onUpdateService);
     on<DeleteServiceEvent>(_onDeleteService);
     on<LoadMoreServicesEvent>(_onLoadMoreServices);
+    on<ApplyServiceFilterEvent>(_onApplyFilter);
+    on<ClearServiceFilterEvent>(_onClearFilter);
+  }
+
+  ServiceFilter? _currentFilter;
+
+  Future<void> _onApplyFilter(
+    ApplyServiceFilterEvent event,
+    Emitter<ServiceState> emit,
+  ) async {
+    _currentFilter = event.filter;
+    add(LoadServicesEvent(
+      limit: 50,
+      filter: _currentFilter,
+    ));
+  }
+
+  Future<void> _onClearFilter(
+    ClearServiceFilterEvent event,
+    Emitter<ServiceState> emit,
+  ) async {
+    _currentFilter = null;
+    add(const LoadServicesEvent(limit: 50));
   }
 
   Future<void> _onLoadServices(
@@ -55,6 +79,7 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
         isFeatured: event.isFeatured,
         limit: event.limit,
         offset: event.offset,
+        filter: event.filter ?? _currentFilter,
       ),
     );
 
@@ -70,7 +95,9 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
         emit(ServicesLoaded(
           services: services,
           hasMore: services.length == (event.limit ?? 20),
+          currentFilter: event.filter ?? _currentFilter,
         ));
+        _currentFilter = event.filter ?? _currentFilter;
       },
     );
   }
@@ -199,6 +226,7 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
         universityId: event.universityId,
         limit: 20,
         offset: event.offset,
+        filter: event.filter ?? currentState.currentFilter,
       ),
     );
 
@@ -213,6 +241,7 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
           services: allServices,
           hasMore: newServices.length == 20,
           isLoadingMore: false,
+          currentFilter: currentState.currentFilter,
         ));
       },
     );

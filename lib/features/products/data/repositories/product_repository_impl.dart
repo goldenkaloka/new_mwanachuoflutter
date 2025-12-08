@@ -3,6 +3,7 @@ import 'package:dartz/dartz.dart';
 import 'package:mwanachuo/core/constants/database_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
+import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
 import 'package:mwanachuo/features/products/data/datasources/product_local_data_source.dart';
@@ -33,6 +34,7 @@ class ProductRepositoryImpl implements ProductRepository {
     bool? isFeatured,
     int? limit,
     int? offset,
+    ProductFilter? filter,
   }) async {
     if (!await networkInfo.isConnected) {
       // Try to get from cache
@@ -54,6 +56,7 @@ class ProductRepositoryImpl implements ProductRepository {
         isFeatured: isFeatured,
         limit: limit,
         offset: offset,
+        filter: filter,
       );
 
       // Cache products
@@ -101,6 +104,7 @@ class ProductRepositoryImpl implements ProductRepository {
   Future<Either<Failure, List<ProductEntity>>> getMyProducts({
     int? limit,
     int? offset,
+    ProductFilter? filter,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -110,6 +114,7 @@ class ProductRepositoryImpl implements ProductRepository {
       final products = await remoteDataSource.getMyProducts(
         limit: limit,
         offset: offset,
+        filter: filter,
       );
       return Right(products);
     } on ServerException catch (e) {
