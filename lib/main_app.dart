@@ -34,6 +34,8 @@ import 'package:mwanachuo/features/services/presentation/pages/service_detail_pa
 import 'package:mwanachuo/features/services/presentation/pages/create_service_screen.dart';
 import 'package:mwanachuo/features/promotions/presentation/pages/create_promotion_screen.dart';
 import 'package:mwanachuo/features/promotions/presentation/pages/promotion_detail_page.dart';
+import 'package:mwanachuo/features/mwanachuomind/presentation/pages/mwanachuomind_wrapper_page.dart';
+import 'package:mwanachuo/features/mwanachuomind/presentation/bloc/mwanachuomind_bloc.dart';
 import 'package:mwanachuo/features/shared/notifications/presentation/pages/notification_settings_screen.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/pages/subscription_plans_page.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
@@ -381,7 +383,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             child: const PostProductScreen(),
           ),
           '/messages': (context) => PersistentBottomNavWrapper(
-            initialIndex: 2, // Will be updated based on route
+            initialIndex: 3, // Updated to 3 for unified nav
             child: BlocProvider.value(
               value: context.read<MessageBloc>(),
               child: const MessagesPage(),
@@ -392,7 +394,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             child: const ChatScreen(),
           ),
           '/profile': (context) => PersistentBottomNavWrapper(
-            initialIndex: 3, // Will be updated based on route
+            initialIndex: 4, // Updated to 4 for unified nav
             child: const ProfilePage(),
           ),
           '/search': (context) {
@@ -463,6 +465,13 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           '/subscription-plans': (context) => BlocProvider(
             create: (context) => sl<SubscriptionCubit>(),
             child: const SubscriptionPlansPage(),
+          ),
+          '/mwanachuomind': (context) => PersistentBottomNavWrapper(
+            initialIndex: 2,
+            child: BlocProvider(
+              create: (context) => sl<MwanachuomindBloc>(),
+              child: const MwanachuomindWrapperPage(),
+            ),
           ),
         },
       ),

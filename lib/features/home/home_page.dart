@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -75,7 +76,7 @@ class _HomePageState extends State<HomePage> {
       final cubit = sl<NotificationCubit>();
       await cubit.loadUnreadCount();
       if (mounted) {
-        cubit.stream.listen((state) {
+        _notificationSubscription = cubit.stream.listen((state) {
           if (state is UnreadCountLoaded && mounted) {
             setState(() {
               _unreadNotificationCount = state.count;
@@ -136,21 +137,28 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
+  StreamSubscription? _notificationSubscription;
+
   @override
   void dispose() {
     _searchController.dispose();
+    _notificationSubscription?.cancel();
     super.dispose();
   }
 
   Future<void> _loadSelectedUniversity() async {
     await UniversityService.getSelectedUniversity();
     await UniversityService.getSelectedUniversityLogo();
-    setState(() {
-      // University selection stored in shared preferences
-    });
+    if (mounted) {
+      setState(() {
+        // University selection stored in shared preferences
+      });
+    }
 
     // Load data after university is loaded
-    _loadDataForUniversity();
+    if (mounted) {
+      _loadDataForUniversity();
+    }
   }
 
   // Simulated Chip Data
@@ -528,6 +536,13 @@ class _HomePageState extends State<HomePage> {
           primaryTextColor,
           isDarkMode,
         ),
+        _buildNavItem(
+          Icons.school_outlined,
+          'Mwanachuomind',
+          5,
+          primaryTextColor,
+          isDarkMode,
+        ),
       ],
     );
   }
@@ -557,6 +572,8 @@ class _HomePageState extends State<HomePage> {
             // Reload university when returning from profile
             _loadSelectedUniversity();
           });
+        } else if (index == 5) {
+          Navigator.pushNamed(context, '/mwanachuomind');
         }
       },
       child: Container(

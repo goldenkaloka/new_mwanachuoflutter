@@ -169,6 +169,16 @@ import 'package:mwanachuo/features/promotions/domain/usecases/create_promotion.d
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:uuid/uuid.dart';
 
+// Mwanachuomind
+import 'package:mwanachuo/features/mwanachuomind/data/datasources/mwanachuomind_remote_datasource.dart';
+import 'package:mwanachuo/features/mwanachuomind/data/repositories/mwanachuomind_repository_impl.dart';
+import 'package:mwanachuo/features/mwanachuomind/domain/repositories/mwanachuomind_repository.dart';
+import 'package:mwanachuo/features/mwanachuomind/domain/usecases/get_university_courses_usecase.dart';
+import 'package:mwanachuo/features/mwanachuomind/domain/usecases/upload_document_usecase.dart';
+import 'package:mwanachuo/features/mwanachuomind/domain/usecases/send_query_usecase.dart';
+import 'package:mwanachuo/features/mwanachuomind/domain/usecases/create_course_usecase.dart';
+import 'package:mwanachuo/features/mwanachuomind/presentation/bloc/mwanachuomind_bloc.dart';
+
 final sl = GetIt.instance;
 
 Future<void> initializeDependencies() async {
@@ -211,6 +221,7 @@ Future<void> initializeDependencies() async {
   await _initProfileFeature();
   await _initDashboardFeature();
   await _initPromotionsFeature();
+  await _initMwanachuomindFeature();
 
   // ============================================================================
   // Features - Authentication
@@ -443,10 +454,8 @@ Future<void> _initRecommendationsFeature() async {
 
   // Repository
   sl.registerLazySingleton<RecommendationRepository>(
-    () => RecommendationRepositoryImpl(
-      remoteDataSource: sl(),
-      networkInfo: sl(),
-    ),
+    () =>
+        RecommendationRepositoryImpl(remoteDataSource: sl(), networkInfo: sl()),
   );
 
   // Data Sources
@@ -528,10 +537,7 @@ Future<void> _initSubscriptionsFeature() async {
 
   // Repository
   sl.registerLazySingleton<SubscriptionRepository>(
-    () => SubscriptionRepositoryImpl(
-      remoteDataSource: sl(),
-      networkInfo: sl(),
-    ),
+    () => SubscriptionRepositoryImpl(remoteDataSource: sl(), networkInfo: sl()),
   );
 
   // Data Sources
@@ -564,10 +570,7 @@ Future<void> _initCategoriesFeature() async {
 
   // Repository
   sl.registerLazySingleton<CategoryRepository>(
-    () => CategoryRepositoryImpl(
-      remoteDataSource: sl(),
-      networkInfo: sl(),
-    ),
+    () => CategoryRepositoryImpl(remoteDataSource: sl(), networkInfo: sl()),
   );
 
   // Data Sources
@@ -577,10 +580,7 @@ Future<void> _initCategoriesFeature() async {
 
   // Cubit
   sl.registerFactory(
-    () => CategoryCubit(
-      getProductCategories: sl(),
-      getProductConditions: sl(),
-    ),
+    () => CategoryCubit(getProductCategories: sl(), getProductConditions: sl()),
   );
 }
 
@@ -592,7 +592,9 @@ Future<void> _initProductsFeature() async {
   sl.registerLazySingleton(() => GetProducts(sl()));
   sl.registerLazySingleton(() => GetProductById(sl()));
   sl.registerLazySingleton(() => GetMyProducts(sl()));
-  sl.registerLazySingleton(() => CreateProduct(sl(), sl<CheckSubscriptionStatus>()));
+  sl.registerLazySingleton(
+    () => CreateProduct(sl(), sl<CheckSubscriptionStatus>()),
+  );
   sl.registerLazySingleton(() => UpdateProduct(sl()));
   sl.registerLazySingleton(() => DeleteProduct(sl()));
   sl.registerLazySingleton(() => IncrementViewCount(sl()));
@@ -637,7 +639,9 @@ Future<void> _initServicesFeature() async {
   sl.registerLazySingleton(() => GetServices(sl()));
   sl.registerLazySingleton(() => GetServiceById(sl()));
   sl.registerLazySingleton(() => GetMyServices(sl()));
-  sl.registerLazySingleton(() => CreateService(sl(), sl<CheckSubscriptionStatus>()));
+  sl.registerLazySingleton(
+    () => CreateService(sl(), sl<CheckSubscriptionStatus>()),
+  );
   sl.registerLazySingleton(() => UpdateService(sl()));
   sl.registerLazySingleton(() => DeleteService(sl()));
 
@@ -680,7 +684,9 @@ Future<void> _initAccommodationsFeature() async {
   sl.registerLazySingleton(() => GetAccommodations(sl()));
   sl.registerLazySingleton(() => GetAccommodationById(sl()));
   sl.registerLazySingleton(() => GetMyAccommodations(sl()));
-  sl.registerLazySingleton(() => CreateAccommodation(sl(), sl<CheckSubscriptionStatus>()));
+  sl.registerLazySingleton(
+    () => CreateAccommodation(sl(), sl<CheckSubscriptionStatus>()),
+  );
   sl.registerLazySingleton(() => UpdateAccommodation(sl()));
   sl.registerLazySingleton(() => DeleteAccommodation(sl()));
   sl.registerLazySingleton(() => mwanachuo.IncrementViewCount(sl()));
@@ -819,8 +825,39 @@ Future<void> _initPromotionsFeature() async {
     () => PromotionRemoteDataSourceImpl(supabaseClient: sl()),
   );
 
-  sl.registerFactory(() => PromotionCubit(
-        getActivePromotions: sl(),
-        createPromotion: sl(),
-      ));
+  sl.registerFactory(
+    () => PromotionCubit(getActivePromotions: sl(), createPromotion: sl()),
+  );
+}
+
+// ============================================
+// MWANACHUOMIND FEATURE (STANDALONE)
+// ============================================
+Future<void> _initMwanachuomindFeature() async {
+  // Use Cases
+  sl.registerLazySingleton(() => GetUniversityCoursesUseCase(sl()));
+  sl.registerLazySingleton(() => UploadDocumentUseCase(sl()));
+  sl.registerLazySingleton(() => SendQueryUseCase(sl()));
+  sl.registerLazySingleton(() => CreateCourseUseCase(sl()));
+
+  // Repository
+  sl.registerLazySingleton<MwanachuomindRepository>(
+    () => MwanachuomindRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // Data Sources
+  sl.registerLazySingleton<MwanachuomindRemoteDataSource>(
+    () => MwanachuomindRemoteDataSourceImpl(client: sl()),
+  );
+
+  // BLoC
+  sl.registerFactory(
+    () => MwanachuomindBloc(
+      getUniversityCoursesUseCase: sl(),
+      uploadDocumentUseCase: sl(),
+      sendQueryUseCase: sl(),
+      createCourseUseCase: sl(),
+      repository: sl(),
+    ),
+  );
 }

@@ -154,10 +154,12 @@ class _PersistentBottomNavWrapperState
       newIndex = 1;
     } else if (routeName == '/dashboard') {
       newIndex = isSeller ? 2 : null;
+    } else if (routeName == '/mwanachuomind') {
+      newIndex = isSeller ? 5 : 2;
     } else if (routeName == '/messages') {
-      newIndex = isSeller ? 3 : 2;
+      newIndex = isSeller ? 3 : 3;
     } else if (routeName == '/profile') {
-      newIndex = isSeller ? 4 : 3;
+      newIndex = isSeller ? 4 : 4;
     }
 
     if (newIndex != null && newIndex != _selectedIndex) {
@@ -187,9 +189,13 @@ class _PersistentBottomNavWrapperState
       Navigator.pushNamed(context, '/messages');
     } else if (isSeller && index == 4) {
       Navigator.pushNamed(context, '/profile');
+    } else if (isSeller && index == 5) {
+      Navigator.pushNamed(context, '/mwanachuomind');
     } else if (!isSeller && index == 2) {
-      Navigator.pushNamed(context, '/messages');
+      Navigator.pushNamed(context, '/mwanachuomind');
     } else if (!isSeller && index == 3) {
+      Navigator.pushNamed(context, '/messages');
+    } else if (!isSeller && index == 4) {
       Navigator.pushNamed(context, '/profile');
     }
 
@@ -345,9 +351,17 @@ class _PersistentBottomNavWrapperState
         ),
         BottomNavigationBarItem(
           icon: buildBadgedIcon(
+            Icons.school_outlined,
+            Icons.school_rounded,
+            _selectedIndex == 2,
+          ),
+          label: 'Mwanachuomind',
+        ),
+        BottomNavigationBarItem(
+          icon: buildBadgedIcon(
             Icons.chat_bubble_outline_rounded,
             Icons.chat_bubble_rounded,
-            _selectedIndex == 2,
+            _selectedIndex == 3,
             showBadge: true,
           ),
           label: 'Messages',
@@ -356,7 +370,7 @@ class _PersistentBottomNavWrapperState
           icon: buildBadgedIcon(
             Icons.person_outline_rounded,
             Icons.person_rounded,
-            _selectedIndex == 3,
+            _selectedIndex == 4,
           ),
           label: 'Profile',
         ),
@@ -406,6 +420,14 @@ class _PersistentBottomNavWrapperState
           ),
           label: 'Profile',
         ),
+        BottomNavigationBarItem(
+          icon: buildBadgedIcon(
+            Icons.school_outlined,
+            Icons.school_rounded,
+            _selectedIndex == 5,
+          ),
+          label: 'Mwanachuomind',
+        ),
       ];
     } else {
       return [
@@ -427,9 +449,17 @@ class _PersistentBottomNavWrapperState
         ),
         BottomNavigationBarItem(
           icon: buildBadgedIcon(
+            Icons.school_outlined,
+            Icons.school_rounded,
+            _selectedIndex == 2,
+          ),
+          label: 'Mwanachuomind',
+        ),
+        BottomNavigationBarItem(
+          icon: buildBadgedIcon(
             Icons.chat_bubble_outline_rounded,
             Icons.chat_bubble_rounded,
-            _selectedIndex == 2,
+            _selectedIndex == 3,
             showBadge: true,
           ),
           label: 'Messages',
@@ -438,7 +468,7 @@ class _PersistentBottomNavWrapperState
           icon: buildBadgedIcon(
             Icons.person_outline_rounded,
             Icons.person_rounded,
-            _selectedIndex == 3,
+            _selectedIndex == 4,
           ),
           label: 'Profile',
         ),
