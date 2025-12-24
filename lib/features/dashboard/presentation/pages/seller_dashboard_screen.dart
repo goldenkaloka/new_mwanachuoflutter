@@ -9,6 +9,7 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:mwanachuo/features/dashboard/presentation/bloc/dashboard_state.dart';
+import 'package:mwanachuo/core/widgets/app_background.dart';
 
 class SellerDashboardScreen extends StatelessWidget {
   const SellerDashboardScreen({super.key});
@@ -80,145 +81,149 @@ class _DashboardViewState extends State<_DashboardView> {
           'Dashboard',
           style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+        backgroundColor: Colors.transparent,
       ),
-      backgroundColor: isDarkMode
-          ? kBackgroundColorDark
-          : kBackgroundColorLight,
-      body: BlocBuilder<DashboardCubit, DashboardState>(
-        builder: (context, state) {
-          if (state is DashboardLoading) {
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: kPrimaryColor),
-                  SizedBox(height: 16),
-                  Text('Loading dashboard...'),
-                ],
-              ),
-            );
-          }
+      body: AppBackground(
+        child: BlocBuilder<DashboardCubit, DashboardState>(
+          builder: (context, state) {
+            if (state is DashboardLoading) {
+              return const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(color: kPrimaryColor),
+                    SizedBox(height: 16),
+                    Text('Loading dashboard...'),
+                  ],
+                ),
+              );
+            }
 
-          if (state is DashboardError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(Icons.error_outline, size: 64, color: Colors.red),
-                  const SizedBox(height: 16),
-                  Text(state.message, textAlign: TextAlign.center),
-                  const SizedBox(height: 16),
-                  ElevatedButton(
-                    onPressed: () => context.read<DashboardCubit>().loadStats(),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      foregroundColor: kBackgroundColorDark,
+            if (state is DashboardError) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.error_outline,
+                      size: 64,
+                      color: Colors.red,
                     ),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
-          }
-
-          if (state is DashboardLoaded) {
-            final stats = state.stats;
-            return ResponsiveBuilder(
-              builder: (context, screenSize) {
-                final primaryTextColor = isDarkMode
-                    ? Colors.white
-                    : const Color(0xFF111814);
-                final secondaryTextColor = isDarkMode
-                    ? Colors.grey[400]!
-                    : Colors.grey[600]!;
-                final cardBgColor = isDarkMode
-                    ? kBackgroundColorDark
-                    : Colors.white;
-                final borderColor = isDarkMode
-                    ? Colors.grey[700]!
-                    : Colors.grey[200]!;
-
-                return SingleChildScrollView(
-                  padding: EdgeInsets.only(
-                    left: ResponsiveBreakpoints.responsiveHorizontalPadding(
-                      context,
+                    const SizedBox(height: 16),
+                    Text(state.message, textAlign: TextAlign.center),
+                    const SizedBox(height: 16),
+                    ElevatedButton(
+                      onPressed: () =>
+                          context.read<DashboardCubit>().loadStats(),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimaryColor,
+                        foregroundColor: kBackgroundColorDark,
+                      ),
+                      child: const Text('Retry'),
                     ),
-                    right: ResponsiveBreakpoints.responsiveHorizontalPadding(
-                      context,
-                    ),
-                    bottom: 100,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 24),
+                  ],
+                ),
+              );
+            }
 
-                      // Recent Activity
-                      Text(
-                        'Recent Activity',
-                        style: GoogleFonts.inter(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: primaryTextColor,
-                          letterSpacing: -0.015,
+            if (state is DashboardLoaded) {
+              final stats = state.stats;
+              return ResponsiveBuilder(
+                builder: (context, screenSize) {
+                  final primaryTextColor = isDarkMode
+                      ? Colors.white
+                      : const Color(0xFF111814);
+                  final secondaryTextColor = isDarkMode
+                      ? Colors.grey[400]!
+                      : Colors.grey[600]!;
+                  final cardBgColor = isDarkMode
+                      ? kBackgroundColorDark
+                      : Colors.white;
+                  final borderColor = isDarkMode
+                      ? Colors.grey[700]!
+                      : Colors.grey[200]!;
+
+                  return SingleChildScrollView(
+                    padding: EdgeInsets.only(
+                      left: ResponsiveBreakpoints.responsiveHorizontalPadding(
+                        context,
+                      ),
+                      right: ResponsiveBreakpoints.responsiveHorizontalPadding(
+                        context,
+                      ),
+                      bottom: 100,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 24),
+
+                        // Recent Activity
+                        Text(
+                          'Recent Activity',
+                          style: GoogleFonts.inter(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: primaryTextColor,
+                            letterSpacing: -0.015,
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildRecentActivity(
-                        context,
-                        stats,
-                        cardBgColor,
-                        borderColor,
-                        primaryTextColor,
-                        secondaryTextColor,
-                        isDarkMode,
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Listings Summary
-                      _buildListingsSummary(
-                        context,
-                        stats,
-                        cardBgColor,
-                        borderColor,
-                        primaryTextColor,
-                        secondaryTextColor,
-                      ),
-
-                      const SizedBox(height: 24),
-
-                      // Quick Actions
-                      Text(
-                        'Quick Actions',
-                        style: GoogleFonts.inter(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: primaryTextColor,
-                          letterSpacing: -0.015,
+                        const SizedBox(height: 12),
+                        _buildRecentActivity(
+                          context,
+                          stats,
+                          cardBgColor,
+                          borderColor,
+                          primaryTextColor,
+                          secondaryTextColor,
+                          isDarkMode,
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildQuickActions(
-                        context,
-                        cardBgColor,
-                        borderColor,
-                        primaryTextColor,
-                        secondaryTextColor,
-                        isDarkMode,
-                      ),
 
-                      const SizedBox(height: 24),
-                    ],
-                  ),
-                );
-              },
-            );
-          }
+                        const SizedBox(height: 24),
 
-          return const SizedBox.shrink();
-        },
+                        // Listings Summary
+                        _buildListingsSummary(
+                          context,
+                          stats,
+                          cardBgColor,
+                          borderColor,
+                          primaryTextColor,
+                          secondaryTextColor,
+                        ),
+
+                        const SizedBox(height: 24),
+
+                        // Quick Actions
+                        Text(
+                          'Quick Actions',
+                          style: GoogleFonts.inter(
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                            color: primaryTextColor,
+                            letterSpacing: -0.015,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        _buildQuickActions(
+                          context,
+                          cardBgColor,
+                          borderColor,
+                          primaryTextColor,
+                          secondaryTextColor,
+                          isDarkMode,
+                        ),
+
+                        const SizedBox(height: 24),
+                      ],
+                    ),
+                  );
+                },
+              );
+            }
+
+            return const SizedBox.shrink();
+          },
+        ),
       ),
     );
   }

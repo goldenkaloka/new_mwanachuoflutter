@@ -9,6 +9,7 @@ import 'package:mwanachuo/features/products/presentation/pages/product_details_p
 import 'package:mwanachuo/features/services/presentation/pages/service_detail_page.dart';
 import 'package:mwanachuo/features/accommodations/presentation/pages/accommodation_detail_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:mwanachuo/core/widgets/app_background.dart';
 
 class ListingsPage extends StatefulWidget {
   const ListingsPage({super.key});
@@ -22,8 +23,6 @@ class _ListingsPageState extends State<ListingsPage>
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
-
-  // Debounce support
   String _lastQuery = '';
 
   @override
@@ -31,7 +30,6 @@ class _ListingsPageState extends State<ListingsPage>
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
 
-    // Initial fetch of all items
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _performSearch('');
     });
@@ -50,7 +48,6 @@ class _ListingsPageState extends State<ListingsPage>
 
   void _onTabChanged() {
     if (_tabController.indexIsChanging) {
-      // Re-fetch when tab changes, using current text
       _performSearch(_searchController.text);
     }
   }
@@ -73,16 +70,15 @@ class _ListingsPageState extends State<ListingsPage>
   SearchFilterEntity _getCurrentFilter() {
     final types = <SearchResultType>[];
     switch (_tabController.index) {
-      case 0: // All
-        // No specific type filter, search all
-        break;
-      case 1: // Products
+      case 0:
+        break; // All
+      case 1:
         types.add(SearchResultType.product);
         break;
-      case 2: // Services
+      case 2:
         types.add(SearchResultType.service);
         break;
-      case 3: // Accommodations
+      case 3:
         types.add(SearchResultType.accommodation);
         break;
     }
@@ -93,8 +89,6 @@ class _ListingsPageState extends State<ListingsPage>
   }
 
   void _performSearch(String query) {
-    // Debounce/prevent duplicate calls if needed, but for now direct call
-    // Allow empty query for "Browse" mode
     context.read<SearchCubit>().search(
       query: query,
       filter: _getCurrentFilter(),
@@ -102,13 +96,6 @@ class _ListingsPageState extends State<ListingsPage>
   }
 
   void _onSearchChanged(String value) {
-    // Simple debounce
-    // Cancel previous timer if exists? (Not implemented for brevity, leveraging simplistic debounce or Relying on user to stop typing)
-    // For now, just call search on submit or with delay.
-    // Let's rely on onSubmitted for explicit search or implement debounce:
-
-    // Actually, "Browse" page usually filters instantly?
-    // Let's implement a small delay
     Future.delayed(const Duration(milliseconds: 500), () {
       if (mounted && value == _searchController.text && value != _lastQuery) {
         _lastQuery = value;
@@ -123,93 +110,132 @@ class _ListingsPageState extends State<ListingsPage>
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: colorScheme.surface,
-      appBar: AppBar(
-        title: Text(
-          'Browse Listings',
-          style: GoogleFonts.outfit(
-            fontWeight: FontWeight.w600,
-            color: colorScheme.onSurface,
-          ),
-        ),
-        centerTitle: true,
-        elevation: 0,
-        backgroundColor: colorScheme.surface,
-        bottom: PreferredSize(
-          preferredSize: const Size.fromHeight(110),
-          child: Column(
-            children: [
-              // Search Bar
-              Padding(
+      body: AppBackground(
+        child: SafeArea(
+          child: CustomScrollView(
+            controller: _scrollController,
+            slivers: [
+              _buildSearchAndTabs(context, isDark, colorScheme),
+              SliverPadding(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
+                  vertical: 16,
+                  horizontal: 8,
                 ),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? Colors.grey[800] : Colors.grey[100],
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isDark ? Colors.grey[700]! : Colors.grey[200]!,
-                    ),
-                  ),
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    decoration: InputDecoration(
-                      hintText: 'Search products, services...',
-                      hintStyle: GoogleFonts.outfit(color: Colors.grey[500]),
-                      prefixIcon: Icon(
-                        Icons.search_rounded,
-                        color: Colors.grey[500],
-                      ),
-                      border: InputBorder.none,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                    ),
-                  ),
-                ),
-              ),
-
-              // Tabs
-              TabBar(
-                controller: _tabController,
-                isScrollable: true,
-                labelColor: colorScheme.primary,
-                unselectedLabelColor: Colors.grey[600],
-                labelStyle: GoogleFonts.outfit(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 14,
-                ),
-                indicatorColor: colorScheme.primary,
-                tabs: const [
-                  Tab(text: 'All'),
-                  Tab(text: 'Products'),
-                  Tab(text: 'Services'),
-                  Tab(text: 'Housing'),
-                ],
+                sliver: _buildContent(colorScheme, isDark),
               ),
             ],
           ),
         ),
       ),
-      body: BlocBuilder<SearchCubit, SearchState>(
-        builder: (context, state) {
-          if (state is Searching) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is SearchError) {
-            return Center(
+    );
+  }
+
+  Widget _buildSearchAndTabs(
+    BuildContext context,
+    bool isDark,
+    ColorScheme colorScheme,
+  ) {
+    return SliverToBoxAdapter(
+      child: Column(
+        children: [
+          const SizedBox(height: 16),
+          // Search Bar
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: 16.0,
+              vertical: 8.0,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.05),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+                border: Border.all(
+                  color: isDark ? Colors.white10 : Colors.grey.shade200,
+                ),
+              ),
+              child: TextField(
+                controller: _searchController,
+                onChanged: _onSearchChanged,
+                decoration: InputDecoration(
+                  hintText: 'Search products, services...',
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    color: Colors.grey[500],
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search_rounded,
+                    color: colorScheme.primary,
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
+                ),
+              ),
+            ),
+          ),
+          // Tabs
+          TabBar(
+            controller: _tabController,
+            labelColor: isDark ? Colors.white : Colors.black,
+            unselectedLabelColor: Colors.grey[400],
+            indicatorColor: isDark ? Colors.white : Colors.black,
+            indicatorSize: TabBarIndicatorSize.tab,
+            dividerColor: Colors.transparent,
+            labelStyle: GoogleFonts.plusJakartaSans(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+            indicator: UnderlineTabIndicator(
+              borderSide: BorderSide(
+                width: 1.5,
+                color: isDark ? Colors.white : Colors.black,
+              ),
+            ),
+            tabs: [
+              Tab(height: 44, child: Text('All')),
+              Tab(
+                height: 44,
+                icon: Icon(Icons.shopping_bag_outlined, size: 24),
+              ),
+              Tab(height: 44, icon: Icon(Icons.handyman_outlined, size: 24)),
+              Tab(height: 44, icon: Icon(Icons.home_work_outlined, size: 24)),
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildContent(ColorScheme colorScheme, bool isDark) {
+    return BlocBuilder<SearchCubit, SearchState>(
+      builder: (context, state) {
+        if (state is Searching) {
+          return SliverFillRemaining(
+            child: Center(
+              child: CircularProgressIndicator(color: colorScheme.primary),
+            ),
+          );
+        } else if (state is SearchError) {
+          return SliverFillRemaining(
+            child: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
                   const SizedBox(height: 16),
                   Text(
-                    state.message, // Show actual error
+                    state.message,
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.outfit(
+                    style: GoogleFonts.plusJakartaSans(
                       fontSize: 14,
                       color: Colors.red[300],
                     ),
@@ -220,10 +246,12 @@ class _ListingsPageState extends State<ListingsPage>
                   ),
                 ],
               ),
-            );
-          } else if (state is SearchResults) {
-            if (state.results.isEmpty) {
-              return Center(
+            ),
+          );
+        } else if (state is SearchResults) {
+          if (state.results.isEmpty) {
+            return SliverFillRemaining(
+              child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -235,7 +263,7 @@ class _ListingsPageState extends State<ListingsPage>
                     const SizedBox(height: 16),
                     Text(
                       'No listings found',
-                      style: GoogleFonts.outfit(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: 18,
                         fontWeight: FontWeight.w500,
                         color: Colors.grey[600],
@@ -243,51 +271,58 @@ class _ListingsPageState extends State<ListingsPage>
                     ),
                   ],
                 ),
-              );
-            }
+              ),
+            );
+          }
 
-            return RefreshIndicator(
-              onRefresh: () async {
-                _performSearch(_searchController.text);
-              },
-              child: ListView.builder(
-                controller: _scrollController,
-                padding: const EdgeInsets.all(16),
-                itemCount: state.results.length + (state.isLoadingMore ? 1 : 0),
-                itemBuilder: (context, index) {
+          return SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverGrid(
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 3,
+                childAspectRatio: 0.75, // Rectangular (Taller)
+                crossAxisSpacing: 2,
+                mainAxisSpacing: 12, // Increased vertical spacing between cards
+              ),
+              delegate: SliverChildBuilderDelegate(
+                (context, index) {
                   if (index >= state.results.length) {
-                    return const Center(
-                      child: Padding(
-                        padding: EdgeInsets.all(16.0),
-                        child: CircularProgressIndicator(),
-                      ),
-                    );
+                    if (state.isLoadingMore) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return null;
                   }
-
-                  return _buildListOption(
-                    context: context,
+                  return _ListingCard(
                     result: state.results[index],
                     colorScheme: colorScheme,
                     isDark: isDark,
                   );
                 },
+                childCount:
+                    state.results.length + (state.isLoadingMore ? 1 : 0),
               ),
-            );
-          }
-
-          // Initial state / Empty
-          return const Center(child: CircularProgressIndicator());
-        },
-      ),
+            ),
+          );
+        }
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
+      },
     );
   }
+}
 
-  Widget _buildListOption({
-    required BuildContext context,
-    required SearchResultEntity result,
-    required ColorScheme colorScheme,
-    required bool isDark,
-  }) {
+class _ListingCard extends StatelessWidget {
+  final SearchResultEntity result;
+  final ColorScheme colorScheme;
+  final bool isDark;
+
+  const _ListingCard({
+    required this.result,
+    required this.colorScheme,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
     return GestureDetector(
       onTap: () {
         if (result.type == SearchResultType.product) {
@@ -316,175 +351,117 @@ class _ListingsPageState extends State<ListingsPage>
           );
         }
       },
-      child: Container(
-        margin: const EdgeInsets.only(bottom: 16),
-        decoration: BoxDecoration(
-          color: colorScheme.surface,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: 0.05),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-          border: Border.all(
-            color: isDark ? Colors.grey[800]! : Colors.grey[100]!,
-          ),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Image
-            ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topLeft: Radius.circular(16),
-                bottomLeft: Radius.circular(16),
-              ),
-              child: SizedBox(
-                width: 120,
-                height: 120,
-                child: result.imageUrl != null
-                    ? CachedNetworkImage(
-                        imageUrl: result.imageUrl!,
-                        fit: BoxFit.cover,
-                        placeholder: (context, url) =>
-                            Container(color: Colors.grey[200]),
-                        errorWidget: (context, url, error) => Container(
-                          color: Colors.grey[200],
-                          child: const Icon(
-                            Icons.image_not_supported,
-                            color: Colors.grey,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image Section
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: result.imageUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: result.imageUrl!,
+                          fit: BoxFit.cover,
+                          placeholder: (context, url) => Container(
+                            color: isDark ? Colors.grey[900] : Colors.grey[300],
                           ),
-                        ),
-                      )
-                    : Container(
-                        color: Colors.grey[200],
-                        child: const Icon(Icons.image, color: Colors.grey),
-                      ),
-              ),
-            ),
-
-            // Content
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Type Badge
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 8,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: _getTypeColor(
-                          result.type,
-                        ).withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _getTypeName(result.type),
-                        style: GoogleFonts.outfit(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w600,
-                          color: _getTypeColor(result.type),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-
-                    // Title
-                    Text(
-                      result.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.outfit(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                        color: colorScheme.onSurface,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-
-                    // Description
-                    if (result.description.isNotEmpty)
-                      Text(
-                        result.description,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.outfit(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
-                      ),
-
-                    const SizedBox(height: 8),
-
-                    // Price & Rating
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        if (result.price != null)
-                          Text(
-                            'TZS ${result.price!.toStringAsFixed(0)}',
-                            style: GoogleFonts.outfit(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: colorScheme.primary,
+                          errorWidget: (context, url, _) => Container(
+                            color: isDark ? Colors.grey[900] : Colors.grey[300],
+                            child: Icon(
+                              Icons.image_not_supported_outlined,
+                              color: isDark ? Colors.white24 : Colors.black12,
+                              size: 32,
                             ),
                           ),
-                        if (result.rating != null)
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.star_rounded,
-                                size: 16,
-                                color: Colors.amber[700],
-                              ),
-                              const SizedBox(width: 4),
-                              Text(
-                                result.rating!.toStringAsFixed(1),
-                                style: GoogleFonts.outfit(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.grey[700],
-                                ),
-                              ),
-                            ],
+                        )
+                      : Container(
+                          color: isDark ? Colors.grey[900] : Colors.grey[300],
+                          child: Icon(
+                            Icons.image_outlined,
+                            color: isDark ? Colors.white24 : Colors.black12,
+                            size: 32,
                           ),
-                      ],
-                    ),
-                  ],
+                        ),
                 ),
-              ),
+                // Icon Badge
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _getTypeIcon(result.type),
+                      color: _getTypeColor(result.type),
+                      size: 14,
+                    ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 8),
+          // Text Section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  result.title,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: const Color(0xFF00897B), // Deep Teal
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                if (result.price != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    'TZS ${result.price!.toStringAsFixed(0)}',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDark ? Colors.white : Colors.black87,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 13,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
       ),
     );
+  }
+
+  IconData _getTypeIcon(SearchResultType type) {
+    switch (type) {
+      case SearchResultType.product:
+        return Icons.shopping_bag_rounded;
+      case SearchResultType.service:
+        return Icons.handyman_rounded;
+      case SearchResultType.accommodation:
+        return Icons.home_work_rounded;
+    }
   }
 
   Color _getTypeColor(SearchResultType type) {
     switch (type) {
       case SearchResultType.product:
-        return Colors.blue;
+        return const Color(0xFF64B5F6); // Light Blue
       case SearchResultType.service:
-        return Colors.purple;
+        return const Color(0xFFE040FB); // Purple Accent
       case SearchResultType.accommodation:
-        return Colors.orange;
-    }
-  }
-
-  String _getTypeName(SearchResultType type) {
-    switch (type) {
-      case SearchResultType.product:
-        return 'Product';
-      case SearchResultType.service:
-        return 'Service';
-      case SearchResultType.accommodation:
-        return 'Accommodation';
+        return const Color(0xFFFFB74D); // Orange Accent
     }
   }
 }

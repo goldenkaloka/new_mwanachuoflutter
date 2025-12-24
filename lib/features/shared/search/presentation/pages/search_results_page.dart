@@ -403,7 +403,7 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isDarkMode ? Colors.grey[900] : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
@@ -416,7 +416,9 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(12),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(12),
+              ),
               child: NetworkImageWithFallback(
                 imageUrl: result.imageUrl ?? '',
                 width: 90,
@@ -438,7 +440,9 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                         ),
                         decoration: BoxDecoration(
                           color: kPrimaryColor.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(6),
+                          borderRadius: const BorderRadius.vertical(
+                            top: Radius.circular(8),
+                          ),
                         ),
                         child: Text(
                           _getTypeLabel(result.type),

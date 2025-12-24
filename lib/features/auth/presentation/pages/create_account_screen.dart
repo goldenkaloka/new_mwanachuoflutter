@@ -2,12 +2,12 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mwanachuo/features/auth/presentation/pages/login_page.dart';
-import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mwanachuo/core/widgets/app_background.dart';
+import 'package:mwanachuo/features/auth/presentation/widgets/auth_text_field.dart';
 
 class CreateAccountScreen extends StatefulWidget {
   const CreateAccountScreen({super.key});
@@ -17,18 +17,23 @@ class CreateAccountScreen extends StatefulWidget {
 }
 
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
-  final TextEditingController _nameController = TextEditingController();
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _firstNameController = TextEditingController();
+  final TextEditingController _lastNameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
-  bool _obscurePassword = true;
-  bool _obscureConfirmPassword = true;
+
+  bool _isPasswordVisible = false;
+  bool _isConfirmPasswordVisible = false;
+  bool _agreeToPolicy = false;
 
   @override
   void dispose() {
-    _nameController.dispose();
+    _firstNameController.dispose();
+    _lastNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
     _passwordController.dispose();
@@ -36,594 +41,303 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     super.dispose();
   }
 
-  void _handleSignUp() {
-    final name = _nameController.text.trim();
-    final email = _emailController.text.trim();
-    final phone = _phoneController.text.trim();
-    final password = _passwordController.text.trim();
-    final confirmPassword = _confirmPasswordController.text.trim();
-
-    if (name.isEmpty ||
-        email.isEmpty ||
-        phone.isEmpty ||
-        password.isEmpty ||
-        confirmPassword.isEmpty) {
+  void _handleSignup() {
+    if (!_formKey.currentState!.validate()) return;
+    if (!_agreeToPolicy) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please fill in all fields'),
-          backgroundColor: Colors.orange,
-        ),
+        const SnackBar(content: Text('Please agree to the privacy policy')),
       );
       return;
     }
 
-    if (password.length < 6) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Password must be at least 6 characters'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (password != confirmPassword) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Passwords do not match'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    if (!email.contains('@')) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Please enter a valid email'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Validate Tanzanian phone number
-    // Formats allowed: 0712345678, +255712345678, 255712345678
-    final phoneRegex = RegExp(r'^(?:255|\+255|0)[67]\d{8}$');
-    if (!phoneRegex.hasMatch(phone)) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Please enter a valid Tanzanian phone number (e.g. 0712345678)',
-          ),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
-
-    // Pass phone to bloc
-    debugPrint(
-      'Dispatching SignUpEvent with email: $email, name: $name, phone: $phone',
-    );
     context.read<AuthBloc>().add(
       SignUpEvent(
-        email: email,
-        password: password,
-        name: name,
-        phone: phone, // Assuming SignUpEvent handles phone now
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+        name:
+            '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
+        phone: _phoneController.text.trim(),
       ),
     );
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return BlocConsumer<AuthBloc, AuthState>(
       listener: (context, state) {
-        if (state is RegistrationIncomplete) {
-          // Account created but registration incomplete
-          // User MUST select universities to continue
-          debugPrint(
-            '📝 Account created - redirecting to university selection',
-          );
-          Navigator.pushReplacementNamed(
+        if (state is Authenticated) {
+          // Navigate to university selection after successful registration
+          Navigator.pushNamedAndRemoveUntil(
             context,
             '/signup-university-selection',
-          );
-        } else if (state is Authenticated) {
-          // This should not happen during signup - user should not be authenticated
-          // until university selection is complete
-          debugPrint('⚠️ User authenticated without completing registration!');
-          Navigator.pushReplacementNamed(
-            context,
-            '/signup-university-selection',
+            (route) => false,
           );
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(state.message),
-              backgroundColor: Colors.red,
-              duration: const Duration(seconds: 4),
+              backgroundColor: Colors.redAccent,
             ),
           );
         }
       },
       builder: (context, authState) {
-        return _buildSignUpUI(context, authState);
-      },
-    );
-  }
-
-  Widget _buildSignUpUI(BuildContext context, AuthState authState) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          'Create Account',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.bold,
-            fontSize: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 18.0,
-              medium: 20.0,
-              expanded: 22.0,
-            ),
-          ),
-        ),
-        backgroundColor: Theme.of(context).scaffoldBackgroundColor,
-      ),
-      body: ResponsiveBuilder(
-        builder: (context, screenSize) {
-          return Center(
-            child: SingleChildScrollView(
-              padding: EdgeInsets.all(
-                ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 24.0,
-                  medium: 48.0,
-                  expanded: 64.0,
-                ),
-              ),
-              child: ResponsiveContainer(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    maxWidth: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 400.0,
-                      medium: 480.0,
-                      expanded: 520.0,
-                    ),
-                  ),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Welcome to Mwanachuoshop!',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: 28.0,
-                            medium: 32.0,
-                            expanded: 36.0,
-                          ),
-                          fontWeight: FontWeight.bold,
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                        ),
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 16.0,
-                          medium: 20.0,
-                          expanded: 24.0,
-                        ),
-                      ),
-                      Text(
-                        'Create an account to start buying and selling on campus.',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: 16.0,
-                            medium: 17.0,
-                            expanded: 18.0,
-                          ),
-                          color: isDarkMode
-                              ? Colors.grey[400]
-                              : Colors.grey[600],
-                        ),
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 32.0,
-                          medium: 40.0,
-                          expanded: 48.0,
-                        ),
-                      ),
-                      // Name field
-                      _buildTextField(
-                        controller: _nameController,
-                        label: 'Full Name',
-                        placeholder: 'Enter your full name',
-                        icon: Icons.person_outline,
-                        isDarkMode: isDarkMode,
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 16.0,
-                          medium: 20.0,
-                          expanded: 24.0,
-                        ),
-                      ),
-                      // Phone Number field
-                      _buildTextField(
-                        controller: _phoneController,
-                        label: 'Phone Number',
-                        placeholder: '07XX XXX XXX',
-                        icon: Icons.phone_outlined,
-                        isDarkMode: isDarkMode,
-                        keyboardType: TextInputType.phone,
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 16.0,
-                          medium: 20.0,
-                          expanded: 24.0,
-                        ),
-                      ),
-                      // Email field
-                      _buildTextField(
-                        controller: _emailController,
-                        label: 'Email',
-                        placeholder: 'Enter your email',
-                        icon: Icons.email_outlined,
-                        isDarkMode: isDarkMode,
-                        keyboardType: TextInputType.emailAddress,
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 16.0,
-                          medium: 20.0,
-                          expanded: 24.0,
-                        ),
-                      ),
-                      // Password field
-                      _buildTextField(
-                        controller: _passwordController,
-                        label: 'Password',
-                        placeholder: 'Enter your password',
-                        icon: Icons.lock_outline,
-                        isPassword: true,
-                        isObscure: _obscurePassword,
-                        isDarkMode: isDarkMode,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscurePassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: isDarkMode
-                                ? Colors.grey.shade500
-                                : kTextSecondary,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscurePassword = !_obscurePassword;
-                            });
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 16.0,
-                          medium: 20.0,
-                          expanded: 24.0,
-                        ),
-                      ),
-                      // Confirm Password field
-                      _buildTextField(
-                        controller: _confirmPasswordController,
-                        label: 'Confirm Password',
-                        placeholder: 'Confirm your password',
-                        icon: Icons.lock_outline,
-                        isPassword: true,
-                        isObscure: _obscureConfirmPassword,
-                        isDarkMode: isDarkMode,
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            _obscureConfirmPassword
-                                ? Icons.visibility_outlined
-                                : Icons.visibility_off_outlined,
-                            color: isDarkMode
-                                ? Colors.grey.shade500
-                                : kTextSecondary,
-                          ),
-                          onPressed: () {
-                            setState(() {
-                              _obscureConfirmPassword =
-                                  !_obscureConfirmPassword;
-                            });
-                          },
-                        ),
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 32.0,
-                          medium: 40.0,
-                          expanded: 48.0,
-                        ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.symmetric(
-                          horizontal: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: 16.0, // M3 standard margin for mobile
-                            medium: 0.0,
-                            expanded: 0.0,
-                          ),
-                        ),
-                        child: Center(
-                          child: ConstrainedBox(
-                            constraints: BoxConstraints(
-                              maxWidth: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 600.0,
-                                medium: 400.0,
-                                expanded: 450.0,
-                              ),
-                            ),
-                            child: SizedBox(
-                              width: double.infinity,
-                              height: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 48.0, // M3 standard button height
-                                medium: 48.0,
-                                expanded: 52.0,
-                              ),
-                              child: ElevatedButton(
-                                onPressed: authState is AuthLoading
-                                    ? null
-                                    : _handleSignUp,
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: kPrimaryColor,
-                                  foregroundColor: kBackgroundColorDark,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      24.0,
-                                    ), // M3 standard
-                                  ),
-                                  elevation: 2.0, // M3 standard elevation
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 24.0,
-                                  ), // M3 standard
-                                  minimumSize: const Size(
-                                    64,
-                                    40,
-                                  ), // M3 minimum touch target
-                                ),
-                                child: authState is AuthLoading
-                                    ? const SizedBox(
-                                        height: 20,
-                                        width: 20,
-                                        child: CircularProgressIndicator(
-                                          color: Colors.white,
-                                          strokeWidth: 2,
-                                        ),
-                                      )
-                                    : Text(
-                                        'Create Account',
-                                        style: GoogleFonts.plusJakartaSans(
-                                          fontSize:
-                                              16.0, // M3 standard button text size
-                                          fontWeight: FontWeight
-                                              .w600, // M3 medium weight
-                                          letterSpacing:
-                                              0.1, // M3 standard tracking
-                                        ),
-                                      ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      SizedBox(
-                        height: ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 16.0,
-                          medium: 20.0,
-                          expanded: 24.0,
-                        ),
-                      ),
-                      Center(
-                        child: RichText(
-                          text: TextSpan(
-                            text: 'Already have an account? ',
+        return Scaffold(
+          body: AppBackground(
+            child: SafeArea(
+              child: Center(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 450),
+                    child: Form(
+                      key: _formKey,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 20),
+                          // Title
+                          Text(
+                            'Create Account',
                             style: GoogleFonts.plusJakartaSans(
-                              color: isDarkMode
-                                  ? Colors.grey[400]
-                                  : Colors.grey[600],
-                              fontSize: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 16.0,
-                                medium: 17.0,
-                                expanded: 18.0,
-                              ),
+                              fontSize: 28,
+                              fontWeight: FontWeight.bold,
+                              color: isDarkMode ? Colors.white : Colors.black87,
                             ),
+                          ),
+                          const SizedBox(height: 10),
+                          Text(
+                            'Please fill in the details to sign up',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 14,
+                              color: isDarkMode
+                                  ? Colors.white.withValues(alpha: 0.6)
+                                  : Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 30),
+
+                          // Name Row
+                          Row(
                             children: [
-                              TextSpan(
-                                text: 'Sign in',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontWeight: FontWeight.bold,
-                                  color: kPrimaryColor,
+                              Expanded(
+                                child: AuthTextField(
+                                  controller: _firstNameController,
+                                  label: 'First Name',
+                                  hintText: 'John',
+                                  prefixIcon: Icons.person_outline,
+                                  isDarkMode: isDarkMode,
                                 ),
-                                recognizer: TapGestureRecognizer()
-                                  ..onTap = () {
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (context) => const LoginPage(),
-                                      ),
-                                    );
-                                  },
+                              ),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                child: AuthTextField(
+                                  controller: _lastNameController,
+                                  label: 'Last Name',
+                                  hintText: 'Doe',
+                                  prefixIcon: Icons.person_outline,
+                                  isDarkMode: isDarkMode,
+                                ),
                               ),
                             ],
                           ),
-                        ),
+                          const SizedBox(height: 16),
+
+                          // Email
+                          AuthTextField(
+                            controller: _emailController,
+                            label: 'Email',
+                            hintText: 'example@email.com',
+                            prefixIcon: Icons.email_outlined,
+                            isDarkMode: isDarkMode,
+                            keyboardType: TextInputType.emailAddress,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Phone
+                          AuthTextField(
+                            controller: _phoneController,
+                            label: 'Phone number',
+                            hintText: '0712 345 678',
+                            prefixIcon: Icons.phone_outlined,
+                            isDarkMode: isDarkMode,
+                            keyboardType: TextInputType.phone,
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Password
+                          AuthTextField(
+                            controller: _passwordController,
+                            label: 'Password',
+                            hintText: '••••••••',
+                            prefixIcon: Icons.lock_outline,
+                            isDarkMode: isDarkMode,
+                            isPassword: true,
+                            obscureText: !_isPasswordVisible,
+                            onToggleObscure: () {
+                              setState(() {
+                                _isPasswordVisible = !_isPasswordVisible;
+                              });
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Confirm Password
+                          AuthTextField(
+                            controller: _confirmPasswordController,
+                            label: 'Confirm Password',
+                            hintText: '••••••••',
+                            prefixIcon: Icons.lock_outline,
+                            isDarkMode: isDarkMode,
+                            isPassword: true,
+                            obscureText: !_isConfirmPasswordVisible,
+                            onToggleObscure: () {
+                              setState(() {
+                                _isConfirmPasswordVisible =
+                                    !_isConfirmPasswordVisible;
+                              });
+                            },
+                            validator: (value) {
+                              if (value != _passwordController.text) {
+                                return 'Passwords do not match';
+                              }
+                              return null;
+                            },
+                          ),
+                          const SizedBox(height: 16),
+
+                          // Privacy Policy Checkbox
+                          Row(
+                            children: [
+                              SizedBox(
+                                width: 24,
+                                height: 24,
+                                child: Checkbox(
+                                  value: _agreeToPolicy,
+                                  onChanged: (value) {
+                                    setState(() {
+                                      _agreeToPolicy = value ?? false;
+                                    });
+                                  },
+                                  activeColor: kPrimaryColor,
+                                  side: BorderSide(
+                                    color: isDarkMode
+                                        ? Colors.white.withValues(alpha: 0.3)
+                                        : Colors.grey[400]!,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: RichText(
+                                  text: TextSpan(
+                                    text: 'I agree to the ',
+                                    style: GoogleFonts.plusJakartaSans(
+                                      color: isDarkMode
+                                          ? Colors.white.withValues(alpha: 0.6)
+                                          : Colors.grey[700],
+                                      fontSize: 12,
+                                    ),
+                                    children: [
+                                      TextSpan(
+                                        text: 'Privacy Policy',
+                                        style: const TextStyle(
+                                          color: Color(0xFF00897B),
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        recognizer: TapGestureRecognizer()
+                                          ..onTap = () {
+                                            // TODO: Open Privacy Policy
+                                          },
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 30),
+
+                          // Signup Button
+                          SizedBox(
+                            width: double.infinity,
+                            height: 56,
+                            child: ElevatedButton(
+                              onPressed: authState is AuthLoading
+                                  ? null
+                                  : _handleSignup,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF00897B),
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                elevation: 0,
+                              ),
+                              child: authState is AuthLoading
+                                  ? const SizedBox(
+                                      height: 24,
+                                      width: 24,
+                                      child: CircularProgressIndicator(
+                                        strokeWidth: 2,
+                                        valueColor:
+                                            AlwaysStoppedAnimation<Color>(
+                                              Colors.white,
+                                            ),
+                                      ),
+                                    )
+                                  : Text(
+                                      'Sign Up',
+                                      style: GoogleFonts.plusJakartaSans(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                            ),
+                          ),
+                          const SizedBox(height: 24),
+
+                          // Login Link
+                          Center(
+                            child: RichText(
+                              text: TextSpan(
+                                text: 'Already have an account? ',
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: isDarkMode
+                                      ? Colors.white.withValues(alpha: 0.6)
+                                      : Colors.grey[700],
+                                  fontSize: 14,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: 'Log In',
+                                    style: const TextStyle(
+                                      color: Color(0xFF00897B),
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                    recognizer: TapGestureRecognizer()
+                                      ..onTap = () {
+                                        Navigator.pop(context);
+                                      },
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 40),
+                        ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
               ),
             ),
-          );
-        },
-      ),
-    );
-  }
-
-  // --- HELPER WIDGETS ---
-
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String label,
-    required String placeholder,
-    required IconData icon,
-    bool isPassword = false,
-    bool isObscure = false,
-    required bool isDarkMode,
-    Widget? suffixIcon,
-    TextInputType? keyboardType,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: EdgeInsets.only(
-            bottom: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 8.0,
-              medium: 10.0,
-              expanded: 12.0,
-            ),
           ),
-          child: Text(
-            label,
-            style: GoogleFonts.plusJakartaSans(
-              color: isDarkMode ? Colors.grey.shade300 : kTextPrimary,
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 17.0,
-                expanded: 18.0,
-              ),
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
-        TextFormField(
-          controller: controller,
-          obscureText: isObscure,
-          keyboardType:
-              keyboardType ??
-              (isPassword ? TextInputType.visiblePassword : TextInputType.text),
-          style: GoogleFonts.plusJakartaSans(
-            color: isDarkMode ? Colors.white : kTextPrimary,
-            fontSize: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 16.0,
-              medium: 17.0,
-              expanded: 18.0,
-            ),
-          ),
-          decoration: InputDecoration(
-            hintText: placeholder,
-            hintStyle: GoogleFonts.plusJakartaSans(
-              color: isDarkMode ? Colors.grey.shade500 : kTextSecondary,
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 17.0,
-                expanded: 18.0,
-              ),
-            ),
-            contentPadding: EdgeInsets.symmetric(
-              vertical: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 18.0,
-                expanded: 20.0,
-              ),
-              horizontal: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 16.0,
-                medium: 20.0,
-                expanded: 24.0,
-              ),
-            ),
-            prefixIcon: Padding(
-              padding: EdgeInsets.only(
-                left: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 12.0,
-                  medium: 16.0,
-                  expanded: 20.0,
-                ),
-                right: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 8.0,
-                  medium: 12.0,
-                  expanded: 16.0,
-                ),
-              ),
-              child: Icon(
-                icon,
-                color: isDarkMode ? Colors.grey.shade500 : kTextSecondary,
-                size: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 24.0,
-                  medium: 26.0,
-                  expanded: 28.0,
-                ),
-              ),
-            ),
-            prefixIconConstraints: BoxConstraints(
-              minWidth: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 40.0,
-                medium: 48.0,
-                expanded: 56.0,
-              ),
-              minHeight: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 48.0,
-                medium: 52.0,
-                expanded: 56.0,
-              ),
-            ),
-            suffixIcon: suffixIcon,
-            filled: true,
-            fillColor: isDarkMode
-                ? const Color(0xFF334155)
-                : Colors.grey.shade50,
-            border: OutlineInputBorder(
-              borderRadius: kBaseRadius,
-              borderSide: BorderSide.none,
-            ),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty) {
-              return 'This field is required';
-            }
-            return null;
-          },
-        ),
-      ],
+        );
+      },
     );
   }
 }

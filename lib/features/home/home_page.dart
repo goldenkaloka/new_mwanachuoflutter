@@ -7,8 +7,8 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/services/university_service.dart';
-import 'package:mwanachuo/core/widgets/app_card.dart';
 import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
@@ -240,56 +240,51 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
         child: Scaffold(
-          backgroundColor: isDarkMode
-              ? kBackgroundColorDark
-              : kBackgroundColorLight,
-          body: ResponsiveBuilder(
-            builder: (context, screenSize) {
-              // For expanded screens, use a different layout structure
-              if (isExpanded) {
-                return _buildExpandedLayout(
-                  context,
-                  primaryTextColor,
-                  secondaryTextColor,
-                  searchBgColor,
-                  searchBorderColor,
-                  isDarkMode,
-                );
-              }
+          body: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: isDarkMode
+                    ? [
+                        const Color(0xFF1A1A1A), // Dark top
+                        const Color(0xFF0D0D0D), // Darker bottom
+                      ]
+                    : [
+                        const Color(0xFFFAFAFA), // Very light gray top
+                        const Color(0xFFF0F0F0), // Slightly darker gray bottom
+                      ],
+              ),
+            ),
+            child: ResponsiveBuilder(
+              builder: (context, screenSize) {
+                // For expanded screens, use a different layout structure
+                if (isExpanded) {
+                  return _buildExpandedLayout(
+                    context,
+                    primaryTextColor,
+                    secondaryTextColor,
+                    searchBgColor,
+                    searchBorderColor,
+                    isDarkMode,
+                  );
+                }
 
-              // Compact and Medium layouts
-              final isMedium = screenSize == ScreenSize.medium;
+                // Compact and Medium layouts
+                final isMedium = screenSize == ScreenSize.medium;
 
-              return SafeArea(
-                bottom: false, // Bottom safe area handled by bottom nav
-                child: CustomScrollView(
+                return CustomScrollView(
                   slivers: [
-                    // 1. Top App Bar (collapsible)
-                    SliverSafeArea(
-                      bottom: false,
-                      sliver: SliverToBoxAdapter(
-                        child: _buildTopAppBar(
-                          context,
-                          primaryTextColor,
-                          screenSize,
-                        ),
-                      ),
-                    ),
-
-                    // 2. Search Bar (collapsible)
+                    // Consolidated Upper Section with Full-Bleed Animated Background
                     SliverToBoxAdapter(
-                      child: _buildSearchBar(
-                        searchBgColor,
-                        searchBorderColor,
+                      child: _buildAnimatedUpperSection(
+                        context,
                         primaryTextColor,
                         secondaryTextColor,
+                        searchBgColor,
+                        searchBorderColor,
                         screenSize,
                       ),
-                    ),
-
-                    // 3. Promotions Section (collapsible)
-                    SliverToBoxAdapter(
-                      child: _buildPromotionsSection(screenSize),
                     ),
 
                     // 5. Products Section
@@ -301,6 +296,7 @@ class _HomePageState extends State<HomePage> {
                             _buildSectionHeader(
                               'Products',
                               Icons.shopping_bag,
+                              const Color(0xFF00897B), // Deep Teal
                               primaryTextColor,
                               screenSize,
                               route: '/all-products',
@@ -310,11 +306,14 @@ class _HomePageState extends State<HomePage> {
                               secondaryTextColor,
                               screenSize,
                             ),
-
+                            const SizedBox(height: 32), // Added Spacing
                             // 6. Accommodations Section
                             _buildSectionHeader(
                               'Accommodations',
                               Icons.home,
+                              const Color(
+                                0xFF00897B,
+                              ), // Deep Teal (Standardized)
                               primaryTextColor,
                               screenSize,
                               route: '/student-housing',
@@ -324,11 +323,12 @@ class _HomePageState extends State<HomePage> {
                               secondaryTextColor,
                               screenSize,
                             ),
-
+                            const SizedBox(height: 32), // Added Spacing
                             // 7. Services Section
                             _buildSectionHeader(
                               'Services',
                               Icons.build,
+                              const Color(0xFF3949AB), // Slate Indigo
                               primaryTextColor,
                               screenSize,
                               route: '/services',
@@ -352,9 +352,9 @@ class _HomePageState extends State<HomePage> {
                       ),
                     ),
                   ],
-                ),
-              );
-            },
+                );
+              },
+            ),
           ),
         ),
       ),
@@ -435,6 +435,7 @@ class _HomePageState extends State<HomePage> {
                         _buildSectionHeader(
                           'Products',
                           Icons.shopping_bag,
+                          const Color(0xFF00897B), // Deep Teal
                           primaryTextColor,
                           ScreenSize.expanded,
                           route: '/all-products',
@@ -444,10 +445,12 @@ class _HomePageState extends State<HomePage> {
                           secondaryTextColor,
                           ScreenSize.expanded,
                         ),
+                        const SizedBox(height: 32),
                         // Accommodations Section
                         _buildSectionHeader(
                           'Accommodations',
                           Icons.home,
+                          const Color(0xFF00897B), // Deep Teal (Standardized)
                           primaryTextColor,
                           ScreenSize.expanded,
                           route: '/student-housing',
@@ -457,10 +460,12 @@ class _HomePageState extends State<HomePage> {
                           secondaryTextColor,
                           ScreenSize.expanded,
                         ),
+                        const SizedBox(height: 32),
                         // Services Section
                         _buildSectionHeader(
                           'Services',
                           Icons.build,
+                          const Color(0xFF3949AB), // Slate Indigo
                           primaryTextColor,
                           ScreenSize.expanded,
                           route: '/services',
@@ -610,6 +615,183 @@ class _HomePageState extends State<HomePage> {
     if (hour < 12) return 'Good Morning';
     if (hour < 17) return 'Good Afternoon';
     return 'Good Evening';
+  }
+
+  // --- REFINED UPPER SECTION WITH DYNAMIC BACKGROUND ---
+
+  Widget _buildAnimatedUpperSection(
+    BuildContext context,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color searchBgColor,
+    Color searchBorderColor,
+    ScreenSize screenSize,
+  ) {
+    // Get current promotion gradient
+    final currentGradient =
+        _promotionGradients[_currentPromotionPage % _promotionGradients.length];
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 800),
+      curve: Curves.easeInOut,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            currentGradient.colors.first,
+            currentGradient.colors.first.withValues(alpha: 0.0),
+          ],
+          stops: const [
+            0.0,
+            0.7,
+          ], // Fade ends at the middle of the promotion cards
+        ),
+      ),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: [
+            // 1. Top Bar (Personalized Greeting + Notifications)
+            _buildTopAppBarExtended(context, Colors.white, screenSize),
+
+            // 2. Search Bar
+            _buildSearchBarExtended(
+              Colors.white.withValues(alpha: 0.15),
+              Colors.white.withValues(alpha: 0.3),
+              Colors.white,
+              Colors.white.withValues(alpha: 0.7),
+              screenSize,
+            ),
+
+            // 3. Promotions Carousel
+            _buildPromotionsSectionExtended(screenSize),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Specialized Top Bar for the animated section with white text for contrast
+  Widget _buildTopAppBarExtended(
+    BuildContext context,
+    Color textColor,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
+
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        16.0,
+        horizontalPadding,
+        8.0,
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Row(
+            children: [
+              // User Avatar with white border for contrast
+              Container(
+                padding: const EdgeInsets.all(2),
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: Colors.white24,
+                ),
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.white10,
+                  backgroundImage: _userAvatarUrl != null
+                      ? NetworkImage(_userAvatarUrl!)
+                      : null,
+                  child: _userAvatarUrl == null
+                      ? const Icon(Icons.person, color: Colors.white, size: 20)
+                      : null,
+                ),
+              ),
+              const SizedBox(width: 12),
+              // Personalized Greeting
+              Text(
+                _isLoadingUser
+                    ? '${_getGreeting()}!'
+                    : '${_getGreeting()}, ${_userName.split(' ').first}!',
+                style: GoogleFonts.plusJakartaSans(
+                  color: Colors.white,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          // Notification Icon
+          IconButton(
+            onPressed: () => Navigator.pushNamed(context, '/notifications'),
+            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Specialized Search Bar for the animated section with darker translucent fill
+  Widget _buildSearchBarExtended(
+    Color bgColor,
+    Color borderColor,
+    Color primaryTextColor,
+    Color hintColor,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
+
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: horizontalPadding,
+        vertical: 8.0,
+      ),
+      child: TextField(
+        readOnly: true,
+        onTap: () => Navigator.pushNamed(context, '/search'),
+        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 16),
+        decoration: InputDecoration(
+          hintText: 'Search products, rooms, services...',
+          hintStyle: GoogleFonts.plusJakartaSans(
+            color: Colors.white70,
+            fontSize: 14,
+          ),
+          prefixIcon: const Icon(Icons.search, color: Colors.white70),
+          filled: true,
+          fillColor: Colors.black.withValues(alpha: 0.1),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(16.0),
+            borderSide: BorderSide.none,
+          ),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 16,
+          ),
+        ),
+      ),
+    );
+  }
+
+  // Specialized Promotions Section with optimized contrast
+  Widget _buildPromotionsSectionExtended(ScreenSize screenSize) {
+    return BlocBuilder<PromotionCubit, PromotionState>(
+      builder: (context, state) {
+        if (state is PromotionsLoaded && state.promotions.isNotEmpty) {
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 24.0),
+            child: _buildPromotionsCarousel(state.promotions, screenSize),
+          );
+        }
+        return const SizedBox(height: 16);
+      },
+    );
   }
 
   Widget _buildTopAppBar(
@@ -977,7 +1159,8 @@ class _HomePageState extends State<HomePage> {
   Widget _buildSectionHeader(
     String title,
     IconData icon,
-    Color primaryTextColor,
+    Color sectionColor,
+    Color titleColor,
     ScreenSize screenSize, {
     String? route,
   }) {
@@ -1004,19 +1187,13 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 36,
+            height: 36,
             decoration: BoxDecoration(
-              color: const Color(0xFF078829).withValues(alpha: 0.2),
+              color: sectionColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(
-              icon,
-              color: Theme.of(context).brightness == Brightness.dark
-                  ? kPrimaryColor
-                  : const Color(0xFF078829),
-              size: 20,
-            ),
+            child: Icon(icon, color: sectionColor, size: 18),
           ),
           SizedBox(
             width: ResponsiveBreakpoints.responsiveValue(
@@ -1030,12 +1207,12 @@ class _HomePageState extends State<HomePage> {
             child: Text(
               title,
               style: GoogleFonts.plusJakartaSans(
-                color: primaryTextColor,
+                color: titleColor,
                 fontSize: ResponsiveBreakpoints.responsiveValue(
                   context,
-                  compact: 22.0,
-                  medium: 24.0,
-                  expanded: 28.0,
+                  compact: 18.0,
+                  medium: 20.0,
+                  expanded: 22.0,
                 ),
                 fontWeight: FontWeight.bold,
                 letterSpacing: -0.3,
@@ -1055,9 +1232,7 @@ class _HomePageState extends State<HomePage> {
               child: Text(
                 'View All',
                 style: GoogleFonts.plusJakartaSans(
-                  color: Theme.of(context).brightness == Brightness.dark
-                      ? kPrimaryColor
-                      : const Color(0xFF078829),
+                  color: sectionColor,
                   fontSize: ResponsiveBreakpoints.responsiveValue(
                     context,
                     compact: 14.0,
@@ -1257,26 +1432,26 @@ class _HomePageState extends State<HomePage> {
   final List<LinearGradient> _promotionGradients = [
     // Light Blue
     LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
       colors: [Colors.lightBlue.shade900, Colors.lightBlue.shade100],
     ),
     // Pink
     LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
       colors: [Colors.pink.shade900, Colors.pink.shade100],
     ),
     // Purple
     LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
       colors: [Colors.purple.shade900, Colors.purple.shade100],
     ),
     // Teal
     LinearGradient(
-      begin: Alignment.topCenter,
-      end: Alignment.bottomCenter,
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
       colors: [Colors.teal.shade900, Colors.teal.shade100],
     ),
   ];
@@ -1333,8 +1508,10 @@ class _HomePageState extends State<HomePage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _currentPromotionPage == index
-                      ? kPrimaryColor
-                      : kPrimaryColor.withValues(alpha: 0.3),
+                      ? _promotionGradients[index % _promotionGradients.length]
+                            .colors
+                            .first
+                      : Colors.grey[700]!, // Solid neutral "without color"
                 ),
               );
             }),
@@ -1364,7 +1541,27 @@ class _HomePageState extends State<HomePage> {
     );
 
     // Select gradient based on index
-    final gradient = _promotionGradients[index % _promotionGradients.length];
+    final colorIndex = index % _promotionGradients.length;
+    final gradient = _promotionGradients[colorIndex];
+
+    // Select high-contrast text color based on index
+    Color textColor;
+    switch (colorIndex) {
+      case 0: // Blue
+        textColor = Colors.amberAccent; // Bright Yellow on Blue
+        break;
+      case 1: // Pink
+        textColor = Colors.white; // White on Pink
+        break;
+      case 2: // Purple
+        textColor = Colors.lightGreenAccent; // Neon Green on Purple
+        break;
+      case 3: // Teal
+        textColor = Colors.yellowAccent; // Yellow on Teal
+        break;
+      default:
+        textColor = Colors.white;
+    }
 
     return GestureDetector(
       onTap: () => Navigator.pushNamed(
@@ -1378,15 +1575,6 @@ class _HomePageState extends State<HomePage> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8.0),
           gradient: gradient, // Apply gradient
-          boxShadow: isActive
-              ? [
-                  BoxShadow(
-                    color: gradient.colors.first.withValues(alpha: 0.4),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ]
-              : null,
         ),
         child: Stack(
           fit: StackFit.expand, // Make stack expand to fill container
@@ -1395,38 +1583,38 @@ class _HomePageState extends State<HomePage> {
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
-                  child: ShaderMask(
-                    shaderCallback: (bounds) {
-                      return gradient.createShader(bounds);
-                    },
-                    blendMode: BlendMode.overlay,
-                    child: NetworkImageWithFallback(
-                      imageUrl: promotion.imageUrl!,
-                      fit: BoxFit.cover,
-                    ),
+                  child: NetworkImageWithFallback(
+                    imageUrl: promotion.imageUrl!,
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
-            // Gradient Overlay for Text Readability (optional, but good for design)
-            // If the user WANTS the gradient to be visible, maybe we use a gradient overlay on top of image?
-            // "enhance... to have a background gradient" usually implies the card itself.
-            // But if image is full cover, background is hidden.
-            // Let's add a gradient overlay on TOP of image that fades from transparent to the bottom color?
-            // User said "deep at top, light at bottom".
-            // If we put deep color at top over image, it obscures image.
+
+            // Deep Gradient Overlay (Hides top of image, reveals bottom)
+            Positioned.fill(
+              child: Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(8.0),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      gradient.colors.first, // Solid deep color at top
+                      gradient.colors.first.withValues(
+                        alpha: 0.0,
+                      ), // Transparent at bottom
+                    ],
+                    stops: const [0.4, 1.0], // Fade starting at 40% down
+                  ),
+                ),
+              ),
+            ),
 
             // Text Container
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8.0),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withValues(alpha: 0.1),
-                    Colors.black.withValues(alpha: 0.7),
-                  ],
-                ),
+                // Removed black gradient overlay for cleaner look
               ),
               padding: EdgeInsets.all(
                 ResponsiveBreakpoints.responsiveValue(
@@ -1454,6 +1642,7 @@ class _HomePageState extends State<HomePage> {
                     fontWeight: FontWeight.bold,
                     maxLines: 2,
                     shouldAnimate: isActive,
+                    textColor: textColor,
                   ),
                   if (promotion.subtitle.isNotEmpty) ...[
                     const SizedBox(height: 4),
@@ -1472,6 +1661,9 @@ class _HomePageState extends State<HomePage> {
                       maxLines: 1,
                       delay: const Duration(milliseconds: 300),
                       shouldAnimate: isActive,
+                      textColor: textColor.withValues(
+                        alpha: 0.8,
+                      ), // Slightly lighter for subtitle
                     ),
                   ],
                 ],
@@ -1492,13 +1684,6 @@ class _HomePageState extends State<HomePage> {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
-    final columns = ResponsiveBreakpoints.responsiveGridColumns(context);
-    final spacing = ResponsiveBreakpoints.responsiveValue(
-      context,
-      compact: 16.0,
-      medium: 20.0,
-      expanded: 24.0,
-    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -1508,29 +1693,27 @@ class _HomePageState extends State<HomePage> {
         itemCount: products.take(6).length,
         addAutomaticKeepAlives: false,
         addRepaintBoundaries: true,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: spacing,
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
           childAspectRatio: 0.75,
         ),
         itemBuilder: (context, index) {
           final product = products[index];
           return _AnimatedCardEntry(
             index: index,
-            child: ProductCard(
-              key: ValueKey('product_${product.id}'),
+            child: _HomeGridCard(
               imageUrl: product.images.isNotEmpty ? product.images.first : '',
               title: product.title,
-              price: 'TZS ${product.price.toStringAsFixed(2)}',
-              category: product.category,
-              rating: product.rating,
-              reviewCount: product.reviewCount,
+              price: product.price,
+              type: 'product',
               onTap: () => Navigator.pushNamed(
                 context,
                 '/product-details',
                 arguments: product.id,
               ),
+              isDark: Theme.of(context).brightness == Brightness.dark,
             ),
           );
         },
@@ -1566,12 +1749,48 @@ class _HomePageState extends State<HomePage> {
             ),
             leading: ClipRRect(
               borderRadius: BorderRadius.circular(8),
-              child: NetworkImageWithFallback(
-                imageUrl: service.images.isNotEmpty ? service.images.first : '',
-                width: 60,
-                height: 60,
-                fit: BoxFit.cover,
-              ),
+              child: service.images.isNotEmpty
+                  ? CachedNetworkImage(
+                      imageUrl: service.images.first,
+                      width: 60,
+                      height: 60,
+                      fit: BoxFit.cover,
+                      placeholder: (context, url) => Container(
+                        width: 60,
+                        height: 60,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[800]
+                            : Colors.grey[200],
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        width: 60,
+                        height: 60,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.grey[800]
+                            : Colors.grey[200],
+                        child: Icon(
+                          Icons.image_not_supported_outlined,
+                          size: 24,
+                          color: Theme.of(context).brightness == Brightness.dark
+                              ? Colors.white24
+                              : Colors.black12,
+                        ),
+                      ),
+                    )
+                  : Container(
+                      width: 60,
+                      height: 60,
+                      color: Theme.of(context).brightness == Brightness.dark
+                          ? Colors.grey[800]
+                          : Colors.grey[200],
+                      child: Icon(
+                        Icons.image_not_supported_outlined,
+                        size: 24,
+                        color: Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white24
+                            : Colors.black12,
+                      ),
+                    ),
             ),
             title: Text(
               service.title,
@@ -1584,20 +1803,13 @@ class _HomePageState extends State<HomePage> {
               children: [
                 const SizedBox(height: 4),
                 Text(
-                  'TZS ${service.price.toStringAsFixed(2)}${service.priceType == 'per_hour'
-                      ? '/hour'
-                      : service.priceType == 'per_day'
-                      ? '/day'
-                      : ''}',
+                  'TZS ${service.price.toStringAsFixed(0)}',
                   style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                    color: const Color(0xFF078829),
+                    color: const Color(
+                      0xFF3949AB,
+                    ), // Standardized Slate Indigo (was Purple)
                     fontWeight: FontWeight.bold,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  service.category,
-                  style: Theme.of(context).textTheme.bodySmall,
                 ),
                 const SizedBox(height: 4),
                 Row(
@@ -1611,20 +1823,6 @@ class _HomePageState extends State<HomePage> {
                     Expanded(
                       child: Text(
                         service.providerName,
-                        style: Theme.of(context).textTheme.bodySmall,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    const Icon(
-                      Icons.location_on_outlined,
-                      size: 14,
-                      color: kTextSecondary,
-                    ),
-                    const SizedBox(width: 4),
-                    Expanded(
-                      child: Text(
-                        service.location,
                         style: Theme.of(context).textTheme.bodySmall,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -1654,13 +1852,6 @@ class _HomePageState extends State<HomePage> {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
-    final columns = ResponsiveBreakpoints.responsiveGridColumns(context);
-    final spacing = ResponsiveBreakpoints.responsiveValue(
-      context,
-      compact: 8.0,
-      medium: 12.0,
-      expanded: 16.0,
-    );
 
     return Padding(
       padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
@@ -1670,35 +1861,27 @@ class _HomePageState extends State<HomePage> {
         itemCount: accommodations.take(6).length,
         addAutomaticKeepAlives: false,
         addRepaintBoundaries: true,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: spacing,
-          childAspectRatio: ResponsiveBreakpoints.responsiveValue(
-            context,
-            compact: 0.65,
-            medium: 0.7,
-            expanded: 0.75,
-          ),
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          crossAxisSpacing: 2,
+          mainAxisSpacing: 2,
+          childAspectRatio: 0.7, // Taller cards (increased length)
         ),
         itemBuilder: (context, index) {
           final accommodation = accommodations[index];
-          return AccommodationCard(
-            key: ValueKey('accommodation_${accommodation.id}'),
+          return _HomeGridCard(
             imageUrl: accommodation.images.isNotEmpty
                 ? accommodation.images.first
                 : '',
             title: accommodation.name,
-            price: 'TZS ${accommodation.price.toStringAsFixed(2)}',
-            priceType: accommodation.priceType,
-            location: accommodation.location,
-            bedrooms: accommodation.bedrooms,
-            bathrooms: accommodation.bathrooms,
+            price: accommodation.price,
+            type: 'accommodation',
             onTap: () => Navigator.pushNamed(
               context,
               '/accommodation-details',
               arguments: accommodation.id,
             ),
+            isDark: Theme.of(context).brightness == Brightness.dark,
           );
         },
       ),
@@ -1786,8 +1969,8 @@ class _HomePageState extends State<HomePage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: _currentPromotionPage == index
-                      ? kPrimaryColor
-                      : kPrimaryColor.withValues(alpha: 0.3),
+                      ? Colors.grey[400]
+                      : Colors.grey[400]!.withValues(alpha: 0.3),
                 ),
               );
             }),
@@ -1876,6 +2059,158 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
+class _HomeGridCard extends StatelessWidget {
+  final String imageUrl;
+  final String title;
+  final double price;
+  final String type; // 'product' or 'accommodation'
+  final VoidCallback onTap;
+  final bool isDark;
+
+  const _HomeGridCard({
+    required this.imageUrl,
+    required this.title,
+    required this.price,
+    required this.type,
+    required this.onTap,
+    required this.isDark,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Image Section
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(12),
+                    ),
+                    child: Container(
+                      color: isDark
+                          ? const Color(0xFF1A1A1A)
+                          : Colors.grey[200],
+                      child: imageUrl.isNotEmpty
+                          ? CachedNetworkImage(
+                              imageUrl: imageUrl,
+                              fit: BoxFit.cover,
+                              placeholder: (context, url) => Container(
+                                color: isDark
+                                    ? Colors.grey[900]
+                                    : Colors.grey[300],
+                              ),
+                              errorWidget: (context, url, _) => Container(
+                                color: isDark
+                                    ? Colors.grey[900]
+                                    : Colors.grey[300],
+                                child: Icon(
+                                  Icons.image_not_supported_outlined,
+                                  color: isDark
+                                      ? Colors.white24
+                                      : Colors.black12,
+                                  size: 32,
+                                ),
+                              ),
+                            )
+                          : Container(
+                              color: isDark
+                                  ? Colors.grey[900]
+                                  : Colors.grey[300],
+                              child: Icon(
+                                Icons.image_outlined,
+                                color: isDark ? Colors.white24 : Colors.black12,
+                                size: 32,
+                              ),
+                            ),
+                    ),
+                  ),
+                ),
+                // Icon Badge
+                Positioned(
+                  top: 8,
+                  right: 8,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.4),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      _getTypeIcon(),
+                      color: _getTypeColor(),
+                      size: 14,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+          // Text Section
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 2.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: _getTypeColor(), // Deep Teal
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
+                    height: 1.2,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'TZS ${price.toStringAsFixed(0)}',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: isDark ? Colors.white : Colors.black87,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getTypeIcon() {
+    switch (type) {
+      case 'product':
+        return Icons.shopping_bag_rounded;
+      case 'accommodation':
+        return Icons.home_work_rounded;
+      default:
+        return Icons.category_rounded;
+    }
+  }
+
+  Color _getTypeColor() {
+    switch (type) {
+      case 'product':
+        return const Color(0xFF00897B); // Deep Teal (Standardized)
+      case 'accommodation':
+        return const Color(0xFF00897B); // Deep Teal (Standardized)
+      default:
+        return Colors.white;
+    }
+  }
+}
+
 /// Delegate for sticky chips header
 class _StickyChipsDelegate extends SliverPersistentHeaderDelegate {
   final Widget child;
@@ -1938,6 +2273,7 @@ class _AnimatedPromotionText extends StatefulWidget {
   final int maxLines;
   final Duration delay;
   final bool shouldAnimate;
+  final Color? textColor; // Added custom text color
 
   const _AnimatedPromotionText({
     super.key,
@@ -1947,6 +2283,7 @@ class _AnimatedPromotionText extends StatefulWidget {
     required this.maxLines,
     this.delay = Duration.zero,
     this.shouldAnimate = true,
+    this.textColor,
   });
 
   @override
@@ -2096,62 +2433,21 @@ class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
                 scale: _scaleAnimations[index].value,
                 child: Transform.rotate(
                   angle: _rotationAnimations[index].value,
-                  child: ShaderMask(
-                    shaderCallback: (bounds) {
-                      // Create vibrant gradient for title, bright accent for subtitle
-                      final isTitle = widget.fontWeight == FontWeight.bold;
-                      if (isTitle) {
-                        // Vibrant yellow to orange gradient for title
-                        return LinearGradient(
-                          colors: [
-                            const Color(0xFFFFD700), // Gold
-                            const Color(0xFFFFA500), // Orange
-                            const Color(0xFFFF6B35), // Bright orange-red
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ).createShader(bounds);
-                      } else {
-                        // Bright cyan/light blue for subtitle
-                        return LinearGradient(
-                          colors: [
-                            const Color(0xFF00E5FF), // Bright cyan
-                            const Color(0xFF40E0D0), // Turquoise
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ).createShader(bounds);
-                      }
-                    },
-                    child: Text(
-                      letter,
-                      style: TextStyle(
-                        color: Colors.white, // Required for ShaderMask
-                        fontSize: widget.fontSize,
-                        fontWeight: widget.fontWeight,
-                        height: 1.2,
-                        shadows: [
-                          // Enhanced shadow for better contrast
-                          Shadow(
-                            color: Colors.black.withValues(alpha: 0.8),
-                            blurRadius: 8 * _scaleAnimations[index].value,
-                            offset: Offset(
-                              2,
-                              3 * _scaleAnimations[index].value,
-                            ),
-                          ),
-                          // Additional glow effect
-                          Shadow(
-                            color: widget.fontWeight == FontWeight.bold
-                                ? const Color(0xFFFFD700).withValues(alpha: 0.5)
-                                : const Color(
-                                    0xFF00E5FF,
-                                  ).withValues(alpha: 0.5),
-                            blurRadius: 12 * _scaleAnimations[index].value,
-                            offset: Offset(0, 0),
-                          ),
-                        ],
-                      ),
+                  child: Text(
+                    letter,
+                    style: TextStyle(
+                      color:
+                          widget.textColor ??
+                          (widget.fontWeight == FontWeight.bold
+                              ? const Color(
+                                  0xFF1565C0,
+                                ) // Default Blue 800 for Title
+                              : Theme.of(context).brightness == Brightness.dark
+                              ? Colors.grey[400]
+                              : Colors.grey[700]), // Default Grey for Subtitle
+                      fontSize: widget.fontSize,
+                      fontWeight: widget.fontWeight,
+                      height: 1.2,
                     ),
                   ),
                 ),

@@ -94,7 +94,7 @@ class _PersistentBottomNavWrapperState
     int? newIndex;
     if (routeName == '/home') {
       newIndex = 0;
-    } else if (routeName == '/listings') {
+    } else if (routeName == '/listings' || routeName == '/browse-listings') {
       newIndex = 1;
     } else if (routeName == '/mwanachuomind') {
       newIndex = 2;
@@ -245,13 +245,13 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 1,
-          icon: Icons.view_list_outlined,
+          icon: Icons.view_list_rounded,
           activeIcon: Icons.view_list_rounded,
           label: 'Listings',
         ),
         buildNavItem(
           index: 2,
-          icon: Icons.psychology_outlined,
+          icon: Icons.psychology_rounded,
           activeIcon: Icons.psychology_rounded,
           label: 'Mind',
         ),
@@ -274,13 +274,13 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 1,
-          icon: Icons.view_list_outlined,
+          icon: Icons.view_list_rounded,
           activeIcon: Icons.view_list_rounded,
           label: 'Listings',
         ),
         buildNavItem(
           index: 2,
-          icon: Icons.psychology_outlined,
+          icon: Icons.psychology_rounded,
           activeIcon: Icons.psychology_rounded,
           label: 'Mind',
         ),
@@ -307,13 +307,13 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 1,
-          icon: Icons.view_list_outlined,
+          icon: Icons.view_list_rounded,
           activeIcon: Icons.view_list_rounded,
           label: 'Listings',
         ),
         buildNavItem(
           index: 2,
-          icon: Icons.psychology_outlined,
+          icon: Icons.psychology_rounded,
           activeIcon: Icons.psychology_rounded,
           label: 'Mind',
         ),
@@ -350,19 +350,24 @@ class _PersistentBottomNavWrapperState
             width: 2.5, // Thicker border
           ),
         ),
-        child: ShaderMask(
-          shaderCallback: (bounds) => const LinearGradient(
-            colors: [Colors.blue, Colors.red],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ).createShader(bounds),
-          child: Icon(
-            isActive ? Icons.auto_awesome : Icons.auto_awesome_outlined,
-            size: 28,
-            color: Colors
-                .white, // This color is ignored by ShaderMask but required
-          ),
-        ),
+        child: isActive
+            ? ShaderMask(
+                shaderCallback: (bounds) => const LinearGradient(
+                  colors: [Colors.blue, Colors.red],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ).createShader(bounds),
+                child: const Icon(
+                  Icons.auto_awesome,
+                  size: 28,
+                  color: Colors.white,
+                ),
+              )
+            : Icon(
+                Icons.auto_awesome,
+                size: 28,
+                color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
+              ),
       );
     }
 

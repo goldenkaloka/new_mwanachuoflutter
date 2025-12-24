@@ -157,6 +157,7 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
         // Instead we can rely on the stream updates or a specific 'isGenerating' flag if needed.
         // For now, keeping status as success ensures the list stays visible.
         status: MwanachuomindStatus.success,
+        isGenerating: true,
       ),
     );
 
@@ -206,6 +207,7 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
         state.copyWith(
           chatHistory: List.from(updatedHistory)..add(aiMessage),
           status: MwanachuomindStatus.success,
+          isGenerating: false,
         ),
       );
     } catch (e) {
@@ -213,6 +215,7 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
         state.copyWith(
           status: MwanachuomindStatus.failure,
           errorMessage: e.toString(),
+          isGenerating: false,
         ),
       );
     }

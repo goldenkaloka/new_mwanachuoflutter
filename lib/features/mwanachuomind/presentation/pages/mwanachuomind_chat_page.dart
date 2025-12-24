@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import '../../domain/entities/document.dart' as app;
 import '../../domain/entities/chat_message.dart';
+import '../widgets/typewriter_message_bubble.dart';
 import '../bloc/bloc.dart';
 
 class MwanachuomindChatPage extends StatefulWidget {
@@ -72,7 +73,7 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
         }
 
         final chatMessages = _convertToFlutterChatMessages(state.chatHistory);
-        final isAiTyping = state.status == MwanachuomindStatus.loading;
+        final isAiTyping = state.isGenerating;
 
         return Scaffold(
           appBar: _buildAppBar(course.code, course.name, state),
@@ -86,6 +87,26 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
                   showUserAvatars: true,
                   showUserNames: true,
                   theme: _buildChatTheme(context),
+                  textMessageBuilder:
+                      (message, {required messageWidth, required showName}) {
+                        final isAi = message.author.id == 'ai';
+                        final isLatest =
+                            chatMessages.isNotEmpty &&
+                            message.id == chatMessages.first.id;
+
+                        if (isAi && isLatest && !isAiTyping) {
+                          return TypewriterMessageBubble(text: message.text);
+                        }
+
+                        return TextMessage(
+                          emojiEnlargementBehavior:
+                              EmojiEnlargementBehavior.multi,
+                          hideBackgroundOnEmojiMessages: true,
+                          message: message,
+                          showName: showName,
+                          usePreviewData: true,
+                        );
+                      },
                   emptyState: _buildEmptyState(course.name),
 
                   customBottomWidget:

@@ -6,7 +6,6 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/features/mwanachuomind/domain/repositories/mwanachuomind_repository.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/mwanachuomind/domain/entities/document.dart';
-import 'package:mwanachuo/core/widgets/shimmer_list_helper.dart';
 
 class AdminCourseDocumentsPage extends StatefulWidget {
   final String courseId;
@@ -210,34 +209,19 @@ class _AdminCourseDocumentsPageState extends State<AdminCourseDocumentsPage> {
 
     return Scaffold(
       appBar: AppBar(
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Manage Documents',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
-            ),
-            Text(
-              widget.courseName,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
-                fontWeight: FontWeight.normal,
-              ),
-            ),
-          ],
+        title: Text(
+          '${widget.courseName} - Documents',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+        backgroundColor: Colors.transparent,
       ),
-      backgroundColor: isDarkMode
-          ? kBackgroundColorDark
-          : kBackgroundColorLight,
       floatingActionButton: FloatingActionButton(
         onPressed: _uploadDocument,
         backgroundColor: kPrimaryColor,
         child: const Icon(Icons.add, color: Colors.white),
       ),
       body: _isLoading
-          ? const ShimmerListHelper(itemCount: 6, itemHeight: 72)
+          ? const Center(child: CircularProgressIndicator())
           : _documents.isEmpty
           ? Center(
               child: Column(

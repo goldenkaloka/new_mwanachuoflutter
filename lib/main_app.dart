@@ -308,6 +308,13 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               child: const ListingsPage(),
             ),
           ),
+          '/browse-listings': (context) => PersistentBottomNavWrapper(
+            initialIndex: 1,
+            child: BlocProvider(
+              create: (context) => sl<SearchCubit>(),
+              child: const ListingsPage(),
+            ),
+          ),
           '/university-selection': (context) {
             final args = ModalRoute.of(context)!.settings.arguments;
             return UniversitySelectionScreen(

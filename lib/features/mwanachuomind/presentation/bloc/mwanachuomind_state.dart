@@ -15,6 +15,7 @@ class MwanachuomindState extends Equatable {
   final String? errorMessage;
   final bool isUploading;
   final String? sessionId;
+  final bool isGenerating;
 
   const MwanachuomindState({
     this.status = MwanachuomindStatus.initial,
@@ -26,6 +27,7 @@ class MwanachuomindState extends Equatable {
     this.errorMessage,
     this.isUploading = false,
     this.sessionId,
+    this.isGenerating = false,
   });
 
   MwanachuomindState copyWith({
@@ -38,6 +40,7 @@ class MwanachuomindState extends Equatable {
     String? errorMessage,
     bool? isUploading,
     String? sessionId,
+    bool? isGenerating,
   }) {
     return MwanachuomindState(
       status: status ?? this.status,
@@ -49,6 +52,7 @@ class MwanachuomindState extends Equatable {
       errorMessage: errorMessage ?? this.errorMessage,
       isUploading: isUploading ?? this.isUploading,
       sessionId: sessionId ?? this.sessionId,
+      isGenerating: isGenerating ?? this.isGenerating,
     );
   }
 
@@ -63,5 +67,6 @@ class MwanachuomindState extends Equatable {
     errorMessage,
     isUploading,
     sessionId,
+    isGenerating,
   ];
 }

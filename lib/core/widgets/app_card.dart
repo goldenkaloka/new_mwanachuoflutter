@@ -211,7 +211,9 @@ class _ProductCardState extends State<ProductCard>
                 child: Container(
                   decoration: BoxDecoration(
                     color: kSurfaceColorLight,
-                    borderRadius: BorderRadius.circular(kRadiusSm),
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(kRadiusSm),
+                    ),
                     boxShadow: [
                       BoxShadow(
                         color: kPrimaryColor.withValues(alpha: 0.08),
@@ -374,7 +376,9 @@ class ServiceCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: kSurfaceColorLight,
-            borderRadius: BorderRadius.circular(kRadiusMd),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(kRadiusMd),
+            ),
             // Removed boxShadow to remove shadows
           ),
           padding: const EdgeInsets.all(kSpacingMd),
@@ -385,7 +389,9 @@ class ServiceCard extends StatelessWidget {
               Hero(
                 tag: 'service_$imageUrl',
                 child: ClipRRect(
-                  borderRadius: BorderRadius.circular(kRadiusSm),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(kRadiusSm),
+                  ),
                   child: CachedNetworkImage(
                     imageUrl: imageUrl,
                     width: 90,
@@ -535,7 +541,9 @@ class AccommodationCard extends StatelessWidget {
         child: Container(
           decoration: BoxDecoration(
             color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
-            borderRadius: BorderRadius.circular(kRadiusSm),
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(kRadiusSm),
+            ),
             // Removed boxShadow to remove shadows
           ),
           child: Column(

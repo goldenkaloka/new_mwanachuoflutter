@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../../../config/supabase_config.dart';
 import '../models/course_model.dart';
@@ -95,10 +96,21 @@ class MwanachuomindRemoteDataSourceImpl
 
     final document = DocumentModel.fromJson(docResponse);
 
-    await supabaseClient.functions.invoke(
-      'process-docs',
-      body: {'document_id': document.id},
-    );
+    try {
+      // Invoke background processing
+      // We don't await this if we want instant feedback, but Supabase functions
+      // usually need to be awaited to ensure the request is sent.
+      // However, to prevent UI blocking on long files, we can just launch it.
+      // But safe approach is to await and catch timeout.
+      await supabaseClient.functions.invoke(
+        'process-docs',
+        body: {'document_id': document.id},
+      );
+    } catch (e) {
+      // Swallow error so UI doesn't break.
+      // The document is safely stored in DB/Storage anyway.
+      debugPrint('Warning: AI processing error (non-fatal): $e');
+    }
 
     return document;
   }

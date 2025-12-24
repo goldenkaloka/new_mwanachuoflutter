@@ -4,6 +4,7 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/features/admin/presentation/pages/admin_course_documents_page.dart';
 import 'package:mwanachuo/core/widgets/shimmer_list_helper.dart';
+import 'package:mwanachuo/core/widgets/app_background.dart';
 
 class AdminCourseListPage extends StatefulWidget {
   const AdminCourseListPage({super.key});
@@ -66,92 +67,91 @@ class _AdminCourseListPageState extends State<AdminCourseListPage> {
           'Select Course',
           style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
         ),
-        backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+        backgroundColor: Colors.transparent,
       ),
-      backgroundColor: isDarkMode
-          ? kBackgroundColorDark
-          : kBackgroundColorLight,
-      body: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: TextField(
-              controller: _searchController,
-              decoration: InputDecoration(
-                hintText: 'Search courses...',
-                prefixIcon: const Icon(Icons.search),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+      body: AppBackground(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16),
+              child: TextField(
+                controller: _searchController,
+                decoration: InputDecoration(
+                  hintText: 'Search courses...',
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: isDarkMode ? Colors.grey[900] : Colors.white,
                 ),
-                filled: true,
-                fillColor: isDarkMode ? Colors.grey[900] : Colors.white,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = value;
+                  });
+                  // Simple debounce could be added here
+                  _loadCourses();
+                },
               ),
-              onChanged: (value) {
-                setState(() {
-                  _searchQuery = value;
-                });
-                // Simple debounce could be added here
-                _loadCourses();
-              },
             ),
-          ),
-          Expanded(
-            child: _isLoading
-                ? const ShimmerListHelper(itemCount: 8, itemHeight: 80)
-                : _courses.isEmpty
-                ? Center(
-                    child: Text(
-                      'No courses found',
-                      style: GoogleFonts.plusJakartaSans(
-                        color: secondaryTextColor,
-                        fontSize: 16,
+            Expanded(
+              child: _isLoading
+                  ? const ShimmerListHelper(itemCount: 8, itemHeight: 80)
+                  : _courses.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No courses found',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: secondaryTextColor,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                  )
-                : ListView.builder(
-                    itemCount: _courses.length,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    itemBuilder: (context, index) {
-                      final course = _courses[index];
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        color: isDarkMode ? Colors.grey[900] : Colors.white,
-                        child: ListTile(
-                          title: Text(
-                            course['name'] ?? 'Unknown Course',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w600,
-                              color: primaryTextColor,
+                    )
+                  : ListView.builder(
+                      itemCount: _courses.length,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemBuilder: (context, index) {
+                        final course = _courses[index];
+                        return Card(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          color: isDarkMode ? Colors.grey[900] : Colors.white,
+                          child: ListTile(
+                            title: Text(
+                              course['name'] ?? 'Unknown Course',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontWeight: FontWeight.w600,
+                                color: primaryTextColor,
+                              ),
                             ),
-                          ),
-                          subtitle: Text(
-                            course['code'] ?? '',
-                            style: GoogleFonts.plusJakartaSans(
+                            subtitle: Text(
+                              course['code'] ?? '',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: secondaryTextColor,
+                              ),
+                            ),
+                            trailing: Icon(
+                              Icons.arrow_forward_ios,
+                              size: 16,
                               color: secondaryTextColor,
                             ),
-                          ),
-                          trailing: Icon(
-                            Icons.arrow_forward_ios,
-                            size: 16,
-                            color: secondaryTextColor,
-                          ),
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => AdminCourseDocumentsPage(
-                                  courseId: course['id'],
-                                  courseName: course['name'],
+                            onTap: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) => AdminCourseDocumentsPage(
+                                    courseId: course['id'],
+                                    courseName: course['name'],
+                                  ),
                                 ),
-                              ),
-                            );
-                          },
-                        ),
-                      );
-                    },
-                  ),
-          ),
-        ],
+                              );
+                            },
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
       ),
     );
   }
