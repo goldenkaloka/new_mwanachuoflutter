@@ -72,19 +72,31 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
         }
 
         final chatMessages = _convertToFlutterChatMessages(state.chatHistory);
+        final isAiTyping = state.status == MwanachuomindStatus.loading;
 
         return Scaffold(
           appBar: _buildAppBar(course.code, course.name, state),
-          body: Chat(
-            messages: chatMessages,
-            onSendPressed: _handleSendPressed,
-            user: _currentUser,
-            showUserAvatars: true,
-            showUserNames: true,
-            theme: _buildChatTheme(context),
-            emptyState: _buildEmptyState(course.name),
-            textMessageBuilder: _buildTextMessage,
-            customBottomWidget: _buildInput(context),
+          body: Column(
+            children: [
+              Expanded(
+                child: Chat(
+                  messages: chatMessages,
+                  onSendPressed: _handleSendPressed,
+                  user: _currentUser,
+                  showUserAvatars: true,
+                  showUserNames: true,
+                  theme: _buildChatTheme(context),
+                  emptyState: _buildEmptyState(course.name),
+                  textMessageBuilder: _buildTextMessage,
+                  customBottomWidget:
+                      const SizedBox.shrink(), // Using our own input
+                ),
+              ),
+              // Typing indicator
+              if (isAiTyping) _buildTypingIndicator(),
+              // Custom input
+              _buildInput(context),
+            ],
           ),
         );
       },
@@ -335,77 +347,116 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
   }) {
     final isUser = message.author.id == 'user';
 
-    return Container(
-      constraints: BoxConstraints(maxWidth: messageWidth.toDouble()),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: isUser ? kPrimaryColor : kSurfaceColorLight,
-        borderRadius: BorderRadius.circular(20).copyWith(
-          bottomRight: isUser ? const Radius.circular(4) : null,
-          bottomLeft: !isUser ? const Radius.circular(4) : null,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 5,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: isUser
-          ? Text(
-              message.text,
-              style: GoogleFonts.plusJakartaSans(
-                color: Colors.white,
-                fontSize: 15,
-                height: 1.5,
-              ),
-            )
-          : MarkdownBody(
-              data: message.text,
-              styleSheet: MarkdownStyleSheet(
-                p: GoogleFonts.plusJakartaSans(
-                  color: kTextPrimary,
-                  fontSize: 15,
-                  height: 1.5,
-                ),
-                code: GoogleFonts.jetBrainsMono(
-                  fontSize: 13,
-                  backgroundColor: kBackgroundColorLight,
-                ),
-                codeblockDecoration: BoxDecoration(
-                  color: kBackgroundColorLight,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                h1: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 20,
-                  color: kTextPrimary,
-                ),
-                h2: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                  color: kTextPrimary,
-                ),
-                h3: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                  fontSize: 16,
-                  color: kTextPrimary,
-                ),
-                listBullet: GoogleFonts.plusJakartaSans(
-                  fontSize: 15,
-                  color: kTextPrimary,
-                ),
-                strong: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.bold,
-                  color: kTextPrimary,
-                ),
-                em: GoogleFonts.plusJakartaSans(
-                  fontStyle: FontStyle.italic,
-                  color: kTextPrimary,
-                ),
-              ),
+    return Row(
+      mainAxisAlignment: isUser
+          ? MainAxisAlignment.end
+          : MainAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
+      children: [
+        // Message Bubble
+        Flexible(
+          child: Container(
+            constraints: BoxConstraints(
+              maxWidth: messageWidth.toDouble() * 0.85,
             ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isUser ? kPrimaryColor : kSurfaceColorLight,
+              borderRadius: BorderRadius.circular(20).copyWith(
+                bottomRight: isUser ? const Radius.circular(4) : null,
+                bottomLeft: !isUser ? const Radius.circular(4) : null,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.05),
+                  blurRadius: 5,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            // Use Column with mainAxisSize min to ensure the container shrinks to fit content
+            // especially important for MarkdownBody which can be greedy
+            child: isUser
+                ? Text(
+                    message.text,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 15,
+                      height: 1.5,
+                    ),
+                  )
+                : MarkdownBody(
+                    data: message.text,
+                    styleSheet: MarkdownStyleSheet(
+                      p: GoogleFonts.plusJakartaSans(
+                        color: kTextPrimary,
+                        fontSize: 15,
+                        height: 1.5,
+                      ),
+                      code: GoogleFonts.jetBrainsMono(
+                        fontSize: 13,
+                        backgroundColor: kBackgroundColorLight,
+                      ),
+                      codeblockDecoration: BoxDecoration(
+                        color: kBackgroundColorLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      h1: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                        color: kTextPrimary,
+                      ),
+                      h2: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: kTextPrimary,
+                      ),
+                      h3: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 16,
+                        color: kTextPrimary,
+                      ),
+                      listBullet: GoogleFonts.plusJakartaSans(
+                        fontSize: 15,
+                        color: kTextPrimary,
+                      ),
+                      strong: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.bold,
+                        color: kTextPrimary,
+                      ),
+                      em: GoogleFonts.plusJakartaSans(
+                        fontStyle: FontStyle.italic,
+                        color: kTextPrimary,
+                      ),
+                    ),
+                  ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTypingIndicator() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: kSurfaceColorLight,
+          borderRadius: BorderRadius.circular(
+            20,
+          ).copyWith(bottomLeft: const Radius.circular(4)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 5,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        child: const _TypingDots(),
+      ),
     );
   }
 
@@ -662,6 +713,71 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// Animated typing dots widget
+class _TypingDots extends StatefulWidget {
+  const _TypingDots();
+
+  @override
+  State<_TypingDots> createState() => _TypingDotsState();
+}
+
+class _TypingDotsState extends State<_TypingDots>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: List.generate(3, (index) {
+            final delay = index * 0.2;
+            final animation = Tween<double>(begin: 0, end: 1).animate(
+              CurvedAnimation(
+                parent: _controller,
+                curve: Interval(delay, delay + 0.4, curve: Curves.easeInOut),
+              ),
+            );
+            return Container(
+              margin: EdgeInsets.only(right: index < 2 ? 4 : 0),
+              child: Transform.translate(
+                offset: Offset(0, -4 * animation.value),
+                child: Container(
+                  width: 8,
+                  height: 8,
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor.withValues(
+                      alpha: 0.5 + 0.5 * animation.value,
+                    ),
+                    shape: BoxShape.circle,
+                  ),
+                ),
+              ),
+            );
+          }),
+        );
+      },
     );
   }
 }

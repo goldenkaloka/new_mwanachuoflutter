@@ -292,16 +292,6 @@ class _HomePageState extends State<HomePage> {
                       child: _buildPromotionsSection(screenSize),
                     ),
 
-                    // 4. Sticky Chips (Categories) - Pinned at top when scrolling
-                    SliverPersistentHeader(
-                      pinned: true,
-                      delegate: _StickyChipsDelegate(
-                        child: _buildChipsRow(screenSize),
-                        minHeight: 56.0,
-                        maxHeight: 56.0,
-                      ),
-                    ),
-
                     // 5. Products Section
                     SliverToBoxAdapter(
                       child: ResponsiveContainer(
@@ -614,6 +604,14 @@ class _HomePageState extends State<HomePage> {
 
   // --- WIDGET BUILDERS ---
 
+  // Get time-based greeting
+  String _getGreeting() {
+    final hour = DateTime.now().hour;
+    if (hour < 12) return 'Good Morning';
+    if (hour < 17) return 'Good Afternoon';
+    return 'Good Evening';
+  }
+
   Widget _buildTopAppBar(
     BuildContext context,
     Color primaryTextColor,
@@ -622,120 +620,167 @@ class _HomePageState extends State<HomePage> {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Container(
-      color: Theme.of(context).scaffoldBackgroundColor,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDarkMode
+              ? [kBackgroundColorDark, kBackgroundColorDark]
+              : [Colors.white, const Color(0xFFF8FFF8)],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ),
+      ),
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
         screenSize == ScreenSize.expanded ? 24.0 : 48.0,
         horizontalPadding,
-        8.0,
+        16.0,
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Profile Picture
-              Container(
-                width: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 40.0,
-                  medium: 44.0,
-                  expanded: 48.0,
-                ),
-                height: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 40.0,
-                  medium: 44.0,
-                  expanded: 48.0,
-                ),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: const Color(
-                    0xFF078829,
-                  ), // Use the same active color as bottom nav
-                ),
-                child: NetworkImageWithFallback(
-                  imageUrl: _userAvatarUrl ?? '',
-                  width: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 40.0,
-                    medium: 44.0,
-                    expanded: 48.0,
-                  ),
-                  height: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 40.0,
-                    medium: 44.0,
-                    expanded: 48.0,
-                  ),
-                  fit: BoxFit.cover,
-                ),
-              ),
-              SizedBox(
-                width: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 12.0,
-                  medium: 16.0,
-                  expanded: 16.0,
-                ),
-              ),
-              // User Greeting
-              Text(
-                _isLoadingUser
-                    ? 'Hello!'
-                    : 'Hello, ${_userName.split(' ').first}!',
-                style: GoogleFonts.plusJakartaSans(
-                  color: primaryTextColor,
-                  fontSize: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 18.0,
-                    medium: 20.0,
-                    expanded: 22.0,
-                  ),
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ],
-          ),
-          // Notifications Button with Badge
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                onPressed: () {
-                  Navigator.pushNamed(context, '/notifications');
-                },
-                icon: Icon(Icons.notifications_none, color: primaryTextColor),
-              ),
-              if (_unreadNotificationCount > 0)
-                Positioned(
-                  right: 8,
-                  top: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: Colors.red,
+              Row(
+                children: [
+                  // Profile Picture with gradient border
+                  Container(
+                    padding: const EdgeInsets.all(2),
+                    decoration: BoxDecoration(
                       shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(
-                      minWidth: 16,
-                      minHeight: 16,
-                    ),
-                    child: Text(
-                      _unreadNotificationCount > 99
-                          ? '99+'
-                          : '$_unreadNotificationCount',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.bold,
+                      gradient: LinearGradient(
+                        colors: [kPrimaryColor, kPrimaryColorLight],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
                       ),
-                      textAlign: TextAlign.center,
+                    ),
+                    child: Container(
+                      width: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 40.0,
+                        medium: 44.0,
+                        expanded: 48.0,
+                      ),
+                      height: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 40.0,
+                        medium: 44.0,
+                        expanded: 48.0,
+                      ),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: isDarkMode ? kBackgroundColorDark : Colors.white,
+                        border: Border.all(
+                          color: isDarkMode
+                              ? kBackgroundColorDark
+                              : Colors.white,
+                          width: 2,
+                        ),
+                      ),
+                      child: ClipOval(
+                        child: NetworkImageWithFallback(
+                          imageUrl: _userAvatarUrl ?? '',
+                          width: ResponsiveBreakpoints.responsiveValue(
+                            context,
+                            compact: 36.0,
+                            medium: 40.0,
+                            expanded: 44.0,
+                          ),
+                          height: ResponsiveBreakpoints.responsiveValue(
+                            context,
+                            compact: 36.0,
+                            medium: 40.0,
+                            expanded: 44.0,
+                          ),
+                          fit: BoxFit.cover,
+                        ),
+                      ),
                     ),
                   ),
+                  SizedBox(
+                    width: ResponsiveBreakpoints.responsiveValue(
+                      context,
+                      compact: 12.0,
+                      medium: 16.0,
+                      expanded: 16.0,
+                    ),
+                  ),
+                  // Enhanced User Greeting - personalized with username
+                  Text(
+                    _isLoadingUser
+                        ? '${_getGreeting()}!'
+                        : '${_getGreeting()}, ${_userName.split(' ').first}!',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: primaryTextColor,
+                      fontSize: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 18.0,
+                        medium: 20.0,
+                        expanded: 22.0,
+                      ),
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                ],
+              ),
+              // Notifications Button with Badge
+              Container(
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Colors.grey[800] : Colors.grey[100],
+                  shape: BoxShape.circle,
                 ),
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      onPressed: () {
+                        Navigator.pushNamed(context, '/notifications');
+                      },
+                      icon: Icon(
+                        Icons.notifications_outlined,
+                        color: primaryTextColor,
+                      ),
+                    ),
+                    if (_unreadNotificationCount > 0)
+                      Positioned(
+                        right: 6,
+                        top: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: Colors.red,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDarkMode
+                                  ? kBackgroundColorDark
+                                  : Colors.white,
+                              width: 2,
+                            ),
+                          ),
+                          constraints: const BoxConstraints(
+                            minWidth: 18,
+                            minHeight: 18,
+                          ),
+                          child: Text(
+                            _unreadNotificationCount > 99
+                                ? '99+'
+                                : '$_unreadNotificationCount',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
             ],
           ),
         ],
@@ -1471,18 +1516,21 @@ class _HomePageState extends State<HomePage> {
         ),
         itemBuilder: (context, index) {
           final product = products[index];
-          return ProductCard(
-            key: ValueKey('product_${product.id}'),
-            imageUrl: product.images.isNotEmpty ? product.images.first : '',
-            title: product.title,
-            price: 'TZS ${product.price.toStringAsFixed(2)}',
-            category: product.category,
-            rating: product.rating,
-            reviewCount: product.reviewCount,
-            onTap: () => Navigator.pushNamed(
-              context,
-              '/product-details',
-              arguments: product.id,
+          return _AnimatedCardEntry(
+            index: index,
+            child: ProductCard(
+              key: ValueKey('product_${product.id}'),
+              imageUrl: product.images.isNotEmpty ? product.images.first : '',
+              title: product.title,
+              price: 'TZS ${product.price.toStringAsFixed(2)}',
+              category: product.category,
+              rating: product.rating,
+              reviewCount: product.reviewCount,
+              onTap: () => Navigator.pushNamed(
+                context,
+                '/product-details',
+                arguments: product.id,
+              ),
             ),
           );
         },
@@ -2112,6 +2160,72 @@ class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
           },
         );
       }),
+    );
+  }
+}
+
+// Animated card entry widget for staggered animations
+class _AnimatedCardEntry extends StatefulWidget {
+  const _AnimatedCardEntry({required this.index, required this.child});
+
+  final int index;
+  final Widget child;
+
+  @override
+  State<_AnimatedCardEntry> createState() => _AnimatedCardEntryState();
+}
+
+class _AnimatedCardEntryState extends State<_AnimatedCardEntry>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOut));
+
+    // Staggered delay based on index
+    Future.delayed(Duration(milliseconds: widget.index * 50), () {
+      if (mounted) {
+        _controller.forward();
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: widget.child,
+          ),
+        );
+      },
     );
   }
 }
