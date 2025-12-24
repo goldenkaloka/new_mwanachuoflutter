@@ -4,8 +4,6 @@ import 'package:flutter/services.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 
-import 'package:mwanachuo/core/widgets/mwanachuomind_floating_button.dart';
-
 /// Wrapper widget that provides persistent bottom navigation bar across main pages
 class PersistentBottomNavWrapper extends StatefulWidget {
   final Widget child;
@@ -96,12 +94,14 @@ class _PersistentBottomNavWrapperState
     int? newIndex;
     if (routeName == '/home') {
       newIndex = 0;
-    } else if (routeName == '/search') {
+    } else if (routeName == '/listings') {
       newIndex = 1;
+    } else if (routeName == '/mwanachuomind') {
+      newIndex = 2;
     } else if (routeName == '/dashboard') {
-      newIndex = isSeller ? 2 : null;
+      newIndex = isSeller ? 3 : null;
     } else if (routeName == '/profile') {
-      newIndex = isSeller ? 3 : 2;
+      newIndex = isSeller ? 4 : 3;
     }
 
     if (newIndex != null && newIndex != _selectedIndex) {
@@ -122,12 +122,14 @@ class _PersistentBottomNavWrapperState
     if (index == 0) {
       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     } else if (index == 1) {
-      Navigator.pushNamed(context, '/search', arguments: null);
-    } else if (isSeller && index == 2) {
-      Navigator.pushNamed(context, '/dashboard');
+      Navigator.pushNamed(context, '/listings', arguments: null);
+    } else if (index == 2) {
+      Navigator.pushNamed(context, '/mwanachuomind');
     } else if (isSeller && index == 3) {
+      Navigator.pushNamed(context, '/dashboard');
+    } else if (isSeller && index == 4) {
       Navigator.pushNamed(context, '/profile');
-    } else if (!isSeller && index == 2) {
+    } else if (!isSeller && index == 3) {
       Navigator.pushNamed(context, '/profile');
     }
 
@@ -136,11 +138,6 @@ class _PersistentBottomNavWrapperState
         _updateSelectedIndexFromRoute();
       }
     });
-  }
-
-  void _openMwanachuomind() {
-    HapticFeedback.mediumImpact();
-    Navigator.pushNamed(context, '/mwanachuomind');
   }
 
   @override
@@ -157,11 +154,6 @@ class _PersistentBottomNavWrapperState
 
     return Scaffold(
       body: widget.child,
-      // Floating AI Button
-      floatingActionButton: MwanachuomindFloatingButton(
-        onPressed: _openMwanachuomind,
-      ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
       bottomNavigationBar: Container(
         decoration: BoxDecoration(
           color: isDarkMode ? const Color(0xFF1A1A1A) : Colors.white,
@@ -209,30 +201,33 @@ class _PersistentBottomNavWrapperState
           onTap: () => _onItemTapped(index),
           borderRadius: BorderRadius.circular(12),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                _buildIcon(
-                  icon: icon,
-                  activeIcon: activeIcon,
-                  isActive: isActive,
-                  activeColor: activeColor,
-                  isDarkMode: isDarkMode,
-                  showBadge: showBadge,
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                    color: isActive
-                        ? activeColor
-                        : (isDarkMode ? Colors.grey[500] : Colors.grey[600]),
+            padding: const EdgeInsets.symmetric(vertical: 6),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  _buildIcon(
+                    icon: icon,
+                    activeIcon: activeIcon,
+                    isActive: isActive,
+                    activeColor: activeColor,
+                    isDarkMode: isDarkMode,
+                    showBadge: showBadge,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 2),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                      color: isActive
+                          ? activeColor
+                          : (isDarkMode ? Colors.grey[500] : Colors.grey[600]),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -249,13 +244,18 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 1,
-          icon: Icons.search_rounded,
-          activeIcon: Icons.search_rounded,
-          label: 'Search',
+          icon: Icons.view_list_outlined,
+          activeIcon: Icons.view_list_rounded,
+          label: 'Listings',
         ),
-        const SizedBox(width: 72), // Space for FAB
         buildNavItem(
           index: 2,
+          icon: Icons.psychology_outlined,
+          activeIcon: Icons.psychology_rounded,
+          label: 'Mind',
+        ),
+        buildNavItem(
+          index: 3,
           icon: Icons.person_outline_rounded,
           activeIcon: Icons.person_rounded,
           label: 'Profile',
@@ -273,19 +273,24 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 1,
-          icon: Icons.search_rounded,
-          activeIcon: Icons.search_rounded,
-          label: 'Search',
+          icon: Icons.view_list_outlined,
+          activeIcon: Icons.view_list_rounded,
+          label: 'Listings',
         ),
-        const SizedBox(width: 72), // Space for FAB
         buildNavItem(
           index: 2,
+          icon: Icons.psychology_outlined,
+          activeIcon: Icons.psychology_rounded,
+          label: 'Mind',
+        ),
+        buildNavItem(
+          index: 3,
           icon: Icons.dashboard_outlined,
           activeIcon: Icons.dashboard_rounded,
           label: 'Dashboard',
         ),
         buildNavItem(
-          index: 3,
+          index: 4,
           icon: Icons.person_outline_rounded,
           activeIcon: Icons.person_rounded,
           label: 'Profile',
@@ -301,13 +306,18 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 1,
-          icon: Icons.search_rounded,
-          activeIcon: Icons.search_rounded,
-          label: 'Search',
+          icon: Icons.view_list_outlined,
+          activeIcon: Icons.view_list_rounded,
+          label: 'Listings',
         ),
-        const SizedBox(width: 72), // Space for FAB
         buildNavItem(
           index: 2,
+          icon: Icons.psychology_outlined,
+          activeIcon: Icons.psychology_rounded,
+          label: 'Mind',
+        ),
+        buildNavItem(
+          index: 3,
           icon: Icons.person_outline_rounded,
           activeIcon: Icons.person_rounded,
           label: 'Profile',

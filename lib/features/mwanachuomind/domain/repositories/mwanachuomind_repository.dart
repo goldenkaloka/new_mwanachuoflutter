@@ -24,6 +24,6 @@ abstract class MwanachuomindRepository {
   Future<List<Map<String, dynamic>>> getSessionMessages(String sessionId);
   Future<void> saveMessage(String sessionId, String content, String sender);
   Future<Course?> getEnrolledCourse(String userId);
-  Future<void> setEnrolledCourse(String userId, String courseId);
+  Future<void> setEnrolledCourse(String userId, String? courseId);
   Future<List<Document>> getCourseDocuments(String courseId);
 }

@@ -22,7 +22,7 @@ abstract class MwanachuomindRemoteDataSource {
   Future<List<Map<String, dynamic>>> getSessionMessages(String sessionId);
   Future<void> saveMessage(String sessionId, String content, String sender);
   Future<CourseModel?> getEnrolledCourse(String userId);
-  Future<void> setEnrolledCourse(String userId, String courseId);
+  Future<void> setEnrolledCourse(String userId, String? courseId);
   Future<List<DocumentModel>> getCourseDocuments(String courseId);
 }
 
@@ -209,7 +209,7 @@ class MwanachuomindRemoteDataSourceImpl
   }
 
   @override
-  Future<void> setEnrolledCourse(String userId, String courseId) async {
+  Future<void> setEnrolledCourse(String userId, String? courseId) async {
     await supabaseClient
         .from('users')
         .update({'enrolled_course_id': courseId})

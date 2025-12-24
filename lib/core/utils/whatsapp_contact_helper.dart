@@ -28,7 +28,9 @@ class WhatsAppContactHelper {
     if (url != null && await canLaunchUrl(url)) {
       await launchUrl(url, mode: LaunchMode.externalApplication);
     } else {
-      _showError(context, 'Could not launch WhatsApp');
+      if (context.mounted) {
+        _showError(context, 'Could not launch WhatsApp');
+      }
     }
   }
 

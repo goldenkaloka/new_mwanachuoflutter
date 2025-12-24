@@ -1208,6 +1208,34 @@ class _HomePageState extends State<HomePage> {
   }
 
   // Actual data rendering methods
+  // Gradient definitions for promotion cards
+  final List<LinearGradient> _promotionGradients = [
+    // Light Blue
+    LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Colors.lightBlue.shade900, Colors.lightBlue.shade100],
+    ),
+    // Pink
+    LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Colors.pink.shade900, Colors.pink.shade100],
+    ),
+    // Purple
+    LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Colors.purple.shade900, Colors.purple.shade100],
+    ),
+    // Teal
+    LinearGradient(
+      begin: Alignment.topCenter,
+      end: Alignment.bottomCenter,
+      colors: [Colors.teal.shade900, Colors.teal.shade100],
+    ),
+  ];
+
   Widget _buildPromotionsCarousel(
     List<PromotionEntity> promotions,
     ScreenSize screenSize,
@@ -1222,6 +1250,7 @@ class _HomePageState extends State<HomePage> {
               child: _buildPromotionCard(
                 promotions[index],
                 screenSize,
+                index: index, // Pass index for gradient selection
                 isActive: index == _currentPromotionPage,
               ),
             );
@@ -1273,6 +1302,7 @@ class _HomePageState extends State<HomePage> {
   Widget _buildPromotionCard(
     PromotionEntity promotion,
     ScreenSize screenSize, {
+    required int index, // Changed to required
     bool isActive = false,
   }) {
     final cardWidth = ResponsiveBreakpoints.responsiveValue(
@@ -1288,6 +1318,9 @@ class _HomePageState extends State<HomePage> {
       expanded: 200.0,
     );
 
+    // Select gradient based on index
+    final gradient = _promotionGradients[index % _promotionGradients.length];
+
     return GestureDetector(
       onTap: () => Navigator.pushNamed(
         context,
@@ -1299,7 +1332,16 @@ class _HomePageState extends State<HomePage> {
         height: cardHeight,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(8.0),
-          color: kPrimaryColor.withValues(alpha: 0.3),
+          gradient: gradient, // Apply gradient
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: gradient.colors.first.withValues(alpha: 0.4),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ]
+              : null,
         ),
         child: Stack(
           fit: StackFit.expand, // Make stack expand to fill container
@@ -1308,16 +1350,38 @@ class _HomePageState extends State<HomePage> {
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),
-                  child: NetworkImageWithFallback(
-                    imageUrl: promotion.imageUrl!,
-                    fit: BoxFit.cover,
+                  child: ShaderMask(
+                    shaderCallback: (bounds) {
+                      return gradient.createShader(bounds);
+                    },
+                    blendMode: BlendMode.overlay,
+                    child: NetworkImageWithFallback(
+                      imageUrl: promotion.imageUrl!,
+                      fit: BoxFit.cover,
+                    ),
                   ),
                 ),
               ),
+            // Gradient Overlay for Text Readability (optional, but good for design)
+            // If the user WANTS the gradient to be visible, maybe we use a gradient overlay on top of image?
+            // "enhance... to have a background gradient" usually implies the card itself.
+            // But if image is full cover, background is hidden.
+            // Let's add a gradient overlay on TOP of image that fades from transparent to the bottom color?
+            // User said "deep at top, light at bottom".
+            // If we put deep color at top over image, it obscures image.
+
+            // Text Container
             Container(
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(8.0),
-                color: Colors.black.withValues(alpha: 0.4),
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.black.withValues(alpha: 0.1),
+                    Colors.black.withValues(alpha: 0.7),
+                  ],
+                ),
               ),
               padding: EdgeInsets.all(
                 ResponsiveBreakpoints.responsiveValue(

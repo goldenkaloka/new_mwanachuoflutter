@@ -22,7 +22,9 @@ import 'package:mwanachuo/features/profile/presentation/pages/profile_page.dart'
 import 'package:mwanachuo/features/profile/presentation/pages/edit_profile_screen.dart';
 import 'package:mwanachuo/features/profile/presentation/pages/my_listings_screen.dart';
 import 'package:mwanachuo/features/profile/presentation/pages/account_settings_screen.dart';
+import 'package:mwanachuo/features/shared/listings/presentation/pages/listings_page.dart';
 import 'package:mwanachuo/features/shared/search/presentation/pages/search_results_page.dart';
+import 'package:mwanachuo/features/shared/search/presentation/cubit/search_cubit.dart';
 import 'package:mwanachuo/features/shared/notifications/presentation/pages/notifications_page.dart';
 import 'package:mwanachuo/features/dashboard/presentation/pages/seller_dashboard_screen.dart';
 import 'package:mwanachuo/features/accommodations/presentation/pages/student_housing_screen.dart';
@@ -40,10 +42,8 @@ import 'package:mwanachuo/features/subscriptions/presentation/pages/subscription
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 
-import 'package:mwanachuo/config/supabase_config.dart';
-import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
 import 'package:mwanachuo/core/widgets/persistent_bottom_nav_wrapper.dart';
-import 'package:google_fonts/google_fonts.dart';
+
 import 'package:app_links/app_links.dart';
 import 'dart:async';
 import 'dart:io';
@@ -299,6 +299,13 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               ),
             );
           },
+          '/listings': (context) => PersistentBottomNavWrapper(
+            initialIndex: 1,
+            child: BlocProvider(
+              create: (context) => sl<SearchCubit>(),
+              child: const ListingsPage(),
+            ),
+          ),
           '/university-selection': (context) {
             final args = ModalRoute.of(context)!.settings.arguments;
             return UniversitySelectionScreen(

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/models/filter_model.dart';
 import 'package:mwanachuo/core/services/logger_service.dart';
@@ -10,6 +11,8 @@ import 'package:mwanachuo/features/accommodations/domain/usecases/increment_view
 import 'package:mwanachuo/features/accommodations/domain/usecases/update_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_event.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_state.dart';
+
+import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 
 class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
   final GetAccommodations getAccommodations;
@@ -48,10 +51,7 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
     Emitter<AccommodationState> emit,
   ) async {
     _currentFilter = event.filter;
-    add(LoadAccommodationsEvent(
-      limit: 50,
-      filter: _currentFilter,
-    ));
+    add(LoadAccommodationsEvent(limit: 50, filter: _currentFilter));
   }
 
   Future<void> _onClearFilter(
@@ -71,7 +71,7 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
       LoggerService.debug('Accommodations already loading, skipping...');
       return;
     }
-    
+
     LoggerService.info('Loading accommodations...');
     emit(AccommodationsLoading());
 
@@ -94,12 +94,20 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
         emit(AccommodationError(message: failure.message));
       },
       (accommodations) {
-        LoggerService.info('Accommodations loaded: ${accommodations.length} items');
-        emit(AccommodationsLoaded(
-          accommodations: accommodations,
-          hasMore: accommodations.length == (event.limit ?? 20),
-          currentFilter: event.filter ?? _currentFilter,
-        ));
+        LoggerService.info(
+          'Accommodations loaded: ${accommodations.length} items',
+        );
+        // Shuffle the accommodations to randomize the home feed
+        final shuffledAccommodations = List<AccommodationEntity>.from(
+          accommodations,
+        )..shuffle(Random());
+        emit(
+          AccommodationsLoaded(
+            accommodations: shuffledAccommodations,
+            hasMore: accommodations.length == (event.limit ?? 20),
+            currentFilter: event.filter ?? _currentFilter,
+          ),
+        );
         _currentFilter = event.filter ?? _currentFilter;
       },
     );
@@ -136,18 +144,17 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
     emit(AccommodationsLoading());
 
     final result = await getMyAccommodations(
-      GetMyAccommodationsParams(
-        limit: event.limit,
-        offset: event.offset,
-      ),
+      GetMyAccommodationsParams(limit: event.limit, offset: event.offset),
     );
 
     result.fold(
       (failure) => emit(AccommodationError(message: failure.message)),
-      (accommodations) => emit(AccommodationsLoaded(
-        accommodations: accommodations,
-        hasMore: accommodations.length == (event.limit ?? 20),
-      )),
+      (accommodations) => emit(
+        AccommodationsLoaded(
+          accommodations: accommodations,
+          hasMore: accommodations.length == (event.limit ?? 20),
+        ),
+      ),
     );
   }
 
@@ -177,7 +184,8 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
 
     result.fold(
       (failure) => emit(AccommodationError(message: failure.message)),
-      (accommodation) => emit(AccommodationCreated(accommodation: accommodation)),
+      (accommodation) =>
+          emit(AccommodationCreated(accommodation: accommodation)),
     );
   }
 
@@ -210,7 +218,8 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
 
     result.fold(
       (failure) => emit(AccommodationError(message: failure.message)),
-      (accommodation) => emit(AccommodationUpdated(accommodation: accommodation)),
+      (accommodation) =>
+          emit(AccommodationUpdated(accommodation: accommodation)),
     );
   }
 
@@ -268,14 +277,15 @@ class AccommodationBloc extends Bloc<AccommodationEvent, AccommodationState> {
           ...currentState.accommodations,
           ...newAccommodations,
         ];
-        emit(AccommodationsLoaded(
-          accommodations: allAccommodations,
-          hasMore: newAccommodations.length == 20,
-          isLoadingMore: false,
-          currentFilter: currentState.currentFilter,
-        ));
+        emit(
+          AccommodationsLoaded(
+            accommodations: allAccommodations,
+            hasMore: newAccommodations.length == 20,
+            isLoadingMore: false,
+            currentFilter: currentState.currentFilter,
+          ),
+        );
       },
     );
   }
 }
-

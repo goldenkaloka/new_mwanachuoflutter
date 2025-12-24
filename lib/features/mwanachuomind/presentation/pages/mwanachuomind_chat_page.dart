@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
@@ -22,6 +23,17 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
   // AI user for chat
   final _aiUser = const types.User(id: 'ai', firstName: 'Mwanachuomind');
   final _currentUser = const types.User(id: 'user');
+
+  // Input controller
+  final TextEditingController _textController = TextEditingController();
+  final FocusNode _focusNode = FocusNode();
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    _focusNode.dispose();
+    super.dispose();
+  }
 
   List<types.Message> _convertToFlutterChatMessages(
     List<ChatMessage> messages,
@@ -72,6 +84,7 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
             theme: _buildChatTheme(context),
             emptyState: _buildEmptyState(course.name),
             textMessageBuilder: _buildTextMessage,
+            customBottomWidget: _buildInput(context),
           ),
         );
       },
@@ -323,7 +336,7 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
     final isUser = message.author.id == 'user';
 
     return Container(
-      margin: EdgeInsets.only(left: isUser ? 40 : 0, right: isUser ? 0 : 40),
+      constraints: BoxConstraints(maxWidth: messageWidth.toDouble()),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
         color: isUser ? kPrimaryColor : kSurfaceColorLight,
@@ -396,8 +409,124 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
     );
   }
 
+  Widget _buildInput(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: kSurfaceColorLight,
+        border: Border(
+          top: BorderSide(color: kTextSecondary.withValues(alpha: 0.1)),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.05),
+                      blurRadius: 10,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                  border: Border.all(
+                    color: kPrimaryColor.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (_selectedDocument != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Icon(
+                          Icons.article,
+                          color: kPrimaryColor,
+                          size: 20,
+                        ),
+                      ),
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        focusNode: _focusNode,
+                        decoration: InputDecoration(
+                          hintText: _selectedDocument != null
+                              ? 'Ask about ${_selectedDocument!.title}...'
+                              : 'Ask Mwanachuomind...',
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            color: kTextSecondary.withValues(alpha: 0.5),
+                            fontSize: 14,
+                          ),
+                          border: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          isDense: true,
+                        ),
+                        style: GoogleFonts.plusJakartaSans(
+                          color: kTextPrimary,
+                          fontSize: 15,
+                        ),
+                        minLines: 1,
+                        maxLines: 5,
+                        textCapitalization: TextCapitalization.sentences,
+                        onSubmitted: (_) {
+                          final text = _textController.text.trim();
+                          if (text.isEmpty) return;
+                          _handleSendPressed(types.PartialText(text: text));
+                          _textController.clear();
+                          _focusNode.requestFocus();
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Container(
+              margin: const EdgeInsets.only(bottom: 2),
+              decoration: BoxDecoration(
+                color: kPrimaryColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: kPrimaryColor.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.send_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: () {
+                  final text = _textController.text.trim();
+                  if (text.isEmpty) return;
+                  _handleSendPressed(types.PartialText(text: text));
+                  _textController.clear();
+                  _focusNode.requestFocus();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _showCourseInfo() {
-    final state = context.read<MwanachuomindBloc>().state;
+    final bloc = context.read<MwanachuomindBloc>();
+    final state = bloc.state;
     final course = state.selectedCourse ?? state.enrolledCourse;
 
     showModalBottomSheet(
@@ -484,6 +613,51 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
                 ],
               ),
             ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                icon: const Icon(Icons.swap_horiz),
+                label: const Text('Change Course'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  side: BorderSide(color: kPrimaryColor),
+                  foregroundColor: kPrimaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text('Change Course'),
+                      content: const Text(
+                        'Are you sure you want to change your course? This will clear your current chat session.',
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('Cancel'),
+                        ),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.pop(context); // Close dialog
+                            Navigator.pop(context); // Close bottom sheet
+                            final userId =
+                                Supabase.instance.client.auth.currentUser?.id;
+                            if (userId != null) {
+                              bloc.add(ClearEnrolledCourse(userId));
+                            }
+                          },
+                          child: const Text('Change'),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
+            ),
             const SizedBox(height: 16),
           ],
         ),

@@ -28,7 +28,7 @@ class ServicesScreen extends StatelessWidget {
               sl<ServiceBloc>()..add(const LoadServicesEvent(limit: 50)),
         ),
         BlocProvider(
-          create: (context) => sl<CategoryCubit>()..loadAll(),
+          create: (context) => sl<CategoryCubit>()..loadServiceCategories(),
         ),
       ],
       child: const _ServicesView(),
@@ -82,9 +82,7 @@ class _ServicesViewState extends State<_ServicesView> {
       searchQuery: query.isEmpty ? null : query,
     );
     _currentFilter = newFilter.hasFilters ? newFilter : null;
-    context.read<ServiceBloc>().add(
-      ApplyServiceFilterEvent(filter: newFilter),
-    );
+    context.read<ServiceBloc>().add(ApplyServiceFilterEvent(filter: newFilter));
   }
 
   void _showFilterBottomSheet() {
@@ -101,10 +99,7 @@ class _ServicesViewState extends State<_ServicesView> {
       context: context,
       sections: sections,
       priceRange: currentFilter != null
-          ? PriceRange(
-              min: currentFilter.minPrice,
-              max: currentFilter.maxPrice,
-            )
+          ? PriceRange(min: currentFilter.minPrice, max: currentFilter.maxPrice)
           : null,
       onApply: (updatedSections, priceRange) {
         // Categories are handled by chips, not bottom sheet
@@ -113,7 +108,8 @@ class _ServicesViewState extends State<_ServicesView> {
           minPrice: priceRange?.min,
           maxPrice: priceRange?.max,
           location: currentFilter?.location,
-          category: currentFilter?.category, // Keep existing category from chips
+          category:
+              currentFilter?.category, // Keep existing category from chips
           sortBy: currentFilter?.sortBy,
           sortAscending: currentFilter?.sortAscending ?? true,
         );
@@ -144,40 +140,44 @@ class _ServicesViewState extends State<_ServicesView> {
     final chips = <FilterChipData>[];
 
     if (filter.category != null) {
-      chips.add(FilterChipData(
-        label: 'Category: ${filter.category}',
-        value: filter.category!,
-        onRemove: () {
-          final newFilter = filter.copyWith(clearCategory: true);
-          setState(() {
-            _currentFilter = newFilter.hasFilters ? newFilter : null;
-          });
-          context.read<ServiceBloc>().add(
-            ApplyServiceFilterEvent(filter: newFilter),
-          );
-        },
-      ));
+      chips.add(
+        FilterChipData(
+          label: 'Category: ${filter.category}',
+          value: filter.category!,
+          onRemove: () {
+            final newFilter = filter.copyWith(clearCategory: true);
+            setState(() {
+              _currentFilter = newFilter.hasFilters ? newFilter : null;
+            });
+            context.read<ServiceBloc>().add(
+              ApplyServiceFilterEvent(filter: newFilter),
+            );
+          },
+        ),
+      );
     }
 
     if (filter.minPrice != null || filter.maxPrice != null) {
       final priceLabel = filter.minPrice != null && filter.maxPrice != null
           ? 'Price: ${filter.minPrice!.toStringAsFixed(0)} - ${filter.maxPrice!.toStringAsFixed(0)}'
           : filter.minPrice != null
-              ? 'Price: From ${filter.minPrice!.toStringAsFixed(0)}'
-              : 'Price: Up to ${filter.maxPrice!.toStringAsFixed(0)}';
-      chips.add(FilterChipData(
-        label: priceLabel,
-        value: 'price',
-        onRemove: () {
-          final newFilter = filter.copyWith(clearPrice: true);
-          setState(() {
-            _currentFilter = newFilter.hasFilters ? newFilter : null;
-          });
-          context.read<ServiceBloc>().add(
-            ApplyServiceFilterEvent(filter: newFilter),
-          );
-        },
-      ));
+          ? 'Price: From ${filter.minPrice!.toStringAsFixed(0)}'
+          : 'Price: Up to ${filter.maxPrice!.toStringAsFixed(0)}';
+      chips.add(
+        FilterChipData(
+          label: priceLabel,
+          value: 'price',
+          onRemove: () {
+            final newFilter = filter.copyWith(clearPrice: true);
+            setState(() {
+              _currentFilter = newFilter.hasFilters ? newFilter : null;
+            });
+            context.read<ServiceBloc>().add(
+              ApplyServiceFilterEvent(filter: newFilter),
+            );
+          },
+        ),
+      );
     }
 
     return chips;
@@ -213,20 +213,21 @@ class _ServicesViewState extends State<_ServicesView> {
               buildWhen: (previous, current) {
                 // Rebuild when filter changes
                 if (previous is ServicesLoaded && current is ServicesLoaded) {
-                  return previous.currentFilter?.category != current.currentFilter?.category;
+                  return previous.currentFilter?.category !=
+                      current.currentFilter?.category;
                 }
                 return current is ServicesLoaded;
               },
               builder: (context, state) {
                 final currentCategory = state is ServicesLoaded
-                    ? (state.currentFilter?.category ?? _currentFilter?.category)
+                    ? (state.currentFilter?.category ??
+                          _currentFilter?.category)
                     : _currentFilter?.category;
                 return CategoryChipsWithBloc(
                   selectedCategory: currentCategory,
                   onCategorySelected: (category) {
-                    final newFilter = (_currentFilter ?? const ServiceFilter()).copyWith(
-                      category: category,
-                    );
+                    final newFilter = (_currentFilter ?? const ServiceFilter())
+                        .copyWith(category: category);
                     setState(() {
                       _currentFilter = newFilter.hasFilters ? newFilter : null;
                     });
@@ -245,113 +246,123 @@ class _ServicesViewState extends State<_ServicesView> {
                   _currentFilter = null;
                   _searchController.clear();
                 });
-                context.read<ServiceBloc>().add(const ClearServiceFilterEvent());
+                context.read<ServiceBloc>().add(
+                  const ClearServiceFilterEvent(),
+                );
               },
             ),
             // Services List
             Expanded(
               child: BlocBuilder<ServiceBloc, ServiceState>(
-        builder: (context, state) {
-          // Loading state - show shimmer skeleton
-          if (state is ServicesLoading) {
-            return Padding(
-              padding: EdgeInsets.all(
-                ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-              ),
-              child: ListView.separated(
-                itemCount: 6,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: kSpacingMd),
-                itemBuilder: (context, index) =>
-                    const ShimmerLoading(height: 110, width: double.infinity),
-              ),
-            );
-          }
-
-          // Error state
-          if (state is ServiceError) {
-            return ErrorState(
-              title: 'Failed to Load Services',
-              message: state.message,
-              onRetry: () {
-                context.read<ServiceBloc>().add(
-                  const LoadServicesEvent(limit: 20),
-                );
-              },
-            );
-          }
-
-          // Success state
-          if (state is ServicesLoaded) {
-            // Empty state
-            if (state.services.isEmpty && !state.isLoadingMore) {
-              return EmptyState(
-                type: EmptyStateType.noServices,
-                onAction: () => Navigator.pop(context),
-                actionLabel: 'Go Back',
-              );
-            }
-
-            // Services list with pagination
-            return ListView.separated(
-              controller: _scrollController,
-              padding: EdgeInsets.all(
-                ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-              ),
-              itemCount: state.services.length + (state.isLoadingMore ? 1 : 0),
-              separatorBuilder: (context, index) =>
-                  const SizedBox(height: kSpacingMd),
-              itemBuilder: (context, index) {
-                // Show loading indicator at the bottom
-                if (index == state.services.length && state.isLoadingMore) {
-                  return const Padding(
-                    padding: EdgeInsets.all(kSpacingLg),
-                    child: Center(
-                      child: Column(
-                        children: [
-                          CircularProgressIndicator(
-                            color: kPrimaryColor,
-                            strokeWidth: 2,
-                          ),
-                          SizedBox(height: kSpacingSm),
-                          Text(
-                            'Loading more...',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
+                builder: (context, state) {
+                  // Loading state - show shimmer skeleton
+                  if (state is ServicesLoading) {
+                    return Padding(
+                      padding: EdgeInsets.all(
+                        ResponsiveBreakpoints.responsiveHorizontalPadding(
+                          context,
+                        ),
                       ),
-                    ),
-                  );
-                }
+                      child: ListView.separated(
+                        itemCount: 6,
+                        separatorBuilder: (context, index) =>
+                            const SizedBox(height: kSpacingMd),
+                        itemBuilder: (context, index) => const ShimmerLoading(
+                          height: 110,
+                          width: double.infinity,
+                        ),
+                      ),
+                    );
+                  }
 
-                if (index >= state.services.length) {
+                  // Error state
+                  if (state is ServiceError) {
+                    return ErrorState(
+                      title: 'Failed to Load Services',
+                      message: state.message,
+                      onRetry: () {
+                        context.read<ServiceBloc>().add(
+                          const LoadServicesEvent(limit: 20),
+                        );
+                      },
+                    );
+                  }
+
+                  // Success state
+                  if (state is ServicesLoaded) {
+                    // Empty state
+                    if (state.services.isEmpty && !state.isLoadingMore) {
+                      return EmptyState(
+                        type: EmptyStateType.noServices,
+                        onAction: () => Navigator.pop(context),
+                        actionLabel: 'Go Back',
+                      );
+                    }
+
+                    // Services list with pagination
+                    return ListView.separated(
+                      controller: _scrollController,
+                      padding: EdgeInsets.all(
+                        ResponsiveBreakpoints.responsiveHorizontalPadding(
+                          context,
+                        ),
+                      ),
+                      itemCount:
+                          state.services.length + (state.isLoadingMore ? 1 : 0),
+                      separatorBuilder: (context, index) =>
+                          const SizedBox(height: kSpacingMd),
+                      itemBuilder: (context, index) {
+                        // Show loading indicator at the bottom
+                        if (index == state.services.length &&
+                            state.isLoadingMore) {
+                          return const Padding(
+                            padding: EdgeInsets.all(kSpacingLg),
+                            child: Center(
+                              child: Column(
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: kPrimaryColor,
+                                    strokeWidth: 2,
+                                  ),
+                                  SizedBox(height: kSpacingSm),
+                                  Text(
+                                    'Loading more...',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
+
+                        if (index >= state.services.length) {
+                          return const SizedBox.shrink();
+                        }
+
+                        // Use new ServiceCard component
+                        final service = state.services[index];
+                        return ServiceCard(
+                          imageUrl: service.images.isNotEmpty
+                              ? service.images.first
+                              : '',
+                          title: service.title,
+                          price: 'TZS ${service.price.toStringAsFixed(2)}',
+                          priceType: service.priceType,
+                          category: service.category,
+                          providerName: service.providerName,
+                          location: service.location,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/service-details',
+                            arguments: service.id,
+                          ),
+                        );
+                      },
+                    );
+                  }
+
                   return const SizedBox.shrink();
-                }
-
-                // Use new ServiceCard component
-                final service = state.services[index];
-                return ServiceCard(
-                  imageUrl: service.images.isNotEmpty
-                      ? service.images.first
-                      : '',
-                  title: service.title,
-                  price: 'TZS ${service.price.toStringAsFixed(2)}',
-                  priceType: service.priceType,
-                  category: service.category,
-                  providerName: service.providerName,
-                  location: service.location,
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    '/service-details',
-                    arguments: service.id,
-                  ),
-                );
-              },
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
+                },
               ),
             ),
           ],

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/models/filter_model.dart';
@@ -5,6 +6,7 @@ import 'package:mwanachuo/features/services/domain/usecases/create_service.dart'
 import 'package:mwanachuo/features/services/domain/usecases/delete_service.dart';
 import 'package:mwanachuo/features/services/domain/usecases/get_my_services.dart';
 import 'package:mwanachuo/features/services/domain/usecases/get_service_by_id.dart';
+import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/services/domain/usecases/get_services.dart';
 import 'package:mwanachuo/features/services/domain/usecases/update_service.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_event.dart';
@@ -44,10 +46,7 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
     Emitter<ServiceState> emit,
   ) async {
     _currentFilter = event.filter;
-    add(LoadServicesEvent(
-      limit: 50,
-      filter: _currentFilter,
-    ));
+    add(LoadServicesEvent(limit: 50, filter: _currentFilter));
   }
 
   Future<void> _onClearFilter(
@@ -67,7 +66,7 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
       debugPrint('⏭️  Services already loading, skipping...');
       return;
     }
-    
+
     debugPrint('🔧 Loading services...');
     emit(ServicesLoading());
 
@@ -92,11 +91,16 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
       },
       (services) {
         debugPrint('✅ Services loaded: ${services.length} items');
-        emit(ServicesLoaded(
-          services: services,
-          hasMore: services.length == (event.limit ?? 20),
-          currentFilter: event.filter ?? _currentFilter,
-        ));
+        // Shuffle the services to randomize the home feed
+        final shuffledServices = List<ServiceEntity>.from(services)
+          ..shuffle(Random());
+        emit(
+          ServicesLoaded(
+            services: shuffledServices,
+            hasMore: services.length == (event.limit ?? 20),
+            currentFilter: event.filter ?? _currentFilter,
+          ),
+        );
         _currentFilter = event.filter ?? _currentFilter;
       },
     );
@@ -233,18 +237,16 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
     result.fold(
       (failure) => emit(currentState.copyWith(isLoadingMore: false)),
       (newServices) {
-        final allServices = [
-          ...currentState.services,
-          ...newServices,
-        ];
-        emit(ServicesLoaded(
-          services: allServices,
-          hasMore: newServices.length == 20,
-          isLoadingMore: false,
-          currentFilter: currentState.currentFilter,
-        ));
+        final allServices = [...currentState.services, ...newServices];
+        emit(
+          ServicesLoaded(
+            services: allServices,
+            hasMore: newServices.length == 20,
+            isLoadingMore: false,
+            currentFilter: currentState.currentFilter,
+          ),
+        );
       },
     );
   }
 }
-

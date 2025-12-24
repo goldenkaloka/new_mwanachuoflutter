@@ -1,18 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
-import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
-import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
-import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
-import 'package:mwanachuo/features/services/presentation/bloc/service_bloc.dart';
-import 'package:mwanachuo/features/services/presentation/bloc/service_event.dart';
-import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart';
-import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_bloc.dart';
-import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_event.dart';
-import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_state.dart';
+import 'package:mwanachuo/features/shared/search/domain/entities/search_filter_entity.dart';
+import 'package:mwanachuo/features/shared/search/domain/entities/search_result_entity.dart';
+import 'package:mwanachuo/features/shared/search/presentation/cubit/search_cubit.dart';
+import 'package:mwanachuo/features/shared/search/presentation/cubit/search_state.dart';
 
 class SearchResultsPage extends StatelessWidget {
   final String? searchQuery;
@@ -21,31 +17,25 @@ class SearchResultsPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (context) =>
-              sl<ProductBloc>()..add(const LoadProductsEvent(limit: 50)),
-        ),
-        BlocProvider(
-          create: (context) =>
-              sl<ServiceBloc>()..add(const LoadServicesEvent(limit: 50)),
-        ),
-        BlocProvider(
-          create: (context) =>
-              sl<AccommodationBloc>()
-                ..add(const LoadAccommodationsEvent(limit: 50)),
-        ),
-      ],
-      child: _SearchResultsView(searchQuery: searchQuery),
+    return BlocProvider<SearchCubit>(
+      create: (context) {
+        final cubit = sl<SearchCubit>();
+        if (searchQuery != null && searchQuery!.isNotEmpty) {
+          cubit.search(query: searchQuery!);
+        } else {
+          cubit.loadPopularSearches();
+        }
+        return cubit;
+      },
+      child: _SearchResultsView(initialQuery: searchQuery),
     );
   }
 }
 
 class _SearchResultsView extends StatefulWidget {
-  final String? searchQuery;
+  final String? initialQuery;
 
-  const _SearchResultsView({this.searchQuery});
+  const _SearchResultsView({this.initialQuery});
 
   @override
   State<_SearchResultsView> createState() => _SearchResultsViewState();
@@ -54,58 +44,105 @@ class _SearchResultsView extends StatefulWidget {
 class _SearchResultsViewState extends State<_SearchResultsView> {
   late TextEditingController _searchController;
   String _selectedCategory = 'All';
+  Timer? _debounce;
 
   @override
   void initState() {
     super.initState();
-    _searchController = TextEditingController(text: widget.searchQuery);
-  }
-
-  void _performSearch(String query) {
-    if (query.isEmpty) return;
-
-    // Load all data - client-side filtering happens in BlocBuilder
-    context.read<ProductBloc>().add(const LoadProductsEvent(limit: 100));
-    context.read<ServiceBloc>().add(const LoadServicesEvent(limit: 100));
-    context.read<AccommodationBloc>().add(
-      const LoadAccommodationsEvent(limit: 100),
-    );
-  }
-
-  bool _matchesQuery(String text, String query) {
-    return text.toLowerCase().contains(query.toLowerCase());
+    _searchController = TextEditingController(text: widget.initialQuery);
   }
 
   @override
   void dispose() {
     _searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    if (_debounce?.isActive ?? false) _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 600), () {
+      if (query.isNotEmpty) {
+        _performSearch(query);
+      }
+    });
+  }
+
+  void _performSearch(String query) {
+    if (query.trim().isEmpty) return;
+
+    List<SearchResultType>? types;
+    if (_selectedCategory == 'Products') {
+      types = [SearchResultType.product];
+    } else if (_selectedCategory == 'Services') {
+      types = [SearchResultType.service];
+    } else if (_selectedCategory == 'Accommodations') {
+      types = [SearchResultType.accommodation];
+    }
+
+    context.read<SearchCubit>().search(
+      query: query,
+      filter: SearchFilterEntity(types: types),
+    );
+  }
+
+  void _onCategorySelected(String category) {
+    if (_selectedCategory == category) return;
+
+    setState(() {
+      _selectedCategory = category;
+    });
+
+    final query = _searchController.text.trim();
+    if (query.isNotEmpty) {
+      _performSearch(query);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode
-        ? Colors.grey[400]!
-        : Colors.grey[600]!;
 
     return Scaffold(
       backgroundColor: isDarkMode
           ? kBackgroundColorDark
           : kBackgroundColorLight,
-      body: Column(
-        children: [
-          _buildSearchHeader(context, isDarkMode, primaryTextColor),
-          _buildCategoryTabs(isDarkMode, primaryTextColor),
-          Expanded(
-            child: _buildSearchResults(
-              isDarkMode,
-              primaryTextColor,
-              secondaryTextColor,
+      body: SafeArea(
+        child: Column(
+          children: [
+            _buildSearchHeader(context, isDarkMode, primaryTextColor),
+            Expanded(
+              child: BlocBuilder<SearchCubit, SearchState>(
+                builder: (context, state) {
+                  if (state is SearchInitial ||
+                      state is PopularSearchesLoaded ||
+                      state is RecentSearchesLoaded) {
+                    return _buildInitialView(
+                      state,
+                      isDarkMode,
+                      primaryTextColor,
+                    );
+                  }
+
+                  // For other states (results, loading, error), show tabs + content
+                  return Column(
+                    children: [
+                      _buildCategoryTabs(isDarkMode, primaryTextColor),
+                      Expanded(
+                        child: _buildContent(
+                          state,
+                          isDarkMode,
+                          primaryTextColor,
+                        ),
+                      ),
+                    ],
+                  );
+                },
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -116,8 +153,17 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     Color primaryTextColor,
   ) {
     return Container(
-      padding: const EdgeInsets.fromLTRB(16, 48, 16, 16),
-      color: isDarkMode ? kBackgroundColorDark : Colors.white,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? kBackgroundColorDark : Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
       child: Row(
         children: [
           IconButton(
@@ -125,27 +171,58 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
-            child: TextField(
-              controller: _searchController,
-              autofocus: widget.searchQuery == null,
-              decoration: InputDecoration(
-                hintText: 'Search products, services, accommodations...',
-                filled: true,
-                fillColor: isDarkMode ? Colors.grey[900] : Colors.grey[100],
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
-                ),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.search, color: kPrimaryColor),
-                  onPressed: () => _performSearch(_searchController.text),
-                ),
+            child: Container(
+              height: 48,
+              decoration: BoxDecoration(
+                color: isDarkMode ? Colors.grey[900] : Colors.grey[100],
+                borderRadius: BorderRadius.circular(24),
               ),
-              onSubmitted: _performSearch,
+              child: TextField(
+                controller: _searchController,
+                autofocus: widget.initialQuery == null,
+                style: GoogleFonts.plusJakartaSans(
+                  color: primaryTextColor,
+                  fontSize: 16,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search...',
+                  hintStyle: GoogleFonts.plusJakartaSans(
+                    color: Colors.grey[500],
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                    size: 20,
+                  ),
+                  suffixIcon: _searchController.text.isNotEmpty
+                      ? IconButton(
+                          icon: Icon(
+                            Icons.close,
+                            color: Colors.grey[500],
+                            size: 18,
+                          ),
+                          onPressed: () {
+                            _searchController.clear();
+                            context.read<SearchCubit>().reset();
+                            context.read<SearchCubit>().loadPopularSearches();
+                            setState(() {
+                              _selectedCategory = 'All';
+                            });
+                          },
+                        )
+                      : null,
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 12,
+                  ),
+                ),
+                onChanged: (value) {
+                  setState(() {}); // Update to show/hide suffix icon
+                  _onSearchChanged(value);
+                },
+                onSubmitted: _performSearch,
+              ),
             ),
           ),
         ],
@@ -157,503 +234,258 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     final categories = ['All', 'Products', 'Services', 'Accommodations'];
 
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      color: isDarkMode ? kBackgroundColorDark : Colors.white,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
+      height: 50,
+      margin: const EdgeInsets.only(top: 8),
+      child: ListView.separated(
         padding: const EdgeInsets.symmetric(horizontal: 16),
-        child: Row(
-          children: categories.map((category) {
-            final isSelected = category == _selectedCategory;
-            return Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: ChoiceChip(
-                label: Text(category),
-                selected: isSelected,
-                onSelected: (selected) {
-                  setState(() {
-                    _selectedCategory = category;
-                  });
-                },
-                selectedColor: kPrimaryColor,
-                backgroundColor: isDarkMode
-                    ? Colors.grey[800]
-                    : Colors.grey[200],
-                labelStyle: TextStyle(
-                  color: isSelected ? Colors.white : primaryTextColor,
-                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                ),
-              ),
-            );
-          }).toList(),
-        ),
+        scrollDirection: Axis.horizontal,
+        itemCount: categories.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final category = categories[index];
+          final isSelected = category == _selectedCategory;
+          return ChoiceChip(
+            label: Text(category),
+            selected: isSelected,
+            onSelected: (_) => _onCategorySelected(category),
+            selectedColor: kPrimaryColor,
+            backgroundColor: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+            labelStyle: GoogleFonts.plusJakartaSans(
+              color: isSelected ? Colors.white : primaryTextColor,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w500,
+            ),
+            side: BorderSide.none,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
+            ),
+            showCheckmark: false,
+          );
+        },
       ),
     );
   }
 
-  Widget _buildSearchResults(
+  Widget _buildInitialView(
+    SearchState state,
     bool isDarkMode,
     Color primaryTextColor,
-    Color secondaryTextColor,
   ) {
-    if (_selectedCategory == 'All') {
-      return SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
+    if (state is PopularSearchesLoaded) {
+      return Padding(
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildProductsSection(
-              isDarkMode,
-              primaryTextColor,
-              secondaryTextColor,
+            Text(
+              'Popular Searches 🔥',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: primaryTextColor,
+              ),
             ),
-            const SizedBox(height: 24),
-            _buildServicesSection(
-              isDarkMode,
-              primaryTextColor,
-              secondaryTextColor,
-            ),
-            const SizedBox(height: 24),
-            _buildAccommodationsSection(
-              isDarkMode,
-              primaryTextColor,
-              secondaryTextColor,
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: state.searches.map((search) {
+                return ActionChip(
+                  label: Text(search),
+                  onPressed: () {
+                    _searchController.text = search;
+                    _performSearch(search);
+                  },
+                  backgroundColor: isDarkMode
+                      ? Colors.grey[800]
+                      : Colors.grey[50],
+                  labelStyle: GoogleFonts.plusJakartaSans(
+                    color: primaryTextColor,
+                  ),
+                  side: BorderSide(
+                    color: isDarkMode ? Colors.grey[700]! : Colors.grey[300]!,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                );
+              }).toList(),
             ),
           ],
         ),
       );
-    } else if (_selectedCategory == 'Products') {
-      return _buildProductsSection(
-        isDarkMode,
-        primaryTextColor,
-        secondaryTextColor,
-      );
-    } else if (_selectedCategory == 'Services') {
-      return _buildServicesSection(
-        isDarkMode,
-        primaryTextColor,
-        secondaryTextColor,
-      );
-    } else {
-      return _buildAccommodationsSection(
-        isDarkMode,
-        primaryTextColor,
-        secondaryTextColor,
+    }
+    return const SizedBox.shrink();
+  }
+
+  Widget _buildContent(
+    SearchState state,
+    bool isDarkMode,
+    Color primaryTextColor,
+  ) {
+    if (state is Searching) {
+      return const Center(
+        child: CircularProgressIndicator(color: kPrimaryColor),
       );
     }
+
+    if (state is SearchError) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[300]),
+            const SizedBox(height: 16),
+            Text(
+              state.message,
+              style: GoogleFonts.plusJakartaSans(
+                color: primaryTextColor,
+                fontSize: 16,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (state is SearchNoResults) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.search_off_rounded, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No results found for "${state.query}"',
+              style: GoogleFonts.plusJakartaSans(
+                color: primaryTextColor,
+                fontSize: 18,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+            Text(
+              'Try adjusting your search or filters',
+              style: GoogleFonts.plusJakartaSans(color: Colors.grey),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (state is SearchResults) {
+      return ListView.separated(
+        padding: const EdgeInsets.all(16),
+        itemCount: state.results.length,
+        separatorBuilder: (_, __) => const SizedBox(height: 12),
+        itemBuilder: (context, index) {
+          final result = state.results[index];
+          return _buildResultItem(result, isDarkMode, primaryTextColor);
+        },
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
-  Widget _buildProductsSection(
+  Widget _buildResultItem(
+    SearchResultEntity result,
     bool isDarkMode,
     Color primaryTextColor,
-    Color secondaryTextColor,
   ) {
-    return BlocBuilder<ProductBloc, ProductState>(
-      builder: (context, state) {
-        if (state is ProductsLoading) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(color: kPrimaryColor),
-            ),
-          );
+    return GestureDetector(
+      onTap: () {
+        final route = _getRouteForType(result.type);
+        if (route != null) {
+          Navigator.pushNamed(context, route, arguments: result.id);
         }
-
-        if (state is ProductError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Text(
-                state.message,
-                style: TextStyle(color: secondaryTextColor),
-              ),
-            ),
-          );
-        }
-
-        if (state is ProductsLoaded) {
-          // Client-side filtering by search query
-          final query = _searchController.text.trim();
-          final filteredProducts = query.isEmpty
-              ? state.products
-              : state.products
-                    .where(
-                      (p) =>
-                          _matchesQuery(p.title, query) ||
-                          _matchesQuery(p.description, query) ||
-                          _matchesQuery(p.category, query),
-                    )
-                    .toList();
-
-          if (filteredProducts.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(
-                  query.isEmpty
-                      ? 'No products available'
-                      : 'No products found for "$query"',
-                  style: TextStyle(color: secondaryTextColor),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
-
-          final isAll = _selectedCategory == 'All';
-
-          Widget list = ListView.separated(
-            padding: isAll ? EdgeInsets.zero : const EdgeInsets.all(16),
-            shrinkWrap: isAll,
-            physics: isAll
-                ? const NeverScrollableScrollPhysics()
-                : const AlwaysScrollableScrollPhysics(),
-            itemCount: filteredProducts.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final product = filteredProducts[index];
-              return _buildResultCard(
-                title: product.title,
-                price: 'TZS ${product.price.toStringAsFixed(2)}',
-                description: product.description,
-                imageUrl: product.images.isNotEmpty ? product.images.first : '',
-                onTap: () => Navigator.pushNamed(
-                  context,
-                  '/product-details',
-                  arguments: product.id,
-                ),
-                isDarkMode: isDarkMode,
-                primaryTextColor: primaryTextColor,
-                secondaryTextColor: secondaryTextColor,
-              );
-            },
-          );
-
-          if (isAll) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'Products (${filteredProducts.length})',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                  ),
-                ),
-                list,
-              ],
-            );
-          }
-
-          return list;
-        }
-
-        return const SizedBox.shrink();
       },
-    );
-  }
-
-  Widget _buildServicesSection(
-    bool isDarkMode,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-  ) {
-    return BlocBuilder<ServiceBloc, ServiceState>(
-      builder: (context, state) {
-        if (state is ServicesLoading) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(color: kPrimaryColor),
-            ),
-          );
-        }
-
-        if (state is ServiceError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Text(
-                state.message,
-                style: TextStyle(color: secondaryTextColor),
-              ),
-            ),
-          );
-        }
-
-        if (state is ServicesLoaded) {
-          // Client-side filtering by search query
-          final query = _searchController.text.trim();
-          final filteredServices = query.isEmpty
-              ? state.services
-              : state.services
-                    .where(
-                      (s) =>
-                          _matchesQuery(s.title, query) ||
-                          _matchesQuery(s.description, query) ||
-                          _matchesQuery(s.category, query),
-                    )
-                    .toList();
-
-          if (filteredServices.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(
-                  query.isEmpty
-                      ? 'No services available'
-                      : 'No services found for "$query"',
-                  style: TextStyle(color: secondaryTextColor),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
-
-          final isAll = _selectedCategory == 'All';
-
-          Widget list = ListView.separated(
-            padding: isAll ? EdgeInsets.zero : const EdgeInsets.all(16),
-            shrinkWrap: isAll,
-            physics: isAll
-                ? const NeverScrollableScrollPhysics()
-                : const AlwaysScrollableScrollPhysics(),
-            itemCount: filteredServices.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final service = filteredServices[index];
-              return _buildResultCard(
-                title: service.title,
-                price:
-                    'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
-                description: service.description,
-                imageUrl: service.images.isNotEmpty ? service.images.first : '',
-                onTap: () => Navigator.pushNamed(
-                  context,
-                  '/service-details',
-                  arguments: service.id,
-                ),
-                isDarkMode: isDarkMode,
-                primaryTextColor: primaryTextColor,
-                secondaryTextColor: secondaryTextColor,
-              );
-            },
-          );
-
-          if (isAll) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'Services (${filteredServices.length})',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                  ),
-                ),
-                list,
-              ],
-            );
-          }
-
-          return list;
-        }
-
-        return const SizedBox.shrink();
-      },
-    );
-  }
-
-  Widget _buildAccommodationsSection(
-    bool isDarkMode,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-  ) {
-    return BlocBuilder<AccommodationBloc, AccommodationState>(
-      builder: (context, state) {
-        if (state is AccommodationsLoading) {
-          return const Center(
-            child: Padding(
-              padding: EdgeInsets.all(32),
-              child: CircularProgressIndicator(color: kPrimaryColor),
-            ),
-          );
-        }
-
-        if (state is AccommodationError) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(32),
-              child: Text(
-                state.message,
-                style: TextStyle(color: secondaryTextColor),
-              ),
-            ),
-          );
-        }
-
-        if (state is AccommodationsLoaded) {
-          // Client-side filtering by search query
-          final query = _searchController.text.trim();
-          final filteredAccommodations = query.isEmpty
-              ? state.accommodations
-              : state.accommodations
-                    .where(
-                      (a) =>
-                          _matchesQuery(a.name, query) ||
-                          _matchesQuery(a.description, query) ||
-                          _matchesQuery(a.location, query) ||
-                          _matchesQuery(a.roomType, query),
-                    )
-                    .toList();
-
-          if (filteredAccommodations.isEmpty) {
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(32),
-                child: Text(
-                  query.isEmpty
-                      ? 'No accommodations available'
-                      : 'No accommodations found for "$query"',
-                  style: TextStyle(color: secondaryTextColor),
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
-
-          final isAll = _selectedCategory == 'All';
-
-          Widget list = ListView.separated(
-            padding: isAll ? EdgeInsets.zero : const EdgeInsets.all(16),
-            shrinkWrap: isAll,
-            physics: isAll
-                ? const NeverScrollableScrollPhysics()
-                : const AlwaysScrollableScrollPhysics(),
-            itemCount: filteredAccommodations.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 12),
-            itemBuilder: (context, index) {
-              final accommodation = filteredAccommodations[index];
-              return _buildResultCard(
-                title: accommodation.name,
-                price:
-                    'TZS ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType}',
-                description: accommodation.description,
-                imageUrl: accommodation.images.isNotEmpty
-                    ? accommodation.images.first
-                    : '',
-                onTap: () => Navigator.pushNamed(
-                  context,
-                  '/accommodation-details',
-                  arguments: accommodation.id,
-                ),
-                isDarkMode: isDarkMode,
-                primaryTextColor: primaryTextColor,
-                secondaryTextColor: secondaryTextColor,
-              );
-            },
-          );
-
-          if (isAll) {
-            return Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(bottom: 12),
-                  child: Text(
-                    'Accommodations (${filteredAccommodations.length})',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                  ),
-                ),
-                list,
-              ],
-            );
-          }
-
-          return list;
-        }
-
-        return const SizedBox.shrink();
-      },
-    );
-  }
-
-  Widget _buildResultCard({
-    required String title,
-    required String price,
-    required String description,
-    required String imageUrl,
-    required VoidCallback onTap,
-    required bool isDarkMode,
-    required Color primaryTextColor,
-    required Color secondaryTextColor,
-  }) {
-    return InkWell(
-      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isDarkMode ? Colors.grey[900] : Colors.white,
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isDarkMode ? Colors.grey[800]! : Colors.grey[200]!,
-          ),
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(12),
               child: NetworkImageWithFallback(
-                imageUrl: imageUrl,
-                width: 80,
-                height: 80,
+                imageUrl: result.imageUrl ?? '',
+                width: 90,
+                height: 90,
                 fit: BoxFit.cover,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    title,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    description,
-                    style: TextStyle(fontSize: 14, color: secondaryTextColor),
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: kPrimaryColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          _getTypeLabel(result.type),
+                          style: GoogleFonts.plusJakartaSans(
+                            color: kPrimaryColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const Spacer(),
+                      if (result.price != null)
+                        Text(
+                          'TZS ${result.price!.toStringAsFixed(0)}',
+                          style: GoogleFonts.plusJakartaSans(
+                            color: kPrimaryColor,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    price,
+                    result.title,
                     style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
+                      color: primaryTextColor,
                       fontWeight: FontWeight.bold,
-                      color: kPrimaryColor,
+                      fontSize: 16,
+                      height: 1.3,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
                   ),
+                  if (result.description.isNotEmpty) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      result.description,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.grey[600],
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -661,5 +493,27 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
         ),
       ),
     );
+  }
+
+  String _getTypeLabel(SearchResultType type) {
+    switch (type) {
+      case SearchResultType.product:
+        return 'PRODUCT';
+      case SearchResultType.service:
+        return 'SERVICE';
+      case SearchResultType.accommodation:
+        return 'HOUSING';
+    }
+  }
+
+  String? _getRouteForType(SearchResultType type) {
+    switch (type) {
+      case SearchResultType.product:
+        return '/product-details';
+      case SearchResultType.service:
+        return '/service-details';
+      case SearchResultType.accommodation:
+        return '/accommodation-details';
+    }
   }
 }

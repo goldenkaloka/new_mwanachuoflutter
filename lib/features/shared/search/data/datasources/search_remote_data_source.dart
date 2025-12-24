@@ -44,7 +44,8 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
       final searchOffset = offset ?? 0;
 
       // Determine which types to search
-      final typesToSearch = filter?.types ??
+      final typesToSearch =
+          filter?.types ??
           [
             SearchResultType.product,
             SearchResultType.service,
@@ -106,8 +107,13 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     var queryBuilder = supabaseClient
         .from(DatabaseConstants.productsTable)
         .select()
-        .or('title.ilike.%$query%,description.ilike.%$query%')
         .eq('is_active', true);
+
+    if (query.isNotEmpty) {
+      queryBuilder = queryBuilder.or(
+        'title.ilike.%$query%,description.ilike.%$query%',
+      );
+    }
 
     if (filter != null) {
       if (filter.minPrice != null) {
@@ -124,10 +130,13 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
       }
     }
 
-    final response = await queryBuilder.limit(limit).range(offset, offset + limit - 1);
+    final response = await queryBuilder
+        .limit(limit)
+        .range(offset, offset + limit - 1);
     return (response as List)
-        .map((json) =>
-            SearchResultModel.fromJson(json, SearchResultType.product))
+        .map(
+          (json) => SearchResultModel.fromJson(json, SearchResultType.product),
+        )
         .toList();
   }
 
@@ -140,8 +149,13 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     var queryBuilder = supabaseClient
         .from(DatabaseConstants.servicesTable)
         .select()
-        .or('title.ilike.%$query%,description.ilike.%$query%')
         .eq('is_active', true);
+
+    if (query.isNotEmpty) {
+      queryBuilder = queryBuilder.or(
+        'title.ilike.%$query%,description.ilike.%$query%',
+      );
+    }
 
     if (filter != null) {
       if (filter.minPrice != null) {
@@ -158,10 +172,13 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
       }
     }
 
-    final response = await queryBuilder.limit(limit).range(offset, offset + limit - 1);
+    final response = await queryBuilder
+        .limit(limit)
+        .range(offset, offset + limit - 1);
     return (response as List)
-        .map((json) =>
-            SearchResultModel.fromJson(json, SearchResultType.service))
+        .map(
+          (json) => SearchResultModel.fromJson(json, SearchResultType.service),
+        )
         .toList();
   }
 
@@ -174,8 +191,13 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     var queryBuilder = supabaseClient
         .from(DatabaseConstants.accommodationsTable)
         .select()
-        .or('name.ilike.%$query%,description.ilike.%$query%')
         .eq('is_active', true);
+
+    if (query.isNotEmpty) {
+      queryBuilder = queryBuilder.or(
+        'name.ilike.%$query%,description.ilike.%$query%',
+      );
+    }
 
     if (filter != null) {
       if (filter.minPrice != null) {
@@ -189,10 +211,14 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
       }
     }
 
-    final response = await queryBuilder.limit(limit).range(offset, offset + limit - 1);
+    final response = await queryBuilder
+        .limit(limit)
+        .range(offset, offset + limit - 1);
     return (response as List)
-        .map((json) =>
-            SearchResultModel.fromJson(json, SearchResultType.accommodation))
+        .map(
+          (json) =>
+              SearchResultModel.fromJson(json, SearchResultType.accommodation),
+        )
         .toList();
   }
 
@@ -294,4 +320,3 @@ class SearchRemoteDataSourceImpl implements SearchRemoteDataSource {
     }
   }
 }
-

@@ -99,3 +99,12 @@ class LoadCourseDocuments extends MwanachuomindEvent {
   @override
   List<Object> get props => [courseId];
 }
+
+class ClearEnrolledCourse extends MwanachuomindEvent {
+  final String userId;
+
+  const ClearEnrolledCourse(this.userId);
+
+  @override
+  List<Object> get props => [userId];
+}

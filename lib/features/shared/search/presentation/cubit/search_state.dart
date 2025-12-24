@@ -22,16 +22,18 @@ class SearchResults extends SearchState {
   final String query;
   final SearchFilterEntity? filter;
   final bool hasMore;
+  final bool isLoadingMore;
 
   const SearchResults({
     required this.results,
     required this.query,
     this.filter,
     this.hasMore = false,
+    this.isLoadingMore = false,
   });
 
   @override
-  List<Object?> get props => [results, query, filter, hasMore];
+  List<Object?> get props => [results, query, filter, hasMore, isLoadingMore];
 }
 
 /// No search results found
@@ -89,4 +91,3 @@ class SearchError extends SearchState {
   @override
   List<Object?> get props => [message];
 }
-

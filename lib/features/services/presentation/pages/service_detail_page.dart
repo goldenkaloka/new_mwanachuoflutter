@@ -49,8 +49,9 @@ class ServiceDetailPage extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => sl<ServiceBloc>()
-            ..add(LoadServiceByIdEvent(serviceId: serviceId)),
+          create: (context) =>
+              sl<ServiceBloc>()
+                ..add(LoadServiceByIdEvent(serviceId: serviceId)),
         ),
         BlocProvider(
           create: (context) => sl<ReviewCubit>()
@@ -60,7 +61,6 @@ class ServiceDetailPage extends StatelessWidget {
               limit: 10,
             ),
         ),
-
       ],
       child: const _ServiceDetailView(),
     );
@@ -140,9 +140,10 @@ class _ServiceDetailView extends StatelessWidget {
     Color secondaryTextColor,
     Color surfaceColor,
   ) {
-
     return Scaffold(
-      backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      backgroundColor: isDarkMode
+          ? kBackgroundColorDark
+          : kBackgroundColorLight,
       body: ResponsiveBuilder(
         builder: (context, screenSize) {
           return _buildSliverLayout(
@@ -199,7 +200,10 @@ class _ServiceDetailView extends StatelessWidget {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.favorite_border, color: Colors.white),
+                    icon: const Icon(
+                      Icons.favorite_border,
+                      color: Colors.white,
+                    ),
                     onPressed: () {
                       // Handle favorite
                     },
@@ -293,10 +297,12 @@ class _ServiceDetailView extends StatelessWidget {
             left: 0,
             right: 0,
             child: StickyActionBar(
-              price: 'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
+              price:
+                  'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
               actionButtonText: 'Contact Provider',
               onActionTap: () {
-                final message = 'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}. Je tunaweza kuongea zaidi?';
+                final message =
+                    'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}. Je tunaweza kuongea zaidi?';
                 WhatsAppContactHelper.contactSeller(
                   context: context,
                   phoneNumber: service.contactPhone,
@@ -306,7 +312,6 @@ class _ServiceDetailView extends StatelessWidget {
             ),
           ),
       ],
-      ),
     );
   }
 
@@ -322,10 +327,7 @@ class _ServiceDetailView extends StatelessWidget {
       children: [
         // Service Category Badge
         Container(
-          padding: const EdgeInsets.symmetric(
-            horizontal: 12.0,
-            vertical: 6.0,
-          ),
+          padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 6.0),
           decoration: BoxDecoration(
             color: kPrimaryColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20.0),
@@ -482,9 +484,11 @@ class _ServiceDetailView extends StatelessWidget {
                 final index = entry.key;
                 final availabilityItem = entry.value;
                 final parts = availabilityItem.split(':');
-                final day = parts.length > 1 ? parts[0].trim() : availabilityItem;
+                final day = parts.length > 1
+                    ? parts[0].trim()
+                    : availabilityItem;
                 final time = parts.length > 1 ? parts[1].trim() : 'Available';
-                
+
                 return Column(
                   children: [
                     if (index > 0) const Divider(),
@@ -557,7 +561,9 @@ class _ServiceDetailView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 4.0),
-                if (service.rating != null && service.reviewCount != null && service.reviewCount! > 0)
+                if (service.rating != null &&
+                    service.reviewCount != null &&
+                    service.reviewCount! > 0)
                   Row(
                     children: [
                       Icon(Icons.star, color: Colors.amber, size: 16.0),
@@ -585,7 +591,8 @@ class _ServiceDetailView extends StatelessWidget {
           IconButton(
             onPressed: () {
               // Dispatch event - navigation will be handled by parent BlocListener
-              final message = 'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}. Je tunaweza kuongea zaidi?';
+              final message =
+                  'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}. Je tunaweza kuongea zaidi?';
               WhatsAppContactHelper.contactSeller(
                 context: context,
                 phoneNumber: service.contactPhone,
@@ -599,7 +606,11 @@ class _ServiceDetailView extends StatelessWidget {
     );
   }
 
-  Widget _buildAvailabilityRow(String day, String time, Color secondaryTextColor) {
+  Widget _buildAvailabilityRow(
+    String day,
+    String time,
+    Color secondaryTextColor,
+  ) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
@@ -626,4 +637,3 @@ class _ServiceDetailView extends StatelessWidget {
     );
   }
 }
-

@@ -68,7 +68,7 @@ class MwanachuomindRepositoryImpl implements MwanachuomindRepository {
   }
 
   @override
-  Future<void> setEnrolledCourse(String userId, String courseId) {
+  Future<void> setEnrolledCourse(String userId, String? courseId) {
     return remoteDataSource.setEnrolledCourse(userId, courseId);
   }
 

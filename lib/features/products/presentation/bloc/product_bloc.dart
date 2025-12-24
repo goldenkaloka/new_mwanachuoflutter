@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/models/filter_model.dart';
@@ -10,6 +11,7 @@ import 'package:mwanachuo/features/products/domain/usecases/increment_view_count
 import 'package:mwanachuo/features/products/domain/usecases/update_product.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
+import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 
 /// BLoC for managing product state
 class ProductBloc extends Bloc<ProductEvent, ProductState> {
@@ -49,12 +51,11 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     Emitter<ProductState> emit,
   ) async {
     _currentFilter = event.filter;
-    debugPrint('🔍 Applying filter: searchQuery="${event.filter.searchQuery}", category="${event.filter.category}", condition="${event.filter.condition}"');
+    debugPrint(
+      '🔍 Applying filter: searchQuery="${event.filter.searchQuery}", category="${event.filter.category}", condition="${event.filter.condition}"',
+    );
     // Reload products with new filter
-    add(LoadProductsEvent(
-      limit: 50,
-      filter: _currentFilter,
-    ));
+    add(LoadProductsEvent(limit: 50, filter: _currentFilter));
   }
 
   Future<void> _onClearFilter(
@@ -75,9 +76,11 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       debugPrint('⏭️  Products already loading, skipping...');
       return;
     }
-    
+
     final filterToUse = event.filter ?? _currentFilter;
-    debugPrint('📦 Loading products with filter: searchQuery="${filterToUse?.searchQuery}", category="${filterToUse?.category}"');
+    debugPrint(
+      '📦 Loading products with filter: searchQuery="${filterToUse?.searchQuery}", category="${filterToUse?.category}"',
+    );
     emit(ProductsLoading());
 
     final result = await getProducts(
@@ -101,11 +104,17 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       },
       (products) {
         debugPrint('✅ Products loaded: ${products.length} items');
-        emit(ProductsLoaded(
-          products: products,
-          hasMore: products.length == (event.limit ?? 20),
-          currentFilter: event.filter ?? _currentFilter,
-        ));
+        // Shuffle the products to randomize the home feed
+        // Creating a new list to avoid mutating the original fixed-length list if any
+        final shuffledProducts = List<ProductEntity>.from(products)
+          ..shuffle(Random());
+        emit(
+          ProductsLoaded(
+            products: shuffledProducts,
+            hasMore: products.length == (event.limit ?? 20),
+            currentFilter: event.filter ?? _currentFilter,
+          ),
+        );
         _currentFilter = event.filter ?? _currentFilter;
       },
     );
@@ -143,10 +152,12 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
 
     result.fold(
       (failure) => emit(ProductError(message: failure.message)),
-      (products) => emit(ProductsLoaded(
-        products: products,
-        hasMore: products.length == (event.limit ?? 20),
-      )),
+      (products) => emit(
+        ProductsLoaded(
+          products: products,
+          hasMore: products.length == (event.limit ?? 20),
+        ),
+      ),
     );
   }
 
@@ -158,7 +169,7 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
     debugPrint('📝 Title: ${event.title}');
     debugPrint('💰 Price: ${event.price}');
     debugPrint('📷 Images count: ${event.images.length}');
-    
+
     emit(ProductCreating());
 
     final result = await createProduct(
@@ -176,13 +187,17 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
 
     result.fold(
       (failure) {
-        debugPrint('❌ ProductBloc: Product creation failed - ${failure.message}');
+        debugPrint(
+          '❌ ProductBloc: Product creation failed - ${failure.message}',
+        );
         emit(ProductError(message: failure.message));
       },
       (product) {
-        debugPrint('✅ ProductBloc: Product created successfully - ID: ${product.id}');
+        debugPrint(
+          '✅ ProductBloc: Product created successfully - ID: ${product.id}',
+        );
         emit(ProductCreated(product: product));
-        
+
         // Automatically reload products if we have a ProductsLoaded state
         // This ensures the new product appears in lists immediately
         final currentState = state;
@@ -267,17 +282,17 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
       ),
     );
 
-    result.fold(
-      (failure) => emit(ProductError(message: failure.message)),
-      (products) {
-        final allProducts = [...currentState.products, ...products];
-        emit(ProductsLoaded(
+    result.fold((failure) => emit(ProductError(message: failure.message)), (
+      products,
+    ) {
+      final allProducts = [...currentState.products, ...products];
+      emit(
+        ProductsLoaded(
           products: allProducts,
           hasMore: products.length == 20,
           currentFilter: currentState.currentFilter,
-        ));
-      },
-    );
+        ),
+      );
+    });
   }
 }
-

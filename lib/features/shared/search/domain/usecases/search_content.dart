@@ -18,9 +18,10 @@ class SearchContent
     SearchContentParams params,
   ) async {
     // Validate query
-    if (params.query.trim().isEmpty) {
-      return Left(ValidationFailure('Search query cannot be empty'));
-    }
+    // Allow empty query for "Browse" mode
+    // if (params.query.trim().isEmpty) {
+    //   return Left(ValidationFailure('Search query cannot be empty'));
+    // }
 
     return await repository.search(
       query: params.query.trim(),
@@ -47,4 +48,3 @@ class SearchContentParams extends Equatable {
   @override
   List<Object?> get props => [query, filter, limit, offset];
 }
-

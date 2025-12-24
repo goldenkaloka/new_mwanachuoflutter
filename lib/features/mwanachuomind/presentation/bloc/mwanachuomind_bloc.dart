@@ -33,6 +33,7 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
     on<LoadEnrolledCourse>(_onLoadEnrolledCourse);
     on<EnrollInCourse>(_onEnrollInCourse);
     on<LoadCourseDocuments>(_onLoadCourseDocuments);
+    on<ClearEnrolledCourse>(_onClearEnrolledCourse);
   }
 
   Future<void> _onLoadUniversityCourses(
@@ -277,6 +278,30 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
       emit(
         state.copyWith(
           errorMessage: "Failed to load documents: ${e.toString()}",
+        ),
+      );
+    }
+  }
+
+  Future<void> _onClearEnrolledCourse(
+    ClearEnrolledCourse event,
+    Emitter<MwanachuomindState> emit,
+  ) async {
+    emit(state.copyWith(status: MwanachuomindStatus.loading));
+    try {
+      await repository.setEnrolledCourse(event.userId, null);
+      // Reset state to initial but keep courses loaded, forcing Wrapper to show enrollment
+      emit(
+        MwanachuomindState(
+          status: MwanachuomindStatus.success,
+          courses: state.courses,
+        ),
+      );
+    } catch (e) {
+      emit(
+        state.copyWith(
+          status: MwanachuomindStatus.failure,
+          errorMessage: "Failed to clear course: ${e.toString()}",
         ),
       );
     }

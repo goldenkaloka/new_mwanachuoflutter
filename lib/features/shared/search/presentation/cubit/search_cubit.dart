@@ -34,10 +34,11 @@ class SearchCubit extends Cubit<SearchState> {
     int? limit,
     int? offset,
   }) async {
-    if (query.trim().isEmpty) {
-      emit(SearchInitial());
-      return;
-    }
+    // Allow empty query to fetch all items (Browse mode)
+    // if (query.trim().isEmpty) {
+    //   emit(SearchInitial());
+    //   return;
+    // }
 
     emit(Searching());
 
@@ -50,21 +51,22 @@ class SearchCubit extends Cubit<SearchState> {
       ),
     );
 
-    result.fold(
-      (failure) => emit(SearchError(message: failure.message)),
-      (results) {
-        if (results.isEmpty) {
-          emit(SearchNoResults(query: query));
-        } else {
-          emit(SearchResults(
+    result.fold((failure) => emit(SearchError(message: failure.message)), (
+      results,
+    ) {
+      if (results.isEmpty) {
+        emit(SearchNoResults(query: query));
+      } else {
+        emit(
+          SearchResults(
             results: results,
             query: query,
             filter: filter,
             hasMore: results.length == (limit ?? 20),
-          ));
-        }
-      },
-    );
+          ),
+        );
+      }
+    });
   }
 
   /// Load more search results (pagination)
@@ -87,25 +89,23 @@ class SearchCubit extends Cubit<SearchState> {
       ),
     );
 
-    result.fold(
-      (failure) => emit(SearchError(message: failure.message)),
-      (results) {
-        final allResults = [...currentState.results, ...results];
-        emit(SearchResults(
+    result.fold((failure) => emit(SearchError(message: failure.message)), (
+      results,
+    ) {
+      final allResults = [...currentState.results, ...results];
+      emit(
+        SearchResults(
           results: allResults,
           query: query,
           filter: filter,
           hasMore: results.length == (limit ?? 20),
-        ));
-      },
-    );
+        ),
+      );
+    });
   }
 
   /// Get search suggestions
-  Future<void> getSuggestions({
-    required String query,
-    int? limit,
-  }) async {
+  Future<void> getSuggestions({required String query, int? limit}) async {
     if (query.trim().isEmpty) {
       emit(SearchInitial());
       return;
@@ -114,10 +114,7 @@ class SearchCubit extends Cubit<SearchState> {
     emit(SuggestionsLoading());
 
     final result = await getSearchSuggestions(
-      GetSearchSuggestionsParams(
-        query: query,
-        limit: limit,
-      ),
+      GetSearchSuggestionsParams(query: query, limit: limit),
     );
 
     result.fold(
@@ -172,4 +169,3 @@ class SearchCubit extends Cubit<SearchState> {
     emit(SearchInitial());
   }
 }
-
