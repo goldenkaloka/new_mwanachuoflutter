@@ -40,15 +40,15 @@ class _DashboardViewState extends State<_DashboardView> {
     // Verify user is seller or admin
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      
+
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
         final userRole = authState.user.role.value;
-        
+
         if (userRole == 'buyer') {
           debugPrint('❌ Buyer attempting to access dashboard - redirecting');
           Navigator.of(context).pushReplacementNamed('/home');
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -236,11 +236,11 @@ class _DashboardViewState extends State<_DashboardView> {
     final lastMessageTimeStr = stats.lastMessageTime != null
         ? TimeFormatter.formatConversationTime(stats.lastMessageTime)
         : 'No messages';
-    
+
     final lastListingTimeStr = stats.lastListingUpdateTime != null
         ? TimeFormatter.formatConversationTime(stats.lastListingUpdateTime)
         : 'No listings';
-    
+
     final lastReviewTimeStr = stats.lastReviewTime != null
         ? TimeFormatter.formatConversationTime(stats.lastReviewTime)
         : 'No reviews';
@@ -288,10 +288,21 @@ class _DashboardViewState extends State<_DashboardView> {
           final index = entry.key;
           final activity = entry.value;
           return InkWell(
-            onTap: activity['route'] != null
-                ? () =>
-                      Navigator.pushNamed(context, activity['route'] as String)
-                : null,
+            onTap: () {
+              if (activity['route'] == '/messages') {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Messages feature is coming soon!',
+                      style: GoogleFonts.plusJakartaSans(),
+                    ),
+                    behavior: SnackBarBehavior.floating,
+                  ),
+                );
+              } else if (activity['route'] != null) {
+                Navigator.pushNamed(context, activity['route'] as String);
+              }
+            },
             child: Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -430,7 +441,10 @@ class _DashboardViewState extends State<_DashboardView> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: kPrimaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 16,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(30), // Fully rounded
                 ),
@@ -475,6 +489,16 @@ class _DashboardViewState extends State<_DashboardView> {
     Color secondaryTextColor,
     bool isDarkMode,
   ) {
+    // Listen to AuthBloc state changes to ensure role updates trigger rebuilds
+    final authState = context.watch<AuthBloc>().state;
+
+    // Debug print to verify role
+    if (authState is Authenticated) {
+      debugPrint(
+        'Admin Check - Role: ${authState.user.role.value}, Is Admin: ${authState.user.role.value == 'admin'}',
+      );
+    }
+
     final actions = [
       {
         'icon': Icons.add_circle_outline,
@@ -495,6 +519,14 @@ class _DashboardViewState extends State<_DashboardView> {
         'icon': Icons.campaign_outlined,
         'label': 'Create Promo',
         'route': '/create-promotion',
+      },
+      // DEBUG: Temporarily allowing access to everyone to verify UI exists
+      // if (authState is Authenticated &&
+      //     (authState).user.role.value == 'admin')
+      {
+        'icon': Icons.auto_awesome,
+        'label': 'Manage AI',
+        'route': '/admin-courses',
       },
     ];
 

@@ -214,6 +214,7 @@ class _PersistentBottomNavWrapperState
                     activeColor: activeColor,
                     isDarkMode: isDarkMode,
                     showBadge: showBadge,
+                    isSpecial: index == 2,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -333,7 +334,38 @@ class _PersistentBottomNavWrapperState
     required Color activeColor,
     required bool isDarkMode,
     bool showBadge = false,
+    bool isSpecial = false,
   }) {
+    // Special styling for MwanachuoMind (Index 2)
+    if (isSpecial) {
+      return Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: isActive
+              ? activeColor.withValues(alpha: 0.1)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(30), // Fully round
+          border: Border.all(
+            color: isActive ? Colors.blue : Colors.grey.withValues(alpha: 0.3),
+            width: 2.5, // Thicker border
+          ),
+        ),
+        child: ShaderMask(
+          shaderCallback: (bounds) => const LinearGradient(
+            colors: [Colors.blue, Colors.red],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ).createShader(bounds),
+          child: Icon(
+            isActive ? Icons.auto_awesome : Icons.auto_awesome_outlined,
+            size: 28,
+            color: Colors
+                .white, // This color is ignored by ShaderMask but required
+          ),
+        ),
+      );
+    }
+
     final iconWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(6),

@@ -146,13 +146,17 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
       timestamp: DateTime.now(),
     );
 
+    // Optimistic Update: Add user message immediately
     final updatedHistory = List<ChatMessage>.from(state.chatHistory)
       ..add(userMessage);
 
     emit(
       state.copyWith(
         chatHistory: updatedHistory,
-        status: MwanachuomindStatus.loading,
+        // Do NOT set status to loading here if it causes a full page spinner.
+        // Instead we can rely on the stream updates or a specific 'isGenerating' flag if needed.
+        // For now, keeping status as success ensures the list stays visible.
+        status: MwanachuomindStatus.success,
       ),
     );
 
@@ -178,6 +182,10 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
       );
 
       String fullResponse = "";
+
+      // Initialize AI message placeholder
+      // In a real stream scenario, we could yield chunks to the UI here.
+      // For now, we wait for the full response but at least we don't show a spinner.
 
       await for (final chunk in stream) {
         fullResponse += chunk;

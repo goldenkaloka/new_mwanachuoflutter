@@ -9,6 +9,7 @@ import 'package:mwanachuo/features/auth/presentation/pages/signup_university_sel
 import 'package:mwanachuo/features/auth/presentation/pages/initial_route_handler.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/become_seller_screen.dart';
 import 'package:mwanachuo/features/admin/presentation/pages/seller_requests_page.dart';
+import 'package:mwanachuo/features/admin/presentation/pages/admin_course_list_page.dart';
 import 'package:mwanachuo/features/home/home_page.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_bloc.dart';
@@ -268,6 +269,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               const SignupUniversitySelectionScreen(),
           '/become-seller': (context) => const BecomeSellerScreen(),
           '/seller-requests': (context) => const SellerRequestsPage(),
+          '/admin-courses': (context) => const AdminCourseListPage(),
           '/home': (context) => PersistentBottomNavWrapper(
             initialIndex: 0,
             child: MultiBlocProvider(
