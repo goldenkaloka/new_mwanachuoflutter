@@ -18,10 +18,7 @@ import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
-import 'package:mwanachuo/core/services/logger_service.dart';
+import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
 
 class ProductDetailsPage extends StatelessWidget {
   const ProductDetailsPage({super.key});
@@ -66,7 +63,6 @@ class ProductDetailsPage extends StatelessWidget {
               limit: 10,
             ),
         ),
-        BlocProvider(create: (context) => sl<MessageBloc>()),
       ],
       child: const _ProductDetailsView(),
     );
@@ -215,177 +211,132 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
   ) {
     final images = product.images.isNotEmpty ? product.images : [''];
 
-    return BlocListener<MessageBloc, MessageState>(
-      listener: (context, state) {
-        if (state is ConversationLoaded) {
-          // Validate conversation ID before navigation
-          final conversationId = state.conversation.id;
-          if (conversationId.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Invalid conversation: missing ID',
-                  style: GoogleFonts.plusJakartaSans(),
+    return Scaffold(
+      body: Stack(
+        children: [
+          CustomScrollView(
+            slivers: [
+              // App bar with back button and actions
+              SliverAppBar(
+                floating: true,
+                pinned: false,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                leading: Container(
+                  margin: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withValues(alpha: 0.3),
+                    shape: BoxShape.circle,
+                  ),
+                  child: IconButton(
+                    icon: const Icon(Icons.arrow_back, color: Colors.white),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
                 ),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-          // Navigate to chat with the conversation ID
-          LoggerService.debug(
-            'Navigating to chat with conversation ID: $conversationId (type: ${conversationId.runtimeType})',
-          );
-          Navigator.pushNamed(
-            context,
-            '/chat',
-            arguments: conversationId,
-          );
-        } else if (state is MessageError) {
-          // Show error
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.plusJakartaSans(),
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      },
-      child: Scaffold(
-        body: Stack(
-          children: [
-            CustomScrollView(
-              slivers: [
-                // App bar with back button and actions
-                SliverAppBar(
-                  floating: true,
-                  pinned: false,
-                  backgroundColor: Colors.transparent,
-                  elevation: 0,
-                  leading: Container(
+                actions: [
+                  Container(
                     margin: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
                       color: Colors.black.withValues(alpha: 0.3),
                       shape: BoxShape.circle,
                     ),
                     child: IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.of(context).pop(),
+                      icon: const Icon(
+                        Icons.favorite_border,
+                        color: Colors.white,
+                      ),
+                      onPressed: () {
+                        // Handle favorite
+                      },
                     ),
                   ),
-                  actions: [
-                    Container(
-                      margin: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.favorite_border, color: Colors.white),
-                        onPressed: () {
-                          // Handle favorite
-                        },
-                      ),
+                  Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      shape: BoxShape.circle,
                     ),
-                    Container(
-                      margin: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: Colors.black.withValues(alpha: 0.3),
-                        shape: BoxShape.circle,
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.share, color: Colors.white),
-                        onPressed: () {
-                          // Handle share
-                        },
-                      ),
+                    child: IconButton(
+                      icon: const Icon(Icons.share, color: Colors.white),
+                      onPressed: () {
+                        // Handle share
+                      },
                     ),
-                  ],
-                ),
-                // Hero image carousel - now uses SliverToBoxAdapter for proper gesture handling
-                SliverImageCarousel(
-                  images: images,
-                  expandedHeight: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 400.0,
-                    medium: 420.0,
-                    expanded: 600.0,
                   ),
-                ),
-                // Product info section
-                SliverSection(
-                  child: _buildProductInfoSliver(
-                    product,
-                    primaryTextColor,
-                    screenSize,
-                  ),
-                ),
-                // Description section
-                SliverSection(
-                  child: _buildDescription(
-                    product,
-                    primaryTextColor,
-                    secondaryTextColor,
-                    screenSize,
-                  ),
-                ),
-                // Seller info section
-                SliverSection(
-                  child: _buildSellerInfo(
-                    product,
-                    primaryTextColor,
-                    secondaryTextColor,
-                    cardBgColor,
-                    screenSize,
-                  ),
-                ),
-                // Reviews section
-                SliverSection(
-                  child: CommentsAndRatingsSection(
-                    itemId: product.id,
-                    itemType: 'product',
-                  ),
-                ),
-                // Bottom padding
-                SliverPadding(
-                  padding: EdgeInsets.only(
-                    bottom: ResponsiveBreakpoints.isCompact(context) ? 112 : 80,
-                  ),
-                ),
-              ],
-            ),
-            // Sticky action bar (only for compact)
-            if (ResponsiveBreakpoints.isCompact(context))
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: StickyActionBar(
-                  price: 'TZS ${product.price.toStringAsFixed(2)}',
-                  actionButtonText: 'Message Seller',
-                  onActionTap: () {
-                    // Handle message seller - dispatch event and wait for ConversationLoaded
-                    context.read<MessageBloc>().add(
-                      GetOrCreateConversationEvent(
-                        otherUserId: product.sellerId,
-                        listingId: product.id,
-                        listingType: 'product',
-                        listingTitle: product.title,
-                        listingImageUrl: product.images.isNotEmpty
-                            ? product.images.first
-                            : null,
-                        listingPrice: 'TZS ${product.price.toStringAsFixed(2)}',
-                      ),
-                    );
-                    // Navigation will happen in BlocListener when ConversationLoaded is emitted
-                  },
+                ],
+              ),
+              // Hero image carousel - now uses SliverToBoxAdapter for proper gesture handling
+              SliverImageCarousel(
+                images: images,
+                expandedHeight: ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 400.0,
+                  medium: 420.0,
+                  expanded: 600.0,
                 ),
               ),
-          ],
-        ),
+              // Product info section
+              SliverSection(
+                child: _buildProductInfoSliver(
+                  product,
+                  primaryTextColor,
+                  screenSize,
+                ),
+              ),
+              // Description section
+              SliverSection(
+                child: _buildDescription(
+                  product,
+                  primaryTextColor,
+                  secondaryTextColor,
+                  screenSize,
+                ),
+              ),
+              // Seller info section
+              SliverSection(
+                child: _buildSellerInfo(
+                  product,
+                  primaryTextColor,
+                  secondaryTextColor,
+                  cardBgColor,
+                  screenSize,
+                ),
+              ),
+              // Reviews section
+              SliverSection(
+                child: CommentsAndRatingsSection(
+                  itemId: product.id,
+                  itemType: 'product',
+                ),
+              ),
+              // Bottom padding
+              SliverPadding(
+                padding: EdgeInsets.only(
+                  bottom: ResponsiveBreakpoints.isCompact(context) ? 112 : 80,
+                ),
+              ),
+            ],
+          ),
+          // Sticky action bar (only for compact)
+          if (ResponsiveBreakpoints.isCompact(context))
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: StickyActionBar(
+                price: 'TZS ${product.price.toStringAsFixed(2)}',
+                actionButtonText: 'Contact Seller',
+                onActionTap: () {
+                  WhatsAppContactHelper.contactSeller(
+                    context: context,
+                    phoneNumber: product.sellerPhone,
+                    message:
+                        'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop kwa bei ya ${product.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi?',
+                  );
+                },
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -1143,101 +1094,54 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                   ? double.infinity
                   : null,
               height: buttonHeight,
-              child: BlocListener<MessageBloc, MessageState>(
-                listener: (context, state) {
-                  if (state is ConversationLoaded) {
-                    // Validate conversation ID before navigation
-                    final conversationId = state.conversation.id;
-                    if (conversationId.isEmpty) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Invalid conversation: missing ID',
-                            style: GoogleFonts.plusJakartaSans(),
-                          ),
-                          backgroundColor: Colors.red,
-                        ),
-                      );
-                      return;
-                    }
-                    // Navigate to chat with the conversation ID
-                    LoggerService.debug(
-                      'Navigating to chat with conversation ID: $conversationId (type: ${conversationId.runtimeType})',
-                    );
-                    Navigator.pushNamed(
-                      context,
-                      '/chat',
-                      arguments: conversationId,
-                    );
-                  } else if (state is MessageError) {
-                    // Show error
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          state.message,
-                          style: GoogleFonts.plusJakartaSans(),
-                        ),
-                        backgroundColor: Colors.red,
-                      ),
-                    );
-                  }
+              child: ElevatedButton(
+                onPressed: () {
+                  WhatsAppContactHelper.contactSeller(
+                    context: context,
+                    phoneNumber: product.sellerPhone,
+                    message:
+                        'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop kwa bei ya ${product.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi?',
+                  );
                 },
-                child: ElevatedButton(
-                  onPressed: () {
-                    // Get or create conversation with seller, including listing details
-                    context.read<MessageBloc>().add(
-                      GetOrCreateConversationEvent(
-                        otherUserId: product.sellerId,
-                        listingId: product.id,
-                        listingType: 'product',
-                        listingTitle: product.title,
-                        listingImageUrl: product.images.isNotEmpty
-                            ? product.images.first
-                            : null,
-                        listingPrice: 'TZS ${product.price.toStringAsFixed(2)}',
-                      ),
-                    );
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryColor,
-                    foregroundColor: kBackgroundColorDark,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(
-                        ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 16.0,
-                          medium: 18.0,
-                          expanded: 20.0,
-                        ),
-                      ),
-                    ),
-                    elevation: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 4.0,
-                      medium: 5.0,
-                      expanded: 6.0,
-                    ),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: ResponsiveBreakpoints.responsiveValue(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: kPrimaryColor,
+                  foregroundColor: kBackgroundColorDark,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(
+                      ResponsiveBreakpoints.responsiveValue(
                         context,
-                        compact: 24.0,
-                        medium: 32.0,
-                        expanded: 36.0,
+                        compact: 16.0,
+                        medium: 18.0,
+                        expanded: 20.0,
                       ),
                     ),
                   ),
-                  child: Text(
-                    'Contact Seller',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 16.0,
-                        medium: 17.0,
-                        expanded: 18.0,
-                      ),
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: 0.5,
+                  elevation: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 4.0,
+                    medium: 5.0,
+                    expanded: 6.0,
+                  ),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: ResponsiveBreakpoints.responsiveValue(
+                      context,
+                      compact: 24.0,
+                      medium: 32.0,
+                      expanded: 36.0,
                     ),
+                  ),
+                ),
+                child: Text(
+                  'Contact Seller',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: ResponsiveBreakpoints.responsiveValue(
+                      context,
+                      compact: 16.0,
+                      medium: 17.0,
+                      expanded: 18.0,
+                    ),
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.5,
                   ),
                 ),
               ),

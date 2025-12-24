@@ -17,8 +17,7 @@ import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.
 import 'package:mwanachuo/features/products/presentation/pages/product_details_page.dart';
 import 'package:mwanachuo/features/products/presentation/pages/post_product_screen.dart';
 import 'package:mwanachuo/features/products/presentation/pages/all_products_page.dart';
-import 'package:mwanachuo/features/messages/presentation/pages/messages_page.dart';
-import 'package:mwanachuo/features/messages/presentation/pages/chat_screen.dart';
+
 import 'package:mwanachuo/features/profile/presentation/pages/profile_page.dart';
 import 'package:mwanachuo/features/profile/presentation/pages/edit_profile_screen.dart';
 import 'package:mwanachuo/features/profile/presentation/pages/my_listings_screen.dart';
@@ -40,7 +39,7 @@ import 'package:mwanachuo/features/shared/notifications/presentation/pages/notif
 import 'package:mwanachuo/features/subscriptions/presentation/pages/subscription_plans_page.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
+
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
 import 'package:mwanachuo/core/widgets/persistent_bottom_nav_wrapper.dart';
@@ -202,15 +201,6 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
     if (type == null) return;
 
     switch (type) {
-      case 'message':
-        final conversationId = notificationData?['conversationId'] as String?;
-        if (conversationId != null && navigatorKey.currentContext != null) {
-          _checkSubscriptionAndNavigateToChat(
-            navigatorKey.currentContext!,
-            conversationId,
-          );
-        }
-        break;
       case 'review':
         final itemId = notificationData?['itemId'] as String?;
         final itemType = notificationData?['itemType'] as String?;
@@ -259,97 +249,10 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
     }
   }
 
-  Future<void> _checkSubscriptionAndNavigateToChat(
-    BuildContext context,
-    String conversationId,
-  ) async {
-    final currentUser = SupabaseConfig.client.auth.currentUser;
-    if (currentUser == null) {
-      // Not logged in, just navigate
-      Navigator.of(context).pushNamed('/chat', arguments: conversationId);
-      return;
-    }
-
-    try {
-      // Check if user is seller/admin
-      final userData = await SupabaseConfig.client
-          .from('users')
-          .select('role')
-          .eq('id', currentUser.id)
-          .single();
-
-      final role = userData['role'] as String?;
-      final isSeller = role == 'seller' || role == 'admin';
-
-      if (!isSeller) {
-        // Buyers can always access messages
-        if (!context.mounted) return;
-        Navigator.of(context).pushNamed('/chat', arguments: conversationId);
-        return;
-      }
-
-      // For sellers, check subscription
-      final canAccess = await SubscriptionMiddleware.canAccessMessages(
-        sellerId: currentUser.id,
-      );
-
-      if (!canAccess) {
-        // Show dialog explaining subscription is required
-        if (!context.mounted) return;
-        showDialog(
-          context: context,
-          builder: (dialogContext) => AlertDialog(
-            title: Text(
-              'Subscription Required',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
-            ),
-            content: Text(
-              'Your subscription has expired. Please renew to view messages.\n\n'
-              'You will continue to receive notifications for new messages.',
-              style: GoogleFonts.plusJakartaSans(),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(dialogContext).pop(),
-                child: Text('Cancel', style: GoogleFonts.plusJakartaSans()),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(dialogContext).pop();
-                  Navigator.pushNamed(context, '/subscription-plans');
-                },
-                style: TextButton.styleFrom(foregroundColor: kPrimaryColor),
-                child: Text(
-                  'Renew Subscription',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        );
-        return;
-      }
-
-      // Subscription active - navigate to chat
-      if (!context.mounted) return;
-      Navigator.of(context).pushNamed('/chat', arguments: conversationId);
-    } catch (e) {
-      // On error, allow navigation (fail open)
-      debugPrint('Error checking subscription for notification: $e');
-      if (!context.mounted) return;
-      Navigator.of(context).pushNamed('/chat', arguments: conversationId);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => sl<AuthBloc>()),
-        BlocProvider(create: (context) => sl<MessageBloc>()),
-      ],
+      providers: [BlocProvider(create: (context) => sl<AuthBloc>())],
       child: MaterialApp(
         navigatorKey: navigatorKey,
         title: 'Mwanachuoshop',
@@ -382,17 +285,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             create: (context) => sl<ProductBloc>(),
             child: const PostProductScreen(),
           ),
-          '/messages': (context) => PersistentBottomNavWrapper(
-            initialIndex: 3, // Updated to 3 for unified nav
-            child: BlocProvider.value(
-              value: context.read<MessageBloc>(),
-              child: const MessagesPage(),
-            ),
-          ),
-          '/chat': (context) => BlocProvider.value(
-            value: context.read<MessageBloc>(),
-            child: const ChatScreen(),
-          ),
+
           '/profile': (context) => PersistentBottomNavWrapper(
             initialIndex: 4, // Updated to 4 for unified nav
             child: const ProfilePage(),

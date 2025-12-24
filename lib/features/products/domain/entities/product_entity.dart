@@ -11,6 +11,7 @@ class ProductEntity extends Equatable {
   final List<String> images;
   final String sellerId;
   final String sellerName;
+  final String sellerPhone;
   final String? sellerAvatar;
   final List<String> universityIds;
   final String location;
@@ -33,6 +34,7 @@ class ProductEntity extends Equatable {
     required this.images,
     required this.sellerId,
     required this.sellerName,
+    required this.sellerPhone,
     this.sellerAvatar,
     required this.universityIds,
     required this.location,
@@ -48,26 +50,25 @@ class ProductEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        description,
-        price,
-        category,
-        condition,
-        images,
-        sellerId,
-        sellerName,
-        sellerAvatar,
-        universityIds,
-        location,
-        isActive,
-        isFeatured,
-        viewCount,
-        rating,
-        reviewCount,
-        createdAt,
-        updatedAt,
-        metadata,
-      ];
+    id,
+    title,
+    description,
+    price,
+    category,
+    condition,
+    images,
+    sellerId,
+    sellerName,
+    sellerAvatar,
+    universityIds,
+    location,
+    isActive,
+    isFeatured,
+    viewCount,
+    rating,
+    reviewCount,
+    createdAt,
+    updatedAt,
+    metadata,
+  ];
 }
-

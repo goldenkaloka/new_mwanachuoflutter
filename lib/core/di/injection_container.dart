@@ -140,15 +140,7 @@ import 'package:mwanachuo/features/accommodations/domain/usecases/increment_view
     as mwanachuo;
 import 'package:mwanachuo/features/accommodations/domain/usecases/update_accommodation.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_bloc.dart';
-import 'package:mwanachuo/features/messages/data/datasources/message_remote_data_source.dart';
-import 'package:mwanachuo/features/messages/data/datasources/message_local_data_source.dart';
-import 'package:mwanachuo/features/messages/data/repositories/message_repository_impl.dart';
-import 'package:mwanachuo/features/messages/domain/repositories/message_repository.dart';
-import 'package:mwanachuo/features/messages/domain/usecases/get_conversations.dart';
-import 'package:mwanachuo/features/messages/domain/usecases/get_messages.dart';
-import 'package:mwanachuo/features/messages/domain/usecases/get_or_create_conversation.dart';
-import 'package:mwanachuo/features/messages/domain/usecases/send_message.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
+
 import 'package:mwanachuo/features/profile/data/datasources/profile_remote_data_source.dart';
 import 'package:mwanachuo/features/profile/data/datasources/profile_local_data_source.dart';
 import 'package:mwanachuo/features/profile/data/repositories/profile_repository_impl.dart';
@@ -217,7 +209,7 @@ Future<void> initializeDependencies() async {
   await _initProductsFeature();
   await _initServicesFeature();
   await _initAccommodationsFeature();
-  await _initMessagesFeature();
+
   await _initProfileFeature();
   await _initDashboardFeature();
   await _initPromotionsFeature();
@@ -722,40 +714,6 @@ Future<void> _initAccommodationsFeature() async {
 // ============================================
 // MESSAGES FEATURE (STANDALONE)
 // ============================================
-Future<void> _initMessagesFeature() async {
-  sl.registerLazySingleton(() => GetConversations(sl()));
-  sl.registerLazySingleton(() => GetOrCreateConversation(sl()));
-  sl.registerLazySingleton(() => GetMessages(sl()));
-  sl.registerLazySingleton(() => SendMessage(sl()));
-
-  sl.registerLazySingleton<MessageRepository>(
-    () => MessageRepositoryImpl(
-      remoteDataSource: sl(),
-      localDataSource: sl(),
-      networkInfo: sl(),
-      sharedPreferences: sl(),
-    ),
-  );
-
-  sl.registerLazySingleton<MessageRemoteDataSource>(
-    () => MessageRemoteDataSourceImpl(supabaseClient: sl()),
-  );
-
-  sl.registerLazySingleton<MessageLocalDataSource>(
-    () => MessageLocalDataSourceImpl(sharedPreferences: sl()),
-  );
-
-  sl.registerFactory(
-    () => MessageBloc(
-      getConversations: sl(),
-      getOrCreateConversation: sl(),
-      getMessages: sl(),
-      sendMessage: sl(),
-      messageRepository: sl(),
-      sharedPreferences: sl(),
-    ),
-  );
-}
 
 // ============================================
 // PROFILE FEATURE (STANDALONE)

@@ -15,6 +15,7 @@ abstract class AuthRepository {
     required String email,
     required String password,
     required String name,
+    required String phone,
   });
 
   /// Sign out current user
@@ -73,9 +74,10 @@ abstract class AuthRepository {
   });
 
   /// Get seller request by ID (Admin only)
-  Future<Either<Failure, SellerRequestEntity>> getSellerRequestById(String requestId);
+  Future<Either<Failure, SellerRequestEntity>> getSellerRequestById(
+    String requestId,
+  );
 
   /// Stream auth state changes
   Stream<Either<Failure, UserEntity?>> watchAuthState();
 }
-

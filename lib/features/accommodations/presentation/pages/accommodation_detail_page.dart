@@ -14,9 +14,7 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
+import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
 
 class AccommodationDetailPage extends StatelessWidget {
   const AccommodationDetailPage({super.key});
@@ -61,7 +59,6 @@ class AccommodationDetailPage extends StatelessWidget {
               limit: 10,
             ),
         ),
-        BlocProvider(create: (context) => sl<MessageBloc>()),
       ],
       child: const _AccommodationDetailView(),
     );
@@ -238,7 +235,10 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                     shape: BoxShape.circle,
                   ),
                   child: IconButton(
-                    icon: const Icon(Icons.favorite_border, color: Colors.white),
+                    icon: const Icon(
+                      Icons.favorite_border,
+                      color: Colors.white,
+                    ),
                     onPressed: () {
                       // Handle favorite
                     },
@@ -336,20 +336,11 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                   'TZS ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType}',
               actionButtonText: 'Contact Owner',
               onActionTap: () {
-                // Handle contact owner
-                context.read<MessageBloc>().add(
-                  GetOrCreateConversationEvent(
-                    otherUserId: accommodation.ownerId,
-                    listingId: accommodation.id,
-                    listingType: 'accommodation',
-                    listingTitle: accommodation.name,
-                    listingImageUrl: accommodation.images.isNotEmpty
-                        ? accommodation.images.first
-                        : null,
-                    listingPrice:
-                        'TZS ${accommodation.price.toStringAsFixed(2)}',
-                    listingPriceType: accommodation.priceType,
-                  ),
+                WhatsAppContactHelper.contactSeller(
+                  context: context,
+                  phoneNumber: accommodation.contactPhone,
+                  message:
+                      'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi?',
                 );
               },
             ),
@@ -668,42 +659,16 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
               ],
             ),
           ),
-          BlocListener<MessageBloc, MessageState>(
-            listener: (context, state) {
-              if (state is ConversationLoaded) {
-                Navigator.pushNamed(
-                  context,
-                  '/chat',
-                  arguments: state.conversation.id,
-                );
-              } else if (state is MessageError) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(state.message, style: GoogleFonts.inter()),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
+          IconButton(
+            onPressed: () {
+              WhatsAppContactHelper.contactSeller(
+                context: context,
+                phoneNumber: accommodation.contactPhone,
+                message:
+                    'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi?',
+              );
             },
-            child: IconButton(
-              onPressed: () {
-                context.read<MessageBloc>().add(
-                  GetOrCreateConversationEvent(
-                    otherUserId: accommodation.ownerId,
-                    listingId: accommodation.id,
-                    listingType: 'accommodation',
-                    listingTitle: accommodation.name,
-                    listingImageUrl: accommodation.images.isNotEmpty
-                        ? accommodation.images.first
-                        : null,
-                    listingPrice:
-                        'TZS ${accommodation.price.toStringAsFixed(2)}',
-                    listingPriceType: accommodation.priceType,
-                  ),
-                );
-              },
-              icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
-            ),
+            icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
           ),
         ],
       ),

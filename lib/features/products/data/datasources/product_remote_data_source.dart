@@ -80,7 +80,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     try {
       dynamic queryBuilder = supabaseClient
           .from(DatabaseConstants.productsTable)
-          .select('*, users!inner(full_name, avatar_url)')
+          .select('*, users!inner(full_name, avatar_url, phone_number)')
           .eq('is_active', true);
 
       // Apply individual parameters first (always apply these)
@@ -124,7 +124,9 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
         }
 
         // Category filter (only if not already set by individual parameter)
-        if (filter.category != null && filter.category!.isNotEmpty && category == null) {
+        if (filter.category != null &&
+            filter.category!.isNotEmpty &&
+            category == null) {
           queryBuilder = queryBuilder.eq('category', filter.category!);
         }
 
@@ -149,7 +151,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           } else if (filter.sortBy == 'price_desc') {
             queryBuilder = queryBuilder.order('price', ascending: false);
           } else {
-            queryBuilder = queryBuilder.order(filter.sortBy!, ascending: filter.sortAscending);
+            queryBuilder = queryBuilder.order(
+              filter.sortBy!,
+              ascending: filter.sortAscending,
+            );
           }
         } else {
           // Default sort by created_at
@@ -167,11 +172,14 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 
       return (response as List)
-          .map((json) => ProductModel.fromJson({
-                ...json,
-                'seller_name': json['users']['full_name'],
-                'seller_avatar': json['users']['avatar_url'],
-              }))
+          .map(
+            (json) => ProductModel.fromJson({
+              ...json,
+              'seller_name': json['users']['full_name'],
+              'seller_phone': json['users']['phone_number'],
+              'seller_avatar': json['users']['avatar_url'],
+            }),
+          )
           .toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
@@ -185,13 +193,14 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     try {
       final response = await supabaseClient
           .from(DatabaseConstants.productsTable)
-          .select('*, users!inner(full_name, avatar_url)')
+          .select('*, users!inner(full_name, avatar_url, phone_number)')
           .eq('id', productId)
           .single();
 
       return ProductModel.fromJson({
         ...response,
         'seller_name': response['users']['full_name'],
+        'seller_phone': response['users']['phone_number'],
         'seller_avatar': response['users']['avatar_url'],
       });
     } on PostgrestException catch (e) {
@@ -215,7 +224,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
 
       dynamic queryBuilder = supabaseClient
           .from(DatabaseConstants.productsTable)
-          .select('*, users!inner(full_name, avatar_url)')
+          .select('*, users!inner(full_name, avatar_url, phone_number)')
           .eq('seller_id', currentUser.id);
 
       // Apply filters from ProductFilter object
@@ -266,7 +275,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           } else if (filter.sortBy == 'price_desc') {
             queryBuilder = queryBuilder.order('price', ascending: false);
           } else {
-            queryBuilder = queryBuilder.order(filter.sortBy!, ascending: filter.sortAscending);
+            queryBuilder = queryBuilder.order(
+              filter.sortBy!,
+              ascending: filter.sortAscending,
+            );
           }
         } else {
           queryBuilder = queryBuilder.order('created_at', ascending: false);
@@ -280,11 +292,14 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 
       return (response as List)
-          .map((json) => ProductModel.fromJson({
-                ...json,
-                'seller_name': json['users']['full_name'],
-                'seller_avatar': json['users']['avatar_url'],
-              }))
+          .map(
+            (json) => ProductModel.fromJson({
+              ...json,
+              'seller_name': json['users']['full_name'],
+              'seller_phone': json['users']['phone_number'],
+              'seller_avatar': json['users']['avatar_url'],
+            }),
+          )
           .toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
@@ -314,7 +329,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       debugPrint('👤 Seller ID: ${currentUser.id}');
       debugPrint('📝 Title: $title');
       debugPrint('📷 Images: ${imageUrls.length}');
-      
+
       // Use transaction function to create product with all user's universities
       // This will also send notifications to users with matching universities
       final result = await supabaseClient.rpc(
@@ -339,13 +354,14 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       // Fetch the created product with user details
       final response = await supabaseClient
           .from(DatabaseConstants.productsTable)
-          .select('*, users!inner(full_name, avatar_url)')
+          .select('*, users!inner(full_name, avatar_url, phone_number)')
           .eq('id', productId)
           .single();
 
       return ProductModel.fromJson({
         ...response,
         'seller_name': response['users']['full_name'],
+        'seller_phone': response['users']['phone_number'],
         'seller_avatar': response['users']['avatar_url'],
       });
     } on PostgrestException catch (e) {
@@ -395,12 +411,13 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           .update(updateData)
           .eq('id', productId)
           .eq('seller_id', currentUser.id)
-          .select('*, users!inner(full_name, avatar_url)')
+          .select('*, users!inner(full_name, avatar_url, phone_number)')
           .single();
 
       return ProductModel.fromJson({
         ...response,
         'seller_name': response['users']['full_name'],
+        'seller_phone': response['users']['phone_number'],
         'seller_avatar': response['users']['avatar_url'],
       });
     } on PostgrestException catch (e) {
@@ -433,9 +450,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
   @override
   Future<void> incrementViewCount(String productId) async {
     try {
-      await supabaseClient.rpc('increment_product_views', params: {
-        'product_id': productId,
-      });
+      await supabaseClient.rpc(
+        'increment_product_views',
+        params: {'product_id': productId},
+      );
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
@@ -443,4 +461,3 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     }
   }
 }
-

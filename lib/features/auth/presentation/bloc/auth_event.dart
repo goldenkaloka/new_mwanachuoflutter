@@ -11,10 +11,7 @@ class SignInEvent extends AuthEvent {
   final String email;
   final String password;
 
-  const SignInEvent({
-    required this.email,
-    required this.password,
-  });
+  const SignInEvent({required this.email, required this.password});
 
   @override
   List<Object> get props => [email, password];
@@ -24,15 +21,17 @@ class SignUpEvent extends AuthEvent {
   final String email;
   final String password;
   final String name;
+  final String phone;
 
   const SignUpEvent({
     required this.email,
     required this.password,
     required this.name,
+    required this.phone,
   });
 
   @override
-  List<Object> get props => [email, password, name];
+  List<Object> get props => [email, password, name, phone];
 }
 
 class SignOutEvent extends AuthEvent {
@@ -47,10 +46,7 @@ class RequestSellerAccessEvent extends AuthEvent {
   final String userId;
   final String reason;
 
-  const RequestSellerAccessEvent({
-    required this.userId,
-    required this.reason,
-  });
+  const RequestSellerAccessEvent({required this.userId, required this.reason});
 
   @override
   List<Object> get props => [userId, reason];
@@ -85,7 +81,11 @@ class CompleteRegistrationEvent extends AuthEvent {
   });
 
   @override
-  List<Object> get props => [userId, primaryUniversityId, subsidiaryUniversityIds];
+  List<Object> get props => [
+    userId,
+    primaryUniversityId,
+    subsidiaryUniversityIds,
+  ];
 }
 
 class CheckRegistrationCompletionEvent extends AuthEvent {
@@ -134,4 +134,3 @@ class LoadSellerRequestsEvent extends AuthEvent {
   @override
   List<Object?> get props => [status];
 }
-

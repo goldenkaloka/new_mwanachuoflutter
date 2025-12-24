@@ -9,6 +9,7 @@ abstract class AuthRemoteDataSource {
     required String email,
     required String password,
     required String name,
+    required String phone,
   });
   Future<void> signOut();
   Future<UserModel?> getCurrentUser();
@@ -84,12 +85,13 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String email,
     required String password,
     required String name,
+    required String phone,
   }) async {
     try {
       final response = await supabase.auth.signUp(
         email: email,
         password: password,
-        data: {'name': name},
+        data: {'name': name, 'phone_number': phone},
       );
 
       if (response.user == null) {
@@ -112,6 +114,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           'id': response.user!.id,
           'email': email,
           'full_name': name,
+          'phone_number': phone,
           'role': 'buyer',
         });
 
@@ -122,6 +125,22 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             .single();
 
         return UserModel.fromJson(newUserData);
+      }
+
+      // If user data exists but phone wasn't set by trigger from metadata
+      if (userData['phone_number'] == null ||
+          (userData['phone_number'] as String).isEmpty) {
+        await supabase
+            .from('users')
+            .update({'phone_number': phone})
+            .eq('id', response.user!.id);
+
+        final updatedData = await supabase
+            .from('users')
+            .select()
+            .eq('id', response.user!.id)
+            .single();
+        return UserModel.fromJson(updatedData);
       }
 
       return UserModel.fromJson(userData);

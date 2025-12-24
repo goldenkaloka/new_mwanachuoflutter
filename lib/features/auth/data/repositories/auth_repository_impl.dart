@@ -49,6 +49,7 @@ class AuthRepositoryImpl implements AuthRepository {
     required String email,
     required String password,
     required String name,
+    required String phone,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
@@ -59,6 +60,7 @@ class AuthRepositoryImpl implements AuthRepository {
         email: email,
         password: password,
         name: name,
+        phone: phone,
       );
       await localDataSource.cacheUser(user);
       return Right(user);
@@ -272,7 +274,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, List<SellerRequestEntity>>> getSellerRequests({String? status}) async {
+  Future<Either<Failure, List<SellerRequestEntity>>> getSellerRequests({
+    String? status,
+  }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
     }
@@ -288,7 +292,9 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, SellerRequestEntity>> getSellerRequestById(String requestId) async {
+  Future<Either<Failure, SellerRequestEntity>> getSellerRequestById(
+    String requestId,
+  ) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
     }

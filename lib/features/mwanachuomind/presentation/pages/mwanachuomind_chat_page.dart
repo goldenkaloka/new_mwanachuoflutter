@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import '../../domain/entities/document.dart';
+import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
+import 'package:flutter_chat_ui/flutter_chat_ui.dart';
+import 'package:flutter_markdown/flutter_markdown.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
+import '../../domain/entities/document.dart' as app;
+import '../../domain/entities/chat_message.dart';
 import '../bloc/bloc.dart';
-import '../widgets/chat_bubble.dart';
 
 class MwanachuomindChatPage extends StatefulWidget {
   const MwanachuomindChatPage({super.key});
@@ -12,113 +17,40 @@ class MwanachuomindChatPage extends StatefulWidget {
 }
 
 class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
-  final TextEditingController _controller = TextEditingController();
-  final ScrollController _scrollController = ScrollController();
-  final FocusNode _focusNode = FocusNode();
+  app.Document? _selectedDocument;
 
-  bool _showDocumentPicker = false;
-  String _documentSearchQuery = '';
-  Document? _selectedDocument;
+  // AI user for chat
+  final _aiUser = const types.User(id: 'ai', firstName: 'Mwanachuomind');
+  final _currentUser = const types.User(id: 'user');
 
-  @override
-  void initState() {
-    super.initState();
-    _controller.addListener(_onTextChanged);
+  List<types.Message> _convertToFlutterChatMessages(
+    List<ChatMessage> messages,
+  ) {
+    return messages
+        .map((msg) {
+          return types.TextMessage(
+            author: msg.sender == MessageSender.user ? _currentUser : _aiUser,
+            createdAt: msg.timestamp.millisecondsSinceEpoch,
+            id: msg.id,
+            text: msg.content,
+          );
+        })
+        .toList()
+        .reversed
+        .toList(); // flutter_chat_ui expects reversed order
   }
 
-  void _onTextChanged() {
-    final text = _controller.text;
-    final cursorPos = _controller.selection.baseOffset;
-
-    if (cursorPos > 0 && cursorPos <= text.length) {
-      // Find the @ symbol before cursor
-      final beforeCursor = text.substring(0, cursorPos);
-      final lastAtIndex = beforeCursor.lastIndexOf('@');
-
-      if (lastAtIndex != -1) {
-        // Check if there's a space between @ and cursor (means mention is complete)
-        final afterAt = beforeCursor.substring(lastAtIndex + 1);
-        if (!afterAt.contains(' ')) {
-          setState(() {
-            _showDocumentPicker = true;
-            _documentSearchQuery = afterAt.toLowerCase();
-          });
-          return;
-        }
-      }
-    }
-
-    if (_showDocumentPicker) {
-      setState(() => _showDocumentPicker = false);
-    }
-  }
-
-  void _selectDocument(Document doc) {
-    final text = _controller.text;
-    final cursorPos = _controller.selection.baseOffset;
-    final beforeCursor = text.substring(0, cursorPos);
-    final lastAtIndex = beforeCursor.lastIndexOf('@');
-
-    if (lastAtIndex != -1) {
-      final afterCursor = cursorPos < text.length
-          ? text.substring(cursorPos)
-          : '';
-      final newText =
-          '${text.substring(0, lastAtIndex)}@[${doc.title}] $afterCursor';
-      _controller.text = newText;
-      _controller.selection = TextSelection.fromPosition(
-        TextPosition(offset: lastAtIndex + doc.title.length + 4),
-      );
-    }
-
-    setState(() {
-      _showDocumentPicker = false;
-      _selectedDocument = doc;
-    });
-    _focusNode.requestFocus();
-  }
-
-  void _sendMessage() {
-    final text = _controller.text.trim();
-    if (text.isEmpty) return;
+  void _handleSendPressed(types.PartialText message) {
+    if (message.text.trim().isEmpty) return;
 
     context.read<MwanachuomindBloc>().add(
-      SendQuery(text, documentId: _selectedDocument?.id),
+      SendQuery(message.text, documentId: _selectedDocument?.id),
     );
-    _controller.clear();
-    setState(() => _selectedDocument = null);
-    _scrollToBottom();
-  }
-
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
-  @override
-  void dispose() {
-    _controller.removeListener(_onTextChanged);
-    _controller.dispose();
-    _scrollController.dispose();
-    _focusNode.dispose();
-    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return BlocConsumer<MwanachuomindBloc, MwanachuomindState>(
-      listener: (context, state) {
-        if (state.status == MwanachuomindStatus.success) {
-          _scrollToBottom();
-        }
-      },
+    return BlocBuilder<MwanachuomindBloc, MwanachuomindState>(
       builder: (context, state) {
         final course = state.selectedCourse ?? state.enrolledCourse;
         if (course == null) {
@@ -127,144 +59,435 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
           );
         }
 
-        final filteredDocs = state.courseDocuments
-            .where(
-              (doc) => doc.title.toLowerCase().contains(_documentSearchQuery),
-            )
-            .toList();
+        final chatMessages = _convertToFlutterChatMessages(state.chatHistory);
 
         return Scaffold(
-          appBar: AppBar(
-            title: Text('${course.code} Assistant'),
-            actions: [
-              if (_selectedDocument != null)
-                Chip(
-                  label: Text(
-                    _selectedDocument!.title,
-                    style: const TextStyle(fontSize: 10),
+          appBar: _buildAppBar(course.code, course.name, state),
+          body: Chat(
+            messages: chatMessages,
+            onSendPressed: _handleSendPressed,
+            user: _currentUser,
+            showUserAvatars: true,
+            showUserNames: true,
+            theme: _buildChatTheme(context),
+            emptyState: _buildEmptyState(course.name),
+            textMessageBuilder: _buildTextMessage,
+          ),
+        );
+      },
+    );
+  }
+
+  PreferredSizeWidget _buildAppBar(
+    String code,
+    String name,
+    MwanachuomindState state,
+  ) {
+    return AppBar(
+      elevation: 0,
+      backgroundColor: kPrimaryColor,
+      foregroundColor: Colors.white,
+      title: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(Icons.psychology, size: 24, color: Colors.white),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Mwanachuomind',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
                   ),
-                  onDeleted: () => setState(() => _selectedDocument = null),
                 ),
+                Text(
+                  code,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 12,
+                    color: Colors.white70,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+      actions: [
+        // Document selector dropdown
+        if (state.courseDocuments.isNotEmpty)
+          PopupMenuButton<app.Document?>(
+            icon: Icon(
+              _selectedDocument != null
+                  ? Icons.article
+                  : Icons.article_outlined,
+              color: Colors.white,
+            ),
+            tooltip: 'Focus on document',
+            onSelected: (doc) => setState(() => _selectedDocument = doc),
+            itemBuilder: (context) => [
+              PopupMenuItem<app.Document?>(
+                value: null,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.all_inclusive,
+                      color: _selectedDocument == null
+                          ? kPrimaryColor
+                          : kTextSecondary,
+                    ),
+                    const SizedBox(width: 12),
+                    const Text('All documents'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              ...state.courseDocuments.map(
+                (doc) => PopupMenuItem<app.Document>(
+                  value: doc,
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.description,
+                        color: _selectedDocument?.id == doc.id
+                            ? kPrimaryColor
+                            : kTextSecondary,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(doc.title, overflow: TextOverflow.ellipsis),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
             ],
           ),
-          body: Stack(
-            children: [
-              Column(
+        if (_selectedDocument != null)
+          Padding(
+            padding: const EdgeInsets.only(right: 8),
+            child: Chip(
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
+              label: Text(
+                _selectedDocument!.title,
+                style: const TextStyle(fontSize: 10, color: Colors.white),
+                overflow: TextOverflow.ellipsis,
+              ),
+              deleteIcon: const Icon(
+                Icons.close,
+                size: 14,
+                color: Colors.white,
+              ),
+              onDeleted: () => setState(() => _selectedDocument = null),
+            ),
+          ),
+        IconButton(
+          icon: const Icon(Icons.info_outline),
+          onPressed: () => _showCourseInfo(),
+        ),
+      ],
+    );
+  }
+
+  DefaultChatTheme _buildChatTheme(BuildContext context) {
+    return DefaultChatTheme(
+      backgroundColor: kBackgroundColorLight,
+      primaryColor: kPrimaryColor,
+      secondaryColor: kSurfaceColorLight,
+      inputBackgroundColor: kSurfaceColorLight,
+      inputTextColor: kTextPrimary,
+      inputBorderRadius: BorderRadius.circular(24),
+      inputMargin: const EdgeInsets.all(16),
+      inputPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      inputTextStyle: GoogleFonts.plusJakartaSans(fontSize: 16),
+      messageBorderRadius: 20,
+      messageInsetsHorizontal: 16,
+      messageInsetsVertical: 12,
+      sentMessageBodyTextStyle: GoogleFonts.plusJakartaSans(
+        color: Colors.white,
+        fontSize: 15,
+        height: 1.5,
+      ),
+      receivedMessageBodyTextStyle: GoogleFonts.plusJakartaSans(
+        color: kTextPrimary,
+        fontSize: 15,
+        height: 1.5,
+      ),
+      userAvatarNameColors: [kPrimaryColor],
+      userNameTextStyle: GoogleFonts.plusJakartaSans(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: kTextSecondary,
+      ),
+      dateDividerTextStyle: GoogleFonts.plusJakartaSans(
+        color: kTextSecondary,
+        fontSize: 12,
+      ),
+      sendButtonIcon: const Icon(Icons.send_rounded, color: kPrimaryColor),
+      attachmentButtonIcon: null,
+      sendButtonMargin: EdgeInsets.zero,
+    );
+  }
+
+  Widget _buildEmptyState(String courseName) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    kPrimaryColor.withValues(alpha: 0.1),
+                    kPrimaryColorLight.withValues(alpha: 0.3),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                Icons.psychology,
+                size: 64,
+                color: kPrimaryColor.withValues(alpha: 0.8),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Hi! I\'m Mwanachuomind 👋',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: kTextPrimary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Your AI study companion for $courseName',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                color: kTextSecondary,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: kInfoColorLight,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Expanded(
-                    child: state.chatHistory.isEmpty
-                        ? Center(
-                            child: Padding(
-                              padding: const EdgeInsets.all(24.0),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.chat_bubble_outline,
-                                    size: 64,
-                                    color: Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  const Text(
-                                    "Ask me anything about the course!",
-                                  ),
-                                  const SizedBox(height: 8),
-                                  Text(
-                                    "Tip: Type @ to reference a specific document",
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          )
-                        : ListView.builder(
-                            controller: _scrollController,
-                            itemCount: state.chatHistory.length,
-                            itemBuilder: (context, index) {
-                              return ChatBubble(
-                                message: state.chatHistory[index],
-                              );
-                            },
-                          ),
+                  const Icon(
+                    Icons.lightbulb_outline,
+                    color: kInfoColor,
+                    size: 20,
                   ),
-                  if (state.status == MwanachuomindStatus.loading)
-                    const Padding(
-                      padding: EdgeInsets.all(8.0),
-                      child: LinearProgressIndicator(),
-                    ),
-                  Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            focusNode: _focusNode,
-                            decoration: InputDecoration(
-                              hintText:
-                                  'Type your question... (@ to mention doc)',
-                              border: OutlineInputBorder(
-                                borderRadius: BorderRadius.circular(24),
-                              ),
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                              ),
-                            ),
-                            onSubmitted: (_) => _sendMessage(),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          icon: const Icon(Icons.send),
-                          color: Theme.of(context).primaryColor,
-                          onPressed: _sendMessage,
-                        ),
-                      ],
+                  const SizedBox(width: 12),
+                  Text(
+                    'Use the document icon to focus answers',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: kInfoColor,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
               ),
-              // Document picker overlay
-              if (_showDocumentPicker && filteredDocs.isNotEmpty)
-                Positioned(
-                  bottom: 70,
-                  left: 8,
-                  right: 60,
-                  child: Material(
-                    elevation: 8,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTextMessage(
+    types.TextMessage message, {
+    required int messageWidth,
+    required bool showName,
+  }) {
+    final isUser = message.author.id == 'user';
+
+    return Container(
+      margin: EdgeInsets.only(left: isUser ? 40 : 0, right: isUser ? 0 : 40),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: isUser ? kPrimaryColor : kSurfaceColorLight,
+        borderRadius: BorderRadius.circular(20).copyWith(
+          bottomRight: isUser ? const Radius.circular(4) : null,
+          bottomLeft: !isUser ? const Radius.circular(4) : null,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: isUser
+          ? Text(
+              message.text,
+              style: GoogleFonts.plusJakartaSans(
+                color: Colors.white,
+                fontSize: 15,
+                height: 1.5,
+              ),
+            )
+          : MarkdownBody(
+              data: message.text,
+              styleSheet: MarkdownStyleSheet(
+                p: GoogleFonts.plusJakartaSans(
+                  color: kTextPrimary,
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+                code: GoogleFonts.jetBrainsMono(
+                  fontSize: 13,
+                  backgroundColor: kBackgroundColorLight,
+                ),
+                codeblockDecoration: BoxDecoration(
+                  color: kBackgroundColorLight,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                h1: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 20,
+                  color: kTextPrimary,
+                ),
+                h2: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: kTextPrimary,
+                ),
+                h3: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 16,
+                  color: kTextPrimary,
+                ),
+                listBullet: GoogleFonts.plusJakartaSans(
+                  fontSize: 15,
+                  color: kTextPrimary,
+                ),
+                strong: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  color: kTextPrimary,
+                ),
+                em: GoogleFonts.plusJakartaSans(
+                  fontStyle: FontStyle.italic,
+                  color: kTextPrimary,
+                ),
+              ),
+            ),
+    );
+  }
+
+  void _showCourseInfo() {
+    final state = context.read<MwanachuomindBloc>().state;
+    final course = state.selectedCourse ?? state.enrolledCourse;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: kSurfaceColorLight,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(12),
-                    child: Container(
-                      constraints: const BoxConstraints(maxHeight: 200),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(Icons.school, color: kPrimaryColor),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        course?.code ?? 'No Course',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      child: ListView.builder(
-                        shrinkWrap: true,
-                        itemCount: filteredDocs.length,
-                        itemBuilder: (context, index) {
-                          final doc = filteredDocs[index];
-                          return ListTile(
-                            dense: true,
-                            leading: const Icon(Icons.description, size: 20),
-                            title: Text(
-                              doc.title,
-                              style: const TextStyle(fontSize: 14),
-                            ),
-                            onTap: () => _selectDocument(doc),
-                          );
-                        },
+                      Text(
+                        course?.name ?? '',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: kTextSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 20),
+            const Divider(),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Icon(Icons.description, color: kTextSecondary, size: 20),
+                const SizedBox(width: 12),
+                Text(
+                  '${state.courseDocuments.length} documents available',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 14,
+                    color: kTextSecondary,
+                  ),
+                ),
+              ],
+            ),
+            if (_selectedDocument != null) ...[
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Icon(
+                    Icons.filter_center_focus,
+                    color: kPrimaryColor,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Focused on: ${_selectedDocument!.title}',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 14,
+                        color: kPrimaryColor,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                   ),
-                ),
+                ],
+              ),
             ],
-          ),
-        );
-      },
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
     );
   }
 }

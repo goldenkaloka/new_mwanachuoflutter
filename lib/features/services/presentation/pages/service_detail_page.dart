@@ -16,9 +16,7 @@ import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_bloc.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_event.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/message_state.dart';
+import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
 
 class ServiceDetailPage extends StatelessWidget {
   const ServiceDetailPage({super.key});
@@ -62,9 +60,7 @@ class ServiceDetailPage extends StatelessWidget {
               limit: 10,
             ),
         ),
-        BlocProvider(
-          create: (context) => sl<MessageBloc>(),
-        ),
+
       ],
       child: const _ServiceDetailView(),
     );
@@ -174,43 +170,7 @@ class _ServiceDetailView extends StatelessWidget {
   ) {
     final images = service.images.isNotEmpty ? service.images : [''];
 
-    return BlocListener<MessageBloc, MessageState>(
-      listener: (context, state) {
-        if (state is ConversationLoaded) {
-          // Validate conversation ID before navigation
-          final conversationId = state.conversation.id;
-          if (conversationId.isEmpty) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Invalid conversation: missing ID',
-                  style: GoogleFonts.inter(),
-                ),
-                backgroundColor: Colors.red,
-              ),
-            );
-            return;
-          }
-          // Navigate to chat with the conversation ID
-          Navigator.pushNamed(
-            context,
-            '/chat',
-            arguments: conversationId,
-          );
-        } else if (state is MessageError) {
-          // Show error
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                state.message,
-                style: GoogleFonts.inter(),
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-      },
-      child: Stack(
+    return Stack(
       children: [
         CustomScrollView(
           slivers: [
@@ -336,18 +296,12 @@ class _ServiceDetailView extends StatelessWidget {
               price: 'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
               actionButtonText: 'Contact Provider',
               onActionTap: () {
-                // Handle contact provider
-                context.read<MessageBloc>().add(
-                      GetOrCreateConversationEvent(
-                        otherUserId: service.providerId,
-                        listingId: service.id,
-                        listingType: 'service',
-                        listingTitle: service.title,
-                        listingImageUrl: service.images.isNotEmpty ? service.images.first : null,
-                        listingPrice: 'TZS ${service.price.toStringAsFixed(2)}',
-                        listingPriceType: service.priceType,
-                      ),
-                    );
+                final message = 'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}. Je tunaweza kuongea zaidi?';
+                WhatsAppContactHelper.contactSeller(
+                  context: context,
+                  phoneNumber: service.contactPhone,
+                  message: message,
+                );
               },
             ),
           ),
@@ -631,17 +585,12 @@ class _ServiceDetailView extends StatelessWidget {
           IconButton(
             onPressed: () {
               // Dispatch event - navigation will be handled by parent BlocListener
-              context.read<MessageBloc>().add(
-                    GetOrCreateConversationEvent(
-                      otherUserId: service.providerId,
-                      listingId: service.id,
-                      listingType: 'service',
-                      listingTitle: service.title,
-                      listingImageUrl: service.images.isNotEmpty ? service.images.first : null,
-                      listingPrice: 'TZS ${service.price.toStringAsFixed(2)}',
-                      listingPriceType: service.priceType,
-                    ),
-                  );
+              final message = 'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}. Je tunaweza kuongea zaidi?';
+              WhatsAppContactHelper.contactSeller(
+                context: context,
+                phoneNumber: service.contactPhone,
+                message: message,
+              );
             },
             icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
           ),

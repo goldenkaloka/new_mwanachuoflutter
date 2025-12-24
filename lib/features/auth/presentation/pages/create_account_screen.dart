@@ -19,6 +19,7 @@ class CreateAccountScreen extends StatefulWidget {
 class _CreateAccountScreenState extends State<CreateAccountScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _phoneController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
   final TextEditingController _confirmPasswordController =
       TextEditingController();
@@ -29,6 +30,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     super.dispose();
@@ -37,11 +39,13 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
   void _handleSignUp() {
     final name = _nameController.text.trim();
     final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
     final password = _passwordController.text.trim();
     final confirmPassword = _confirmPasswordController.text.trim();
 
     if (name.isEmpty ||
         email.isEmpty ||
+        phone.isEmpty ||
         password.isEmpty ||
         confirmPassword.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -83,10 +87,32 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       return;
     }
 
-    // Dispatch sign up event to BLoC
-    debugPrint('Dispatching SignUpEvent with email: $email, name: $name');
+    // Validate Tanzanian phone number
+    // Formats allowed: 0712345678, +255712345678, 255712345678
+    final phoneRegex = RegExp(r'^(?:255|\+255|0)[67]\d{8}$');
+    if (!phoneRegex.hasMatch(phone)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Please enter a valid Tanzanian phone number (e.g. 0712345678)',
+          ),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Pass phone to bloc
+    debugPrint(
+      'Dispatching SignUpEvent with email: $email, name: $name, phone: $phone',
+    );
     context.read<AuthBloc>().add(
-      SignUpEvent(email: email, password: password, name: name),
+      SignUpEvent(
+        email: email,
+        password: password,
+        name: name,
+        phone: phone, // Assuming SignUpEvent handles phone now
+      ),
     );
   }
 
@@ -97,7 +123,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         if (state is RegistrationIncomplete) {
           // Account created but registration incomplete
           // User MUST select universities to continue
-          debugPrint('📝 Account created - redirecting to university selection');
+          debugPrint(
+            '📝 Account created - redirecting to university selection',
+          );
           Navigator.pushReplacementNamed(
             context,
             '/signup-university-selection',
@@ -230,6 +258,23 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                           expanded: 24.0,
                         ),
                       ),
+                      // Phone Number field
+                      _buildTextField(
+                        controller: _phoneController,
+                        label: 'Phone Number',
+                        placeholder: '07XX XXX XXX',
+                        icon: Icons.phone_outlined,
+                        isDarkMode: isDarkMode,
+                        keyboardType: TextInputType.phone,
+                      ),
+                      SizedBox(
+                        height: ResponsiveBreakpoints.responsiveValue(
+                          context,
+                          compact: 16.0,
+                          medium: 20.0,
+                          expanded: 24.0,
+                        ),
+                      ),
                       // Email field
                       _buildTextField(
                         controller: _emailController,
@@ -237,6 +282,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                         placeholder: 'Enter your email',
                         icon: Icons.email_outlined,
                         isDarkMode: isDarkMode,
+                        keyboardType: TextInputType.emailAddress,
                       ),
                       SizedBox(
                         height: ResponsiveBreakpoints.responsiveValue(
@@ -348,11 +394,18 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   backgroundColor: kPrimaryColor,
                                   foregroundColor: kBackgroundColorDark,
                                   shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(24.0), // M3 standard
+                                    borderRadius: BorderRadius.circular(
+                                      24.0,
+                                    ), // M3 standard
                                   ),
                                   elevation: 2.0, // M3 standard elevation
-                                  padding: const EdgeInsets.symmetric(horizontal: 24.0), // M3 standard
-                                  minimumSize: const Size(64, 40), // M3 minimum touch target
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 24.0,
+                                  ), // M3 standard
+                                  minimumSize: const Size(
+                                    64,
+                                    40,
+                                  ), // M3 minimum touch target
                                 ),
                                 child: authState is AuthLoading
                                     ? const SizedBox(
@@ -366,9 +419,12 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                     : Text(
                                         'Create Account',
                                         style: GoogleFonts.plusJakartaSans(
-                                          fontSize: 16.0, // M3 standard button text size
-                                          fontWeight: FontWeight.w600, // M3 medium weight
-                                          letterSpacing: 0.1, // M3 standard tracking
+                                          fontSize:
+                                              16.0, // M3 standard button text size
+                                          fontWeight: FontWeight
+                                              .w600, // M3 medium weight
+                                          letterSpacing:
+                                              0.1, // M3 standard tracking
                                         ),
                                       ),
                               ),
@@ -442,6 +498,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
     bool isObscure = false,
     required bool isDarkMode,
     Widget? suffixIcon,
+    TextInputType? keyboardType,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -472,9 +529,9 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         TextFormField(
           controller: controller,
           obscureText: isObscure,
-          keyboardType: isPassword
-              ? TextInputType.text
-              : TextInputType.emailAddress,
+          keyboardType:
+              keyboardType ??
+              (isPassword ? TextInputType.visiblePassword : TextInputType.text),
           style: GoogleFonts.plusJakartaSans(
             color: isDarkMode ? Colors.white : kTextPrimary,
             fontSize: ResponsiveBreakpoints.responsiveValue(
