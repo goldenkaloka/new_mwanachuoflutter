@@ -3,7 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_chat_types/flutter_chat_types.dart' as types;
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
-import 'package:flutter_markdown/flutter_markdown.dart';
+
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import '../../domain/entities/document.dart' as app;
@@ -87,7 +87,7 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
                   showUserNames: true,
                   theme: _buildChatTheme(context),
                   emptyState: _buildEmptyState(course.name),
-                  textMessageBuilder: _buildTextMessage,
+
                   customBottomWidget:
                       const SizedBox.shrink(), // Using our own input
                 ),
@@ -337,102 +337,6 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
           ],
         ),
       ),
-    );
-  }
-
-  Widget _buildTextMessage(
-    types.TextMessage message, {
-    required int messageWidth,
-    required bool showName,
-  }) {
-    final isUser = message.author.id == 'user';
-
-    return Row(
-      mainAxisAlignment: isUser
-          ? MainAxisAlignment.end
-          : MainAxisAlignment.start,
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        // Message Bubble
-        Flexible(
-          child: Container(
-            constraints: BoxConstraints(
-              maxWidth: messageWidth.toDouble() * 0.85,
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: BoxDecoration(
-              color: isUser ? kPrimaryColor : kSurfaceColorLight,
-              borderRadius: BorderRadius.circular(20).copyWith(
-                bottomRight: isUser ? const Radius.circular(4) : null,
-                bottomLeft: !isUser ? const Radius.circular(4) : null,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 5,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            // Use Column with mainAxisSize min to ensure the container shrinks to fit content
-            // especially important for MarkdownBody which can be greedy
-            child: isUser
-                ? Text(
-                    message.text,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 15,
-                      height: 1.5,
-                    ),
-                  )
-                : MarkdownBody(
-                    data: message.text,
-                    styleSheet: MarkdownStyleSheet(
-                      p: GoogleFonts.plusJakartaSans(
-                        color: kTextPrimary,
-                        fontSize: 15,
-                        height: 1.5,
-                      ),
-                      code: GoogleFonts.jetBrainsMono(
-                        fontSize: 13,
-                        backgroundColor: kBackgroundColorLight,
-                      ),
-                      codeblockDecoration: BoxDecoration(
-                        color: kBackgroundColorLight,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      h1: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 20,
-                        color: kTextPrimary,
-                      ),
-                      h2: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                        color: kTextPrimary,
-                      ),
-                      h3: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                        color: kTextPrimary,
-                      ),
-                      listBullet: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        color: kTextPrimary,
-                      ),
-                      strong: GoogleFonts.plusJakartaSans(
-                        fontWeight: FontWeight.bold,
-                        color: kTextPrimary,
-                      ),
-                      em: GoogleFonts.plusJakartaSans(
-                        fontStyle: FontStyle.italic,
-                        color: kTextPrimary,
-                      ),
-                    ),
-                  ),
-          ),
-        ),
-      ],
     );
   }
 
