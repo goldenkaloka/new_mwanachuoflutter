@@ -440,9 +440,7 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
                         ),
                         decoration: BoxDecoration(
                           color: kPrimaryColor.withValues(alpha: 0.1),
-                          borderRadius: const BorderRadius.vertical(
-                            top: Radius.circular(8),
-                          ),
+                          borderRadius: BorderRadius.circular(6),
                         ),
                         child: Text(
                           _getTypeLabel(result.type),

@@ -1748,7 +1748,9 @@ class _HomePageState extends State<HomePage> {
               vertical: 8.0,
             ),
             leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(8),
+              ),
               child: service.images.isNotEmpty
                   ? CachedNetworkImage(
                       imageUrl: service.images.first,
