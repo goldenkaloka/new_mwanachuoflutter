@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 import 'package:mwanachuo/features/shared/categories/domain/entities/category_entity.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_state.dart';
@@ -61,7 +62,7 @@ class CategoryChips extends StatelessWidget {
 
   IconData _getIconForCategory(String? iconName) {
     if (iconName == null) return Icons.category_outlined;
-    
+
     // Map icon names to Material icons
     final iconMap = {
       'book': Icons.book_outlined,
@@ -226,15 +227,12 @@ class _CategoryChipsSkeleton extends StatelessWidget {
         child: Row(
           children: List.generate(
             5,
-            (index) => Padding(
-              padding: const EdgeInsets.only(right: 12),
-              child: Container(
+            (index) => const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: ShimmerLoading(
                 width: 100,
                 height: 40,
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                  borderRadius: BorderRadius.circular(24),
-                ),
+                borderRadius: BorderRadius.all(Radius.circular(24)),
               ),
             ),
           ),
@@ -243,4 +241,3 @@ class _CategoryChipsSkeleton extends StatelessWidget {
     );
   }
 }
-

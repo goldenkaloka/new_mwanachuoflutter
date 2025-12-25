@@ -4,7 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../bloc/bloc.dart';
 import 'mwanachuomind_chat_page.dart';
-import 'admin_upload_page.dart'; // Will implement next
+import 'admin_upload_page.dart';
+import '../widgets/mwanachuomind_shimmer.dart';
 
 class CourseSelectionPage extends StatefulWidget {
   const CourseSelectionPage({super.key});
@@ -256,7 +257,7 @@ class _CourseSelectionPageState extends State<CourseSelectionPage> {
         builder: (context, state) {
           if (state.status == MwanachuomindStatus.loading &&
               state.courses.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const MwanachuomindShimmer();
           }
 
           if (state.status == MwanachuomindStatus.failure) {

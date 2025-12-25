@@ -26,6 +26,7 @@ import 'package:mwanachuo/features/profile/presentation/pages/account_settings_s
 import 'package:mwanachuo/features/shared/listings/presentation/pages/listings_page.dart';
 import 'package:mwanachuo/features/shared/search/presentation/pages/search_results_page.dart';
 import 'package:mwanachuo/features/shared/search/presentation/cubit/search_cubit.dart';
+import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
 import 'package:mwanachuo/features/shared/notifications/presentation/pages/notifications_page.dart';
 import 'package:mwanachuo/features/dashboard/presentation/pages/seller_dashboard_screen.dart';
 import 'package:mwanachuo/features/accommodations/presentation/pages/student_housing_screen.dart';
@@ -352,8 +353,14 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             create: (context) => sl<PromotionCubit>(),
             child: const CreatePromotionScreen(),
           ),
-          '/create-service': (context) => BlocProvider(
-            create: (context) => sl<ServiceBloc>(),
+          '/create-service': (context) => MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (context) => sl<ServiceBloc>()),
+              BlocProvider(
+                create: (context) =>
+                    sl<CategoryCubit>()..loadServiceCategories(),
+              ),
+            ],
             child: const CreateServiceScreen(),
           ),
           '/create-accommodation': (context) => BlocProvider(

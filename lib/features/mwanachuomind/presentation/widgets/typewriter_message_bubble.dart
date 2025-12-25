@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -79,31 +80,42 @@ class _TypewriterMessageBubbleState extends State<TypewriterMessageBubble> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: kSurfaceColorLight,
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: ClipRRect(
         borderRadius: BorderRadius.circular(
           20,
         ).copyWith(bottomLeft: const Radius.circular(0)),
-      ),
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: MarkdownBody(
-        data: _displayedText,
-        selectable: true,
-        styleSheet: MarkdownStyleSheet(
-          p: GoogleFonts.plusJakartaSans(
-            color: kTextPrimary,
-            fontSize: 15,
-            height: 1.5,
-          ),
-          code: GoogleFonts.firaCode(
-            backgroundColor: Colors.grey[200],
-            color: kTextPrimary,
-            fontSize: 14,
-          ),
-          codeblockDecoration: BoxDecoration(
-            color: Colors.grey[200],
-            borderRadius: BorderRadius.circular(8),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(
+                20,
+              ).copyWith(bottomLeft: const Radius.circular(0)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
+            ),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: MarkdownBody(
+              data: _displayedText,
+              selectable: true,
+              styleSheet: MarkdownStyleSheet(
+                p: GoogleFonts.plusJakartaSans(
+                  color: kTextPrimary,
+                  fontSize: 15,
+                  height: 1.5,
+                ),
+                code: GoogleFonts.firaCode(
+                  backgroundColor: Colors.white.withValues(alpha: 0.3),
+                  color: kTextPrimary,
+                  fontSize: 14,
+                ),
+                codeblockDecoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
           ),
         ),
       ),

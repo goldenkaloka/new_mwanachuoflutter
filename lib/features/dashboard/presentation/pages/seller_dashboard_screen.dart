@@ -10,6 +10,7 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:mwanachuo/features/dashboard/presentation/bloc/dashboard_state.dart';
 import 'package:mwanachuo/core/widgets/app_background.dart';
+import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 
 class SellerDashboardScreen extends StatelessWidget {
   const SellerDashboardScreen({super.key});
@@ -87,16 +88,7 @@ class _DashboardViewState extends State<_DashboardView> {
         child: BlocBuilder<DashboardCubit, DashboardState>(
           builder: (context, state) {
             if (state is DashboardLoading) {
-              return const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircularProgressIndicator(color: kPrimaryColor),
-                    SizedBox(height: 16),
-                    Text('Loading dashboard...'),
-                  ],
-                ),
-              );
+              return const DashboardSkeleton();
             }
 
             if (state is DashboardError) {

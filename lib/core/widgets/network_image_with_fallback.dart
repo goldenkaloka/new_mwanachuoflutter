@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 
 class NetworkImageWithFallback extends StatelessWidget {
   final String imageUrl;
@@ -26,51 +27,27 @@ class NetworkImageWithFallback extends StatelessWidget {
 
   /// Optimize image URL for Supabase Storage (if applicable)
   /// Adds resize parameters to reduce image size
+  /// Optimize image URL for Supabase Storage (if applicable)
+  /// Note: Transformation requires specific bucket configuration or Pro plan
   String _getOptimizedImageUrl(String url) {
-    final uri = Uri.tryParse(url);
-    if (uri == null) return url;
-
-    // Check if it's a Supabase Storage URL
-    if (uri.host.contains('supabase') || uri.host.contains('storage')) {
-      final params = <String, String>{};
-
-      // Add resize parameters if dimensions are specified
-      if (maxWidth != null) params['width'] = maxWidth.toString();
-      if (maxHeight != null) params['height'] = maxHeight.toString();
-
-      // Add quality parameter for better compression
-      if (params.isNotEmpty) {
-        params['quality'] = '80'; // 80% quality for good balance
-        params['resize'] = 'cover'; // Maintain aspect ratio
-      }
-
-      if (params.isEmpty) return url;
-
-      // Build optimized URL with query parameters
-      return uri
-          .replace(queryParameters: {...uri.queryParameters, ...params})
-          .toString();
-    }
-
+    // Temporarily disabled transformation as it might cause 403 errors if not configured
     return url;
   }
 
   @override
   Widget build(BuildContext context) {
-    // Handle empty or invalid URLs
-    final uri = Uri.tryParse(imageUrl);
+    // Trim URL and relaxed check: just check if it's not empty and starts with http/https
+    final trimmedUrl = imageUrl.trim();
     final isValidUrl =
-        imageUrl.isNotEmpty &&
-        uri != null &&
-        uri.hasAbsolutePath &&
-        (uri.scheme == 'http' || uri.scheme == 'https');
+        trimmedUrl.isNotEmpty &&
+        (trimmedUrl.startsWith('http://') || trimmedUrl.startsWith('https://'));
 
     if (!isValidUrl) {
       return _buildPlaceholder();
     }
 
-    // Get optimized URL
-    final optimizedUrl = _getOptimizedImageUrl(imageUrl);
+    // Get optimized URL (currently returns raw URL)
+    final optimizedUrl = _getOptimizedImageUrl(trimmedUrl);
 
     // Helper function to safely convert double to int
     int? safeToInt(dynamic value) {
@@ -100,19 +77,10 @@ class NetworkImageWithFallback extends StatelessWidget {
         memCacheHeight: maxHeight ?? safeToInt(height),
         // Placeholder while loading
         placeholder: usePlaceholder
-            ? (context, url) => Container(
-                width: width,
-                height: height,
-                decoration: BoxDecoration(
-                  color: kPrimaryColor.withValues(alpha: 0.1),
-                  borderRadius: borderRadius,
-                ),
-                child: const Center(
-                  child: CircularProgressIndicator(
-                    strokeWidth: 2,
-                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white70),
-                  ),
-                ),
+            ? (context, url) => ShimmerLoading(
+                width: width ?? double.infinity,
+                height: height ?? double.infinity,
+                borderRadius: borderRadius,
               )
             : null,
         // Error widget
@@ -120,10 +88,6 @@ class NetworkImageWithFallback extends StatelessWidget {
         // Fade in animation
         fadeInDuration: const Duration(milliseconds: 200),
         fadeOutDuration: const Duration(milliseconds: 100),
-        // Cache configuration
-        cacheKey: optimizedUrl, // Use optimized URL as cache key
-        maxWidthDiskCache: maxWidth ?? 1000, // Limit disk cache size
-        maxHeightDiskCache: maxHeight ?? 1000,
       ),
     );
   }
@@ -164,7 +128,7 @@ class NetworkImageWithFallback extends StatelessWidget {
           borderRadius: borderRadius,
         ),
         child: Icon(
-          Icons.person,
+          Icons.image_outlined,
           color: Colors.white.withValues(alpha: 0.9),
           size: _calculateIconSize(width, height),
         ),

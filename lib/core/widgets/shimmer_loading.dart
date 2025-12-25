@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 
 /// A base shimmer loading widget with consistent styling
@@ -59,35 +60,27 @@ class ProductCardSkeleton extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         // Image skeleton
-        const Expanded(
+        const AspectRatio(
+          aspectRatio: 0.7,
           child: ShimmerLoading(
             width: double.infinity,
             height: double.infinity,
-            borderRadius: BorderRadius.vertical(
-              top: Radius.circular(kRadiusMd),
-            ),
+            borderRadius: BorderRadius.all(Radius.circular(kRadiusSm)),
           ),
         ),
 
         Padding(
-          padding: const EdgeInsets.all(kSpacingMd),
+          padding: const EdgeInsets.all(4.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Title skeleton
-              const ShimmerLoading(width: double.infinity, height: 16),
-              const SizedBox(height: kSpacingSm),
+              const ShimmerLoading(width: double.infinity, height: 12),
+              const SizedBox(height: 2),
               // Price skeleton
               ShimmerLoading(
-                width: 100,
-                height: 16,
-                borderRadius: BorderRadius.circular(kRadiusSm),
-              ),
-              const SizedBox(height: kSpacingSm),
-              // Category skeleton
-              ShimmerLoading(
-                width: 80,
-                height: 14,
+                width: 60,
+                height: 12,
                 borderRadius: BorderRadius.circular(kRadiusSm),
               ),
             ],
@@ -217,23 +210,20 @@ class ProductGridSkeleton extends StatelessWidget {
 
   const ProductGridSkeleton({
     super.key,
-    this.itemCount = 6,
-    this.crossAxisCount = 2,
+    this.itemCount = 9,
+    this.crossAxisCount = 3,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GridView.builder(
+    return MasonryGridView.count(
+      crossAxisCount: crossAxisCount,
+      mainAxisSpacing: 4.0,
+      crossAxisSpacing: 4.0,
+      itemCount: itemCount,
+      padding: const EdgeInsets.all(0),
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      padding: const EdgeInsets.all(kSpacingLg),
-      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: crossAxisCount,
-        childAspectRatio: 0.75,
-        crossAxisSpacing: kSpacingLg,
-        mainAxisSpacing: kSpacingLg,
-      ),
-      itemCount: itemCount,
       itemBuilder: (context, index) => const ProductCardSkeleton(),
     );
   }
@@ -443,6 +433,229 @@ class ConversationSkeleton extends StatelessWidget {
                 borderRadius: BorderRadius.circular(kRadiusFull),
               ),
             ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Dashboard skeleton loader
+///
+/// A shimmer placeholder for the seller dashboard.
+class DashboardSkeleton extends StatelessWidget {
+  const DashboardSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(kSpacingLg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Section Title
+          const ShimmerLoading(width: 150, height: 24),
+          const SizedBox(height: kSpacingMd),
+
+          // Recent Activity Card
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              children: List.generate(
+                3,
+                (index) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Row(
+                    children: [
+                      ShimmerLoading(
+                        width: 40,
+                        height: 40,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            ShimmerLoading(width: 120, height: 16),
+                            SizedBox(height: 4),
+                            ShimmerLoading(width: 180, height: 12),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: kSpacingLg),
+
+          // Summary Card
+          Container(
+            padding: const EdgeInsets.all(24),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const ShimmerLoading(width: 120, height: 20),
+                const SizedBox(height: 24),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: List.generate(
+                    3,
+                    (index) => const Column(
+                      children: [
+                        ShimmerLoading(width: 40, height: 28),
+                        SizedBox(height: 8),
+                        ShimmerLoading(width: 60, height: 12),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                const ShimmerLoading(width: double.infinity, height: 48),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: kSpacingLg),
+
+          // Quick Actions Row
+          Row(
+            children: [
+              Expanded(
+                child: ShimmerLoading(
+                  width: double.infinity,
+                  height: 60,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ShimmerLoading(
+                  width: double.infinity,
+                  height: 60,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: ShimmerLoading(
+                  width: double.infinity,
+                  height: 60,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ShimmerLoading(
+                  width: double.infinity,
+                  height: 60,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Full Profile Page Skeleton
+class ProfilePageSkeleton extends StatelessWidget {
+  const ProfilePageSkeleton({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: kSpacingMd),
+      child: Column(
+        children: [
+          const SizedBox(height: 48), // Top padding
+          // Profile Header Part
+          Center(
+            child: Column(
+              children: [
+                ShimmerLoading(
+                  width: 120,
+                  height: 120,
+                  borderRadius: BorderRadius.circular(kRadiusFull),
+                ),
+                const SizedBox(height: kSpacingLg),
+                ShimmerLoading(
+                  width: 200,
+                  height: 24,
+                  borderRadius: BorderRadius.circular(kRadiusSm),
+                ),
+                const SizedBox(height: kSpacingSm),
+                ShimmerLoading(
+                  width: 150,
+                  height: 16,
+                  borderRadius: BorderRadius.circular(kRadiusSm),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+
+          // Menu Items
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              border: Border.all(color: Colors.grey.withValues(alpha: 0.1)),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              children: List.generate(
+                5,
+                (index) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  child: Row(
+                    children: [
+                      ShimmerLoading(
+                        width: 40,
+                        height: 40,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      const SizedBox(width: 16),
+                      const Expanded(
+                        child: ShimmerLoading(
+                          width: double.infinity,
+                          height: 16,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      ShimmerLoading(
+                        width: 24,
+                        height: 24,
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          // Logout Button
+          ShimmerLoading(
+            width: double.infinity,
+            height: 48,
+            borderRadius: BorderRadius.circular(24),
           ),
         ],
       ),

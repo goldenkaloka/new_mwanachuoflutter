@@ -14,7 +14,8 @@ class StorageConstants {
   static const String reviewStatsCachePrefix = 'review_stats_cache';
 
   // Search history
-  static const String searchHistoryKey = 'search_history';
+  static String searchHistoryKey = 'search_history';
+  static const String searchResultsCacheKey = 'search_results_cache';
 
   // Notifications
   static const String notificationsCacheKey = 'notifications_cache';

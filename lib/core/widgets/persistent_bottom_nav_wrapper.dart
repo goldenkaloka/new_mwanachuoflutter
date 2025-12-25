@@ -251,8 +251,8 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 2,
-          icon: Icons.psychology_rounded,
-          activeIcon: Icons.psychology_rounded,
+          icon: Icons.auto_awesome_outlined,
+          activeIcon: Icons.auto_awesome,
           label: 'Mind',
         ),
         buildNavItem(
@@ -280,8 +280,8 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 2,
-          icon: Icons.psychology_rounded,
-          activeIcon: Icons.psychology_rounded,
+          icon: Icons.auto_awesome_outlined,
+          activeIcon: Icons.auto_awesome,
           label: 'Mind',
         ),
         buildNavItem(
@@ -313,8 +313,8 @@ class _PersistentBottomNavWrapperState
         ),
         buildNavItem(
           index: 2,
-          icon: Icons.psychology_rounded,
-          activeIcon: Icons.psychology_rounded,
+          icon: Icons.auto_awesome_outlined,
+          activeIcon: Icons.auto_awesome,
           label: 'Mind',
         ),
         buildNavItem(
@@ -336,41 +336,6 @@ class _PersistentBottomNavWrapperState
     bool showBadge = false,
     bool isSpecial = false,
   }) {
-    // Special styling for MwanachuoMind (Index 2)
-    if (isSpecial) {
-      return Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: isActive
-              ? activeColor.withValues(alpha: 0.1)
-              : Colors.transparent,
-          borderRadius: BorderRadius.circular(30), // Fully round
-          border: Border.all(
-            color: isActive ? Colors.blue : Colors.grey.withValues(alpha: 0.3),
-            width: 2.5, // Thicker border
-          ),
-        ),
-        child: isActive
-            ? ShaderMask(
-                shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Colors.blue, Colors.red],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ).createShader(bounds),
-                child: const Icon(
-                  Icons.auto_awesome,
-                  size: 28,
-                  color: Colors.white,
-                ),
-              )
-            : Icon(
-                Icons.auto_awesome,
-                size: 28,
-                color: isDarkMode ? Colors.grey[500] : Colors.grey[600],
-              ),
-      );
-    }
-
     final iconWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 200),
       padding: const EdgeInsets.all(6),

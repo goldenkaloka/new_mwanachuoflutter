@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/services/push_notification_service.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
+import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
@@ -12,7 +13,8 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_event.dart';
-import 'package:mwanachuo/features/profile/presentation/bloc/profile_state.dart' as profile_state;
+import 'package:mwanachuo/features/profile/presentation/bloc/profile_state.dart'
+    as profile_state;
 import 'package:mwanachuo/features/profile/domain/entities/user_profile_entity.dart';
 
 class ProfilePage extends StatefulWidget {
@@ -34,7 +36,7 @@ class _ProfilePageState extends State<ProfilePage> {
       _hasLoaded = true;
       return; // Initial load is handled by BlocProvider
     }
-    
+
     // Only reload when returning from another route
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
@@ -42,7 +44,7 @@ class _ProfilePageState extends State<ProfilePage> {
         if (route != null && route.isCurrent) {
           final bloc = context.read<ProfileBloc>();
           // Only reload if not already loading and we have a loaded state
-          if (bloc.state is! profile_state.ProfileLoading && 
+          if (bloc.state is! profile_state.ProfileLoading &&
               bloc.state is profile_state.ProfileLoaded) {
             bloc.add(LoadMyProfileEvent());
           }
@@ -85,91 +87,83 @@ class _ProfilePageState extends State<ProfilePage> {
           listener: (context, state) {
             // Reload profile when it's updated (e.g., after editing)
             if (state is profile_state.ProfileUpdated) {
-              debugPrint('🔄 Profile updated, reloading profile and refreshing auth state');
+              debugPrint(
+                '🔄 Profile updated, reloading profile and refreshing auth state',
+              );
               // Refresh AuthBloc to update user data (including avatar) in homepage
               context.read<AuthBloc>().add(const CheckAuthStatusEvent());
               context.read<ProfileBloc>().add(LoadMyProfileEvent());
             }
           },
           child: BlocBuilder<ProfileBloc, profile_state.ProfileState>(
-          builder: (context, state) {
-            if (state is profile_state.ProfileLoading) {
-              return Scaffold(
-                backgroundColor: isDarkMode
-                    ? kBackgroundColorDark
-                    : kBackgroundColorLight,
-                body: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const CircularProgressIndicator(color: kPrimaryColor),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Loading profile...',
-                        style: TextStyle(color: secondaryTextColor),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }
+            builder: (context, state) {
+              if (state is profile_state.ProfileLoading) {
+                return Scaffold(
+                  backgroundColor: isDarkMode
+                      ? kBackgroundColorDark
+                      : kBackgroundColorLight,
+                  body: const ProfilePageSkeleton(),
+                );
+              }
 
-            if (state is profile_state.ProfileError) {
-              return Scaffold(
-                backgroundColor: isDarkMode
-                    ? kBackgroundColorDark
-                    : kBackgroundColorLight,
-                body: Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Icon(
-                        Icons.error_outline,
-                        size: 64,
-                        color: Colors.red,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        state.message,
-                        textAlign: TextAlign.center,
-                        style: TextStyle(color: secondaryTextColor),
-                      ),
-                      const SizedBox(height: 16),
-                      ElevatedButton(
-                        onPressed: () {
-                          context.read<ProfileBloc>().add(LoadMyProfileEvent());
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: kPrimaryColor,
-                          foregroundColor: kBackgroundColorDark,
+              if (state is profile_state.ProfileError) {
+                return Scaffold(
+                  backgroundColor: isDarkMode
+                      ? kBackgroundColorDark
+                      : kBackgroundColorLight,
+                  body: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        const Icon(
+                          Icons.error_outline,
+                          size: 64,
+                          color: Colors.red,
                         ),
-                        child: const Text('Retry'),
-                      ),
-                    ],
+                        const SizedBox(height: 16),
+                        Text(
+                          state.message,
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: secondaryTextColor),
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () {
+                            context.read<ProfileBloc>().add(
+                              LoadMyProfileEvent(),
+                            );
+                          },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: kPrimaryColor,
+                            foregroundColor: kBackgroundColorDark,
+                          ),
+                          child: const Text('Retry'),
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              );
-            }
+                );
+              }
 
-            if (state is profile_state.ProfileLoaded) {
-              return _buildProfileUI(
-                context,
-                isDarkMode,
-                primaryTextColor,
-                secondaryTextColor,
-                state.profile,
-              );
-            }
+              if (state is profile_state.ProfileLoaded) {
+                return _buildProfileUI(
+                  context,
+                  isDarkMode,
+                  primaryTextColor,
+                  secondaryTextColor,
+                  state.profile,
+                );
+              }
 
-            return Scaffold(
-              backgroundColor: isDarkMode
-                  ? kBackgroundColorDark
-                  : kBackgroundColorLight,
-              body: const Center(child: Text('Unexpected state')),
-            );
-          },
+              return Scaffold(
+                backgroundColor: isDarkMode
+                    ? kBackgroundColorDark
+                    : kBackgroundColorLight,
+                body: const Center(child: Text('Unexpected state')),
+              );
+            },
+          ),
         ),
-      ),
       ),
     );
   }
@@ -201,7 +195,8 @@ class _ProfilePageState extends State<ProfilePage> {
               Expanded(
                 child: SingleChildScrollView(
                   padding: EdgeInsets.only(
-                    bottom: ResponsiveBreakpoints.isCompact(context) ||
+                    bottom:
+                        ResponsiveBreakpoints.isCompact(context) ||
                             ResponsiveBreakpoints.isMedium(context)
                         ? 80.0 // Space for bottom navbar
                         : 0.0,
@@ -784,7 +779,8 @@ class _ProfilePageState extends State<ProfilePage> {
                           final authBloc = context.read<AuthBloc>();
                           Navigator.pop(context);
                           // Unregister device token before logout (await to ensure it completes)
-                          await PushNotificationService().unregisterDeviceToken();
+                          await PushNotificationService()
+                              .unregisterDeviceToken();
                           // Dispatch sign out event to BLoC
                           authBloc.add(const SignOutEvent());
                         },

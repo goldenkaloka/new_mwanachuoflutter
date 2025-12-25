@@ -227,6 +227,7 @@ class _ServiceDetailView extends StatelessWidget {
             // Hero image carousel - now uses SliverToBoxAdapter for proper gesture handling
             SliverImageCarousel(
               images: images,
+              heroTagPrefix: 'service_${service.id}',
               expandedHeight: ResponsiveBreakpoints.responsiveValue(
                 context,
                 compact: 400.0,

@@ -40,6 +40,26 @@ class SearchResultModel extends SearchResultEntity {
     );
   }
 
+  /// Create a SearchResultModel from JSON stored in cache (includes type)
+  factory SearchResultModel.fromCacheJson(Map<String, dynamic> json) {
+    return SearchResultModel(
+      id: json['id'] as String,
+      title: json['title'] as String,
+      description: json['description'] as String,
+      type: _stringToType(json['type'] as String),
+      imageUrl: json['image_url'] as String?,
+      price: (json['price'] as num?)?.toDouble(),
+      rating: (json['rating'] as num?)?.toDouble(),
+      reviewCount: json['review_count'] as int?,
+      location: json['location'] as String?,
+      sellerId: json['seller_id'] as String?,
+      sellerName: json['seller_name'] as String?,
+      createdAt: json['created_at'] != null
+          ? DateTime.parse(json['created_at'] as String)
+          : null,
+    );
+  }
+
   static String? _extractImageUrl(Map<String, dynamic> json) {
     // Try different fields where image might be stored
     if (json['image_url'] != null) {
@@ -83,6 +103,19 @@ class SearchResultModel extends SearchResultEntity {
         return 'service';
       case SearchResultType.accommodation:
         return 'accommodation';
+    }
+  }
+
+  static SearchResultType _stringToType(String type) {
+    switch (type) {
+      case 'product':
+        return SearchResultType.product;
+      case 'service':
+        return SearchResultType.service;
+      case 'accommodation':
+        return SearchResultType.accommodation;
+      default:
+        return SearchResultType.product;
     }
   }
 }

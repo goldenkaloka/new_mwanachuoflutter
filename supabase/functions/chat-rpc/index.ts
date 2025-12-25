@@ -30,31 +30,17 @@ serve(async (req) => {
     // 2. Search Docs - filter by document_id if provided
     let documents: any[] = [];
     
-    if (document_id) {
-      // If a specific document is mentioned, search only within that document's chunks
-      const { data, error } = await supabase.rpc('match_documents', {
-        query_embedding: queryEmbedding,
-        match_threshold: 0.3, // Lower threshold for specific doc search
-        match_count: 10, // Get more chunks from the specific doc
-        filter_course_id: course_id
-      });
-      
-      if (error) throw error;
-      
-      // Filter to only chunks from the specific document
-      documents = (data || []).filter((d: any) => d.document_id === document_id);
-    } else {
-      // Normal search across all course documents
-      const { data, error } = await supabase.rpc('match_documents', {
-        query_embedding: queryEmbedding,
-        match_threshold: 0.5,
-        match_count: 5,
-        filter_course_id: course_id
-      });
-      
-      if (error) throw error;
-      documents = data || [];
-    }
+    // Use the RPC function which now supports filter_document_id directly
+    const { data, error } = await supabase.rpc('match_documents', {
+      query_embedding: queryEmbedding,
+      match_threshold: document_id ? 0.3 : 0.5, // Lower threshold for specific doc search
+      match_count: document_id ? 10 : 5, // Get more chunks if specific doc
+      filter_course_id: course_id,
+      filter_document_id: document_id || null
+    });
+    
+    if (error) throw error;
+    documents = data || [];
 
     // 3. Construct Prompt
     const context = documents.map((d: any) => d.content).join('\n---\n') || '';

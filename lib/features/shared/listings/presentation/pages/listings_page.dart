@@ -10,6 +10,7 @@ import 'package:mwanachuo/features/services/presentation/pages/service_detail_pa
 import 'package:mwanachuo/features/accommodations/presentation/pages/accommodation_detail_page.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mwanachuo/core/widgets/app_background.dart';
+import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 
 class ListingsPage extends StatefulWidget {
   const ListingsPage({super.key});
@@ -56,8 +57,8 @@ class _ListingsPageState extends State<ListingsPage>
     if (_scrollController.position.pixels >=
         _scrollController.position.maxScrollExtent - 200) {
       final cubit = context.read<SearchCubit>();
-      if (cubit.state is SearchResults &&
-          !(cubit.state as SearchResults).isLoadingMore) {
+      final state = cubit.state;
+      if (state is SearchResults && !state.isLoadingMore && state.hasMore) {
         cubit.loadMore(
           query: _searchController.text,
           offset: (cubit.state as SearchResults).results.length,
@@ -148,14 +149,7 @@ class _ListingsPageState extends State<ListingsPage>
             child: Container(
               decoration: BoxDecoration(
                 color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.05),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(999),
                 border: Border.all(
                   color: isDark ? Colors.white10 : Colors.grey.shade200,
                 ),
@@ -219,9 +213,10 @@ class _ListingsPageState extends State<ListingsPage>
     return BlocBuilder<SearchCubit, SearchState>(
       builder: (context, state) {
         if (state is Searching) {
-          return SliverFillRemaining(
-            child: Center(
-              child: CircularProgressIndicator(color: colorScheme.primary),
+          return const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16.0),
+              child: ProductGridSkeleton(itemCount: 6),
             ),
           );
         } else if (state is SearchError) {
@@ -280,7 +275,7 @@ class _ListingsPageState extends State<ListingsPage>
             sliver: SliverGrid(
               gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: 3,
-                childAspectRatio: 0.75, // Rectangular (Taller)
+                childAspectRatio: 0.65, // Rectangular (Taller)
                 crossAxisSpacing: 2,
                 mainAxisSpacing: 12, // Increased vertical spacing between cards
               ),

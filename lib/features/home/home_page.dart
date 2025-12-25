@@ -1864,10 +1864,11 @@ class _HomePageState extends State<HomePage> {
         addAutomaticKeepAlives: false,
         addRepaintBoundaries: true,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 2,
-          crossAxisSpacing: 2,
-          mainAxisSpacing: 2,
-          childAspectRatio: 0.7, // Taller cards (increased length)
+          crossAxisCount: 3,
+          crossAxisSpacing: 4,
+          mainAxisSpacing: 4,
+          childAspectRatio:
+              0.6, // Adjusted for thinner profile and increased length
         ),
         itemBuilder: (context, index) {
           final accommodation = accommodations[index];
@@ -2092,7 +2093,7 @@ class _HomeGridCard extends StatelessWidget {
                 Positioned.fill(
                   child: ClipRRect(
                     borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(12),
+                      top: Radius.circular(8), // Reduced from 12
                     ),
                     child: Container(
                       color: isDark

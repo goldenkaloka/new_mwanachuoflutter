@@ -7,12 +7,14 @@ class SliverImageCarousel extends StatefulWidget {
   final List<String> images;
   final double expandedHeight;
   final VoidCallback? onImageTap;
+  final String? heroTagPrefix;
 
   const SliverImageCarousel({
     super.key,
     required this.images,
     this.expandedHeight = 400,
     this.onImageTap,
+    this.heroTagPrefix,
   });
 
   @override
@@ -55,7 +57,9 @@ class _SliverImageCarouselState extends State<SliverImageCarousel> {
                 return GestureDetector(
                   onTap: widget.onImageTap,
                   child: Hero(
-                    tag: 'hero_image_${images[index]}',
+                    tag: index == 0 && widget.heroTagPrefix != null
+                        ? widget.heroTagPrefix!
+                        : 'carousel_${widget.heroTagPrefix ?? 'image'}_$index',
                     child: NetworkImageWithFallback(
                       imageUrl: images[index],
                       width: double.infinity,

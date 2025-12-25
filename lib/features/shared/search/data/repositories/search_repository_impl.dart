@@ -28,6 +28,12 @@ class SearchRepositoryImpl implements SearchRepository {
     int? offset,
   }) async {
     if (!await networkInfo.isConnected) {
+      try {
+        final cachedResults = await localDataSource.getCachedSearchResults();
+        if (cachedResults.isNotEmpty) {
+          return Right(cachedResults);
+        }
+      } catch (_) {}
       return Left(NetworkFailure('No internet connection'));
     }
 
@@ -39,11 +45,25 @@ class SearchRepositoryImpl implements SearchRepository {
         offset: offset,
       );
 
+      // Cache results for offline use (only on first page search)
+      if (offset == null || offset == 0) {
+        await localDataSource.cacheSearchResults(results);
+      }
+
       // Save search query to history
-      await localDataSource.saveSearchQuery(query);
+      if (query.isNotEmpty) {
+        await localDataSource.saveSearchQuery(query);
+      }
 
       return Right(results);
     } on ServerException catch (e) {
+      // Fallback to cache if server error
+      try {
+        final cachedResults = await localDataSource.getCachedSearchResults();
+        if (cachedResults.isNotEmpty) {
+          return Right(cachedResults);
+        }
+      } catch (_) {}
       return Left(ServerFailure(e.message));
     } catch (e) {
       return Left(ServerFailure('Failed to search: $e'));
@@ -73,9 +93,7 @@ class SearchRepositoryImpl implements SearchRepository {
   }
 
   @override
-  Future<Either<Failure, List<String>>> getRecentSearches({
-    int? limit,
-  }) async {
+  Future<Either<Failure, List<String>>> getRecentSearches({int? limit}) async {
     try {
       final searches = await localDataSource.getRecentSearches(limit: limit);
       return Right(searches);
@@ -111,9 +129,7 @@ class SearchRepositoryImpl implements SearchRepository {
   }
 
   @override
-  Future<Either<Failure, List<String>>> getPopularSearches({
-    int? limit,
-  }) async {
+  Future<Either<Failure, List<String>>> getPopularSearches({int? limit}) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
     }
@@ -128,4 +144,3 @@ class SearchRepositoryImpl implements SearchRepository {
     }
   }
 }
-

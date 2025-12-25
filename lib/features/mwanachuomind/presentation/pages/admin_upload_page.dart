@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../bloc/bloc.dart';
+import '../widgets/mwanachuomind_shimmer.dart';
 import '../../domain/entities/course.dart';
 
 class AdminUploadPage extends StatefulWidget {
@@ -39,9 +40,13 @@ class _AdminUploadPageState extends State<AdminUploadPage> {
   }
 
   void _upload() {
-    if (_selectedCourse == null || _selectedFile == null || _titleController.text.isEmpty) {
+    if (_selectedCourse == null ||
+        _selectedFile == null ||
+        _titleController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields and select a file')),
+        const SnackBar(
+          content: Text('Please fill all fields and select a file'),
+        ),
       );
       return;
     }
@@ -54,9 +59,11 @@ class _AdminUploadPageState extends State<AdminUploadPage> {
     // Let's modify the Bloc usage here to:
     // 1. Select the course in Bloc
     // 2. Upload
-    
+
     context.read<MwanachuomindBloc>().add(SelectCourse(_selectedCourse!));
-    context.read<MwanachuomindBloc>().add(UploadDocument(_titleController.text, _selectedFile!));
+    context.read<MwanachuomindBloc>().add(
+      UploadDocument(_titleController.text, _selectedFile!),
+    );
   }
 
   @override
@@ -65,24 +72,31 @@ class _AdminUploadPageState extends State<AdminUploadPage> {
       appBar: AppBar(title: const Text('Upload Document')),
       body: BlocConsumer<MwanachuomindBloc, MwanachuomindState>(
         listener: (context, state) {
-            if (!state.isUploading && state.errorMessage != null) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
-            } else if (!state.isUploading && state.status == MwanachuomindStatus.loading) {
-                 // loading...
-            } else if (!state.isUploading && state.errorMessage == null && state.status != MwanachuomindStatus.initial) {
-                // Success (implied by lack of error after uploading false) - Wait, state management in bloc: 
-                // UploadDocument sets isUploading=false on success. 
-                // Ideally we should have a specific success state or event.
-                // For now, let's just show snackbar if we are not uploading anymore and no error.
-                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Upload Successful!')));
-                 Navigator.pop(context);
-            }
+          if (!state.isUploading && state.errorMessage != null) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text(state.errorMessage!)));
+          } else if (!state.isUploading &&
+              state.status == MwanachuomindStatus.loading) {
+            // loading...
+          } else if (!state.isUploading &&
+              state.errorMessage == null &&
+              state.status != MwanachuomindStatus.initial) {
+            // Success (implied by lack of error after uploading false) - Wait, state management in bloc:
+            // UploadDocument sets isUploading=false on success.
+            // Ideally we should have a specific success state or event.
+            // For now, let's just show snackbar if we are not uploading anymore and no error.
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(const SnackBar(content: Text('Upload Successful!')));
+            Navigator.pop(context);
+          }
         },
         builder: (context, state) {
           if (state.isUploading) {
-              return const Center(child: CircularProgressIndicator());
+            return const MwanachuomindShimmer();
           }
-          
+
           return Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -92,7 +106,11 @@ class _AdminUploadPageState extends State<AdminUploadPage> {
                   hint: const Text('Select Course'),
                   value: _selectedCourse,
                   // We can use the courses from the bloc state if they are loaded
-                  items: state.courses.map((e) => DropdownMenuItem(value: e, child: Text(e.code))).toList(),
+                  items: state.courses
+                      .map(
+                        (e) => DropdownMenuItem(value: e, child: Text(e.code)),
+                      )
+                      .toList(),
                   onChanged: (val) {
                     setState(() {
                       _selectedCourse = val;
@@ -111,13 +129,14 @@ class _AdminUploadPageState extends State<AdminUploadPage> {
                 ElevatedButton.icon(
                   onPressed: _pickFile,
                   icon: const Icon(Icons.attach_file),
-                  label: Text(_selectedFile == null ? 'Pick File (PDF/TXT)' : 'File: ${_selectedFile!.path.split(Platform.pathSeparator).last}'),
+                  label: Text(
+                    _selectedFile == null
+                        ? 'Pick File (PDF/TXT)'
+                        : 'File: ${_selectedFile!.path.split(Platform.pathSeparator).last}',
+                  ),
                 ),
                 const SizedBox(height: 24),
-                ElevatedButton(
-                  onPressed: _upload,
-                  child: const Text('Upload'),
-                ),
+                ElevatedButton(onPressed: _upload, child: const Text('Upload')),
               ],
             ),
           );

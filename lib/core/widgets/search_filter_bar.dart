@@ -28,7 +28,9 @@ class SearchFilterBar extends StatefulWidget {
 
 class _SearchFilterBarState extends State<SearchFilterBar> {
   late TextEditingController _controller;
-  final Debouncer _debouncer = Debouncer(delay: const Duration(milliseconds: 400));
+  final Debouncer _debouncer = Debouncer(
+    delay: const Duration(milliseconds: 400),
+  );
   bool _hasText = false;
 
   @override
@@ -96,33 +98,25 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                   color: hintColor,
                   fontSize: 16,
                 ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: hintColor,
-                  size: 24,
-                ),
+                prefixIcon: Icon(Icons.search, color: hintColor, size: 24),
                 suffixIcon: _hasText
                     ? IconButton(
-                        icon: Icon(
-                          Icons.clear,
-                          color: hintColor,
-                          size: 20,
-                        ),
+                        icon: Icon(Icons.clear, color: hintColor, size: 20),
                         onPressed: _clearSearch,
                       )
                     : null,
                 filled: true,
                 fillColor: fillColor,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(4),
                   borderSide: BorderSide.none,
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(4),
                   borderSide: BorderSide.none,
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(4),
                   borderSide: BorderSide(color: kPrimaryColor, width: 2),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
@@ -139,7 +133,7 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 Container(
                   decoration: BoxDecoration(
                     color: fillColor,
-                    borderRadius: BorderRadius.circular(12),
+                    borderRadius: BorderRadius.circular(4),
                   ),
                   child: IconButton(
                     icon: Icon(
@@ -187,4 +181,3 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
     );
   }
 }
-

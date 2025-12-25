@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:mwanachuo/core/constants/storage_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
+import 'package:mwanachuo/features/shared/search/data/models/search_result_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Abstract class defining search local data source operations
@@ -13,6 +14,12 @@ abstract class SearchLocalDataSource {
 
   /// Clear search history
   Future<void> clearSearchHistory();
+
+  /// Cache search results
+  Future<void> cacheSearchResults(List<SearchResultModel> results);
+
+  /// Get cached search results
+  Future<List<SearchResultModel>> getCachedSearchResults();
 }
 
 /// Implementation of SearchLocalDataSource using SharedPreferences
@@ -25,8 +32,9 @@ class SearchLocalDataSourceImpl implements SearchLocalDataSource {
   @override
   Future<List<String>> getRecentSearches({int? limit}) async {
     try {
-      final jsonString =
-          sharedPreferences.getString(StorageConstants.searchHistoryKey);
+      final jsonString = sharedPreferences.getString(
+        StorageConstants.searchHistoryKey,
+      );
 
       if (jsonString == null) {
         return [];
@@ -70,5 +78,37 @@ class SearchLocalDataSourceImpl implements SearchLocalDataSource {
       throw CacheException('Failed to clear search history: $e');
     }
   }
-}
 
+  @override
+  Future<void> cacheSearchResults(List<SearchResultModel> results) async {
+    try {
+      final jsonList = results.map((r) => r.toJson()).toList();
+      await sharedPreferences.setString(
+        StorageConstants.searchResultsCacheKey,
+        json.encode(jsonList),
+      );
+    } catch (e) {
+      throw CacheException('Failed to cache search results: $e');
+    }
+  }
+
+  @override
+  Future<List<SearchResultModel>> getCachedSearchResults() async {
+    try {
+      final jsonString = sharedPreferences.getString(
+        StorageConstants.searchResultsCacheKey,
+      );
+
+      if (jsonString == null) {
+        return [];
+      }
+
+      final jsonList = json.decode(jsonString) as List;
+      return jsonList
+          .map((json) => SearchResultModel.fromCacheJson(json))
+          .toList();
+    } catch (e) {
+      throw CacheException('Failed to get cached search results: $e');
+    }
+  }
+}

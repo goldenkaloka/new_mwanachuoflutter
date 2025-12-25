@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
@@ -9,6 +10,7 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import '../../domain/entities/document.dart' as app;
 import '../../domain/entities/chat_message.dart';
 import '../widgets/typewriter_message_bubble.dart';
+import 'package:mwanachuo/core/widgets/futuristic_animated_background.dart';
 import '../bloc/bloc.dart';
 
 class MwanachuomindChatPage extends StatefulWidget {
@@ -24,6 +26,9 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
   // AI user for chat
   final _aiUser = const types.User(id: 'ai', firstName: 'Mwanachuomind');
   final _currentUser = const types.User(id: 'user');
+
+  // Track session start to avoid re-animating old messages
+  final DateTime _sessionStartTime = DateTime.now();
 
   // Input controller
   final TextEditingController _textController = TextEditingController();
@@ -76,48 +81,81 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
         final isAiTyping = state.isGenerating;
 
         return Scaffold(
+          extendBodyBehindAppBar: true,
           appBar: _buildAppBar(course.code, course.name, state),
-          body: Column(
-            children: [
-              Expanded(
-                child: Chat(
-                  messages: chatMessages,
-                  onSendPressed: _handleSendPressed,
-                  user: _currentUser,
-                  showUserAvatars: true,
-                  showUserNames: true,
-                  theme: _buildChatTheme(context),
-                  textMessageBuilder:
-                      (message, {required messageWidth, required showName}) {
-                        final isAi = message.author.id == 'ai';
-                        final isLatest =
-                            chatMessages.isNotEmpty &&
-                            message.id == chatMessages.first.id;
+          body: FuturisticAnimatedBackground(
+            child: Column(
+              children: [
+                Expanded(
+                  child: Chat(
+                    messages: chatMessages,
+                    onSendPressed: _handleSendPressed,
+                    user: _currentUser,
+                    showUserAvatars: true,
+                    showUserNames: true,
+                    theme: _buildChatTheme(context),
+                    textMessageBuilder:
+                        (message, {required messageWidth, required showName}) {
+                          final isAi = message.author.id == 'ai';
+                          final isLatest =
+                              chatMessages.isNotEmpty &&
+                              message.id == chatMessages.first.id;
+                          final messageTimestamp =
+                              DateTime.fromMillisecondsSinceEpoch(
+                                message.createdAt ?? 0,
+                              );
+                          final isNewMessage = messageTimestamp.isAfter(
+                            _sessionStartTime,
+                          );
 
-                        if (isAi && isLatest && !isAiTyping) {
-                          return TypewriterMessageBubble(text: message.text);
-                        }
+                          if (isAi && isLatest && !isAiTyping && isNewMessage) {
+                            return TypewriterMessageBubble(text: message.text);
+                          }
 
-                        return TextMessage(
-                          emojiEnlargementBehavior:
-                              EmojiEnlargementBehavior.multi,
-                          hideBackgroundOnEmojiMessages: true,
-                          message: message,
-                          showName: showName,
-                          usePreviewData: true,
-                        );
-                      },
-                  emptyState: _buildEmptyState(course.name),
+                          if (isAi) {
+                            return ClipRRect(
+                              borderRadius: BorderRadius.circular(
+                                20,
+                              ).copyWith(bottomLeft: Radius.zero),
+                              child: BackdropFilter(
+                                filter: ui.ImageFilter.blur(
+                                  sigmaX: 8,
+                                  sigmaY: 8,
+                                ),
+                                child: TextMessage(
+                                  emojiEnlargementBehavior:
+                                      EmojiEnlargementBehavior.multi,
+                                  hideBackgroundOnEmojiMessages: true,
+                                  message: message,
+                                  showName: showName,
+                                  usePreviewData: true,
+                                ),
+                              ),
+                            );
+                          }
 
-                  customBottomWidget:
-                      const SizedBox.shrink(), // Using our own input
+                          // User messages: Solid/Uniform color as requested
+                          return TextMessage(
+                            emojiEnlargementBehavior:
+                                EmojiEnlargementBehavior.multi,
+                            hideBackgroundOnEmojiMessages: true,
+                            message: message,
+                            showName: showName,
+                            usePreviewData: true,
+                          );
+                        },
+                    emptyState: _buildEmptyState(course.name),
+
+                    customBottomWidget:
+                        const SizedBox.shrink(), // Using our own input
+                  ),
                 ),
-              ),
-              // Typing indicator
-              if (isAiTyping) _buildTypingIndicator(),
-              // Custom input
-              _buildInput(context),
-            ],
+                // Typing indicator
+                if (isAiTyping) _buildTypingIndicator(),
+                // Custom input
+                _buildInput(context),
+              ],
+            ),
           ),
         );
       },
@@ -129,126 +167,200 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
     String name,
     MwanachuomindState state,
   ) {
-    return AppBar(
-      elevation: 0,
-      backgroundColor: kPrimaryColor,
-      foregroundColor: Colors.white,
-      title: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(Icons.psychology, size: 24, color: Colors.white),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(kToolbarHeight),
+      child: ClipRRect(
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: AppBar(
+            elevation: 0,
+            backgroundColor: Colors.black.withValues(alpha: 0.05),
+            surfaceTintColor: Colors.transparent,
+            foregroundColor: kTextPrimary,
+            titleSpacing: 0,
+            title: Row(
               children: [
-                Text(
-                  'Mwanachuomind',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
-                Text(
-                  code,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    color: Colors.white70,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-      actions: [
-        // Document selector dropdown
-        if (state.courseDocuments.isNotEmpty)
-          PopupMenuButton<app.Document?>(
-            icon: Icon(
-              _selectedDocument != null
-                  ? Icons.article
-                  : Icons.article_outlined,
-              color: Colors.white,
-            ),
-            tooltip: 'Focus on document',
-            onSelected: (doc) => setState(() => _selectedDocument = doc),
-            itemBuilder: (context) => [
-              PopupMenuItem<app.Document?>(
-                value: null,
-                child: Row(
-                  children: [
-                    Icon(
-                      Icons.all_inclusive,
-                      color: _selectedDocument == null
-                          ? kPrimaryColor
-                          : kTextSecondary,
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        kPrimaryColor.withValues(alpha: 0.2),
+                        kPrimaryColor.withValues(alpha: 0.05),
+                      ],
                     ),
-                    const SizedBox(width: 12),
-                    const Text('All documents'),
-                  ],
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: kPrimaryColor.withValues(alpha: 0.2),
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.auto_awesome_rounded,
+                    size: 22,
+                    color: kPrimaryColor,
+                  ),
                 ),
-              ),
-              const PopupMenuDivider(),
-              ...state.courseDocuments.map(
-                (doc) => PopupMenuItem<app.Document>(
-                  value: doc,
-                  child: Row(
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(
-                        Icons.description,
-                        color: _selectedDocument?.id == doc.id
-                            ? kPrimaryColor
-                            : kTextSecondary,
+                      Row(
+                        children: [
+                          Text(
+                            'Mwanachuomind',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: kTextPrimary,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _PulseIndicator(),
+                        ],
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Text(doc.title, overflow: TextOverflow.ellipsis),
+                      Text(
+                        code,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: kTextSecondary,
+                        ),
                       ),
                     ],
                   ),
                 ),
+              ],
+            ),
+            actions: [
+              if (state.courseDocuments.isNotEmpty)
+                IconButton(
+                  icon: Icon(
+                    _selectedDocument != null
+                        ? Icons.article
+                        : Icons.article_outlined,
+                    color: kTextPrimary,
+                  ),
+                  onPressed: () => _showDocumentSelector(state),
+                ),
+              IconButton(
+                icon: Icon(Icons.tune_rounded, color: kTextPrimary),
+                onPressed: () => _showCourseInfo(),
               ),
+              const SizedBox(width: 4),
             ],
-          ),
-        if (_selectedDocument != null)
-          Padding(
-            padding: const EdgeInsets.only(right: 8),
-            child: Chip(
-              backgroundColor: Colors.white.withValues(alpha: 0.2),
-              label: Text(
-                _selectedDocument!.title,
-                style: const TextStyle(fontSize: 10, color: Colors.white),
-                overflow: TextOverflow.ellipsis,
+            shape: Border(
+              bottom: BorderSide(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
               ),
-              deleteIcon: const Icon(
-                Icons.close,
-                size: 14,
-                color: Colors.white,
-              ),
-              onDeleted: () => setState(() => _selectedDocument = null),
             ),
           ),
-        IconButton(
-          icon: const Icon(Icons.info_outline),
-          onPressed: () => _showCourseInfo(),
         ),
-      ],
+      ),
+    );
+  }
+
+  void _showDocumentSelector(MwanachuomindState state) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: kSurfaceColorLight,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (context) => Container(
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Focus your Query',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Flexible(
+              child: ListView(
+                shrinkWrap: true,
+                children: [
+                  _buildDocumentOption(
+                    title: 'All documents',
+                    subtitle: 'Search across everything',
+                    icon: Icons.all_inclusive,
+                    isSelected: _selectedDocument == null,
+                    onTap: () {
+                      setState(() => _selectedDocument = null);
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const Divider(indent: 70),
+                  ...state.courseDocuments.map(
+                    (doc) => _buildDocumentOption(
+                      title: doc.title,
+                      subtitle: 'Query this document only',
+                      icon: Icons.description,
+                      isSelected: _selectedDocument?.id == doc.id,
+                      onTap: () {
+                        setState(() => _selectedDocument = doc);
+                        Navigator.pop(context);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDocumentOption({
+    required String title,
+    required String subtitle,
+    required IconData icon,
+    required bool isSelected,
+    required VoidCallback onTap,
+  }) {
+    return ListTile(
+      leading: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? kPrimaryColor.withValues(alpha: 0.1)
+              : kTextSecondary.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: isSelected ? kPrimaryColor : kTextSecondary),
+      ),
+      title: Text(
+        title,
+        style: GoogleFonts.plusJakartaSans(
+          fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          color: isSelected ? kPrimaryColor : kTextPrimary,
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: GoogleFonts.plusJakartaSans(fontSize: 12),
+      ),
+      trailing: isSelected
+          ? Icon(Icons.check_circle, color: kPrimaryColor)
+          : null,
+      onTap: onTap,
     );
   }
 
   DefaultChatTheme _buildChatTheme(BuildContext context) {
     return DefaultChatTheme(
-      backgroundColor: kBackgroundColorLight,
-      primaryColor: kPrimaryColor,
-      secondaryColor: kSurfaceColorLight,
+      backgroundColor: Colors.transparent,
+      primaryColor: kPrimaryColor, // Opaque uniform color for user bubbles
+      secondaryColor: Colors.white.withValues(alpha: 0.5),
       inputBackgroundColor: kSurfaceColorLight,
       inputTextColor: kTextPrimary,
       inputBorderRadius: BorderRadius.circular(24),
@@ -389,112 +501,113 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: kSurfaceColorLight,
+        color: Colors.white.withValues(alpha: 0.2),
         border: Border(
-          top: BorderSide(color: kTextSecondary.withValues(alpha: 0.1)),
+          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
         ),
       ),
-      child: SafeArea(
-        top: false,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Expanded(
-              child: Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                  border: Border.all(
-                    color: kPrimaryColor.withValues(alpha: 0.1),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    if (_selectedDocument != null)
-                      Padding(
-                        padding: const EdgeInsets.only(left: 12),
-                        child: Icon(
-                          Icons.article,
-                          color: kPrimaryColor,
-                          size: 20,
-                        ),
-                      ),
-                    Expanded(
-                      child: TextField(
-                        controller: _textController,
-                        focusNode: _focusNode,
-                        decoration: InputDecoration(
-                          hintText: _selectedDocument != null
-                              ? 'Ask about ${_selectedDocument!.title}...'
-                              : 'Ask Mwanachuomind...',
-                          hintStyle: GoogleFonts.plusJakartaSans(
-                            color: kTextSecondary.withValues(alpha: 0.5),
-                            fontSize: 14,
-                          ),
-                          border: InputBorder.none,
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 14,
-                          ),
-                          isDense: true,
-                        ),
-                        style: GoogleFonts.plusJakartaSans(
-                          color: kTextPrimary,
-                          fontSize: 15,
-                        ),
-                        minLines: 1,
-                        maxLines: 5,
-                        textCapitalization: TextCapitalization.sentences,
-                        onSubmitted: (_) {
-                          final text = _textController.text.trim();
-                          if (text.isEmpty) return;
-                          _handleSendPressed(types.PartialText(text: text));
-                          _textController.clear();
-                          _focusNode.requestFocus();
-                        },
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(24),
+        child: BackdropFilter(
+          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          child: SafeArea(
+            top: false,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.4),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
                       ),
                     ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Container(
-              margin: const EdgeInsets.only(bottom: 2),
-              decoration: BoxDecoration(
-                color: kPrimaryColor,
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: kPrimaryColor.withValues(alpha: 0.3),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
+                    child: Row(
+                      children: [
+                        if (_selectedDocument != null)
+                          Padding(
+                            padding: const EdgeInsets.only(left: 12),
+                            child: Icon(
+                              Icons.article,
+                              color: kPrimaryColor,
+                              size: 20,
+                            ),
+                          ),
+                        Expanded(
+                          child: TextField(
+                            controller: _textController,
+                            focusNode: _focusNode,
+                            decoration: InputDecoration(
+                              hintText: _selectedDocument != null
+                                  ? 'Ask about ${_selectedDocument!.title}...'
+                                  : 'Ask Mwanachuomind...',
+                              hintStyle: GoogleFonts.plusJakartaSans(
+                                color: kTextSecondary.withValues(alpha: 0.6),
+                                fontSize: 14,
+                              ),
+                              border: InputBorder.none,
+                              enabledBorder: InputBorder.none,
+                              focusedBorder: InputBorder.none,
+                              contentPadding: const EdgeInsets.symmetric(
+                                horizontal: 16,
+                                vertical: 14,
+                              ),
+                              isDense: true,
+                            ),
+                            style: GoogleFonts.plusJakartaSans(
+                              color: kTextPrimary,
+                              fontSize: 15,
+                            ),
+                            minLines: 1,
+                            maxLines: 5,
+                            textCapitalization: TextCapitalization.sentences,
+                            onSubmitted: (_) {
+                              final text = _textController.text.trim();
+                              if (text.isEmpty) return;
+                              _handleSendPressed(types.PartialText(text: text));
+                              _textController.clear();
+                              _focusNode.requestFocus();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-                ],
-              ),
-              child: IconButton(
-                icon: const Icon(
-                  Icons.send_rounded,
-                  color: Colors.white,
-                  size: 20,
                 ),
-                onPressed: () {
-                  final text = _textController.text.trim();
-                  if (text.isEmpty) return;
-                  _handleSendPressed(types.PartialText(text: text));
-                  _textController.clear();
-                  _focusNode.requestFocus();
-                },
-              ),
+                const SizedBox(width: 12),
+                Container(
+                  margin: const EdgeInsets.only(bottom: 2),
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor,
+                    shape: BoxShape.circle,
+                    boxShadow: [
+                      BoxShadow(
+                        color: kPrimaryColor.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.send_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                    onPressed: () {
+                      final text = _textController.text.trim();
+                      if (text.isEmpty) return;
+                      _handleSendPressed(types.PartialText(text: text));
+                      _textController.clear();
+                      _focusNode.requestFocus();
+                    },
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
@@ -701,6 +814,59 @@ class _TypingDotsState extends State<_TypingDots>
               ),
             );
           }),
+        );
+      },
+    );
+  }
+}
+
+class _PulseIndicator extends StatefulWidget {
+  const _PulseIndicator();
+
+  @override
+  State<_PulseIndicator> createState() => _PulseIndicatorState();
+}
+
+class _PulseIndicatorState extends State<_PulseIndicator>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        return Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: const Color(0xFF00E676), // Bright green
+            boxShadow: [
+              BoxShadow(
+                color: const Color(
+                  0xFF00E676,
+                ).withValues(alpha: 0.5 * (1 - _controller.value)),
+                blurRadius: 10 * _controller.value,
+                spreadRadius: 5 * _controller.value,
+              ),
+            ],
+          ),
         );
       },
     );

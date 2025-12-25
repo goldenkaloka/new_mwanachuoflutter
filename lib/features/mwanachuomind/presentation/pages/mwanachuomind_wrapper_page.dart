@@ -4,6 +4,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../bloc/bloc.dart';
 import 'mwanachuomind_chat_page.dart';
+import '../widgets/mwanachuomind_shimmer.dart';
 
 /// Wrapper page that checks if user is enrolled in a course.
 /// If yes, navigates directly to chat.
@@ -74,9 +75,7 @@ class _MwanachuomindWrapperPageState extends State<MwanachuomindWrapperPage> {
       builder: (context, state) {
         // Still checking enrollment
         if (!_enrollmentLoaded && state.status == MwanachuomindStatus.loading) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Scaffold(body: SafeArea(child: MwanachuomindShimmer()));
         }
 
         // User has enrolled course - show chat directly
@@ -144,7 +143,7 @@ class _CourseEnrollmentPageState extends State<CourseEnrollmentPage> {
         builder: (context, state) {
           if (state.status == MwanachuomindStatus.loading &&
               state.courses.isEmpty) {
-            return const Center(child: CircularProgressIndicator());
+            return const MwanachuomindShimmer();
           }
 
           if (state.courses.isEmpty) {

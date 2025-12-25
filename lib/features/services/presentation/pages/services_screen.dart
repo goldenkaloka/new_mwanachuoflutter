@@ -342,6 +342,7 @@ class _ServicesViewState extends State<_ServicesView> {
                         // Use new ServiceCard component
                         final service = state.services[index];
                         return ServiceCard(
+                          id: service.id,
                           imageUrl: service.images.isNotEmpty
                               ? service.images.first
                               : '',
