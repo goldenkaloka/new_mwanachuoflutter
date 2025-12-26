@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/utils/time_formatter.dart';
@@ -9,6 +10,8 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/dashboard/presentation/bloc/dashboard_cubit.dart';
 import 'package:mwanachuo/features/dashboard/presentation/bloc/dashboard_state.dart';
+import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
+import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_state.dart';
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 
@@ -17,8 +20,18 @@ class SellerDashboardScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => sl<DashboardCubit>()..loadStats(),
+    // Get current user ID from AuthBloc
+    final authState = context.read<AuthBloc>().state;
+    final userId = authState is Authenticated ? authState.user.id : null;
+
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(create: (context) => sl<DashboardCubit>()..loadStats()),
+        BlocProvider(
+          create: (context) =>
+              sl<SubscriptionCubit>()..loadSellerSubscription(userId ?? ''),
+        ),
+      ],
       child: const _DashboardView(),
     );
   }
@@ -149,6 +162,151 @@ class _DashboardViewState extends State<_DashboardView> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const SizedBox(height: 24),
+
+                        // Subscription Status Banner
+                        BlocBuilder<SubscriptionCubit, SubscriptionState>(
+                          builder: (context, subscriptionState) {
+                            if (subscriptionState is SubscriptionTrial) {
+                              final subscription =
+                                  subscriptionState.subscription;
+                              final daysLeft = subscription.currentPeriodEnd
+                                  .difference(DateTime.now())
+                                  .inDays;
+
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      kPrimaryColor.withValues(alpha: 0.15),
+                                      kPrimaryColor.withValues(alpha: 0.05),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: kPrimaryColor.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.celebration,
+                                      color: kPrimaryColor,
+                                      size: 28,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            '🎉 Free Trial Active',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: primaryTextColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '$daysLeft days left • Expires ${DateFormat('MMM d, yyyy').format(subscription.currentPeriodEnd)}',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13,
+                                              color: secondaryTextColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    TextButton(
+                                      onPressed: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/subscription-plans',
+                                        );
+                                      },
+                                      child: Text(
+                                        'Upgrade',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                          color: kPrimaryColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else if (subscriptionState
+                                is SubscriptionExpired) {
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: Colors.orange.withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.warning_amber_rounded,
+                                      color: Colors.orange,
+                                      size: 28,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            'Subscription Expired',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 16,
+                                              fontWeight: FontWeight.bold,
+                                              color: primaryTextColor,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            'Renew to continue posting listings',
+                                            style: GoogleFonts.inter(
+                                              fontSize: 13,
+                                              color: secondaryTextColor,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                    ElevatedButton(
+                                      onPressed: () {
+                                        Navigator.pushNamed(
+                                          context,
+                                          '/subscription-plans',
+                                        );
+                                      },
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.orange,
+                                        foregroundColor: Colors.white,
+                                      ),
+                                      child: Text(
+                                        'Renew',
+                                        style: GoogleFonts.inter(
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            }
+                            return const SizedBox.shrink();
+                          },
+                        ),
 
                         // Recent Activity
                         Text(
