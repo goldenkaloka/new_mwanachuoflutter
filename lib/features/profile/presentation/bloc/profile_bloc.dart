@@ -4,15 +4,14 @@ import 'package:mwanachuo/features/profile/domain/usecases/get_my_profile.dart';
 import 'package:mwanachuo/features/profile/domain/usecases/update_profile.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_event.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_state.dart';
+import 'package:mwanachuo/core/services/university_service.dart';
 
 class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
   final GetMyProfile getMyProfile;
   final UpdateProfile updateProfile;
 
-  ProfileBloc({
-    required this.getMyProfile,
-    required this.updateProfile,
-  }) : super(ProfileInitial()) {
+  ProfileBloc({required this.getMyProfile, required this.updateProfile})
+    : super(ProfileInitial()) {
     on<LoadMyProfileEvent>(_onLoadMyProfile);
     on<UpdateProfileEvent>(_onUpdateProfile);
   }
@@ -44,13 +43,18 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         bio: event.bio,
         location: event.location,
         avatarImage: event.avatarImage,
+        primaryUniversityId: event.primaryUniversityId,
       ),
     );
 
-    result.fold(
-      (failure) => emit(ProfileError(message: failure.message)),
-      (profile) => emit(ProfileUpdated(profile: profile)),
+    await result.fold(
+      (failure) async => emit(ProfileError(message: failure.message)),
+      (profile) async {
+        if (event.universityName != null) {
+          await UniversityService.saveSelectedUniversity(event.universityName!);
+        }
+        emit(ProfileUpdated(profile: profile));
+      },
     );
   }
 }
-

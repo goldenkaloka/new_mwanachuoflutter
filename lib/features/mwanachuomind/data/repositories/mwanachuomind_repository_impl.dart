@@ -4,6 +4,8 @@ import '../../domain/entities/document.dart';
 import '../../domain/repositories/mwanachuomind_repository.dart';
 import '../datasources/mwanachuomind_remote_datasource.dart';
 
+import '../../domain/entities/chat_session.dart';
+
 class MwanachuomindRepositoryImpl implements MwanachuomindRepository {
   final MwanachuomindRemoteDataSource remoteDataSource;
 
@@ -48,8 +50,21 @@ class MwanachuomindRepositoryImpl implements MwanachuomindRepository {
   }
 
   @override
-  Future<String> getOrCreateSession(String userId, String courseId) {
-    return remoteDataSource.getOrCreateSession(userId, courseId);
+  Future<String> createChatSession(String userId, String courseId) {
+    return remoteDataSource.createChatSession(userId, courseId);
+  }
+
+  @override
+  Future<List<ChatSession>> getChatSessions(
+    String userId,
+    String courseId,
+  ) async {
+    return await remoteDataSource.getChatSessions(userId, courseId);
+  }
+
+  @override
+  Future<void> renameChatSession(String sessionId, String title) {
+    return remoteDataSource.renameChatSession(sessionId, title);
   }
 
   @override

@@ -1,5 +1,5 @@
 import 'dart:async';
-import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown/flutter_markdown.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -80,43 +80,76 @@ class _TypewriterMessageBubbleState extends State<TypewriterMessageBubble> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: ClipRRect(
+      margin: const EdgeInsets.symmetric(horizontal: 0, vertical: 4),
+      decoration: BoxDecoration(
+        color: kSurfaceColorLight,
         borderRadius: BorderRadius.circular(
           20,
-        ).copyWith(bottomLeft: const Radius.circular(0)),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 8, sigmaY: 8),
-          child: Container(
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.4),
-              borderRadius: BorderRadius.circular(
-                20,
-              ).copyWith(bottomLeft: const Radius.circular(0)),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-            ),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: MarkdownBody(
-              data: _displayedText,
-              selectable: true,
-              styleSheet: MarkdownStyleSheet(
-                p: GoogleFonts.plusJakartaSans(
-                  color: kTextPrimary,
-                  fontSize: 15,
-                  height: 1.5,
-                ),
-                code: GoogleFonts.firaCode(
-                  backgroundColor: Colors.white.withValues(alpha: 0.3),
-                  color: kTextPrimary,
-                  fontSize: 14,
-                ),
-                codeblockDecoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
+        ).copyWith(bottomLeft: Radius.zero),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 5,
+            offset: const Offset(0, 2),
+          ),
+        ],
+        border: Border.all(color: Colors.black.withValues(alpha: 0.05)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: MarkdownBody(
+        data: _displayedText,
+        selectable: true,
+        styleSheet: MarkdownStyleSheet(
+          p: GoogleFonts.plusJakartaSans(
+            color: kTextPrimary,
+            fontSize: 15,
+            height: 1.5,
+          ),
+          h1: GoogleFonts.plusJakartaSans(
+            color: kTextPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+          h2: GoogleFonts.plusJakartaSans(
+            color: kTextPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 18,
+          ),
+          h3: GoogleFonts.plusJakartaSans(
+            color: kTextPrimary,
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+          strong: GoogleFonts.plusJakartaSans(
+            fontWeight: FontWeight.w700,
+            color: kTextPrimary,
+          ),
+          em: GoogleFonts.plusJakartaSans(
+            fontStyle: FontStyle.italic,
+            color: kTextPrimary,
+          ),
+          code: GoogleFonts.firaCode(
+            backgroundColor: Colors.black.withValues(alpha: 0.05),
+            color: kTextPrimary,
+            fontSize: 14,
+          ),
+          codeblockDecoration: BoxDecoration(
+            color: Colors.black.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          blockquote: GoogleFonts.plusJakartaSans(
+            color: kTextPrimary.withValues(alpha: 0.8),
+            fontStyle: FontStyle.italic,
+          ),
+          blockquoteDecoration: BoxDecoration(
+            border: Border(
+              left: BorderSide(
+                color: kTextPrimary.withValues(alpha: 0.3),
+                width: 4,
               ),
             ),
           ),
+          listBullet: GoogleFonts.plusJakartaSans(color: kTextPrimary),
         ),
       ),
     );

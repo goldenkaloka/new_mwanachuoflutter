@@ -11,6 +11,8 @@ import 'package:mwanachuo/features/accommodations/presentation/pages/accommodati
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 
 class ListingsPage extends StatefulWidget {
   const ListingsPage({super.key});
@@ -244,7 +246,7 @@ class _ListingsPageState extends State<ListingsPage>
             ),
           );
         } else if (state is SearchResults) {
-          if (state.results.isEmpty) {
+          if (state.results.isEmpty && !state.isLoadingMore) {
             return SliverFillRemaining(
               child: Center(
                 child: Column(
@@ -270,32 +272,34 @@ class _ListingsPageState extends State<ListingsPage>
             );
           }
 
+          final crossAxisCount = 3;
+
           return SliverPadding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            sliver: SliverGrid(
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 3,
-                childAspectRatio: 0.65, // Rectangular (Taller)
-                crossAxisSpacing: 2,
-                mainAxisSpacing: 12, // Increased vertical spacing between cards
-              ),
-              delegate: SliverChildBuilderDelegate(
-                (context, index) {
-                  if (index >= state.results.length) {
-                    if (state.isLoadingMore) {
-                      return const Center(child: CircularProgressIndicator());
-                    }
-                    return null;
-                  }
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            sliver: SliverMasonryGrid.count(
+              crossAxisCount: crossAxisCount,
+              mainAxisSpacing: 8,
+              crossAxisSpacing: 8,
+              itemBuilder: (context, index) {
+                if (index == state.results.length && state.isLoadingMore) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(16.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+                // Ensure index is within bounds for results list
+                if (index < state.results.length) {
                   return _ListingCard(
                     result: state.results[index],
                     colorScheme: colorScheme,
                     isDark: isDark,
                   );
-                },
-                childCount:
-                    state.results.length + (state.isLoadingMore ? 1 : 0),
-              ),
+                }
+                return const SizedBox.shrink(); // Should not happen with correct itemCount
+              },
+              childCount: state.results.length + (state.isLoadingMore ? 1 : 0),
             ),
           );
         }
@@ -346,94 +350,114 @@ class _ListingCard extends StatelessWidget {
           );
         }
       },
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Image Section
-          Expanded(
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: result.imageUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: result.imageUrl!,
-                          fit: BoxFit.cover,
-                          placeholder: (context, url) => Container(
-                            color: isDark ? Colors.grey[900] : Colors.grey[300],
-                          ),
-                          errorWidget: (context, url, _) => Container(
-                            color: isDark ? Colors.grey[900] : Colors.grey[300],
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+          // No rounded corners and no shadows as requested
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withOpacity(0.05)
+                : Colors.grey.shade100,
+            width: 0.5,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Image Section with Dynamic Height for Masonry
+            AspectRatio(
+              // Allow some variation in aspect ratio for staggered effect
+              aspectRatio: result.type == SearchResultType.accommodation
+                  ? 0.8
+                  : 1.0,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: result.imageUrl != null
+                        ? CachedNetworkImage(
+                            imageUrl: result.imageUrl!,
+                            fit: BoxFit.cover,
+                            placeholder: (context, url) => Container(
+                              color: isDark
+                                  ? Colors.grey[900]
+                                  : Colors.grey[100],
+                            ),
+                            errorWidget: (context, url, _) => Container(
+                              color: isDark
+                                  ? Colors.grey[900]
+                                  : Colors.grey[100],
+                              child: Icon(
+                                Icons.image_not_supported_outlined,
+                                color: isDark ? Colors.white24 : Colors.black12,
+                                size: 24,
+                              ),
+                            ),
+                          )
+                        : Container(
+                            color: isDark ? Colors.grey[900] : Colors.grey[100],
                             child: Icon(
-                              Icons.image_not_supported_outlined,
+                              Icons.image_outlined,
                               color: isDark ? Colors.white24 : Colors.black12,
-                              size: 32,
+                              size: 24,
                             ),
                           ),
-                        )
-                      : Container(
-                          color: isDark ? Colors.grey[900] : Colors.grey[300],
-                          child: Icon(
-                            Icons.image_outlined,
-                            color: isDark ? Colors.white24 : Colors.black12,
-                            size: 32,
-                          ),
-                        ),
-                ),
-                // Icon Badge
-                Positioned(
-                  top: 8,
-                  right: 8,
-                  child: Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.4),
-                      shape: BoxShape.circle,
-                    ),
-                    child: Icon(
-                      _getTypeIcon(result.type),
-                      color: _getTypeColor(result.type),
-                      size: 14,
-                    ),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 8),
-          // Text Section
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  result.title,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: const Color(0xFF00897B), // Deep Teal
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    height: 1.2,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (result.price != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    'TZS ${result.price!.toStringAsFixed(0)}',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: isDark ? Colors.white : Colors.black87,
-                      fontWeight: FontWeight.w800,
-                      fontSize: 13,
+                  // Icon Badge
+                  Positioned(
+                    top: 6,
+                    right: 6,
+                    child: Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.4),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(
+                        _getTypeIcon(result.type),
+                        color: Colors.white,
+                        size: 10,
+                      ),
                     ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
-              ],
+              ),
             ),
-          ),
-        ],
+            // Text Section
+            Padding(
+              padding: const EdgeInsets.all(8.0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    result.title,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: isDark ? Colors.grey[300] : Colors.black87,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 11,
+                      height: 1.2,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  if (result.price != null) ...[
+                    const SizedBox(height: 4),
+                    Text(
+                      'TZS ${result.price!.toStringAsFixed(0)}',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: kPrimaryColor,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 12,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -446,17 +470,6 @@ class _ListingCard extends StatelessWidget {
         return Icons.handyman_rounded;
       case SearchResultType.accommodation:
         return Icons.home_work_rounded;
-    }
-  }
-
-  Color _getTypeColor(SearchResultType type) {
-    switch (type) {
-      case SearchResultType.product:
-        return const Color(0xFF64B5F6); // Light Blue
-      case SearchResultType.service:
-        return const Color(0xFFE040FB); // Purple Accent
-      case SearchResultType.accommodation:
-        return const Color(0xFFFFB74D); // Orange Accent
     }
   }
 }

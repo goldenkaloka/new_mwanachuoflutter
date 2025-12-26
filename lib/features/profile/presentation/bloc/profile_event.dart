@@ -25,6 +25,8 @@ class UpdateProfileEvent extends ProfileEvent {
   final String? bio;
   final String? location;
   final File? avatarImage;
+  final String? primaryUniversityId;
+  final String? universityName;
 
   const UpdateProfileEvent({
     this.fullName,
@@ -32,9 +34,18 @@ class UpdateProfileEvent extends ProfileEvent {
     this.bio,
     this.location,
     this.avatarImage,
+    this.primaryUniversityId,
+    this.universityName,
   });
 
   @override
-  List<Object?> get props => [fullName, phoneNumber, bio, location, avatarImage];
+  List<Object?> get props => [
+    fullName,
+    phoneNumber,
+    bio,
+    location,
+    avatarImage,
+    primaryUniversityId,
+    universityName,
+  ];
 }
-

@@ -41,6 +41,8 @@ class _EditProfileViewState extends State<_EditProfileView> {
   final _locationController = TextEditingController();
   File? _selectedImage;
   String? _currentAvatarUrl;
+  String? _selectedUniversityId;
+  String? _selectedUniversityName;
   bool _hasInitialized = false;
 
   @override
@@ -55,7 +57,9 @@ class _EditProfileViewState extends State<_EditProfileView> {
   Future<void> _pickImage() async {
     try {
       // Check if running on desktop (Windows, macOS, Linux)
-      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+      final isDesktop =
+          !kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
       if (isDesktop) {
         // Use file_picker for desktop platforms
@@ -83,9 +87,13 @@ class _EditProfileViewState extends State<_EditProfileView> {
             pickerTheme: ThemeData(
               brightness: isDarkMode ? Brightness.dark : Brightness.light,
               primaryColor: kPrimaryColor,
-              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              scaffoldBackgroundColor: isDarkMode
+                  ? kBackgroundColorDark
+                  : Colors.white,
               appBarTheme: AppBarTheme(
-                backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+                backgroundColor: isDarkMode
+                    ? kBackgroundColorDark
+                    : Colors.white,
                 foregroundColor: isDarkMode ? Colors.white : Colors.black,
                 elevation: 0,
                 iconTheme: IconThemeData(
@@ -138,16 +146,18 @@ class _EditProfileViewState extends State<_EditProfileView> {
       final phoneNumber = _phoneNumberController.text.trim();
       final bio = _bioController.text.trim();
       final location = _locationController.text.trim();
-      
+
       context.read<ProfileBloc>().add(
-            UpdateProfileEvent(
-              fullName: fullName.isEmpty ? null : fullName,
-              phoneNumber: phoneNumber.isEmpty ? null : phoneNumber,
-              bio: bio.isEmpty ? null : bio,
-              location: location.isEmpty ? null : location,
-              avatarImage: _selectedImage,
-            ),
-          );
+        UpdateProfileEvent(
+          fullName: fullName.isEmpty ? null : fullName,
+          phoneNumber: phoneNumber.isEmpty ? null : phoneNumber,
+          bio: bio.isEmpty ? null : bio,
+          location: location.isEmpty ? null : location,
+          avatarImage: _selectedImage,
+          primaryUniversityId: _selectedUniversityId,
+          universityName: _selectedUniversityName,
+        ),
+      );
     } else {
       // Form validation failed - show error
       ScaffoldMessenger.of(context).showSnackBar(
@@ -166,7 +176,9 @@ class _EditProfileViewState extends State<_EditProfileView> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final borderColor = isDarkMode ? Colors.white.withValues(alpha: 0.2) : const Color(0xFFDBE6E0);
+    final borderColor = isDarkMode
+        ? Colors.white.withValues(alpha: 0.2)
+        : const Color(0xFFDBE6E0);
 
     return BlocConsumer<ProfileBloc, ProfileState>(
       listener: (context, state) {
@@ -177,6 +189,8 @@ class _EditProfileViewState extends State<_EditProfileView> {
           _bioController.text = state.profile.bio ?? '';
           _locationController.text = state.profile.location ?? '';
           _currentAvatarUrl = state.profile.avatarUrl;
+          _selectedUniversityId = state.profile.universityId;
+          _selectedUniversityName = state.profile.universityName;
           _hasInitialized = true;
         } else if (state is ProfileUpdated) {
           // Show success message and navigate back with result
@@ -207,7 +221,9 @@ class _EditProfileViewState extends State<_EditProfileView> {
       builder: (context, state) {
         if (state is ProfileLoading) {
           return Scaffold(
-            backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+            backgroundColor: isDarkMode
+                ? kBackgroundColorDark
+                : kBackgroundColorLight,
             body: const Center(
               child: CircularProgressIndicator(
                 valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
@@ -217,14 +233,16 @@ class _EditProfileViewState extends State<_EditProfileView> {
         }
 
         return Scaffold(
-          backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+          backgroundColor: isDarkMode
+              ? kBackgroundColorDark
+              : kBackgroundColorLight,
           body: ResponsiveBuilder(
             builder: (context, screenSize) {
               return Column(
                 children: [
                   // Top App Bar
                   _buildTopAppBar(context, primaryTextColor, screenSize),
-                  
+
                   // Scrollable Content
                   Expanded(
                     child: SingleChildScrollView(
@@ -232,8 +250,12 @@ class _EditProfileViewState extends State<_EditProfileView> {
                         child: Column(
                           children: [
                             // Profile Header
-                            _buildProfileHeader(context, primaryTextColor, screenSize),
-                            
+                            _buildProfileHeader(
+                              context,
+                              primaryTextColor,
+                              screenSize,
+                            ),
+
                             // Form Fields
                             _buildFormFields(
                               context,
@@ -242,7 +264,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
                               isDarkMode,
                               screenSize,
                             ),
-                            
+
                             // Bottom spacing for sticky button
                             SizedBox(
                               height: ResponsiveBreakpoints.responsiveValue(
@@ -257,9 +279,14 @@ class _EditProfileViewState extends State<_EditProfileView> {
                       ),
                     ),
                   ),
-                  
+
                   // Save Button (Sticky)
-                  _buildSaveButton(context, isDarkMode, screenSize, state is ProfileUpdating),
+                  _buildSaveButton(
+                    context,
+                    isDarkMode,
+                    screenSize,
+                    state is ProfileUpdating,
+                  ),
                 ],
               );
             },
@@ -269,8 +296,14 @@ class _EditProfileViewState extends State<_EditProfileView> {
     );
   }
 
-  Widget _buildTopAppBar(BuildContext context, Color primaryTextColor, ScreenSize screenSize) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+  Widget _buildTopAppBar(
+    BuildContext context,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return Container(
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
@@ -337,7 +370,11 @@ class _EditProfileViewState extends State<_EditProfileView> {
     );
   }
 
-  Widget _buildProfileHeader(BuildContext context, Color primaryTextColor, ScreenSize screenSize) {
+  Widget _buildProfileHeader(
+    BuildContext context,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
     final profileSize = ResponsiveBreakpoints.responsiveValue(
       context,
       compact: 128.0,
@@ -403,7 +440,9 @@ class _EditProfileViewState extends State<_EditProfileView> {
                 ),
               ),
               child: SizedBox(
-                width: ResponsiveBreakpoints.isCompact(context) ? double.infinity : null,
+                width: ResponsiveBreakpoints.isCompact(context)
+                    ? double.infinity
+                    : null,
                 height: ResponsiveBreakpoints.responsiveValue(
                   context,
                   compact: 40.0,
@@ -485,7 +524,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
               isDarkMode: isDarkMode,
               screenSize: screenSize,
             ),
-            
+
             SizedBox(
               height: ResponsiveBreakpoints.responsiveValue(
                 context,
@@ -494,7 +533,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
                 expanded: 20.0,
               ),
             ),
-            
+
             // Bio Field
             _buildTextField(
               context,
@@ -508,7 +547,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
               maxLines: 4,
               isRequired: false,
             ),
-            
+
             SizedBox(
               height: ResponsiveBreakpoints.responsiveValue(
                 context,
@@ -517,7 +556,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
                 expanded: 20.0,
               ),
             ),
-            
+
             // Location Field
             _buildTextField(
               context,
@@ -530,8 +569,143 @@ class _EditProfileViewState extends State<_EditProfileView> {
               screenSize: screenSize,
               isRequired: false,
             ),
+
+            SizedBox(
+              height: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 12.0,
+                medium: 16.0,
+                expanded: 20.0,
+              ),
+            ),
+
+            // University Selection Field
+            _buildUniversityField(
+              context,
+              primaryTextColor,
+              borderColor,
+              isDarkMode,
+              screenSize,
+            ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildUniversityField(
+    BuildContext context,
+    Color primaryTextColor,
+    Color borderColor,
+    bool isDarkMode,
+    ScreenSize screenSize,
+  ) {
+    return ConstrainedBox(
+      constraints: BoxConstraints(
+        maxWidth: ResponsiveBreakpoints.responsiveValue(
+          context,
+          compact: double.infinity,
+          medium: 480.0,
+          expanded: 480.0,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.only(
+              bottom: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 8.0,
+                medium: 10.0,
+                expanded: 12.0,
+              ),
+            ),
+            child: Text(
+              'University',
+              style: GoogleFonts.plusJakartaSans(
+                color: primaryTextColor,
+                fontSize: ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 16.0,
+                  medium: 17.0,
+                  expanded: 18.0,
+                ),
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          InkWell(
+            onTap: () async {
+              final result = await Navigator.pushNamed(
+                context,
+                '/university-selection',
+                arguments: {'selectedUniversity': _selectedUniversityName},
+              );
+
+              if (result != null && result is String) {
+                // Mapping names to IDs for database update
+                final Map<String, String> universityMap = {
+                  'University of Dar es Salaam':
+                      '9f0462c3-5b37-409d-9030-af396e9e7b30',
+                  'Sokoine University of Agriculture':
+                      '0a2ab3af-4ef5-456d-bcca-38920b14d103',
+                  'Muhimbili University of Health and Allied Sciences':
+                      'edb05f53-f2ec-49f4-833d-e91def6bbd3b',
+                  'University of Dodoma':
+                      '2d4e21b0-17d7-4310-bc83-9c694c9bb74c',
+                  'Ardhi University': '23530896-b8da-463f-9f79-5932d6b62f61',
+                  'Nelson Mandela African Institution of Science and Technology':
+                      '0a2a6c44-347f-40f9-ad48-e9493440c27d',
+                  'Mzumbe University': '97ecdf6c-a7f9-4901-a4d8-cad7f4fdb2ac',
+                };
+
+                setState(() {
+                  _selectedUniversityName = result;
+                  _selectedUniversityId = universityMap[result];
+                });
+              }
+            },
+            child: Container(
+              padding: EdgeInsets.all(
+                ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 15.0,
+                  medium: 16.0,
+                  expanded: 18.0,
+                ),
+              ),
+              decoration: BoxDecoration(
+                color: isDarkMode
+                    ? kBackgroundColorDark.withValues(alpha: 0.5)
+                    : Colors.white,
+                borderRadius: BorderRadius.circular(16.0),
+                border: Border.all(color: borderColor),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      _selectedUniversityName ?? 'Select University',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: _selectedUniversityName != null
+                            ? primaryTextColor
+                            : Colors.grey[600],
+                        fontSize: ResponsiveBreakpoints.responsiveValue(
+                          context,
+                          compact: 16.0,
+                          medium: 17.0,
+                          expanded: 18.0,
+                        ),
+                      ),
+                    ),
+                  ),
+                  Icon(Icons.chevron_right, color: Colors.grey[600]),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -645,7 +819,12 @@ class _EditProfileViewState extends State<_EditProfileView> {
     );
   }
 
-  Widget _buildSaveButton(BuildContext context, bool isDarkMode, ScreenSize screenSize, bool isLoading) {
+  Widget _buildSaveButton(
+    BuildContext context,
+    bool isDarkMode,
+    ScreenSize screenSize,
+    bool isLoading,
+  ) {
     return Container(
       padding: EdgeInsets.all(
         ResponsiveBreakpoints.responsiveHorizontalPadding(context),
@@ -699,20 +878,29 @@ class _EditProfileViewState extends State<_EditProfileView> {
                   width: double.infinity,
                   height: 48.0, // M3 standard button height
                   child: ElevatedButton(
-                    onPressed: isLoading ? null : () {
-                      if (_formKey.currentState!.validate()) {
-                        _saveChanges(context);
-                      }
-                    },
+                    onPressed: isLoading
+                        ? null
+                        : () {
+                            if (_formKey.currentState!.validate()) {
+                              _saveChanges(context);
+                            }
+                          },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kPrimaryColor,
                       foregroundColor: kBackgroundColorDark,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(24.0), // M3 standard
+                        borderRadius: BorderRadius.circular(
+                          24.0,
+                        ), // M3 standard
                       ),
                       elevation: 2.0, // M3 standard elevation
-                      padding: const EdgeInsets.symmetric(horizontal: 24.0), // M3 standard
-                      minimumSize: const Size(64, 40), // M3 minimum touch target
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24.0,
+                      ), // M3 standard
+                      minimumSize: const Size(
+                        64,
+                        40,
+                      ), // M3 minimum touch target
                     ),
                     child: isLoading
                         ? const SizedBox(
@@ -720,7 +908,9 @@ class _EditProfileViewState extends State<_EditProfileView> {
                             height: 20,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
                             ),
                           )
                         : Text(
@@ -766,10 +956,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
             ),
             ListTile(
               leading: const Icon(Icons.camera_alt),
-              title: Text(
-                'Take Photo',
-                style: GoogleFonts.plusJakartaSans(),
-              ),
+              title: Text('Take Photo', style: GoogleFonts.plusJakartaSans()),
               onTap: () async {
                 Navigator.pop(context);
                 // Use ImagePicker for direct camera capture
@@ -806,9 +993,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
               title: Text(
                 'Cancel',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
-                  fontWeight: FontWeight.w600,
-                ),
+                style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
               ),
               onTap: () {
                 Navigator.pop(context);
@@ -817,10 +1002,7 @@ class _EditProfileViewState extends State<_EditProfileView> {
             ),
             ListTile(
               leading: const Icon(Icons.cancel),
-              title: Text(
-                'Cancel',
-                style: GoogleFonts.plusJakartaSans(),
-              ),
+              title: Text('Cancel', style: GoogleFonts.plusJakartaSans()),
               onTap: () => Navigator.pop(context),
             ),
           ],
@@ -833,4 +1015,3 @@ class _EditProfileViewState extends State<_EditProfileView> {
     _saveProfile();
   }
 }
-

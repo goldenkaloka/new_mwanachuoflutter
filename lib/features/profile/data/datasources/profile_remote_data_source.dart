@@ -13,6 +13,7 @@ abstract class ProfileRemoteDataSource {
     String? bio,
     String? location,
     String? avatarUrl,
+    String? primaryUniversityId,
   });
 }
 
@@ -41,7 +42,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
               .select('name')
               .eq('id', universityId)
               .maybeSingle();
-          
+
           universityName = universityData?['name'] as String?;
         } catch (e) {
           // If university fetch fails, just continue without it
@@ -97,6 +98,7 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     String? bio,
     String? location,
     String? avatarUrl,
+    String? primaryUniversityId,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -111,6 +113,9 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (bio != null) updateData['bio'] = bio;
       if (location != null) updateData['location'] = location;
       if (avatarUrl != null) updateData['avatar_url'] = avatarUrl;
+      if (primaryUniversityId != null) {
+        updateData['primary_university_id'] = primaryUniversityId;
+      }
 
       await supabaseClient
           .from(DatabaseConstants.usersTable)
@@ -164,4 +169,3 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     }
   }
 }
-

@@ -1,9 +1,11 @@
 import 'dart:io';
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:syncfusion_flutter_pdf/pdf.dart';
+import 'package:docx_to_text/docx_to_text.dart';
 import '../../../../config/supabase_config.dart';
 import '../models/course_model.dart';
 import '../models/document_model.dart';
+import '../models/chat_session_model.dart';
 
 abstract class MwanachuomindRemoteDataSource {
   Future<List<CourseModel>> getCourses(String universityId);
@@ -19,7 +21,12 @@ abstract class MwanachuomindRemoteDataSource {
     List<Map<String, String>>? history, {
     String? documentId,
   });
-  Future<String> getOrCreateSession(String userId, String courseId);
+  Future<String> createChatSession(String userId, String courseId);
+  Future<List<ChatSessionModel>> getChatSessions(
+    String userId,
+    String courseId,
+  );
+  Future<void> renameChatSession(String sessionId, String title);
   Future<List<Map<String, dynamic>>> getSessionMessages(String sessionId);
   Future<void> saveMessage(String sessionId, String content, String sender);
   Future<CourseModel?> getEnrolledCourse(String userId);
@@ -68,7 +75,29 @@ class MwanachuomindRemoteDataSourceImpl
     String title,
     File file,
   ) async {
-    final fileExt = file.path.split('.').last;
+    final fileExt = file.path.split('.').last.toLowerCase();
+
+    // 1. Extract text content
+    String extractedText = '';
+    try {
+      if (fileExt == 'pdf') {
+        final bytes = await file.readAsBytes();
+        final document = PdfDocument(inputBytes: bytes);
+        final extractor = PdfTextExtractor(document);
+        extractedText = extractor.extractText();
+        document.dispose();
+      } else if (fileExt == 'docx') {
+        final bytes = await file.readAsBytes();
+        extractedText = docxToText(bytes);
+      } else if (fileExt == 'txt' || fileExt == 'md') {
+        extractedText = await file.readAsString();
+      }
+    } catch (e) {
+      // ignore: avoid_print
+      print('Warning: Text extraction failed: $e');
+    }
+
+    // 2. Upload file to storage
     final fileName = '${DateTime.now().millisecondsSinceEpoch}.$fileExt';
     final filePath = '$courseId/$fileName';
 
@@ -80,14 +109,16 @@ class MwanachuomindRemoteDataSourceImpl
           fileOptions: const FileOptions(cacheControl: '3600', upsert: false),
         );
 
+    // 3. Insert record with extracted text
     final docResponse = await supabaseClient
         .from('documents')
         .insert({
           'course_id': courseId,
           'title': title,
           'file_path': filePath,
+          'extracted_text': extractedText,
           'metadata': {
-            'original_name': file.path.split('/').last,
+            'original_name': file.path.split(Platform.pathSeparator).last,
             'size': await file.length(),
           },
         })
@@ -95,22 +126,6 @@ class MwanachuomindRemoteDataSourceImpl
         .single();
 
     final document = DocumentModel.fromJson(docResponse);
-
-    try {
-      // Invoke background processing
-      // We don't await this if we want instant feedback, but Supabase functions
-      // usually need to be awaited to ensure the request is sent.
-      // However, to prevent UI blocking on long files, we can just launch it.
-      // But safe approach is to await and catch timeout.
-      await supabaseClient.functions.invoke(
-        'process-docs',
-        body: {'document_id': document.id},
-      );
-    } catch (e) {
-      // Swallow error so UI doesn't break.
-      // The document is safely stored in DB/Storage anyway.
-      debugPrint('Warning: AI processing error (non-fatal): $e');
-    }
 
     return document;
   }
@@ -148,25 +163,54 @@ class MwanachuomindRemoteDataSourceImpl
   }
 
   @override
-  Future<String> getOrCreateSession(String userId, String courseId) async {
-    final existing = await supabaseClient
-        .from('chat_sessions')
-        .select('id')
-        .eq('user_id', userId)
-        .eq('course_id', courseId)
-        .maybeSingle();
-
-    if (existing != null) {
-      return existing['id'] as String;
+  Future<String> createChatSession(String userId, String courseId) async {
+    try {
+      final newSession = await supabaseClient
+          .from('chat_sessions')
+          .insert({
+            'user_id': userId,
+            'course_id': courseId,
+            'title': 'New Chat',
+          })
+          .select('id')
+          .single();
+      return newSession['id'] as String;
+    } catch (e) {
+      throw Exception('Failed to create session: $e');
     }
+  }
 
-    final newSession = await supabaseClient
-        .from('chat_sessions')
-        .insert({'user_id': userId, 'course_id': courseId})
-        .select('id')
-        .single();
+  @override
+  Future<List<ChatSessionModel>> getChatSessions(
+    String userId,
+    String courseId,
+  ) async {
+    try {
+      final response = await supabaseClient
+          .from('chat_sessions')
+          .select()
+          .eq('user_id', userId)
+          .eq('course_id', courseId)
+          .order('updated_at', ascending: false);
 
-    return newSession['id'] as String;
+      return (response as List)
+          .map((e) => ChatSessionModel.fromJson(e))
+          .toList();
+    } catch (e) {
+      throw Exception('Failed to fetch sessions: $e');
+    }
+  }
+
+  @override
+  Future<void> renameChatSession(String sessionId, String title) async {
+    try {
+      await supabaseClient
+          .from('chat_sessions')
+          .update({'title': title})
+          .eq('id', sessionId);
+    } catch (e) {
+      throw Exception('Failed to rename session: $e');
+    }
   }
 
   @override

@@ -1,6 +1,7 @@
 import 'dart:io';
 import '../entities/course.dart';
 import '../entities/document.dart';
+import '../entities/chat_session.dart';
 
 abstract class MwanachuomindRepository {
   Future<List<Course>> getUniversityCourses(String universityId);
@@ -20,7 +21,9 @@ abstract class MwanachuomindRepository {
     List<Map<String, String>>? history,
     String? documentId,
   });
-  Future<String> getOrCreateSession(String userId, String courseId);
+  Future<String> createChatSession(String userId, String courseId);
+  Future<List<ChatSession>> getChatSessions(String userId, String courseId);
+  Future<void> renameChatSession(String sessionId, String title);
   Future<List<Map<String, dynamic>>> getSessionMessages(String sessionId);
   Future<void> saveMessage(String sessionId, String content, String sender);
   Future<Course?> getEnrolledCourse(String userId);

@@ -1,140 +1,96 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { GoogleGenerativeAI } from "https://esm.sh/@google/generative-ai";
+import { RecursiveCharacterTextSplitter } from "npm:langchain/text_splitter";
 import { Buffer } from "node:buffer";
-// @ts-ignore
-import pdf from "npm:pdf-parse";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response('ok', { headers: corsHeaders });
-  }
+// @ts-ignore
+const wait = (promise: Promise<any>) => EdgeRuntime.waitUntil(promise);
 
-  console.log("Processing document request received...");
+async function extractWithGemini(fileBlob: Blob, filename: string, genAI: any): Promise<string> {
+  console.log(`[EXTRACT] OCR Start: ${filename}`);
+  // gemini-flash-latest proven to work with available quota
+  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  const arrayBuffer = await fileBlob.arrayBuffer();
+  const base64Data = Buffer.from(arrayBuffer).toString('base64');
 
+  const result = await model.generateContent([
+    { inlineData: { data: base64Data, mimeType: "application/pdf" } },
+    "Extract all text from this study material. Perform high-quality OCR. Output only the transcribed text content.",
+  ]);
+
+  const text = result.response.text();
+  console.log(`[EXTRACT] Success: ${text.length} chars`);
+  return text;
+}
+
+async function processDocument(documentId: string, supabase: any, genAI: any) {
   try {
-    const body = await req.json();
-    const { document_id } = body;
-    
-    if (!document_id) throw new Error("document_id is required");
+    console.log(`[BG] Start: ${documentId}`);
+    const { data: doc } = await supabase.from('documents').select('*').eq('id', documentId).single();
+    if (!doc) throw new Error("Doc not found");
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
-    );
+    const { data: file } = await supabase.storage.from('mwanachuomind_docs').download(doc.file_path);
+    if (!file) throw new Error("Download failed");
 
-    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY') ?? '');
+    const text = await extractWithGemini(file, doc.file_path, genAI);
+    await supabase.from('documents').update({ extracted_text: text, updated_at: new Date().toISOString() }).eq('id', documentId);
 
-    // 1. Get document metadata
-    console.log(`Fetching metadata for document: ${document_id}`);
-    const { data: doc, error: docError } = await supabase
-      .from('documents')
-      .select('*')
-      .eq('id', document_id)
-      .single();
+    // Using LangChain for better context-aware splitting
+    const splitter = new RecursiveCharacterTextSplitter({ chunkSize: 1000, chunkOverlap: 200 });
+    const output = await splitter.createDocuments([text]);
 
-    if (docError) throw docError;
-    if (!doc) throw new Error("Document not found");
+    await supabase.from('document_chunks').delete().eq('document_id', documentId);
 
-    // 2. Download file
-    console.log(`Downloading file from storage: ${doc.file_path}`);
-    const { data: fileData, error: downloadError } = await supabase
-      .storage
-      .from('mwanachuomind_docs')
-      .download(doc.file_path);
-
-    if (downloadError) throw downloadError;
-
-    // 3. Extract Text
-    console.log("Extracting text from document...");
-    let text = '';
-    const arrayBuffer = await fileData.arrayBuffer();
-    const buffer = new Uint8Array(arrayBuffer);
-    
-    try {
-        const data = await pdf(Buffer.from(buffer));
-        text = data.text;
-        console.log(`Extracted ${text.length} characters using pdf-parse`);
-    } catch (e) {
-        console.warn("pdf-parse failed, falling back to text decoding", e);
-        text = new TextDecoder().decode(buffer);
-    }
-    
-    if (!text || text.trim().length === 0) {
-        throw new Error("No text could be extracted from the document");
-    }
-
-    // 4. Split Text (Simple recursive-like splitting)
-    const chunkSize = 1000;
-    const overlap = 200;
-    const chunks: string[] = [];
-    
-    for (let i = 0; i < text.length; i += (chunkSize - overlap)) {
-        const chunk = text.slice(i, i + chunkSize).trim();
-        if (chunk.length > 50) { 
-            chunks.push(chunk);
-        }
-    }
-
-    console.log(`Split text into ${chunks.length} chunks`);
-
-    // 5. Embed & Bulk Insert
     const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004"});
-    const batchSize = 10; 
-    const allChunksToInsert = [];
+    for (let i = 0; i < output.length; i += 10) {
+      const batch = output.slice(i, i + 10);
+      const records = await Promise.all(batch.map(async (chunk) => {
+        const r = await embeddingModel.embedContent(chunk.pageContent);
+        return { document_id: documentId, content: chunk.pageContent, embedding: r.embedding.values };
+      }));
+      await supabase.from('document_chunks').insert(records);
+    }
 
-    for (let i = 0; i < chunks.length; i += batchSize) {
-        const batch = chunks.slice(i, i + batchSize);
-        console.log(`Processing embedding batch ${Math.floor(i / batchSize) + 1} of ${Math.ceil(chunks.length / batchSize)}`);
+    await supabase.from('document_processing_queue')
+      .update({ status: 'completed', updated_at: new Date().toISOString(), error_message: null })
+      .eq('document_id', documentId);
+    console.log(`[BG] ✅ SUCCESS: ${documentId}`);
+  } catch (err) {
+    console.error(`[BG] ❌ ERROR:`, err.message);
+    await supabase.from('document_processing_queue')
+      .update({ status: 'failed', error_message: err.message, updated_at: new Date().toISOString() })
+      .eq('document_id', documentId);
+  }
+}
+
+serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  
+  try {
+    const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
+
+    const body = await req.json().catch(() => ({}));
+    const documentId = body.document_id || body.id || body.record?.id;
+
+    if (documentId) {
+      console.log(`[HTTP] Triggering background for: ${documentId}`);
+      // Clear error_message and set status to processing
+      await supabase.from('document_processing_queue')
+        .update({ status: 'processing', updated_at: new Date().toISOString(), error_message: null })
+        .eq('document_id', documentId);
         
-        await Promise.all(batch.map(async (chunk) => {
-            try {
-                const result = await embeddingModel.embedContent(chunk);
-                const embedding = result.embedding.values;
-                allChunksToInsert.push({
-                    document_id: document_id,
-                    content: chunk,
-                    embedding: embedding,
-                });
-            } catch (embedError) {
-                console.error(`Failed to embed chunk starting with: ${chunk.slice(0, 50)}`, embedError);
-            }
-        }));
+      wait(processDocument(documentId, supabase, genAI));
+      return new Response(JSON.stringify({ success: true, message: "Processing started in background" }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
-
-    if (allChunksToInsert.length > 0) {
-        console.log(`Inserting ${allChunksToInsert.length} chunks into database...`);
-        // Use multiple smaller inserts if total is very large to avoid payload limits
-        const dbBatchSize = 50;
-        for (let i = 0; i < allChunksToInsert.length; i += dbBatchSize) {
-            const dbBatch = allChunksToInsert.slice(i, i + dbBatchSize);
-            const { error: insertError } = await supabase
-                .from('document_chunks')
-                .insert(dbBatch);
-            
-            if (insertError) throw insertError;
-        }
-    }
-
-    console.log("Document processing completed successfully");
-
-    return new Response(JSON.stringify({ 
-        success: true, 
-        chunks: allChunksToInsert.length 
-    }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-
-  } catch (error) {
-    console.error("Critical error in process-docs:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
-    });
+    return new Response(JSON.stringify({ error: "Missing ID" }), { status: 400 });
+  } catch (err) {
+    return new Response(JSON.stringify({ error: err.message }), { status: 500 });
   }
 });

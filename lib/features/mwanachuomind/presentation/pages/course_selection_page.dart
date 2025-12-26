@@ -19,11 +19,25 @@ class _CourseSelectionPageState extends State<CourseSelectionPage> {
   String? _universityId;
   String? _universityName;
 
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _loadCourses();
     _loadUserRole();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserRole() async {
@@ -264,39 +278,105 @@ class _CourseSelectionPageState extends State<CourseSelectionPage> {
             return Center(child: Text('Error: ${state.errorMessage}'));
           }
 
-          if (state.courses.isEmpty &&
-              state.status == MwanachuomindStatus.success) {
-            return const Center(
-              child: Text('No courses found for your university.'),
-            );
-          }
+          final filteredCourses = state.courses.where((course) {
+            final name = course.name.toLowerCase();
+            final code = course.code.toLowerCase();
+            final query = _searchQuery.toLowerCase();
+            return name.contains(query) || code.contains(query);
+          }).toList();
 
-          return ListView.builder(
-            itemCount: state.courses.length,
-            itemBuilder: (context, index) {
-              final course = state.courses[index];
-              return Card(
-                margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: ListTile(
-                  title: Text(course.name),
-                  subtitle: Text(course.code),
-                  trailing: const Icon(Icons.arrow_forward_ios),
-                  onTap: () {
-                    context.read<MwanachuomindBloc>().add(SelectCourse(course));
-                    final bloc = context.read<MwanachuomindBloc>();
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => BlocProvider.value(
-                          value: bloc,
-                          child: const MwanachuomindChatPage(),
-                        ),
-                      ),
-                    );
-                  },
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search course by name or code...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
-              );
-            },
+              ),
+              if (filteredCourses.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.search_off,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchQuery.isEmpty
+                                ? 'No courses found for your university.'
+                                : 'No courses match "$_searchQuery"',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredCourses.length,
+                    itemBuilder: (context, index) {
+                      final course = filteredCourses[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: ListTile(
+                          title: Text(course.name),
+                          subtitle: Text(course.code),
+                          trailing: const Icon(Icons.arrow_forward_ios),
+                          onTap: () {
+                            context.read<MwanachuomindBloc>().add(
+                              SelectCourse(course),
+                            );
+                            final bloc = context.read<MwanachuomindBloc>();
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => BlocProvider.value(
+                                  value: bloc,
+                                  child: const MwanachuomindChatPage(),
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  ),
+                ),
+            ],
           );
         },
       ),

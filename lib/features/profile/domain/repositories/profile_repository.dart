@@ -12,8 +12,8 @@ abstract class ProfileRepository {
     String? bio,
     String? location,
     File? avatarImage,
+    String? primaryUniversityId,
   });
   Future<Either<Failure, void>> updateAvatar(File avatarImage);
   Future<Either<Failure, void>> deleteAvatar();
 }
-

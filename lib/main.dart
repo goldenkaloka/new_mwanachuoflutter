@@ -3,7 +3,6 @@ import 'package:flutter/foundation.dart' show kDebugMode;
 import 'dart:io' show Platform;
 import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
-import 'package:mwanachuo/config/onesignal_config.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/main_app.dart';
 
@@ -13,6 +12,8 @@ Future<void> main() async {
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   try {
+    // Stripe initialization will be handled in main_app.dart
+
     // Suppress mouse_tracker.dart debug assertions on Windows
     // These are harmless debug-only warnings that spam the console
     if (kDebugMode && Platform.isWindows) {
@@ -33,7 +34,7 @@ Future<void> main() async {
     }
 
     await SupabaseConfig.initialize();
-    await OneSignalConfig.initialize();
+    // OneSignal initialization will be handled in main_app.dart
     await initializeDependencies();
 
     runApp(const MwanachuoshopApp());
@@ -41,6 +42,8 @@ Future<void> main() async {
     // Native splash will be removed by InitialRouteHandler when navigation occurs
   } catch (e, stackTrace) {
     debugPrint('Initialization failed: $e\n$stackTrace');
+    // Ensure native splash is removed so user can see the error
+    FlutterNativeSplash.remove();
     // Run a simple error app if initialization fails
     runApp(
       MaterialApp(

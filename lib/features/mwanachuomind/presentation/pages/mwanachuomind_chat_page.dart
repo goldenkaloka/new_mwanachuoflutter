@@ -10,6 +10,7 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import '../../domain/entities/document.dart' as app;
 import '../../domain/entities/chat_message.dart';
 import '../widgets/typewriter_message_bubble.dart';
+import '../widgets/markdown_message_bubble.dart';
 import 'package:mwanachuo/core/widgets/futuristic_animated_background.dart';
 import '../bloc/bloc.dart';
 
@@ -33,6 +34,21 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
   // Input controller
   final TextEditingController _textController = TextEditingController();
   final FocusNode _focusNode = FocusNode();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final bloc = context.read<MwanachuomindBloc>();
+      final state = bloc.state;
+      final course = state.selectedCourse ?? state.enrolledCourse;
+      final user = Supabase.instance.client.auth.currentUser;
+
+      if (course != null && user != null && state.sessions.isEmpty) {
+        bloc.add(LoadChatSessions(userId: user.id, courseId: course.id));
+      }
+    });
+  }
 
   @override
   void dispose() {
@@ -82,7 +98,8 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
 
         return Scaffold(
           extendBodyBehindAppBar: true,
-          appBar: _buildAppBar(course.code, course.name, state),
+          drawer: _buildDrawer(state, course.id),
+          appBar: _buildAppBar(course.code, course.name, state, course.id),
           body: FuturisticAnimatedBackground(
             child: Column(
               children: [
@@ -113,24 +130,11 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
                           }
 
                           if (isAi) {
-                            return ClipRRect(
-                              borderRadius: BorderRadius.circular(
-                                20,
-                              ).copyWith(bottomLeft: Radius.zero),
-                              child: BackdropFilter(
-                                filter: ui.ImageFilter.blur(
-                                  sigmaX: 8,
-                                  sigmaY: 8,
-                                ),
-                                child: TextMessage(
-                                  emojiEnlargementBehavior:
-                                      EmojiEnlargementBehavior.multi,
-                                  hideBackgroundOnEmojiMessages: true,
-                                  message: message,
-                                  showName: showName,
-                                  usePreviewData: true,
-                                ),
-                              ),
+                            // History AI messages: Use MarkdownBubble with solid background
+                            // Removed restrictive padding to allow fuller width
+                            return MarkdownMessageBubble(
+                              text: message.text,
+                              isAi: true,
                             );
                           }
 
@@ -166,6 +170,7 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
     String code,
     String name,
     MwanachuomindState state,
+    String courseId,
   ) {
     return PreferredSize(
       preferredSize: const Size.fromHeight(kToolbarHeight),
@@ -209,13 +214,16 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
                     children: [
                       Row(
                         children: [
-                          Text(
-                            'Mwanachuomind',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                              color: kTextPrimary,
-                              letterSpacing: -0.5,
+                          Flexible(
+                            child: Text(
+                              'Mwanachuomind',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w800,
+                                color: kTextPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                           const SizedBox(width: 6),
@@ -251,6 +259,19 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
                 onPressed: () => _showCourseInfo(),
               ),
               const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.add, color: kPrimaryColor),
+                onPressed: () {
+                  final user = Supabase.instance.client.auth.currentUser;
+                  if (user != null) {
+                    context.read<MwanachuomindBloc>().add(
+                      CreateNewChatSession(userId: user.id, courseId: courseId),
+                    );
+                  }
+                },
+                tooltip: 'New Chat',
+              ),
+              const SizedBox(width: 8),
             ],
             shape: Border(
               bottom: BorderSide(
@@ -360,7 +381,7 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
     return DefaultChatTheme(
       backgroundColor: Colors.transparent,
       primaryColor: kPrimaryColor, // Opaque uniform color for user bubbles
-      secondaryColor: Colors.white.withValues(alpha: 0.5),
+      secondaryColor: kSurfaceColorLight, // Solid secondary (surface) color
       inputBackgroundColor: kSurfaceColorLight,
       inputTextColor: kTextPrimary,
       inputBorderRadius: BorderRadius.circular(24),
@@ -368,8 +389,8 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
       inputPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       inputTextStyle: GoogleFonts.plusJakartaSans(fontSize: 16),
       messageBorderRadius: 20,
-      messageInsetsHorizontal: 16,
-      messageInsetsVertical: 12,
+      messageInsetsHorizontal: 6, // Squeezed near edge
+      messageInsetsVertical: 10, // Standard padding
       sentMessageBodyTextStyle: GoogleFonts.plusJakartaSans(
         color: Colors.white,
         fontSize: 15,
@@ -398,76 +419,80 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
 
   Widget _buildEmptyState(String courseName) {
     return Center(
-      child: Padding(
-        padding: const EdgeInsets.all(32),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(24),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    kPrimaryColor.withValues(alpha: 0.1),
-                    kPrimaryColorLight.withValues(alpha: 0.3),
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+      child: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(24),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      kPrimaryColor.withValues(alpha: 0.1),
+                      kPrimaryColorLight.withValues(alpha: 0.3),
+                    ],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                  shape: BoxShape.circle,
                 ),
-                shape: BoxShape.circle,
+                child: Icon(
+                  Icons.psychology,
+                  size: 64,
+                  color: kPrimaryColor.withValues(alpha: 0.8),
+                ),
               ),
-              child: Icon(
-                Icons.psychology,
-                size: 64,
-                color: kPrimaryColor.withValues(alpha: 0.8),
+              const SizedBox(height: 24),
+              Text(
+                'Hi! I\'m Mwanachuomind 👋',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: kTextPrimary,
+                ),
               ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Hi! I\'m Mwanachuomind 👋',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: kTextPrimary,
+              const SizedBox(height: 12),
+              Text(
+                'Your AI study companion for $courseName',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 16,
+                  color: kTextSecondary,
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Your AI study companion for $courseName',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 16,
-                color: kTextSecondary,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 24),
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: kInfoColorLight,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.lightbulb_outline,
-                    color: kInfoColor,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 12),
-                  Text(
-                    'Use the document icon to focus answers',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
+              const SizedBox(height: 24),
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: kInfoColorLight,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.lightbulb_outline,
                       color: kInfoColor,
-                      fontWeight: FontWeight.w500,
+                      size: 20,
                     ),
-                  ),
-                ],
+                    const SizedBox(width: 12),
+                    Flexible(
+                      child: Text(
+                        'Use the document icon to focus answers',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          color: kInfoColor,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -501,113 +526,114 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.2),
+        color: kSurfaceColorLight, // Solid background for performance
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            offset: const Offset(0, -2),
+            blurRadius: 10,
+          ),
+        ],
         border: Border(
-          top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+          top: BorderSide(color: Colors.black.withValues(alpha: 0.05)),
         ),
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ui.ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: SafeArea(
-            top: false,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.4),
-                      borderRadius: BorderRadius.circular(24),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        if (_selectedDocument != null)
-                          Padding(
-                            padding: const EdgeInsets.only(left: 12),
-                            child: Icon(
-                              Icons.article,
-                              color: kPrimaryColor,
-                              size: 20,
-                            ),
-                          ),
-                        Expanded(
-                          child: TextField(
-                            controller: _textController,
-                            focusNode: _focusNode,
-                            decoration: InputDecoration(
-                              hintText: _selectedDocument != null
-                                  ? 'Ask about ${_selectedDocument!.title}...'
-                                  : 'Ask Mwanachuomind...',
-                              hintStyle: GoogleFonts.plusJakartaSans(
-                                color: kTextSecondary.withValues(alpha: 0.6),
-                                fontSize: 14,
-                              ),
-                              border: InputBorder.none,
-                              enabledBorder: InputBorder.none,
-                              focusedBorder: InputBorder.none,
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 14,
-                              ),
-                              isDense: true,
-                            ),
-                            style: GoogleFonts.plusJakartaSans(
-                              color: kTextPrimary,
-                              fontSize: 15,
-                            ),
-                            minLines: 1,
-                            maxLines: 5,
-                            textCapitalization: TextCapitalization.sentences,
-                            onSubmitted: (_) {
-                              final text = _textController.text.trim();
-                              if (text.isEmpty) return;
-                              _handleSendPressed(types.PartialText(text: text));
-                              _textController.clear();
-                              _focusNode.requestFocus();
-                            },
-                          ),
+      child: SafeArea(
+        top: false,
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(
+                    color: Colors.black.withValues(alpha: 0.1),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    if (_selectedDocument != null)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 12),
+                        child: Icon(
+                          Icons.article,
+                          color: kPrimaryColor,
+                          size: 20,
                         ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  margin: const EdgeInsets.only(bottom: 2),
-                  decoration: BoxDecoration(
-                    color: kPrimaryColor,
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: kPrimaryColor.withValues(alpha: 0.3),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
                       ),
-                    ],
-                  ),
-                  child: IconButton(
-                    icon: const Icon(
-                      Icons.send_rounded,
-                      color: Colors.white,
-                      size: 20,
+                    Expanded(
+                      child: TextField(
+                        controller: _textController,
+                        focusNode: _focusNode,
+                        decoration: InputDecoration(
+                          hintText: _selectedDocument != null
+                              ? 'Ask about ${_selectedDocument!.title}...'
+                              : 'Ask Mwanachuomind...',
+                          hintStyle: GoogleFonts.plusJakartaSans(
+                            color: kTextSecondary.withValues(alpha: 0.6),
+                            fontSize: 14,
+                          ),
+                          border: InputBorder.none,
+                          enabledBorder: InputBorder.none,
+                          focusedBorder: InputBorder.none,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 14,
+                          ),
+                          isDense: true,
+                        ),
+                        style: GoogleFonts.plusJakartaSans(
+                          color: kTextPrimary,
+                          fontSize: 15,
+                        ),
+                        minLines: 1,
+                        maxLines: 5,
+                        textCapitalization: TextCapitalization.sentences,
+                        onSubmitted: (_) {
+                          final text = _textController.text.trim();
+                          if (text.isEmpty) return;
+                          _handleSendPressed(types.PartialText(text: text));
+                          _textController.clear();
+                          _focusNode.requestFocus();
+                        },
+                      ),
                     ),
-                    onPressed: () {
-                      final text = _textController.text.trim();
-                      if (text.isEmpty) return;
-                      _handleSendPressed(types.PartialText(text: text));
-                      _textController.clear();
-                      _focusNode.requestFocus();
-                    },
-                  ),
+                  ],
                 ),
-              ],
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Container(
+              margin: const EdgeInsets.only(bottom: 2),
+              decoration: BoxDecoration(
+                color: kPrimaryColor,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: kPrimaryColor.withValues(alpha: 0.3),
+                    blurRadius: 8,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: IconButton(
+                icon: const Icon(
+                  Icons.send_rounded,
+                  color: Colors.white,
+                  size: 20,
+                ),
+                onPressed: () {
+                  final text = _textController.text.trim();
+                  if (text.isEmpty) return;
+                  _handleSendPressed(types.PartialText(text: text));
+                  _textController.clear();
+                  _focusNode.requestFocus();
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -670,11 +696,13 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
               children: [
                 Icon(Icons.description, color: kTextSecondary, size: 20),
                 const SizedBox(width: 12),
-                Text(
-                  '${state.courseDocuments.length} documents available',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: kTextSecondary,
+                Expanded(
+                  child: Text(
+                    '${state.courseDocuments.length} documents available',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      color: kTextSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -750,6 +778,103 @@ class _MwanachuomindChatPageState extends State<MwanachuomindChatPage> {
             const SizedBox(height: 16),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDrawer(MwanachuomindState state, String courseId) {
+    return Drawer(
+      backgroundColor: kSurfaceColorLight,
+      child: Column(
+        children: [
+          DrawerHeader(
+            decoration: BoxDecoration(
+              color: kPrimaryColor.withValues(alpha: 0.05),
+            ),
+            child: Center(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.history, color: kPrimaryColor, size: 32),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Chat History',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: kTextPrimary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Expanded(
+            child: state.sessions.isEmpty
+                ? Center(
+                    child: Text(
+                      'No chat history yet',
+                      style: GoogleFonts.plusJakartaSans(color: kTextSecondary),
+                    ),
+                  )
+                : ListView.separated(
+                    itemCount: state.sessions.length,
+                    separatorBuilder: (context, index) =>
+                        const Divider(height: 1),
+                    itemBuilder: (context, index) {
+                      final session = state.sessions[index];
+                      final isSelected = session.id == state.sessionId;
+                      return ListTile(
+                        title: Text(
+                          session.title.isEmpty ? 'New Chat' : session.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontWeight: isSelected
+                                ? FontWeight.bold
+                                : FontWeight.normal,
+                            color: isSelected ? kPrimaryColor : kTextPrimary,
+                          ),
+                        ),
+                        tileColor: isSelected
+                            ? kPrimaryColor.withValues(alpha: 0.1)
+                            : null,
+                        onTap: () {
+                          if (!isSelected) {
+                            context.read<MwanachuomindBloc>().add(
+                              SelectChatSession(session.id),
+                            );
+                          }
+                          Navigator.pop(context);
+                        },
+                      );
+                    },
+                  ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  final user = Supabase.instance.client.auth.currentUser;
+                  if (user != null) {
+                    context.read<MwanachuomindBloc>().add(
+                      CreateNewChatSession(userId: user.id, courseId: courseId),
+                    );
+                  }
+                  Navigator.pop(context); // Close drawer
+                },
+                icon: const Icon(Icons.add),
+                label: const Text("New Chat"),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: kPrimaryColor,
+                  side: BorderSide(color: kPrimaryColor),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

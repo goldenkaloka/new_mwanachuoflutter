@@ -483,142 +483,156 @@ class AccommodationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final isSmallScreen = MediaQuery.of(context).size.width < 600;
 
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
-          borderRadius: const BorderRadius.vertical(
-            top: Radius.circular(kRadiusSm),
+          borderRadius: BorderRadius.circular(kRadiusMd),
+          border: Border.all(
+            color: isDarkMode ? kBorderColorDark : kBorderColor,
+            width: 0.5,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.05),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
+        clipBehavior: Clip.antiAlias,
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
           children: [
+            // Image Section
             AspectRatio(
-              aspectRatio: 0.7,
+              aspectRatio: 1.0, // Switched to 1:1 for better balance in Masonry
               child: Hero(
                 tag: 'accommodation_$imageUrl',
-                child: ClipRRect(
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(kRadiusSm),
-                  ),
-                  child: CachedNetworkImage(
-                    imageUrl: imageUrl,
-                    width: double.infinity,
-                    fit: BoxFit.cover,
-                    placeholder: (context, url) => Container(
-                      color: isDarkMode ? kBorderColorDark : kBorderColor,
-                      child: const Center(
-                        child: CircularProgressIndicator(
-                          strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            kPrimaryColor,
-                          ),
+                child: CachedNetworkImage(
+                  imageUrl: imageUrl,
+                  width: double.infinity,
+                  fit: BoxFit.cover,
+                  placeholder: (context, url) => Container(
+                    color: isDarkMode ? kBorderColorDark : kBorderColor,
+                    child: const Center(
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(
+                          kPrimaryColor,
                         ),
                       ),
                     ),
-                    errorWidget: (context, url, error) => Container(
-                      color: isDarkMode ? kBorderColorDark : kBorderColor,
-                      child: const Center(
-                        child: Icon(
-                          Icons.home_outlined,
-                          size: kIconSize2xl,
-                          color: kTextSecondary,
-                        ),
+                  ),
+                  errorWidget: (context, url, error) => Container(
+                    color: isDarkMode ? kBorderColorDark : kBorderColor,
+                    child: const Center(
+                      child: Icon(
+                        Icons.home_outlined,
+                        size: kIconSize2xl,
+                        color: kTextSecondary,
                       ),
                     ),
                   ),
                 ),
               ),
             ),
+            // Info Section
             Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 6 : kSpacingSm,
-                vertical: isSmallScreen ? 4 : kSpacingSm,
-              ),
+              padding: const EdgeInsets.all(kSpacingMd),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontSize: isSmallScreen ? 13 : null,
-                      height: 1.2,
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                      height: 1.3,
                     ),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    price,
-                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: const Color(0xFF078829),
-                      fontWeight: FontWeight.w700,
-                      fontSize: isSmallScreen ? 13 : null,
-                      height: 1.2,
-                    ),
+                  const SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Text(
+                        price,
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(
+                              color: const Color(0xFF078829),
+                              fontWeight: FontWeight.w800,
+                              fontSize: 15,
+                            ),
+                      ),
+                      Text(
+                        '/$priceType',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: kTextSecondary,
+                          fontSize: 11,
+                        ),
+                      ),
+                    ],
                   ),
                   if (location != null ||
                       bedrooms != null ||
                       bathrooms != null) ...[
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        if (location != null) ...[
-                          Icon(
+                    const SizedBox(height: 10),
+                    if (location != null) ...[
+                      Row(
+                        children: [
+                          const Icon(
                             Icons.location_on_outlined,
-                            size: isSmallScreen ? 11 : kIconSizeSm,
+                            size: 14,
                             color: kTextSecondary,
                           ),
-                          const SizedBox(width: 2),
-                          Flexible(
+                          const SizedBox(width: 4),
+                          Expanded(
                             child: Text(
                               location!,
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    fontSize: isSmallScreen ? 9 : null,
-                                    height: 1.2,
+                                    fontSize: 11,
+                                    color: kTextSecondary,
                                   ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    Row(
+                      children: [
                         if (bedrooms != null) ...[
-                          const SizedBox(width: 4),
-                          Icon(
+                          const Icon(
                             Icons.bed_outlined,
-                            size: isSmallScreen ? 11 : kIconSizeSm,
+                            size: 14,
                             color: kTextSecondary,
                           ),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: 4),
                           Text(
                             '$bedrooms',
                             style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  fontSize: isSmallScreen ? 9 : null,
-                                  height: 1.2,
-                                ),
+                                ?.copyWith(fontSize: 11, color: kTextSecondary),
                           ),
                         ],
                         if (bathrooms != null) ...[
-                          const SizedBox(width: 4),
-                          Icon(
+                          const SizedBox(width: 12),
+                          const Icon(
                             Icons.bathtub_outlined,
-                            size: isSmallScreen ? 11 : kIconSizeSm,
+                            size: 14,
                             color: kTextSecondary,
                           ),
-                          const SizedBox(width: 2),
+                          const SizedBox(width: 4),
                           Text(
                             '$bathrooms',
                             style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  fontSize: isSmallScreen ? 9 : null,
-                                  height: 1.2,
-                                ),
+                                ?.copyWith(fontSize: 11, color: kTextSecondary),
                           ),
                         ],
                       ],

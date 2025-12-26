@@ -42,16 +42,6 @@ class SelectCourse extends MwanachuomindEvent {
   List<Object> get props => [course];
 }
 
-class LoadChatHistory extends MwanachuomindEvent {
-  final String userId;
-  final String courseId;
-
-  const LoadChatHistory({required this.userId, required this.courseId});
-
-  @override
-  List<Object> get props => [userId, courseId];
-}
-
 class UploadDocument extends MwanachuomindEvent {
   final String title;
   final File file;
@@ -107,4 +97,43 @@ class ClearEnrolledCourse extends MwanachuomindEvent {
 
   @override
   List<Object> get props => [userId];
+}
+
+class LoadChatSessions extends MwanachuomindEvent {
+  final String userId;
+  final String courseId;
+
+  const LoadChatSessions({required this.userId, required this.courseId});
+
+  @override
+  List<Object> get props => [userId, courseId];
+}
+
+class SelectChatSession extends MwanachuomindEvent {
+  final String sessionId;
+
+  const SelectChatSession(this.sessionId);
+
+  @override
+  List<Object> get props => [sessionId];
+}
+
+class CreateNewChatSession extends MwanachuomindEvent {
+  final String userId;
+  final String courseId;
+
+  const CreateNewChatSession({required this.userId, required this.courseId});
+
+  @override
+  List<Object> get props => [userId, courseId];
+}
+
+class RenameChatSession extends MwanachuomindEvent {
+  final String sessionId;
+  final String title;
+
+  const RenameChatSession({required this.sessionId, required this.title});
+
+  @override
+  List<Object> get props => [sessionId, title];
 }

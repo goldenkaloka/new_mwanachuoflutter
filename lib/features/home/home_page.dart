@@ -1392,12 +1392,7 @@ class _HomePageState extends State<HomePage> {
       },
       builder: (context, state) {
         if (state is AccommodationsLoading) {
-          return ProductGridSkeleton(
-            itemCount: 4,
-            crossAxisCount: ResponsiveBreakpoints.responsiveGridColumns(
-              context,
-            ),
-          );
+          return ProductGridSkeleton(itemCount: 4, crossAxisCount: 2);
         }
 
         if (state is AccommodationError) {
@@ -1864,11 +1859,10 @@ class _HomePageState extends State<HomePage> {
         addAutomaticKeepAlives: false,
         addRepaintBoundaries: true,
         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: 3,
-          crossAxisSpacing: 4,
-          mainAxisSpacing: 4,
-          childAspectRatio:
-              0.6, // Adjusted for thinner profile and increased length
+          crossAxisCount: 2,
+          crossAxisSpacing: 8,
+          mainAxisSpacing: 8,
+          childAspectRatio: 0.85,
         ),
         itemBuilder: (context, index) {
           final accommodation = accommodations[index];

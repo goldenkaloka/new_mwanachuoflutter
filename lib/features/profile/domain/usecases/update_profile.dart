@@ -21,6 +21,7 @@ class UpdateProfile implements UseCase<UserProfileEntity, UpdateProfileParams> {
       bio: params.bio,
       location: params.location,
       avatarImage: params.avatarImage,
+      primaryUniversityId: params.primaryUniversityId,
     );
   }
 }
@@ -31,6 +32,7 @@ class UpdateProfileParams extends Equatable {
   final String? bio;
   final String? location;
   final File? avatarImage;
+  final String? primaryUniversityId;
 
   const UpdateProfileParams({
     this.fullName,
@@ -38,9 +40,16 @@ class UpdateProfileParams extends Equatable {
     this.bio,
     this.location,
     this.avatarImage,
+    this.primaryUniversityId,
   });
 
   @override
-  List<Object?> get props => [fullName, phoneNumber, bio, location, avatarImage];
+  List<Object?> get props => [
+    fullName,
+    phoneNumber,
+    bio,
+    location,
+    avatarImage,
+    primaryUniversityId,
+  ];
 }
-

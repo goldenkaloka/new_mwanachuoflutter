@@ -5,13 +5,13 @@ import 'package:mwanachuo/core/usecases/usecase.dart';
 import 'package:mwanachuo/features/subscriptions/domain/repositories/subscription_repository.dart';
 
 class CreateCheckoutSession
-    implements UseCase<String, CreateCheckoutSessionParams> {
+    implements UseCase<Map<String, dynamic>, CreateCheckoutSessionParams> {
   final SubscriptionRepository repository;
 
   CreateCheckoutSession(this.repository);
 
   @override
-  Future<Either<Failure, String>> call(
+  Future<Either<Failure, Map<String, dynamic>>> call(
     CreateCheckoutSessionParams params,
   ) async {
     return await repository.createCheckoutSession(
@@ -36,4 +36,3 @@ class CreateCheckoutSessionParams extends Equatable {
   @override
   List<Object> get props => [sellerId, planId, billingPeriod];
 }
-

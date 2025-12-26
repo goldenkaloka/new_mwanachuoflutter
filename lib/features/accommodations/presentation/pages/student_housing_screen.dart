@@ -14,6 +14,7 @@ import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_bloc.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_event.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_state.dart';
+import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 
 class StudentHousingScreen extends StatelessWidget {
   const StudentHousingScreen({super.key});
@@ -92,10 +93,7 @@ class _HousingViewState extends State<_HousingView> {
       context: context,
       sections: sections,
       priceRange: currentFilter != null
-          ? PriceRange(
-              min: currentFilter.minPrice,
-              max: currentFilter.maxPrice,
-            )
+          ? PriceRange(min: currentFilter.minPrice, max: currentFilter.maxPrice)
           : null,
       onApply: (updatedSections, priceRange) {
         // Room Type is handled by chips, not bottom sheet
@@ -104,7 +102,10 @@ class _HousingViewState extends State<_HousingView> {
             .map((opt) => opt.value)
             .toList();
         final selectedPriceType = updatedSections[1].options
-            .firstWhere((opt) => opt.isSelected, orElse: () => const FilterOption(label: '', value: ''))
+            .firstWhere(
+              (opt) => opt.isSelected,
+              orElse: () => const FilterOption(label: '', value: ''),
+            )
             .value;
 
         final newFilter = AccommodationFilter(
@@ -112,7 +113,8 @@ class _HousingViewState extends State<_HousingView> {
           minPrice: priceRange?.min,
           maxPrice: priceRange?.max,
           location: currentFilter?.location,
-          accommodationType: currentFilter?.accommodationType, // Keep existing from chips
+          accommodationType:
+              currentFilter?.accommodationType, // Keep existing from chips
           amenities: selectedAmenities.isEmpty ? null : selectedAmenities,
           priceType: selectedPriceType.isEmpty ? null : selectedPriceType,
           sortBy: currentFilter?.sortBy,
@@ -131,7 +133,9 @@ class _HousingViewState extends State<_HousingView> {
         setState(() {
           _currentFilter = null;
         });
-        context.read<AccommodationBloc>().add(const ClearAccommodationFilterEvent());
+        context.read<AccommodationBloc>().add(
+          const ClearAccommodationFilterEvent(),
+        );
       },
     );
   }
@@ -149,7 +153,10 @@ class _HousingViewState extends State<_HousingView> {
         child: Row(
           children: [
             // "All" option
-            _buildRoomTypeChip('All', _currentFilter?.accommodationType == null),
+            _buildRoomTypeChip(
+              'All',
+              _currentFilter?.accommodationType == null,
+            ),
             // Room type chips
             ...RoomTypes.all.map((roomType) {
               return _buildRoomTypeChip(
@@ -170,9 +177,8 @@ class _HousingViewState extends State<_HousingView> {
       padding: const EdgeInsets.only(right: 12),
       child: GestureDetector(
         onTap: () {
-          final newFilter = (_currentFilter ?? const AccommodationFilter()).copyWith(
-            accommodationType: label == 'All' ? null : label,
-          );
+          final newFilter = (_currentFilter ?? const AccommodationFilter())
+              .copyWith(accommodationType: label == 'All' ? null : label);
           setState(() {
             _currentFilter = newFilter.hasFilters ? newFilter : null;
           });
@@ -223,31 +229,12 @@ class _HousingViewState extends State<_HousingView> {
     final chips = <FilterChipData>[];
 
     if (filter.accommodationType != null) {
-      chips.add(FilterChipData(
-        label: 'Type: ${filter.accommodationType}',
-        value: filter.accommodationType!,
-        onRemove: () {
-          final newFilter = filter.copyWith(clearType: true);
-          setState(() {
-            _currentFilter = newFilter.hasFilters ? newFilter : null;
-          });
-          context.read<AccommodationBloc>().add(
-            ApplyAccommodationFilterEvent(filter: newFilter),
-          );
-        },
-      ));
-    }
-
-    if (filter.amenities != null && filter.amenities!.isNotEmpty) {
-      for (final amenity in filter.amenities!) {
-        chips.add(FilterChipData(
-          label: amenity,
-          value: amenity,
+      chips.add(
+        FilterChipData(
+          label: 'Type: ${filter.accommodationType}',
+          value: filter.accommodationType!,
           onRemove: () {
-            final updatedAmenities = List<String>.from(filter.amenities!)..remove(amenity);
-            final newFilter = filter.copyWith(
-              amenities: updatedAmenities.isEmpty ? null : updatedAmenities,
-            );
+            final newFilter = filter.copyWith(clearType: true);
             setState(() {
               _currentFilter = newFilter.hasFilters ? newFilter : null;
             });
@@ -255,45 +242,73 @@ class _HousingViewState extends State<_HousingView> {
               ApplyAccommodationFilterEvent(filter: newFilter),
             );
           },
-        ));
+        ),
+      );
+    }
+
+    if (filter.amenities != null && filter.amenities!.isNotEmpty) {
+      for (final amenity in filter.amenities!) {
+        chips.add(
+          FilterChipData(
+            label: amenity,
+            value: amenity,
+            onRemove: () {
+              final updatedAmenities = List<String>.from(filter.amenities!)
+                ..remove(amenity);
+              final newFilter = filter.copyWith(
+                amenities: updatedAmenities.isEmpty ? null : updatedAmenities,
+              );
+              setState(() {
+                _currentFilter = newFilter.hasFilters ? newFilter : null;
+              });
+              context.read<AccommodationBloc>().add(
+                ApplyAccommodationFilterEvent(filter: newFilter),
+              );
+            },
+          ),
+        );
       }
     }
 
     if (filter.priceType != null) {
-      chips.add(FilterChipData(
-        label: 'Price: ${PriceTypes.getDisplayName(filter.priceType!)}',
-        value: filter.priceType!,
-        onRemove: () {
-          final newFilter = filter.copyWith(clearPriceType: true);
-          setState(() {
-            _currentFilter = newFilter.hasFilters ? newFilter : null;
-          });
-          context.read<AccommodationBloc>().add(
-            ApplyAccommodationFilterEvent(filter: newFilter),
-          );
-        },
-      ));
+      chips.add(
+        FilterChipData(
+          label: 'Price: ${PriceTypes.getDisplayName(filter.priceType!)}',
+          value: filter.priceType!,
+          onRemove: () {
+            final newFilter = filter.copyWith(clearPriceType: true);
+            setState(() {
+              _currentFilter = newFilter.hasFilters ? newFilter : null;
+            });
+            context.read<AccommodationBloc>().add(
+              ApplyAccommodationFilterEvent(filter: newFilter),
+            );
+          },
+        ),
+      );
     }
 
     if (filter.minPrice != null || filter.maxPrice != null) {
       final priceLabel = filter.minPrice != null && filter.maxPrice != null
           ? 'Price: ${filter.minPrice!.toStringAsFixed(0)} - ${filter.maxPrice!.toStringAsFixed(0)}'
           : filter.minPrice != null
-              ? 'Price: From ${filter.minPrice!.toStringAsFixed(0)}'
-              : 'Price: Up to ${filter.maxPrice!.toStringAsFixed(0)}';
-      chips.add(FilterChipData(
-        label: priceLabel,
-        value: 'price',
-        onRemove: () {
-          final newFilter = filter.copyWith(clearPrice: true);
-          setState(() {
-            _currentFilter = newFilter.hasFilters ? newFilter : null;
-          });
-          context.read<AccommodationBloc>().add(
-            ApplyAccommodationFilterEvent(filter: newFilter),
-          );
-        },
-      ));
+          ? 'Price: From ${filter.minPrice!.toStringAsFixed(0)}'
+          : 'Price: Up to ${filter.maxPrice!.toStringAsFixed(0)}';
+      chips.add(
+        FilterChipData(
+          label: priceLabel,
+          value: 'price',
+          onRemove: () {
+            final newFilter = filter.copyWith(clearPrice: true);
+            setState(() {
+              _currentFilter = newFilter.hasFilters ? newFilter : null;
+            });
+            context.read<AccommodationBloc>().add(
+              ApplyAccommodationFilterEvent(filter: newFilter),
+            );
+          },
+        ),
+      );
     }
 
     return chips;
@@ -330,14 +345,17 @@ class _HousingViewState extends State<_HousingView> {
             BlocBuilder<AccommodationBloc, AccommodationState>(
               buildWhen: (previous, current) {
                 // Rebuild when filter changes
-                if (previous is AccommodationsLoaded && current is AccommodationsLoaded) {
-                  return previous.currentFilter?.accommodationType != current.currentFilter?.accommodationType;
+                if (previous is AccommodationsLoaded &&
+                    current is AccommodationsLoaded) {
+                  return previous.currentFilter?.accommodationType !=
+                      current.currentFilter?.accommodationType;
                 }
                 return current is AccommodationsLoaded;
               },
               builder: (context, state) {
                 // Update _currentFilter from state
-                if (state is AccommodationsLoaded && state.currentFilter != null) {
+                if (state is AccommodationsLoaded &&
+                    state.currentFilter != null) {
                   _currentFilter = state.currentFilter;
                 }
                 return _buildRoomTypeChips();
@@ -351,86 +369,85 @@ class _HousingViewState extends State<_HousingView> {
                   _currentFilter = null;
                   _searchController.clear();
                 });
-                context.read<AccommodationBloc>().add(const ClearAccommodationFilterEvent());
+                context.read<AccommodationBloc>().add(
+                  const ClearAccommodationFilterEvent(),
+                );
               },
             ),
             // Accommodations List
             Expanded(
               child: BlocBuilder<AccommodationBloc, AccommodationState>(
-        builder: (context, state) {
-          // Loading state - show shimmer skeleton
-          if (state is AccommodationsLoading) {
-            return ProductGridSkeleton(
-              itemCount: 6,
-              crossAxisCount: crossAxisCount,
-            );
-          }
+                builder: (context, state) {
+                  // Loading state - show shimmer skeleton
+                  if (state is AccommodationsLoading) {
+                    return ProductGridSkeleton(
+                      itemCount: 6,
+                      crossAxisCount: crossAxisCount,
+                    );
+                  }
 
-          // Error state
-          if (state is AccommodationError) {
-            return ErrorState(
-              title: 'Failed to Load Accommodations',
-              message: state.message,
-              onRetry: () {
-                context.read<AccommodationBloc>().add(
-                  const LoadAccommodationsEvent(limit: 20),
-                );
-              },
-            );
-          }
+                  // Error state
+                  if (state is AccommodationError) {
+                    return ErrorState(
+                      title: 'Failed to Load Accommodations',
+                      message: state.message,
+                      onRetry: () {
+                        context.read<AccommodationBloc>().add(
+                          const LoadAccommodationsEvent(limit: 20),
+                        );
+                      },
+                    );
+                  }
 
-          // Success state
-          if (state is AccommodationsLoaded) {
-            // Empty state
-            if (state.accommodations.isEmpty) {
-              return EmptyState(
-                type: EmptyStateType.noAccommodations,
-                onAction: () => Navigator.pop(context),
-                actionLabel: 'Go Back',
-              );
-            }
+                  // Success state
+                  if (state is AccommodationsLoaded) {
+                    // Empty state
+                    if (state.accommodations.isEmpty) {
+                      return EmptyState(
+                        type: EmptyStateType.noAccommodations,
+                        onAction: () => Navigator.pop(context),
+                        actionLabel: 'Go Back',
+                      );
+                    }
 
-            // Accommodations grid
-            return GridView.builder(
-              padding: EdgeInsets.all(
-                ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-              ),
-              physics: const BouncingScrollPhysics(),
-              addAutomaticKeepAlives: false,
-              addRepaintBoundaries: true,
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: kSpacingLg,
-                mainAxisSpacing: kSpacingLg,
-              ),
-              itemCount: state.accommodations.length,
-              itemBuilder: (context, index) {
-                // Use new AccommodationCard component
-                final accommodation = state.accommodations[index];
-                return AccommodationCard(
-                  key: ValueKey('accommodation_${accommodation.id}'),
-                  imageUrl: accommodation.images.isNotEmpty
-                      ? accommodation.images.first
-                      : '',
-                  title: accommodation.name,
-                  price: 'TZS ${accommodation.price.toStringAsFixed(2)}',
-                  priceType: accommodation.priceType,
-                  location: accommodation.location,
-                  bedrooms: accommodation.bedrooms,
-                  bathrooms: accommodation.bathrooms,
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    '/accommodation-details',
-                    arguments: accommodation.id,
-                  ),
-                );
-              },
-            );
-          }
+                    // Accommodations masonry grid
+                    return MasonryGridView.count(
+                      padding: EdgeInsets.all(
+                        ResponsiveBreakpoints.responsiveHorizontalPadding(
+                          context,
+                        ),
+                      ),
+                      physics: const BouncingScrollPhysics(),
+                      crossAxisCount: crossAxisCount,
+                      mainAxisSpacing: kSpacingMd,
+                      crossAxisSpacing: kSpacingMd,
+                      itemCount: state.accommodations.length,
+                      itemBuilder: (context, index) {
+                        final accommodation = state.accommodations[index];
+                        return AccommodationCard(
+                          key: ValueKey('accommodation_${accommodation.id}'),
+                          imageUrl: accommodation.images.isNotEmpty
+                              ? accommodation.images.first
+                              : '',
+                          title: accommodation.name,
+                          price:
+                              'TZS ${accommodation.price.toStringAsFixed(0)}',
+                          priceType: accommodation.priceType,
+                          location: accommodation.location,
+                          bedrooms: accommodation.bedrooms,
+                          bathrooms: accommodation.bathrooms,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/accommodation-details',
+                            arguments: accommodation.id,
+                          ),
+                        );
+                      },
+                    );
+                  }
 
-          return const SizedBox.shrink();
-        },
+                  return const SizedBox.shrink();
+                },
               ),
             ),
           ],

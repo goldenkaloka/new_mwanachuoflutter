@@ -54,7 +54,7 @@ class _MwanachuomindWrapperPageState extends State<MwanachuomindWrapperPage> {
             final userId = Supabase.instance.client.auth.currentUser?.id;
             if (userId != null && state.sessionId == null) {
               context.read<MwanachuomindBloc>().add(
-                LoadChatHistory(
+                LoadChatSessions(
                   userId: userId,
                   courseId: state.enrolledCourse!.id,
                 ),
@@ -99,10 +99,24 @@ class CourseEnrollmentPage extends StatefulWidget {
 }
 
 class _CourseEnrollmentPageState extends State<CourseEnrollmentPage> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
+
   @override
   void initState() {
     super.initState();
     _loadUserUniversity();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadUserUniversity() async {
@@ -146,17 +160,12 @@ class _CourseEnrollmentPageState extends State<CourseEnrollmentPage> {
             return const MwanachuomindShimmer();
           }
 
-          if (state.courses.isEmpty) {
-            return const Center(
-              child: Padding(
-                padding: EdgeInsets.all(16.0),
-                child: Text(
-                  'No courses available for your university yet.\nPlease contact your administrator.',
-                  textAlign: TextAlign.center,
-                ),
-              ),
-            );
-          }
+          final filteredCourses = state.courses.where((course) {
+            final name = course.name.toLowerCase();
+            final code = course.code.toLowerCase();
+            final query = _searchQuery.toLowerCase();
+            return name.contains(query) || code.contains(query);
+          }).toList();
 
           return Column(
             children: [
@@ -168,26 +177,84 @@ class _CourseEnrollmentPageState extends State<CourseEnrollmentPage> {
                   style: TextStyle(fontSize: 16),
                 ),
               ),
-              Expanded(
-                child: ListView.builder(
-                  itemCount: state.courses.length,
-                  itemBuilder: (context, index) {
-                    final course = state.courses[index];
-                    return Card(
-                      margin: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 8,
-                      ),
-                      child: ListTile(
-                        title: Text(course.name),
-                        subtitle: Text(course.code),
-                        trailing: const Icon(Icons.arrow_forward_ios),
-                        onTap: () => _enrollInCourse(course.id),
-                      ),
-                    );
-                  },
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                child: TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: 'Search course by name or code...',
+                    prefixIcon: const Icon(Icons.search),
+                    suffixIcon: _searchQuery.isNotEmpty
+                        ? IconButton(
+                            icon: const Icon(Icons.clear),
+                            onPressed: () {
+                              _searchController.clear();
+                            },
+                          )
+                        : null,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                  ),
                 ),
               ),
+              const SizedBox(height: 8),
+              if (filteredCourses.isEmpty)
+                Expanded(
+                  child: Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(
+                            _searchQuery.isEmpty
+                                ? Icons.school
+                                : Icons.search_off,
+                            size: 64,
+                            color: Colors.grey,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            _searchQuery.isEmpty
+                                ? 'No courses available for your university yet.\nPlease contact your administrator.'
+                                : 'No courses match "$_searchQuery"',
+                            textAlign: TextAlign.center,
+                            style: const TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                )
+              else
+                Expanded(
+                  child: ListView.builder(
+                    itemCount: filteredCourses.length,
+                    itemBuilder: (context, index) {
+                      final course = filteredCourses[index];
+                      return Card(
+                        margin: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        child: ListTile(
+                          title: Text(course.name),
+                          subtitle: Text(course.code),
+                          trailing: const Icon(Icons.arrow_forward_ios),
+                          onTap: () => _enrollInCourse(course.id),
+                        ),
+                      );
+                    },
+                  ),
+                ),
             ],
           );
         },

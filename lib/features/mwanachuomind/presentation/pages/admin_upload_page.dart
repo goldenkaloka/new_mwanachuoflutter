@@ -102,20 +102,99 @@ class _AdminUploadPageState extends State<AdminUploadPage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                DropdownButton<Course>(
-                  hint: const Text('Select Course'),
-                  value: _selectedCourse,
-                  // We can use the courses from the bloc state if they are loaded
-                  items: state.courses
-                      .map(
-                        (e) => DropdownMenuItem(value: e, child: Text(e.code)),
-                      )
-                      .toList(),
-                  onChanged: (val) {
-                    setState(() {
-                      _selectedCourse = val;
-                    });
+                InkWell(
+                  onTap: () {
+                    showDialog(
+                      context: context,
+                      builder: (dialogCtx) {
+                        String dialogSearchQuery = '';
+                        return StatefulBuilder(
+                          builder: (context, setDialogState) {
+                            final filteredCourses = state.courses.where((c) {
+                              final query = dialogSearchQuery.toLowerCase();
+                              return c.name.toLowerCase().contains(query) ||
+                                  c.code.toLowerCase().contains(query);
+                            }).toList();
+
+                            return AlertDialog(
+                              title: const Text('Select Course'),
+                              content: SizedBox(
+                                width: double.maxFinite,
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    TextField(
+                                      decoration: const InputDecoration(
+                                        hintText: 'Search course...',
+                                        prefixIcon: Icon(Icons.search),
+                                      ),
+                                      onChanged: (val) {
+                                        setDialogState(() {
+                                          dialogSearchQuery = val;
+                                        });
+                                      },
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Flexible(
+                                      child: ListView.builder(
+                                        shrinkWrap: true,
+                                        itemCount: filteredCourses.length,
+                                        itemBuilder: (ctx, i) {
+                                          final course = filteredCourses[i];
+                                          return ListTile(
+                                            title: Text(course.name),
+                                            subtitle: Text(course.code),
+                                            onTap: () {
+                                              setState(() {
+                                                _selectedCourse = course;
+                                              });
+                                              Navigator.pop(dialogCtx);
+                                            },
+                                          );
+                                        },
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.pop(dialogCtx),
+                                  child: const Text('Cancel'),
+                                ),
+                              ],
+                            );
+                          },
+                        );
+                      },
+                    );
                   },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      vertical: 12,
+                      horizontal: 16,
+                    ),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          _selectedCourse == null
+                              ? 'Select Course'
+                              : '${_selectedCourse!.code} - ${_selectedCourse!.name}',
+                          style: TextStyle(
+                            color: _selectedCourse == null
+                                ? Colors.grey[600]
+                                : Colors.black,
+                          ),
+                        ),
+                        const Icon(Icons.arrow_drop_down),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 TextField(

@@ -26,7 +26,6 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
   }) : super(const MwanachuomindState()) {
     on<LoadUniversityCourses>(_onLoadUniversityCourses);
     on<SelectCourse>(_onSelectCourse);
-    on<LoadChatHistory>(_onLoadChatHistory);
     on<UploadDocument>(_onUploadDocument);
     on<SendQuery>(_onSendQuery);
     on<CreateCourse>(_onCreateCourse);
@@ -34,6 +33,10 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
     on<EnrollInCourse>(_onEnrollInCourse);
     on<LoadCourseDocuments>(_onLoadCourseDocuments);
     on<ClearEnrolledCourse>(_onClearEnrolledCourse);
+    on<LoadChatSessions>(_onLoadChatSessions);
+    on<SelectChatSession>(_onSelectChatSession);
+    on<CreateNewChatSession>(_onCreateNewChatSession);
+    on<RenameChatSession>(_onRenameChatSession);
   }
 
   Future<void> _onLoadUniversityCourses(
@@ -62,22 +65,84 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
         selectedCourse: event.course,
         chatHistory: [],
         sessionId: null,
+        sessions: [],
       ),
     );
+    // Automatically load sessions when course is selected
+    // Note: User ID handling usually comes from AuthBloc, but here we assume caller passes it
+    // or we fetch it. Since SelectCourse doesn't have userId, the UI should trigger LoadChatSessions separately
+    // or we need userId here. For now, we clear state and let UI/AuthWrapper trigger LoadChatSessions.
   }
 
-  Future<void> _onLoadChatHistory(
-    LoadChatHistory event,
+  Future<void> _onLoadChatSessions(
+    LoadChatSessions event,
     Emitter<MwanachuomindState> emit,
   ) async {
     emit(state.copyWith(status: MwanachuomindStatus.loading));
     try {
-      final sessionId = await repository.getOrCreateSession(
+      final sessions = await repository.getChatSessions(
         event.userId,
         event.courseId,
       );
-      final messages = await repository.getSessionMessages(sessionId);
 
+      if (sessions.isEmpty) {
+        // Create first session
+        add(
+          CreateNewChatSession(userId: event.userId, courseId: event.courseId),
+        );
+      } else {
+        // Select most recent session
+        emit(
+          state.copyWith(
+            status: MwanachuomindStatus.success,
+            sessions: sessions,
+          ),
+        );
+        add(SelectChatSession(sessions.first.id));
+      }
+    } catch (e) {
+      emit(
+        state.copyWith(
+          status: MwanachuomindStatus.failure,
+          errorMessage: e.toString(),
+        ),
+      );
+    }
+  }
+
+  Future<void> _onCreateNewChatSession(
+    CreateNewChatSession event,
+    Emitter<MwanachuomindState> emit,
+  ) async {
+    try {
+      final newSessionId = await repository.createChatSession(
+        event.userId,
+        event.courseId,
+      );
+      // Reload sessions to get the new one in list
+      final sessions = await repository.getChatSessions(
+        event.userId,
+        event.courseId,
+      );
+      emit(state.copyWith(sessions: sessions));
+      add(SelectChatSession(newSessionId));
+    } catch (e) {
+      emit(state.copyWith(errorMessage: "Failed to create session: $e"));
+    }
+  }
+
+  Future<void> _onSelectChatSession(
+    SelectChatSession event,
+    Emitter<MwanachuomindState> emit,
+  ) async {
+    emit(
+      state.copyWith(
+        status: MwanachuomindStatus.loading,
+        sessionId: event.sessionId,
+      ),
+    );
+    try {
+      final messages = await repository.getSessionMessages(event.sessionId);
       final chatHistory = messages
           .map(
             (m) => ChatMessage(
@@ -94,7 +159,6 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
       emit(
         state.copyWith(
           status: MwanachuomindStatus.success,
-          sessionId: sessionId,
           chatHistory: chatHistory,
         ),
       );
@@ -106,6 +170,23 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
         ),
       );
     }
+  }
+
+  Future<void> _onRenameChatSession(
+    RenameChatSession event,
+    Emitter<MwanachuomindState> emit,
+  ) async {
+    try {
+      await repository.renameChatSession(event.sessionId, event.title);
+      // Update local list without full reload
+      final updatedSessions = state.sessions.map((s) {
+        if (s.id == event.sessionId) {
+          return s.copyWith(title: event.title);
+        }
+        return s;
+      }).toList();
+      emit(state.copyWith(sessions: updatedSessions));
+    } catch (_) {}
   }
 
   Future<void> _onUploadDocument(
@@ -139,6 +220,8 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
   ) async {
     if (state.selectedCourse == null || state.sessionId == null) return;
 
+    final isFirstMessage = state.chatHistory.isEmpty;
+
     final userMessage = ChatMessage(
       id: DateTime.now().toString(),
       content: event.query,
@@ -153,9 +236,6 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
     emit(
       state.copyWith(
         chatHistory: updatedHistory,
-        // Do NOT set status to loading here if it causes a full page spinner.
-        // Instead we can rely on the stream updates or a specific 'isGenerating' flag if needed.
-        // For now, keeping status as success ensures the list stays visible.
         status: MwanachuomindStatus.success,
         isGenerating: true,
       ),
@@ -163,6 +243,13 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
 
     try {
       await repository.saveMessage(state.sessionId!, event.query, 'user');
+
+      // Rename session if first message
+      if (isFirstMessage) {
+        // Create title from first few words
+        final title = event.query.split(' ').take(4).join(' ');
+        add(RenameChatSession(sessionId: state.sessionId!, title: title));
+      }
     } catch (_) {}
 
     try {
@@ -183,10 +270,6 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
       );
 
       String fullResponse = "";
-
-      // Initialize AI message placeholder
-      // In a real stream scenario, we could yield chunks to the UI here.
-      // For now, we wait for the full response but at least we don't show a spinner.
 
       await for (final chunk in stream) {
         fullResponse += chunk;

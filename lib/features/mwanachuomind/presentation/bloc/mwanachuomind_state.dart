@@ -2,6 +2,7 @@ import 'package:equatable/equatable.dart';
 import '../../domain/entities/chat_message.dart';
 import '../../domain/entities/course.dart';
 import '../../domain/entities/document.dart';
+import '../../domain/entities/chat_session.dart';
 
 enum MwanachuomindStatus { initial, loading, success, failure }
 
@@ -16,6 +17,7 @@ class MwanachuomindState extends Equatable {
   final bool isUploading;
   final String? sessionId;
   final bool isGenerating;
+  final List<ChatSession> sessions;
 
   const MwanachuomindState({
     this.status = MwanachuomindStatus.initial,
@@ -28,6 +30,7 @@ class MwanachuomindState extends Equatable {
     this.isUploading = false,
     this.sessionId,
     this.isGenerating = false,
+    this.sessions = const [],
   });
 
   MwanachuomindState copyWith({
@@ -41,6 +44,7 @@ class MwanachuomindState extends Equatable {
     bool? isUploading,
     String? sessionId,
     bool? isGenerating,
+    List<ChatSession>? sessions,
   }) {
     return MwanachuomindState(
       status: status ?? this.status,
@@ -53,6 +57,7 @@ class MwanachuomindState extends Equatable {
       isUploading: isUploading ?? this.isUploading,
       sessionId: sessionId ?? this.sessionId,
       isGenerating: isGenerating ?? this.isGenerating,
+      sessions: sessions ?? this.sessions,
     );
   }
 
@@ -68,5 +73,6 @@ class MwanachuomindState extends Equatable {
     isUploading,
     sessionId,
     isGenerating,
+    sessions,
   ];
 }

@@ -45,25 +45,27 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
   Future<void> loadSellerSubscription(String sellerId) async {
     emit(SubscriptionLoading());
     final result = await getSellerSubscription(sellerId);
-    result.fold(
-      (failure) => emit(SubscriptionError(failure.message)),
-      (subscription) {
-        if (subscription == null) {
-          emit(const SubscriptionLoaded(null));
-        } else if (subscription.isTrial) {
-          emit(SubscriptionTrial(subscription));
-        } else if (!subscription.isActive) {
-          final inGracePeriod = subscription.gracePeriodEnd != null &&
-              DateTime.now().isBefore(subscription.gracePeriodEnd!);
-          emit(SubscriptionExpired(
+    result.fold((failure) => emit(SubscriptionError(failure.message)), (
+      subscription,
+    ) {
+      if (subscription == null) {
+        emit(const SubscriptionLoaded(null));
+      } else if (subscription.isTrial) {
+        emit(SubscriptionTrial(subscription));
+      } else if (!subscription.isActive) {
+        final inGracePeriod =
+            subscription.gracePeriodEnd != null &&
+            DateTime.now().isBefore(subscription.gracePeriodEnd!);
+        emit(
+          SubscriptionExpired(
             subscription: subscription,
             inGracePeriod: inGracePeriod,
-          ));
-        } else {
-          emit(SubscriptionLoaded(subscription));
-        }
-      },
-    );
+          ),
+        );
+      } else {
+        emit(SubscriptionLoaded(subscription));
+      }
+    });
   }
 
   /// Check if seller can create listing
@@ -77,10 +79,7 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
         listingType: listingType,
       ),
     );
-    return result.fold(
-      (failure) => false,
-      (canCreate) => canCreate,
-    );
+    return result.fold((failure) => false, (canCreate) => canCreate);
   }
 
   /// Create checkout session
@@ -99,7 +98,7 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
     );
     result.fold(
       (failure) => emit(SubscriptionError(failure.message)),
-      (checkoutUrl) => emit(CheckoutSessionCreated(checkoutUrl)),
+      (paymentData) => emit(StripePaymentDataReady(paymentData)),
     );
   }
 
@@ -129,18 +128,15 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
   Future<void> cancel(String subscriptionId) async {
     emit(SubscriptionLoading());
     final result = await cancelSubscription(subscriptionId);
-    result.fold(
-      (failure) => emit(SubscriptionError(failure.message)),
-      (_) {
-        // Reload subscription to reflect cancellation
-        if (state is SubscriptionLoaded) {
-          final currentSubscription = (state as SubscriptionLoaded).subscription;
-          if (currentSubscription != null) {
-            loadSellerSubscription(currentSubscription.sellerId);
-          }
+    result.fold((failure) => emit(SubscriptionError(failure.message)), (_) {
+      // Reload subscription to reflect cancellation
+      if (state is SubscriptionLoaded) {
+        final currentSubscription = (state as SubscriptionLoaded).subscription;
+        if (currentSubscription != null) {
+          loadSellerSubscription(currentSubscription.sellerId);
         }
-      },
-    );
+      }
+    });
   }
 
   /// Update subscription
@@ -173,4 +169,3 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
     );
   }
 }
-

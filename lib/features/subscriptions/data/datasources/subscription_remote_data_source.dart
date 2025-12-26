@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mwanachuo/core/constants/database_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
@@ -27,7 +28,7 @@ abstract class SubscriptionRemoteDataSource {
   Future<List<SubscriptionPaymentModel>> getPaymentHistory(
     String subscriptionId,
   );
-  Future<String> createCheckoutSession({
+  Future<Map<String, dynamic>> createCheckoutSession({
     required String sellerId,
     required String planId,
     required String billingPeriod,
@@ -238,24 +239,36 @@ class SubscriptionRemoteDataSourceImpl implements SubscriptionRemoteDataSource {
   }
 
   @override
-  Future<String> createCheckoutSession({
+  Future<Map<String, dynamic>> createCheckoutSession({
     required String sellerId,
     required String planId,
     required String billingPeriod,
   }) async {
     try {
-      // Call Supabase Edge Function to create Stripe checkout session
+      // Call Supabase Edge Function to create Stripe payment intent
+      // The function name 'create-subscription-checkout' is kept for backwards compatibility
+      // but the implementation should now return payment_intent, ephemeral_key, and customer
       final response = await supabaseClient.functions.invoke(
         'create-subscription-checkout',
         body: {
           'seller_id': sellerId,
           'plan_id': planId,
           'billing_period': billingPeriod,
+          'use_payment_sheet':
+              true, // Tell edge function to return payment intent data
         },
       );
 
+      // Debug logging to inspect backend response
+      debugPrint('Stripe Checkout Response: ${response.data}');
+
+      if (response.data != null && response.data['paymentIntent'] != null) {
+        return Map<String, dynamic>.from(response.data);
+      }
+
+      // Fallback for old checkout URL if the edge function wasn't updated yet
       if (response.data != null && response.data['checkout_url'] != null) {
-        return response.data['checkout_url'] as String;
+        return {'checkout_url': response.data['checkout_url']};
       }
 
       // Handle error response from Edge Function
@@ -268,7 +281,7 @@ class SubscriptionRemoteDataSourceImpl implements SubscriptionRemoteDataSource {
       }
 
       throw ServerException(
-        'Failed to create checkout session: No checkout URL returned',
+        'Failed to create checkout session: No payment data returned',
       );
     } on PostgrestException catch (e) {
       throw ServerException('Failed to create checkout session: ${e.message}');

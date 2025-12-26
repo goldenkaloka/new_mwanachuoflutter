@@ -18,7 +18,8 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
   });
 
   @override
-  Future<Either<Failure, List<SubscriptionPlanEntity>>> getSubscriptionPlans() async {
+  Future<Either<Failure, List<SubscriptionPlanEntity>>>
+  getSubscriptionPlans() async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
     }
@@ -42,7 +43,9 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     }
 
     try {
-      final subscription = await remoteDataSource.getSellerSubscription(sellerId);
+      final subscription = await remoteDataSource.getSellerSubscription(
+        sellerId,
+      );
       return Right(subscription);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -100,7 +103,9 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
   }
 
   @override
-  Future<Either<Failure, void>> cancelSubscription(String subscriptionId) async {
+  Future<Either<Failure, void>> cancelSubscription(
+    String subscriptionId,
+  ) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
     }
@@ -158,7 +163,7 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
   }
 
   @override
-  Future<Either<Failure, String>> createCheckoutSession({
+  Future<Either<Failure, Map<String, dynamic>>> createCheckoutSession({
     required String sellerId,
     required String planId,
     required String billingPeriod,
@@ -168,12 +173,12 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     }
 
     try {
-      final checkoutUrl = await remoteDataSource.createCheckoutSession(
+      final paymentData = await remoteDataSource.createCheckoutSession(
         sellerId: sellerId,
         planId: planId,
         billingPeriod: billingPeriod,
       );
-      return Right(checkoutUrl);
+      return Right(paymentData);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
@@ -181,4 +186,3 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     }
   }
 }
-

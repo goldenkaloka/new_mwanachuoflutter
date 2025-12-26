@@ -28,6 +28,14 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
         context.read<AuthBloc>().add(const CheckAuthStatusEvent());
+
+        // Safety timeout: Remove splash screen after 5 seconds if it's still there
+        // to prevent the app from appearing "frozen" if initialization is slow
+        Future.delayed(const Duration(seconds: 5), () {
+          if (mounted && !_hasNavigated) {
+            FlutterNativeSplash.remove();
+          }
+        });
       }
     });
   }
@@ -125,13 +133,7 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
     return BlocListener<AuthBloc, AuthState>(
       listener: _handleAuthState,
       // Show a minimal loading indicator while checking auth
-      child: const Scaffold(
-        body: Center(
-          child: CircularProgressIndicator(),
-        ),
-      ),
+      child: const Scaffold(body: Center(child: CircularProgressIndicator())),
     );
   }
 }
-
-

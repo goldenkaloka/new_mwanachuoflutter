@@ -57,18 +57,20 @@ class ProfileRepositoryImpl implements ProfileRepository {
       await localDataSource.clearCache();
       return Left(ServerFailure('User not authenticated'));
     }
-    
+
     final currentUserId = currentUser.id;
-    
+
     // Try cache first if not expired
     if (!localDataSource.isProfileCacheExpired()) {
       try {
         debugPrint('💾 Loading my profile from cache');
         final cachedProfile = await localDataSource.getCachedMyProfile();
-        
+
         // Validate that cached profile belongs to current user
         if (cachedProfile.id != currentUserId) {
-          debugPrint('⚠️ Cached profile belongs to different user (${cachedProfile.id} vs $currentUserId), clearing cache');
+          debugPrint(
+            '⚠️ Cached profile belongs to different user (${cachedProfile.id} vs $currentUserId), clearing cache',
+          );
           await localDataSource.clearCache();
           // Fall through to fetch from server
         } else {
@@ -89,10 +91,16 @@ class ProfileRepositoryImpl implements ProfileRepository {
           return Right(cachedProfile);
         } else {
           await localDataSource.clearCache();
-          return Left(NetworkFailure('No internet connection and cached profile belongs to different user'));
+          return Left(
+            NetworkFailure(
+              'No internet connection and cached profile belongs to different user',
+            ),
+          );
         }
       } on CacheException {
-        return Left(NetworkFailure('No internet connection and no cached profile'));
+        return Left(
+          NetworkFailure('No internet connection and no cached profile'),
+        );
       }
     }
 
@@ -100,17 +108,19 @@ class ProfileRepositoryImpl implements ProfileRepository {
     try {
       debugPrint('🌐 Fetching my profile from server for user: $currentUserId');
       final profile = await remoteDataSource.getMyProfile();
-      
+
       // Validate the fetched profile belongs to current user
       if (profile.id != currentUserId) {
-        debugPrint('❌ Fetched profile ID (${profile.id}) does not match current user ID ($currentUserId)');
+        debugPrint(
+          '❌ Fetched profile ID (${profile.id}) does not match current user ID ($currentUserId)',
+        );
         return Left(ServerFailure('Profile ID mismatch'));
       }
-      
+
       // Cache the result
       await localDataSource.cacheMyProfile(profile);
       debugPrint('✅ Profile cached successfully for user: $currentUserId');
-      
+
       return Right(profile);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -126,6 +136,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? bio,
     String? location,
     File? avatarImage,
+    String? primaryUniversityId,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -141,7 +152,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         if (currentUser == null) {
           return Left(ServerFailure('User not authenticated'));
         }
-        
+
         final uploadResult = await uploadImage(
           UploadImageParams(
             imageFile: avatarImage,
@@ -150,10 +161,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
           ),
         );
 
-        avatarUrl = uploadResult.fold(
-          (failure) => null,
-          (media) => media.url,
-        );
+        avatarUrl = uploadResult.fold((failure) => null, (media) => media.url);
       }
 
       final profile = await remoteDataSource.updateProfile(
@@ -162,6 +170,7 @@ class ProfileRepositoryImpl implements ProfileRepository {
         bio: bio,
         location: location,
         avatarUrl: avatarUrl,
+        primaryUniversityId: primaryUniversityId,
       );
 
       // Update cache after successful update
@@ -179,21 +188,16 @@ class ProfileRepositoryImpl implements ProfileRepository {
   @override
   Future<Either<Failure, void>> updateAvatar(File avatarImage) async {
     return await updateProfile(avatarImage: avatarImage).then(
-      (result) => result.fold(
-        (failure) => Left(failure),
-        (_) => const Right(null),
-      ),
+      (result) =>
+          result.fold((failure) => Left(failure), (_) => const Right(null)),
     );
   }
 
   @override
   Future<Either<Failure, void>> deleteAvatar() async {
     return await updateProfile(avatarImage: null).then(
-      (result) => result.fold(
-        (failure) => Left(failure),
-        (_) => const Right(null),
-      ),
+      (result) =>
+          result.fold((failure) => Left(failure), (_) => const Right(null)),
     );
   }
 }
-

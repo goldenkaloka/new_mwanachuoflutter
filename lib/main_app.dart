@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/config/supabase_config.dart';
+import 'package:flutter_stripe/flutter_stripe.dart';
 import 'package:mwanachuo/config/onesignal_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/theme/app_theme.dart';
@@ -70,16 +72,8 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
     // Set navigator key for OneSignal in-app notifications
     OneSignalConfig.navigatorKey = navigatorKey;
 
-    // AppLinks only works on mobile platforms (iOS/Android)
-    // Skip initialization on Windows, Linux, macOS, and Web
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-      try {
-        _appLinks = AppLinks();
-      } catch (e) {
-        debugPrint('AppLinks initialization failed: $e');
-        _appLinks = null;
-      }
-    }
+    // Initialize plugins in background so they don't block app startup
+    _initializePlugins();
 
     // Check for pending notification data on app start
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -88,6 +82,36 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         _initDeepLinks();
       }
     });
+  }
+
+  Future<void> _initializePlugins() async {
+    // AppLinks only works on mobile platforms (iOS/Android)
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
+      try {
+        _appLinks = AppLinks();
+        if (_appLinks != null) {
+          _initDeepLinks();
+        }
+      } catch (e) {
+        debugPrint('AppLinks initialization failed: $e');
+      }
+
+      // Initialize Stripe
+      try {
+        Stripe.publishableKey = SupabaseConfig.stripePublishableKey;
+        Stripe.merchantIdentifier = SupabaseConfig.stripeMerchantIdentifier;
+        await Stripe.instance.applySettings();
+      } catch (e) {
+        debugPrint('Stripe initialization failed: $e');
+      }
+
+      // Initialize OneSignal
+      try {
+        await OneSignalConfig.initialize();
+      } catch (e) {
+        debugPrint('OneSignal initialization failed: $e');
+      }
+    }
   }
 
   void _initDeepLinks() {

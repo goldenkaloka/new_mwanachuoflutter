@@ -42,11 +42,10 @@ abstract class SubscriptionRepository {
     String subscriptionId,
   );
 
-  /// Create Stripe checkout session
-  Future<Either<Failure, String>> createCheckoutSession({
+  /// Create Stripe checkout session or Payment Intent
+  Future<Either<Failure, Map<String, dynamic>>> createCheckoutSession({
     required String sellerId,
     required String planId,
     required String billingPeriod,
   });
 }
-

@@ -36,10 +36,7 @@ class SubscriptionExpired extends SubscriptionState {
   final SellerSubscriptionEntity? subscription;
   final bool inGracePeriod;
 
-  const SubscriptionExpired({
-    this.subscription,
-    this.inGracePeriod = false,
-  });
+  const SubscriptionExpired({this.subscription, this.inGracePeriod = false});
 
   @override
   List<Object?> get props => [subscription, inGracePeriod];
@@ -63,13 +60,13 @@ class PaymentHistoryLoaded extends SubscriptionState {
   List<Object> get props => [payments];
 }
 
-class CheckoutSessionCreated extends SubscriptionState {
-  final String checkoutUrl;
+class StripePaymentDataReady extends SubscriptionState {
+  final Map<String, dynamic> data;
 
-  const CheckoutSessionCreated(this.checkoutUrl);
+  const StripePaymentDataReady(this.data);
 
   @override
-  List<Object> get props => [checkoutUrl];
+  List<Object> get props => [data];
 }
 
 class SubscriptionError extends SubscriptionState {
@@ -80,4 +77,3 @@ class SubscriptionError extends SubscriptionState {
   @override
   List<Object> get props => [message];
 }
-

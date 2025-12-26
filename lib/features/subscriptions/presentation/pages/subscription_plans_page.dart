@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'dart:io' show Platform;
+import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
@@ -39,26 +42,93 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
         value: _cubit,
         child: BlocConsumer<SubscriptionCubit, SubscriptionState>(
           listener: (context, state) async {
-            if (state is CheckoutSessionCreated) {
-              // Open checkout URL
-              try {
-                final uri = Uri.parse(state.checkoutUrl);
-                if (await canLaunchUrl(uri)) {
-                  await launchUrl(uri, mode: LaunchMode.externalApplication);
-                } else {
+            if (state is StripePaymentDataReady) {
+              final data = state.data;
+              final isMobile =
+                  !kIsWeb && (Platform.isAndroid || Platform.isIOS);
+
+              // 1. Native Stripe Payment Sheet logic - Prioritized only on supported mobile platforms
+              if (isMobile &&
+                  data.containsKey('paymentIntent') &&
+                  data['paymentIntent'] != null) {
+                try {
+                  // Initialize Payment Sheet
+                  await Stripe.instance.initPaymentSheet(
+                    paymentSheetParameters: SetupPaymentSheetParameters(
+                      paymentIntentClientSecret: data['paymentIntent'],
+                      customerEphemeralKeySecret: data['ephemeralKey'],
+                      customerId: data['customer'],
+                      merchantDisplayName: 'Mwanachuo',
+                      style: Theme.of(context).brightness == Brightness.dark
+                          ? ThemeMode.dark
+                          : ThemeMode.light,
+                      appearance: const PaymentSheetAppearance(
+                        colors: PaymentSheetAppearanceColors(
+                          primary: kPrimaryColor,
+                        ),
+                      ),
+                    ),
+                  );
+
+                  // Display Payment Sheet
+                  await Stripe.instance.presentPaymentSheet();
+
                   if (context.mounted) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                        content: Text('Could not open checkout page'),
+                        content: Text('Payment successful!'),
+                        backgroundColor: Colors.green,
                       ),
                     );
+                    final authState = context.read<AuthBloc>().state;
+                    if (authState is Authenticated) {
+                      _cubit.loadSellerSubscription(authState.user.id);
+                    }
                   }
+                  return; // Exit on success
+                } catch (e) {
+                  if (e is StripeException) {
+                    if (e.error.code == FailureCode.Canceled) {
+                      debugPrint('Payment Sheet cancelled by user');
+                      return;
+                    }
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Text(
+                            'Stripe Error: ${e.error.localizedMessage}',
+                          ),
+                        ),
+                      );
+                    }
+                    return;
+                  }
+                  // For other errors, we might want to try the web fallback if available
                 }
-              } catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error opening checkout: $e')),
-                  );
+              }
+
+              // 2. Fallback for old checkout URL - Use ONLY if native flow is unavailable or failed
+              if (data.containsKey('checkout_url') &&
+                  data['checkout_url'] != null) {
+                try {
+                  final uri = Uri.parse(data['checkout_url']);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  } else {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Could not open checkout page'),
+                        ),
+                      );
+                    }
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error opening checkout: $e')),
+                    );
+                  }
                 }
               }
             } else if (state is SubscriptionError) {
@@ -77,17 +147,6 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                         : errorMessage,
                   ),
                   duration: const Duration(seconds: 5),
-                  action: isStripeConfigError
-                      ? SnackBarAction(
-                          label: 'View Guide',
-                          onPressed: () {
-                            // Could open a help dialog or navigate to setup guide
-                            debugPrint(
-                              'See STRIPE_SETUP_GUIDE.md for instructions',
-                            );
-                          },
-                        )
-                      : null,
                 ),
               );
             }
@@ -104,14 +163,13 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                 );
               }
 
-              final plan = state.plans.first; // Single tier plan
+              final plan = state.plans.first;
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // Billing period toggle
                     Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -137,8 +195,6 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                       ],
                     ),
                     const SizedBox(height: 32),
-
-                    // Plan card
                     Card(
                       elevation: 4,
                       child: Padding(
@@ -173,10 +229,11 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                               ),
                             ],
                             const SizedBox(height: 24),
-                            if (plan.maxListings != null)
-                              Text('Up to ${plan.maxListings} listings')
-                            else
-                              const Text('Unlimited listings'),
+                            Text(
+                              plan.maxListings != null
+                                  ? 'Up to ${plan.maxListings} listings'
+                                  : 'Unlimited listings',
+                            ),
                             const SizedBox(height: 8),
                             const Text('All features included'),
                             const SizedBox(height: 32),
@@ -184,7 +241,6 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                               width: double.infinity,
                               child: ElevatedButton(
                                 onPressed: () {
-                                  // Get current user ID from auth state
                                   final authState = context
                                       .read<AuthBloc>()
                                       .state;
