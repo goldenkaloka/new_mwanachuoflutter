@@ -108,20 +108,27 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 filled: true,
                 fillColor: fillColor,
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: BorderSide(
+                    color: isDarkMode ? Colors.white10 : Colors.grey.shade300,
+                  ),
                 ),
                 enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide.none,
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: BorderSide(
+                    color: isDarkMode ? Colors.white10 : Colors.grey.shade300,
+                  ),
                 ),
                 focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(4),
-                  borderSide: BorderSide(color: kPrimaryColor, width: 2),
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: const BorderSide(
+                    color: kPrimaryColor,
+                    width: 2.0,
+                  ),
                 ),
                 contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 12,
+                  horizontal: 20,
+                  vertical: 10,
                 ),
               ),
             ),
@@ -133,7 +140,10 @@ class _SearchFilterBarState extends State<SearchFilterBar> {
                 Container(
                   decoration: BoxDecoration(
                     color: fillColor,
-                    borderRadius: BorderRadius.circular(4),
+                    borderRadius: BorderRadius.circular(999.0),
+                    border: Border.all(
+                      color: isDarkMode ? Colors.white10 : Colors.grey.shade300,
+                    ),
                   ),
                   child: IconButton(
                     icon: Icon(

@@ -171,58 +171,69 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
             onPressed: () => Navigator.pop(context),
           ),
           Expanded(
-            child: Container(
-              height: 48,
-              decoration: BoxDecoration(
-                color: isDarkMode ? Colors.grey[900] : Colors.grey[100],
-                borderRadius: BorderRadius.circular(24),
+            child: TextField(
+              controller: _searchController,
+              autofocus: widget.initialQuery == null,
+              style: GoogleFonts.plusJakartaSans(
+                color: primaryTextColor,
+                fontSize: 16,
               ),
-              child: TextField(
-                controller: _searchController,
-                autofocus: widget.initialQuery == null,
-                style: GoogleFonts.plusJakartaSans(
-                  color: primaryTextColor,
-                  fontSize: 16,
+              decoration: InputDecoration(
+                hintText: 'Search...',
+                hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey[500]),
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
+                  size: 20,
                 ),
-                decoration: InputDecoration(
-                  hintText: 'Search...',
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                    color: Colors.grey[500],
-                  ),
-                  prefixIcon: Icon(
-                    Icons.search,
-                    color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                    size: 20,
-                  ),
-                  suffixIcon: _searchController.text.isNotEmpty
-                      ? IconButton(
-                          icon: Icon(
-                            Icons.close,
-                            color: Colors.grey[500],
-                            size: 18,
-                          ),
-                          onPressed: () {
-                            _searchController.clear();
-                            context.read<SearchCubit>().reset();
-                            context.read<SearchCubit>().loadPopularSearches();
-                            setState(() {
-                              _selectedCategory = 'All';
-                            });
-                          },
-                        )
-                      : null,
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                        icon: Icon(
+                          Icons.close,
+                          color: Colors.grey[500],
+                          size: 18,
+                        ),
+                        onPressed: () {
+                          _searchController.clear();
+                          context.read<SearchCubit>().reset();
+                          context.read<SearchCubit>().loadPopularSearches();
+                          setState(() {
+                            _selectedCategory = 'All';
+                          });
+                        },
+                      )
+                    : null,
+                filled: true,
+                fillColor: isDarkMode ? Colors.grey[900] : Colors.grey[100],
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: BorderSide(
+                    color: isDarkMode ? Colors.white10 : Colors.grey.shade300,
                   ),
                 ),
-                onChanged: (value) {
-                  setState(() {}); // Update to show/hide suffix icon
-                  _onSearchChanged(value);
-                },
-                onSubmitted: _performSearch,
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: BorderSide(
+                    color: isDarkMode ? Colors.white10 : Colors.grey.shade300,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: const BorderSide(
+                    color: kPrimaryColor,
+                    width: 2.0,
+                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
+                ),
               ),
+              onChanged: (value) {
+                setState(() {}); // Update to show/hide suffix icon
+                _onSearchChanged(value);
+              },
+              onSubmitted: _performSearch,
             ),
           ),
         ],
@@ -271,7 +282,7 @@ class _SearchResultsViewState extends State<_SearchResultsView> {
     Color primaryTextColor,
   ) {
     if (state is PopularSearchesLoaded) {
-      return Padding(
+      return SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,

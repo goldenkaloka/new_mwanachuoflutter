@@ -194,26 +194,26 @@ Future<void> initializeDependencies() async {
   // ============================================================================
   // SHARED FEATURES
   // ============================================================================
-  await _initUniversityFeature();
-  await _initMediaFeature();
-  await _initReviewsFeature();
-  await _initSearchFeature();
-  await _initRecommendationsFeature();
-  await _initNotificationsFeature();
-  await _initSubscriptionsFeature();
-  await _initCategoriesFeature();
+  _initUniversityFeature();
+  _initMediaFeature();
+  _initReviewsFeature();
+  _initSearchFeature();
+  _initRecommendationsFeature();
+  _initNotificationsFeature();
+  _initSubscriptionsFeature();
+  _initCategoriesFeature();
 
   // ============================================================================
   // STANDALONE FEATURES
   // ============================================================================
-  await _initProductsFeature();
-  await _initServicesFeature();
-  await _initAccommodationsFeature();
+  _initProductsFeature();
+  _initServicesFeature();
+  _initAccommodationsFeature();
 
-  await _initProfileFeature();
-  await _initDashboardFeature();
-  await _initPromotionsFeature();
-  await _initMwanachuomindFeature();
+  _initProfileFeature();
+  _initDashboardFeature();
+  _initPromotionsFeature();
+  _initMwanachuomindFeature();
 
   // ============================================================================
   // Features - Authentication
@@ -271,7 +271,7 @@ Future<void> initializeDependencies() async {
 // ============================================
 // UNIVERSITY FEATURE (SHARED)
 // ============================================
-Future<void> _initUniversityFeature() async {
+void _initUniversityFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetUniversities(sl()));
   sl.registerLazySingleton(() => GetSelectedUniversity(sl()));
@@ -309,7 +309,7 @@ Future<void> _initUniversityFeature() async {
 // ============================================
 // MEDIA FEATURE (SHARED)
 // ============================================
-Future<void> _initMediaFeature() async {
+void _initMediaFeature() {
   // External (UUID for unique file names)
   sl.registerLazySingleton(() => const Uuid());
 
@@ -352,7 +352,7 @@ Future<void> _initMediaFeature() async {
 // ============================================
 // REVIEWS FEATURE (SHARED)
 // ============================================
-Future<void> _initReviewsFeature() async {
+void _initReviewsFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetReviews(sl()));
   sl.registerLazySingleton(() => GetReviewStats(sl()));
@@ -396,7 +396,7 @@ Future<void> _initReviewsFeature() async {
 // ============================================
 // SEARCH FEATURE (SHARED)
 // ============================================
-Future<void> _initSearchFeature() async {
+void _initSearchFeature() {
   // Use Cases
   sl.registerLazySingleton(() => SearchContent(sl()));
   sl.registerLazySingleton(() => GetSearchSuggestions(sl()));
@@ -438,7 +438,7 @@ Future<void> _initSearchFeature() async {
 // ============================================
 // RECOMMENDATIONS FEATURE (SHARED)
 // ============================================
-Future<void> _initRecommendationsFeature() async {
+void _initRecommendationsFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetProductRecommendations(sl()));
   sl.registerLazySingleton(() => GetServiceRecommendations(sl()));
@@ -468,7 +468,7 @@ Future<void> _initRecommendationsFeature() async {
 // ============================================
 // NOTIFICATIONS FEATURE (SHARED)
 // ============================================
-Future<void> _initNotificationsFeature() async {
+void _initNotificationsFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetNotifications(sl()));
   sl.registerLazySingleton(() => GetUnreadCount(sl()));
@@ -516,7 +516,7 @@ Future<void> _initNotificationsFeature() async {
 // ============================================
 // SUBSCRIPTIONS FEATURE (SHARED)
 // ============================================
-Future<void> _initSubscriptionsFeature() async {
+void _initSubscriptionsFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetSubscriptionPlans(sl()));
   sl.registerLazySingleton(() => GetSellerSubscription(sl()));
@@ -555,7 +555,7 @@ Future<void> _initSubscriptionsFeature() async {
 // ============================================
 // CATEGORIES FEATURE (SHARED)
 // ============================================
-Future<void> _initCategoriesFeature() async {
+void _initCategoriesFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetProductCategories(sl()));
   sl.registerLazySingleton(() => GetProductConditions(sl()));
@@ -579,7 +579,7 @@ Future<void> _initCategoriesFeature() async {
 // ============================================
 // PRODUCTS FEATURE (STANDALONE)
 // ============================================
-Future<void> _initProductsFeature() async {
+void _initProductsFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetProducts(sl()));
   sl.registerLazySingleton(() => GetProductById(sl()));
@@ -626,7 +626,7 @@ Future<void> _initProductsFeature() async {
 // ============================================
 // SERVICES FEATURE (STANDALONE)
 // ============================================
-Future<void> _initServicesFeature() async {
+void _initServicesFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetServices(sl()));
   sl.registerLazySingleton(() => GetServiceById(sl()));
@@ -671,7 +671,7 @@ Future<void> _initServicesFeature() async {
 // ============================================
 // ACCOMMODATIONS FEATURE (STANDALONE)
 // ============================================
-Future<void> _initAccommodationsFeature() async {
+void _initAccommodationsFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetAccommodations(sl()));
   sl.registerLazySingleton(() => GetAccommodationById(sl()));
@@ -718,7 +718,7 @@ Future<void> _initAccommodationsFeature() async {
 // ============================================
 // PROFILE FEATURE (STANDALONE)
 // ============================================
-Future<void> _initProfileFeature() async {
+void _initProfileFeature() {
   sl.registerLazySingleton(() => GetMyProfile(sl()));
   sl.registerLazySingleton(() => UpdateProfile(sl()));
 
@@ -749,7 +749,7 @@ Future<void> _initProfileFeature() async {
 // ============================================
 // DASHBOARD FEATURE (STANDALONE)
 // ============================================
-Future<void> _initDashboardFeature() async {
+void _initDashboardFeature() {
   sl.registerLazySingleton(() => GetDashboardStats(sl()));
 
   sl.registerLazySingleton<DashboardRepository>(
@@ -766,7 +766,7 @@ Future<void> _initDashboardFeature() async {
 // ============================================
 // PROMOTIONS FEATURE (STANDALONE)
 // ============================================
-Future<void> _initPromotionsFeature() async {
+void _initPromotionsFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetActivePromotions(sl()));
   sl.registerLazySingleton(() => CreatePromotion(sl()));
@@ -791,7 +791,7 @@ Future<void> _initPromotionsFeature() async {
 // ============================================
 // MWANACHUOMIND FEATURE (STANDALONE)
 // ============================================
-Future<void> _initMwanachuomindFeature() async {
+void _initMwanachuomindFeature() {
   // Use Cases
   sl.registerLazySingleton(() => GetUniversityCoursesUseCase(sl()));
   sl.registerLazySingleton(() => UploadDocumentUseCase(sl()));

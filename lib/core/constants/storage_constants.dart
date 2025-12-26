@@ -8,6 +8,7 @@ class StorageConstants {
   static const String isLoggedInKey = 'is_logged_in';
   static const String themeModeKey = 'theme_mode';
   static const String onboardingCompletedKey = 'onboarding_completed';
+  static const String registrationCompletedKey = 'registration_completed';
 
   // Review caching
   static const String reviewsCachePrefix = 'reviews_cache';

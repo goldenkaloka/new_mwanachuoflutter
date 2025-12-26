@@ -169,8 +169,10 @@ class _HomePageState extends State<HomePage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kBackgroundColorDark;
     final secondaryTextColor = isDarkMode ? Colors.white70 : kTextSecondary;
-    final searchBgColor = isDarkMode ? kBackgroundColorDark : Colors.white;
-    final searchBorderColor = isDarkMode ? Colors.white10 : Colors.transparent;
+    final searchBgColor = isDarkMode ? kBackgroundColorDark : Colors.grey[100]!;
+    final searchBorderColor = isDarkMode
+        ? Colors.white10
+        : Colors.grey.shade300;
     final isExpanded = ResponsiveBreakpoints.isExpanded(context);
 
     return RepaintBoundary(
@@ -756,23 +758,34 @@ class _HomePageState extends State<HomePage> {
       child: TextField(
         readOnly: true,
         onTap: () => Navigator.pushNamed(context, '/search'),
-        style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 16),
+        style: GoogleFonts.plusJakartaSans(
+          color: primaryTextColor,
+          fontSize: 16,
+        ),
         decoration: InputDecoration(
           hintText: 'Search products, rooms, services...',
           hintStyle: GoogleFonts.plusJakartaSans(
-            color: Colors.white70,
+            color: hintColor,
             fontSize: 14,
           ),
-          prefixIcon: const Icon(Icons.search, color: Colors.white70),
+          prefixIcon: Icon(Icons.search, color: hintColor),
           filled: true,
-          fillColor: Colors.black.withValues(alpha: 0.1),
+          fillColor: bgColor,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16.0),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(999.0),
+            borderSide: BorderSide(color: borderColor),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999.0),
+            borderSide: BorderSide(color: borderColor),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(999.0),
+            borderSide: BorderSide(color: kPrimaryColor),
           ),
           contentPadding: const EdgeInsets.symmetric(
             horizontal: 20,
-            vertical: 16,
+            vertical: 10,
           ),
         ),
       ),
@@ -980,7 +993,6 @@ class _HomePageState extends State<HomePage> {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Padding(
       padding: EdgeInsets.symmetric(
@@ -1020,18 +1032,20 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           filled: true,
-          fillColor: isDarkMode ? Colors.grey[900] : Colors.grey[100],
+          fillColor: bgColor,
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16.0),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(999.0),
+            borderSide: BorderSide(color: borderColor),
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16.0),
-            borderSide: BorderSide.none,
+            borderRadius: BorderRadius.circular(
+              991.0,
+            ), // Using high value to ensure roundness
+            borderSide: BorderSide(color: borderColor),
           ),
           focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(16.0),
-            borderSide: BorderSide(color: kPrimaryColor, width: 2.0),
+            borderRadius: BorderRadius.circular(991.0),
+            borderSide: const BorderSide(color: kPrimaryColor, width: 2.0),
           ),
           contentPadding: EdgeInsets.symmetric(
             horizontal: ResponsiveBreakpoints.responsiveValue(
@@ -1042,9 +1056,9 @@ class _HomePageState extends State<HomePage> {
             ),
             vertical: ResponsiveBreakpoints.responsiveValue(
               context,
-              compact: 16.0,
-              medium: 18.0,
-              expanded: 20.0,
+              compact: 10.0,
+              medium: 12.0,
+              expanded: 14.0,
             ),
           ),
         ),

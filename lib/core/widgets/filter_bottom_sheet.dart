@@ -46,10 +46,7 @@ class PriceRange {
   bool get hasValue => min != null || max != null;
 
   PriceRange copyWith({double? min, double? max}) {
-    return PriceRange(
-      min: min ?? this.min,
-      max: max ?? this.max,
-    );
+    return PriceRange(min: min ?? this.min, max: max ?? this.max);
   }
 }
 
@@ -175,7 +172,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
       _sections = widget.sections.map((section) {
         return FilterSection(
           title: section.title,
-          options: section.options.map((opt) => opt.copyWith(isSelected: false)).toList(),
+          options: section.options
+              .map((opt) => opt.copyWith(isSelected: false))
+              .toList(),
           isMultiSelect: section.isMultiSelect,
         );
       }).toList();
@@ -193,7 +192,8 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     for (final section in _sections) {
       count += section.options.where((opt) => opt.isSelected).length;
     }
-    if (_minPriceController.text.isNotEmpty || _maxPriceController.text.isNotEmpty) {
+    if (_minPriceController.text.isNotEmpty ||
+        _maxPriceController.text.isNotEmpty) {
       count++;
     }
     return count;
@@ -204,67 +204,77 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final backgroundColor = isDarkMode ? kBackgroundColorDark : Colors.white;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? (Colors.grey[400]!) : (Colors.grey[600]!);
+    final secondaryTextColor = isDarkMode
+        ? (Colors.grey[400]!)
+        : (Colors.grey[600]!);
 
     return Container(
       decoration: BoxDecoration(
         color: backgroundColor,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      child: DraggableScrollableSheet(
-        initialChildSize: 0.9,
-        minChildSize: 0.5,
-        maxChildSize: 0.95,
-        builder: (context, scrollController) {
-          return Column(
-            children: [
-              // Handle bar
-              Container(
-                margin: const EdgeInsets.only(top: 12),
-                width: 40,
-                height: 4,
-                decoration: BoxDecoration(
-                  color: secondaryTextColor,
-                  borderRadius: BorderRadius.circular(2),
-                ),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle bar
+            Container(
+              margin: const EdgeInsets.only(top: 12),
+              width: 36,
+              height: 4,
+              decoration: BoxDecoration(
+                color: secondaryTextColor.withOpacity(0.3),
+                borderRadius: BorderRadius.circular(2),
               ),
-              // Header
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Filters',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: primaryTextColor,
-                      ),
+            ),
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 12, 20, 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Filters',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                      color: primaryTextColor,
                     ),
-                    if (_getActiveFilterCount() > 0)
-                      TextButton(
-                        onPressed: _resetFilters,
-                        child: Text(
-                          'Reset',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            fontWeight: FontWeight.w600,
-                            color: kPrimaryColor,
-                          ),
+                  ),
+                  if (_getActiveFilterCount() > 0)
+                    TextButton(
+                      onPressed: _resetFilters,
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                      ),
+                      child: Text(
+                        'Reset All',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: kPrimaryColor,
                         ),
                       ),
-                  ],
-                ),
+                    ),
+                ],
               ),
-              // Content
-              Expanded(
-                child: ListView(
-                  controller: scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+            ),
+            const Divider(height: 1),
+            // Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // Price Range Section
-                    _buildPriceRangeSection(isDarkMode, primaryTextColor, secondaryTextColor),
+                    _buildPriceRangeSection(
+                      isDarkMode,
+                      primaryTextColor,
+                      secondaryTextColor,
+                    ),
                     const SizedBox(height: 24),
                     // Filter Sections
                     ..._sections.asMap().entries.map((entry) {
@@ -279,74 +289,64 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                         ),
                       );
                     }),
-                    const SizedBox(height: 100), // Space for buttons
                   ],
                 ),
               ),
-              // Apply Button
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: backgroundColor,
-                  border: Border(
-                    top: BorderSide(
-                      color: isDarkMode ? kBorderColorDark : kBorderColor,
-                      width: 1,
+            ),
+            const Divider(height: 1),
+            // Footer with Apply Button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999.0),
+                        ),
+                        side: BorderSide(color: Colors.grey.shade300),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: isDarkMode ? Colors.white70 : Colors.black87,
+                        ),
+                      ),
                     ),
                   ),
-                ),
-                child: SafeArea(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: OutlinedButton(
-                          onPressed: _resetFilters,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            side: BorderSide(color: kPrimaryColor),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            'Reset',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                              color: kPrimaryColor,
-                            ),
-                          ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    flex: 2,
+                    child: ElevatedButton(
+                      onPressed: _applyFilters,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimaryColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(999.0),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: Text(
+                        'Apply Filters${_getActiveFilterCount() > 0 ? ' (${_getActiveFilterCount()})' : ''}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: ElevatedButton(
-                          onPressed: _applyFilters,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: kPrimaryColor,
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                          ),
-                          child: Text(
-                            'Apply Filters${_getActiveFilterCount() > 0 ? ' (${_getActiveFilterCount()})' : ''}',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                    ),
                   ),
-                ),
+                ],
               ),
-            ],
-          );
-        },
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -379,6 +379,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   hintText: '0',
                   filled: true,
                   fillColor: isDarkMode ? Colors.grey[900] : Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -396,6 +400,10 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
                   hintText: 'No limit',
                   filled: true,
                   fillColor: isDarkMode ? Colors.grey[900] : Colors.grey[100],
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 8,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
@@ -441,7 +449,9 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               checkmarkColor: kPrimaryColor,
               labelStyle: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
-                fontWeight: option.isSelected ? FontWeight.w600 : FontWeight.normal,
+                fontWeight: option.isSelected
+                    ? FontWeight.w600
+                    : FontWeight.normal,
                 color: option.isSelected ? kPrimaryColor : (primaryTextColor),
               ),
             );
@@ -451,4 +461,3 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
     );
   }
 }
-

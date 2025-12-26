@@ -148,31 +148,40 @@ class _ListingsPageState extends State<ListingsPage>
               horizontal: 16.0,
               vertical: 8.0,
             ),
-            child: Container(
-              decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF2C2C2C) : Colors.white,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(
-                  color: isDark ? Colors.white10 : Colors.grey.shade200,
+            child: TextField(
+              controller: _searchController,
+              onChanged: _onSearchChanged,
+              decoration: InputDecoration(
+                hintText: 'Search products, services...',
+                hintStyle: GoogleFonts.plusJakartaSans(color: Colors.grey[500]),
+                prefixIcon: Icon(
+                  Icons.search_rounded,
+                  color: colorScheme.primary,
                 ),
-              ),
-              child: TextField(
-                controller: _searchController,
-                onChanged: _onSearchChanged,
-                decoration: InputDecoration(
-                  hintText: 'Search products, services...',
-                  hintStyle: GoogleFonts.plusJakartaSans(
-                    color: Colors.grey[500],
+                filled: true,
+                fillColor: isDark ? const Color(0xFF2C2C2C) : Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: BorderSide(
+                    color: isDark ? Colors.white10 : Colors.grey.shade200,
                   ),
-                  prefixIcon: Icon(
-                    Icons.search_rounded,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: BorderSide(
+                    color: isDark ? Colors.white10 : Colors.grey.shade200,
+                  ),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(999.0),
+                  borderSide: BorderSide(
                     color: colorScheme.primary,
+                    width: 2.0,
                   ),
-                  border: InputBorder.none,
-                  contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 14,
-                  ),
+                ),
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 10,
                 ),
               ),
             ),
@@ -180,29 +189,29 @@ class _ListingsPageState extends State<ListingsPage>
           // Tabs
           TabBar(
             controller: _tabController,
+            isScrollable: true,
+            tabAlignment: TabAlignment.start,
             labelColor: isDark ? Colors.white : Colors.black,
             unselectedLabelColor: Colors.grey[400],
             indicatorColor: isDark ? Colors.white : Colors.black,
             indicatorSize: TabBarIndicatorSize.tab,
             dividerColor: Colors.transparent,
+            labelPadding: const EdgeInsets.symmetric(horizontal: 16),
             labelStyle: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
+              fontSize: 14, // Slightly increased for readability
               fontWeight: FontWeight.w600,
             ),
             indicator: UnderlineTabIndicator(
               borderSide: BorderSide(
-                width: 1.5,
+                width: 2.0,
                 color: isDark ? Colors.white : Colors.black,
               ),
             ),
             tabs: [
-              Tab(height: 44, child: Text('All')),
-              Tab(
-                height: 44,
-                icon: Icon(Icons.shopping_bag_outlined, size: 24),
-              ),
-              Tab(height: 44, icon: Icon(Icons.handyman_outlined, size: 24)),
-              Tab(height: 44, icon: Icon(Icons.home_work_outlined, size: 24)),
+              const Tab(height: 44, child: Text('All')),
+              const Tab(height: 44, child: Text('Products')),
+              const Tab(height: 44, child: Text('Services')),
+              const Tab(height: 44, child: Text('Accommodations')),
             ],
           ),
           const SizedBox(height: 8),

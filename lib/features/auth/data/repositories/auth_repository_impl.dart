@@ -89,13 +89,36 @@ class AuthRepositoryImpl implements AuthRepository {
   @override
   Future<Either<Failure, UserEntity?>> getCurrentUser() async {
     try {
-      // Try to get from cache first
+      // 1. Try to get from cache first for immediate UI update
       final cachedUser = await localDataSource.getCachedUser();
+
+      // If we have a cached user and we're offline, return immediately
       if (cachedUser != null && !await networkInfo.isConnected) {
         return Right(cachedUser);
       }
 
-      // Get from remote
+      // If we have a cached user, we can return it as a "preliminary" result
+      // But we should also verify/refresh with remote if possible.
+      // For the sake of this repository's simple interface (non-stream),
+      // we'll return cache immediately if available to speed up startup.
+      if (cachedUser != null) {
+        // We return cache but fire-and-forget a remote sync to update local cache
+        // Note: This won't update the UI until the user pulls-to-refresh or navigates,
+        // unless we use a Stream. For startup, this is a huge win.
+        remoteDataSource
+            .getCurrentUser()
+            .then((user) async {
+              if (user != null) {
+                await localDataSource.cacheUser(user);
+              }
+            })
+            .catchError((_) {
+              // Ignore background errors
+            });
+        return Right(cachedUser);
+      }
+
+      // 2. No cache, or we want a fresh remote fetch forced (handled by caller if needed)
       final user = await remoteDataSource.getCurrentUser();
       if (user != null) {
         await localDataSource.cacheUser(user);
@@ -233,6 +256,7 @@ class AuthRepositoryImpl implements AuthRepository {
         primaryUniversityId: primaryUniversityId,
         subsidiaryUniversityIds: subsidiaryUniversityIds,
       );
+      await localDataSource.setRegistrationCompleted(true);
       return const Right(null);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -243,12 +267,24 @@ class AuthRepositoryImpl implements AuthRepository {
 
   @override
   Future<Either<Failure, bool>> checkRegistrationCompletion() async {
-    if (!await networkInfo.isConnected) {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-
     try {
+      // Check local cache first for fast startup
+      final isCachedCompleted = await localDataSource.isRegistrationCompleted();
+      if (isCachedCompleted) {
+        return const Right(true);
+      }
+
+      if (!await networkInfo.isConnected) {
+        return const Left(NetworkFailure('No internet connection'));
+      }
+
       final isCompleted = await remoteDataSource.checkRegistrationCompletion();
+
+      // Cache the result
+      if (isCompleted) {
+        await localDataSource.setRegistrationCompleted(true);
+      }
+
       return Right(isCompleted);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));

@@ -9,6 +9,8 @@ abstract class AuthLocalDataSource {
   Future<void> cacheUser(UserModel user);
   Future<void> clearCache();
   Future<bool> isLoggedIn();
+  Future<bool> isRegistrationCompleted();
+  Future<void> setRegistrationCompleted(bool completed);
 }
 
 class AuthLocalDataSourceImpl implements AuthLocalDataSource {
@@ -38,7 +40,10 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
       );
       await sharedPreferences.setBool(StorageConstants.isLoggedInKey, true);
       await sharedPreferences.setString(StorageConstants.userIdKey, user.id);
-      await sharedPreferences.setString(StorageConstants.userRoleKey, user.role.value);
+      await sharedPreferences.setString(
+        StorageConstants.userRoleKey,
+        user.role.value,
+      );
     } catch (e) {
       throw CacheException(e.toString());
     }
@@ -52,16 +57,17 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
       await sharedPreferences.remove(StorageConstants.isLoggedInKey);
       await sharedPreferences.remove(StorageConstants.userIdKey);
       await sharedPreferences.remove(StorageConstants.userRoleKey);
-      
+
       // Clear profile cache to prevent showing previous user's data
       await sharedPreferences.remove(StorageConstants.myProfileCacheKey);
       await sharedPreferences.remove(StorageConstants.profileTimestampKey);
-      
+
       // Clear all user profile caches
       final keys = sharedPreferences.getKeys();
-      final profileKeys = keys.where((key) =>
-          key.startsWith(StorageConstants.profileCachePrefix));
-      
+      final profileKeys = keys.where(
+        (key) => key.startsWith(StorageConstants.profileCachePrefix),
+      );
+
       for (final key in profileKeys) {
         await sharedPreferences.remove(key);
       }
@@ -74,5 +80,20 @@ class AuthLocalDataSourceImpl implements AuthLocalDataSource {
   Future<bool> isLoggedIn() async {
     return sharedPreferences.getBool(StorageConstants.isLoggedInKey) ?? false;
   }
-}
 
+  @override
+  Future<bool> isRegistrationCompleted() async {
+    return sharedPreferences.getBool(
+          StorageConstants.registrationCompletedKey,
+        ) ??
+        false;
+  }
+
+  @override
+  Future<void> setRegistrationCompleted(bool completed) async {
+    await sharedPreferences.setBool(
+      StorageConstants.registrationCompletedKey,
+      completed,
+    );
+  }
+}

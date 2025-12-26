@@ -195,7 +195,7 @@ class _ProductCardState extends State<ProductCard>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     AspectRatio(
-                      aspectRatio: 0.7,
+                      aspectRatio: 1.0,
                       child: Hero(
                         tag: 'product_${widget.imageUrl}',
                         child: ClipRRect(
@@ -392,10 +392,14 @@ class ServiceCard extends StatelessWidget {
                                 fontSize: 15,
                               ),
                         ),
-                        Text(
-                          '/$priceType',
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(color: kTextSecondary, fontSize: 11),
+                        Flexible(
+                          child: Text(
+                            '/$priceType',
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(color: kTextSecondary, fontSize: 11),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          ),
                         ),
                       ],
                     ),
@@ -568,11 +572,13 @@ class AccommodationCard extends StatelessWidget {
                               fontSize: 15,
                             ),
                       ),
-                      Text(
-                        '/$priceType',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: kTextSecondary,
-                          fontSize: 11,
+                      Flexible(
+                        child: Text(
+                          '/$priceType',
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: kTextSecondary, fontSize: 11),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
                         ),
                       ),
                     ],

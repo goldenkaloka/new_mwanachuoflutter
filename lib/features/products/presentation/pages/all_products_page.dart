@@ -25,11 +25,10 @@ class AllProductsPage extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => sl<ProductBloc>()..add(const LoadProductsEvent(limit: 50)),
+          create: (context) =>
+              sl<ProductBloc>()..add(const LoadProductsEvent(limit: 50)),
         ),
-        BlocProvider(
-          create: (context) => sl<CategoryCubit>()..loadAll(),
-        ),
+        BlocProvider(create: (context) => sl<CategoryCubit>()..loadAll()),
       ],
       child: const _AllProductsView(),
     );
@@ -83,10 +82,10 @@ class _AllProductsViewState extends State<_AllProductsView> {
       searchQuery: trimmedQuery.isEmpty ? null : trimmedQuery,
     );
     // Always apply filter, even if only search query (hasFilters might not catch empty string)
-    _currentFilter = (trimmedQuery.isNotEmpty || newFilter.hasFilters) ? newFilter : null;
-    context.read<ProductBloc>().add(
-      ApplyProductFilterEvent(filter: newFilter),
-    );
+    _currentFilter = (trimmedQuery.isNotEmpty || newFilter.hasFilters)
+        ? newFilter
+        : null;
+    context.read<ProductBloc>().add(ApplyProductFilterEvent(filter: newFilter));
   }
 
   void _showFilterBottomSheet() {
@@ -97,10 +96,10 @@ class _AllProductsViewState extends State<_AllProductsView> {
     }
 
     final categoryState = context.read<CategoryCubit>().state;
-    
+
     // Get conditions from CategoryCubit (categories are now in chips, not in bottom sheet)
     List<String> conditions = [];
-    
+
     if (categoryState is CategoriesLoaded) {
       conditions = categoryState.conditions.map((cond) => cond.name).toList();
     } else {
@@ -119,7 +118,7 @@ class _AllProductsViewState extends State<_AllProductsView> {
       );
       return;
     }
-    
+
     final sections = [
       FilterSection(
         title: 'Condition',
@@ -137,15 +136,15 @@ class _AllProductsViewState extends State<_AllProductsView> {
       context: context,
       sections: sections,
       priceRange: currentFilter != null
-          ? PriceRange(
-              min: currentFilter.minPrice,
-              max: currentFilter.maxPrice,
-            )
+          ? PriceRange(min: currentFilter.minPrice, max: currentFilter.maxPrice)
           : null,
       onApply: (updatedSections, priceRange) {
         // Build new filter from selections (categories are handled by chips, not bottom sheet)
         final selectedCondition = updatedSections[0].options
-            .firstWhere((opt) => opt.isSelected, orElse: () => const FilterOption(label: '', value: ''))
+            .firstWhere(
+              (opt) => opt.isSelected,
+              orElse: () => const FilterOption(label: '', value: ''),
+            )
             .value;
 
         final newFilter = ProductFilter(
@@ -153,7 +152,8 @@ class _AllProductsViewState extends State<_AllProductsView> {
           minPrice: priceRange?.min,
           maxPrice: priceRange?.max,
           location: currentFilter?.location,
-          category: currentFilter?.category, // Keep existing category from chips
+          category:
+              currentFilter?.category, // Keep existing category from chips
           condition: selectedCondition.isEmpty ? null : selectedCondition,
           sortBy: currentFilter?.sortBy,
           sortAscending: currentFilter?.sortAscending ?? true,
@@ -185,56 +185,62 @@ class _AllProductsViewState extends State<_AllProductsView> {
     final chips = <FilterChipData>[];
 
     if (filter.category != null) {
-      chips.add(FilterChipData(
-        label: 'Category: ${filter.category}',
-        value: filter.category!,
-        onRemove: () {
-          final newFilter = filter.copyWith(clearCategory: true);
-          setState(() {
-            _currentFilter = newFilter.hasFilters ? newFilter : null;
-          });
-          context.read<ProductBloc>().add(
-            ApplyProductFilterEvent(filter: newFilter),
-          );
-        },
-      ));
+      chips.add(
+        FilterChipData(
+          label: 'Category: ${filter.category}',
+          value: filter.category!,
+          onRemove: () {
+            final newFilter = filter.copyWith(clearCategory: true);
+            setState(() {
+              _currentFilter = newFilter.hasFilters ? newFilter : null;
+            });
+            context.read<ProductBloc>().add(
+              ApplyProductFilterEvent(filter: newFilter),
+            );
+          },
+        ),
+      );
     }
 
     if (filter.condition != null) {
-      chips.add(FilterChipData(
-        label: 'Condition: ${filter.condition}',
-        value: filter.condition!,
-        onRemove: () {
-          final newFilter = filter.copyWith(clearCondition: true);
-          setState(() {
-            _currentFilter = newFilter.hasFilters ? newFilter : null;
-          });
-          context.read<ProductBloc>().add(
-            ApplyProductFilterEvent(filter: newFilter),
-          );
-        },
-      ));
+      chips.add(
+        FilterChipData(
+          label: 'Condition: ${filter.condition}',
+          value: filter.condition!,
+          onRemove: () {
+            final newFilter = filter.copyWith(clearCondition: true);
+            setState(() {
+              _currentFilter = newFilter.hasFilters ? newFilter : null;
+            });
+            context.read<ProductBloc>().add(
+              ApplyProductFilterEvent(filter: newFilter),
+            );
+          },
+        ),
+      );
     }
 
     if (filter.minPrice != null || filter.maxPrice != null) {
       final priceLabel = filter.minPrice != null && filter.maxPrice != null
           ? 'Price: ${filter.minPrice!.toStringAsFixed(0)} - ${filter.maxPrice!.toStringAsFixed(0)}'
           : filter.minPrice != null
-              ? 'Price: From ${filter.minPrice!.toStringAsFixed(0)}'
-              : 'Price: Up to ${filter.maxPrice!.toStringAsFixed(0)}';
-      chips.add(FilterChipData(
-        label: priceLabel,
-        value: 'price',
-        onRemove: () {
-          final newFilter = filter.copyWith(clearPrice: true);
-          setState(() {
-            _currentFilter = newFilter.hasFilters ? newFilter : null;
-          });
-          context.read<ProductBloc>().add(
-            ApplyProductFilterEvent(filter: newFilter),
-          );
-        },
-      ));
+          ? 'Price: From ${filter.minPrice!.toStringAsFixed(0)}'
+          : 'Price: Up to ${filter.maxPrice!.toStringAsFixed(0)}';
+      chips.add(
+        FilterChipData(
+          label: priceLabel,
+          value: 'price',
+          onRemove: () {
+            final newFilter = filter.copyWith(clearPrice: true);
+            setState(() {
+              _currentFilter = newFilter.hasFilters ? newFilter : null;
+            });
+            context.read<ProductBloc>().add(
+              ApplyProductFilterEvent(filter: newFilter),
+            );
+          },
+        ),
+      );
     }
 
     return chips;
@@ -272,20 +278,21 @@ class _AllProductsViewState extends State<_AllProductsView> {
               buildWhen: (previous, current) {
                 // Rebuild when filter changes
                 if (previous is ProductsLoaded && current is ProductsLoaded) {
-                  return previous.currentFilter?.category != current.currentFilter?.category;
+                  return previous.currentFilter?.category !=
+                      current.currentFilter?.category;
                 }
                 return current is ProductsLoaded;
               },
               builder: (context, state) {
                 final currentCategory = state is ProductsLoaded
-                    ? (state.currentFilter?.category ?? _currentFilter?.category)
+                    ? (state.currentFilter?.category ??
+                          _currentFilter?.category)
                     : _currentFilter?.category;
                 return CategoryChipsWithBloc(
                   selectedCategory: currentCategory,
                   onCategorySelected: (category) {
-                    final newFilter = (_currentFilter ?? const ProductFilter()).copyWith(
-                      category: category,
-                    );
+                    final newFilter = (_currentFilter ?? const ProductFilter())
+                        .copyWith(category: category);
                     setState(() {
                       _currentFilter = newFilter.hasFilters ? newFilter : null;
                     });
@@ -304,109 +311,115 @@ class _AllProductsViewState extends State<_AllProductsView> {
                   _currentFilter = null;
                   _searchController.clear();
                 });
-                context.read<ProductBloc>().add(const ClearProductFilterEvent());
+                context.read<ProductBloc>().add(
+                  const ClearProductFilterEvent(),
+                );
               },
             ),
             // Products List
             Expanded(
               child: BlocBuilder<ProductBloc, ProductState>(
-        builder: (context, state) {
-          // Loading state - show shimmer skeleton
-          if (state is ProductsLoading) {
-            return ProductGridSkeleton(
-              itemCount: 6,
-              crossAxisCount: crossAxisCount,
-            );
-          }
+                builder: (context, state) {
+                  // Loading state - show shimmer skeleton
+                  if (state is ProductsLoading) {
+                    return ProductGridSkeleton(
+                      itemCount: 6,
+                      crossAxisCount: crossAxisCount,
+                    );
+                  }
 
-          // Error state - use new ErrorState widget
-          if (state is ProductError) {
-            return ErrorState(
-              title: 'Failed to Load Products',
-              message: state.message,
-              onRetry: () {
-                context.read<ProductBloc>().add(
-                  const LoadProductsEvent(limit: 20),
-                );
-              },
-            );
-          }
+                  // Error state - use new ErrorState widget
+                  if (state is ProductError) {
+                    return ErrorState(
+                      title: 'Failed to Load Products',
+                      message: state.message,
+                      onRetry: () {
+                        context.read<ProductBloc>().add(
+                          const LoadProductsEvent(limit: 20),
+                        );
+                      },
+                    );
+                  }
 
-          // Success state
-          if (state is ProductsLoaded) {
-            // Empty state - use new EmptyState widget
-            if (state.products.isEmpty && !state.isLoadingMore) {
-              return EmptyState(
-                type: EmptyStateType.noProducts,
-                onAction: () => Navigator.pop(context),
-                actionLabel: 'Go Back',
-              );
-            }
+                  // Success state
+                  if (state is ProductsLoaded) {
+                    // Empty state - use new EmptyState widget
+                    if (state.products.isEmpty && !state.isLoadingMore) {
+                      return EmptyState(
+                        type: EmptyStateType.noProducts,
+                        onAction: () => Navigator.pop(context),
+                        actionLabel: 'Go Back',
+                      );
+                    }
 
-            // Products grid with pagination
-            return GridView.builder(
-              controller: _scrollController,
-              padding: EdgeInsets.all(
-                ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-              ),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: crossAxisCount,
-                childAspectRatio: 0.75,
-                crossAxisSpacing: kSpacingLg,
-                mainAxisSpacing: kSpacingLg,
-              ),
-              itemCount: state.products.length + (state.isLoadingMore ? 1 : 0),
-              itemBuilder: (context, index) {
-                // Show loading indicator at the bottom
-                if (index == state.products.length && state.isLoadingMore) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.all(kSpacingLg),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          CircularProgressIndicator(
-                            color: kPrimaryColor,
-                            strokeWidth: 2,
-                          ),
-                          SizedBox(height: kSpacingSm),
-                          Text(
-                            'Loading more...',
-                            style: TextStyle(fontSize: 12),
-                          ),
-                        ],
+                    // Products grid with pagination
+                    return GridView.builder(
+                      controller: _scrollController,
+                      padding: EdgeInsets.all(
+                        ResponsiveBreakpoints.responsiveHorizontalPadding(
+                          context,
+                        ),
                       ),
-                    ),
-                  );
-                }
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: crossAxisCount,
+                        childAspectRatio: 0.65,
+                        crossAxisSpacing: kSpacingLg,
+                        mainAxisSpacing: kSpacingLg,
+                      ),
+                      itemCount:
+                          state.products.length + (state.isLoadingMore ? 1 : 0),
+                      itemBuilder: (context, index) {
+                        // Show loading indicator at the bottom
+                        if (index == state.products.length &&
+                            state.isLoadingMore) {
+                          return const Center(
+                            child: Padding(
+                              padding: EdgeInsets.all(kSpacingLg),
+                              child: Column(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  CircularProgressIndicator(
+                                    color: kPrimaryColor,
+                                    strokeWidth: 2,
+                                  ),
+                                  SizedBox(height: kSpacingSm),
+                                  Text(
+                                    'Loading more...',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }
 
-                if (index >= state.products.length) {
+                        if (index >= state.products.length) {
+                          return const SizedBox.shrink();
+                        }
+
+                        // Use new ProductCard component
+                        final product = state.products[index];
+                        return ProductCard(
+                          imageUrl: product.images.isNotEmpty
+                              ? product.images.first
+                              : '',
+                          title: product.title,
+                          price: 'TZS ${product.price.toStringAsFixed(2)}',
+                          category: product.category,
+                          rating: product.rating,
+                          reviewCount: product.reviewCount,
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/product-details',
+                            arguments: product.id,
+                          ),
+                        );
+                      },
+                    );
+                  }
+
                   return const SizedBox.shrink();
-                }
-
-                // Use new ProductCard component
-                final product = state.products[index];
-                return ProductCard(
-                  imageUrl: product.images.isNotEmpty
-                      ? product.images.first
-                      : '',
-                  title: product.title,
-                  price: 'TZS ${product.price.toStringAsFixed(2)}',
-                  category: product.category,
-                  rating: product.rating,
-                  reviewCount: product.reviewCount,
-                  onTap: () => Navigator.pushNamed(
-                    context,
-                    '/product-details',
-                    arguments: product.id,
-                  ),
-                );
-              },
-            );
-          }
-
-          return const SizedBox.shrink();
-        },
+                },
               ),
             ),
           ],

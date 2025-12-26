@@ -6,49 +6,120 @@ import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/main_app.dart';
 
-Future<void> main() async {
-  // Preserve native splash screen until Flutter is ready
+void main() {
+  // Preserve native splash screen until Flutter is ready to draw its first frame
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
-  try {
-    // Stripe initialization will be handled in main_app.dart
+  // Suppress mouse_tracker.dart debug assertions on Windows
+  if (kDebugMode && Platform.isWindows) {
+    FlutterError.onError = (FlutterErrorDetails details) {
+      if (details.exception is AssertionError &&
+          details.stack?.toString().contains('mouse_tracker.dart') == true) {
+        return;
+      }
+      FlutterError.presentError(details);
+    };
+  }
 
-    // Suppress mouse_tracker.dart debug assertions on Windows
-    // These are harmless debug-only warnings that spam the console
-    if (kDebugMode && Platform.isWindows) {
-      // Filter out mouse_tracker.dart assertion errors
-      FlutterError.onError = (FlutterErrorDetails details) {
-        // Ignore mouse_tracker.dart assertions - they're harmless debug warnings
-        if (details.exception is AssertionError &&
-            details.stack?.toString().contains('mouse_tracker.dart') == true) {
-          // Silently ignore these assertions
-          return;
-        }
-        // Log other errors normally
-        FlutterError.presentError(details);
-      };
-      debugPrint(
-        '⚠️  Running on Windows - mouse tracker assertions will be filtered',
+  runApp(const MwanachuoAppWrapper());
+}
+
+class MwanachuoAppWrapper extends StatefulWidget {
+  const MwanachuoAppWrapper({super.key});
+
+  @override
+  State<MwanachuoAppWrapper> createState() => _MwanachuoAppWrapperState();
+}
+
+class _MwanachuoAppWrapperState extends State<MwanachuoAppWrapper> {
+  bool _initialized = false;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _initApp();
+  }
+
+  Future<void> _initApp() async {
+    try {
+      // Remove native splash as soon as our first frame is rendered
+      // This is the fastest way to replace native splash with Flutter UI
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FlutterNativeSplash.remove();
+      });
+
+      // Run critical initializations in parallel
+      await Future.wait([
+        SupabaseConfig.initialize(),
+        initializeDependencies(),
+      ]);
+
+      if (mounted) {
+        setState(() {
+          _initialized = true;
+        });
+      }
+    } catch (e, stackTrace) {
+      debugPrint('Initialization failed: $e\n$stackTrace');
+      if (mounted) {
+        setState(() {
+          _error = e.toString();
+        });
+        // Ensure splash remains removed on error
+        FlutterNativeSplash.remove();
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_error != null) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(primarySwatch: Colors.teal),
+        home: Scaffold(
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24.0),
+              child: SelectableText(
+                'Initialization Failed:\n\n$_error\n\nPlease restart the app.',
+                textAlign: TextAlign.center,
+                style: const TextStyle(color: Colors.red),
+              ),
+            ),
+          ),
+        ),
       );
     }
 
-    await SupabaseConfig.initialize();
-    // OneSignal initialization will be handled in main_app.dart
-    await initializeDependencies();
+    if (!_initialized) {
+      // Show a beautiful loading screen while Supabase/DI is booting up
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(primarySwatch: Colors.teal),
+        home: const Scaffold(
+          body: Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                CircularProgressIndicator(color: Color(0xFF008080)),
+                SizedBox(height: 24),
+                Text(
+                  'Starting Mwanachuo...',
+                  style: TextStyle(
+                    color: Color(0xFF008080),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
 
-    runApp(const MwanachuoshopApp());
-
-    // Native splash will be removed by InitialRouteHandler when navigation occurs
-  } catch (e, stackTrace) {
-    debugPrint('Initialization failed: $e\n$stackTrace');
-    // Ensure native splash is removed so user can see the error
-    FlutterNativeSplash.remove();
-    // Run a simple error app if initialization fails
-    runApp(
-      MaterialApp(
-        home: Scaffold(body: Center(child: Text('Initialization Failed:\n$e'))),
-      ),
-    );
+    return const MwanachuoshopApp();
   }
 }

@@ -61,7 +61,7 @@ class ProductCardSkeleton extends StatelessWidget {
       children: [
         // Image skeleton
         const AspectRatio(
-          aspectRatio: 0.7,
+          aspectRatio: 1.0,
           child: ShimmerLoading(
             width: double.infinity,
             height: double.infinity,

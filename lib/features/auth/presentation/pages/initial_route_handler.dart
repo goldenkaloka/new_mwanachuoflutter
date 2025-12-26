@@ -25,17 +25,12 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
   void initState() {
     super.initState();
     // Immediately check authentication status (no delay)
+    // Remove splash screen as soon as the first frame is rendered
+    // to show either the loading spinner or the target page immediately.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
+        FlutterNativeSplash.remove();
         context.read<AuthBloc>().add(const CheckAuthStatusEvent());
-
-        // Safety timeout: Remove splash screen after 5 seconds if it's still there
-        // to prevent the app from appearing "frozen" if initialization is slow
-        Future.delayed(const Duration(seconds: 5), () {
-          if (mounted && !_hasNavigated) {
-            FlutterNativeSplash.remove();
-          }
-        });
       }
     });
   }
@@ -44,6 +39,9 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
     if (_hasNavigated) return; // Prevent multiple navigations
 
     if (state is Authenticated) {
+      // Ensure splash is removed if we're authenticated
+      FlutterNativeSplash.remove();
+
       // Register device token for push notifications
       PushNotificationService().registerDeviceTokenForUser(state.user.id);
 
