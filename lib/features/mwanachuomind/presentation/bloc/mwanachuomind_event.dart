@@ -1,12 +1,22 @@
 import 'dart:io';
 import 'package:equatable/equatable.dart';
+import '../../domain/entities/document.dart';
 import '../../domain/entities/course.dart';
 
 abstract class MwanachuomindEvent extends Equatable {
   const MwanachuomindEvent();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
+}
+
+class SelectDocument extends MwanachuomindEvent {
+  final Document? document;
+
+  const SelectDocument(this.document);
+
+  @override
+  List<Object?> get props => [document];
 }
 
 class CreateCourse extends MwanachuomindEvent {

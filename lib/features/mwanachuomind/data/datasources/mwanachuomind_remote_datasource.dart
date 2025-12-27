@@ -148,7 +148,7 @@ class MwanachuomindRemoteDataSourceImpl
       }
 
       final response = await supabaseClient.functions.invoke(
-        'chat-rpc',
+        'mwanachuomind-rag',
         body: body,
       );
 

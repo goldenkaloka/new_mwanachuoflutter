@@ -26,6 +26,7 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
   }) : super(const MwanachuomindState()) {
     on<LoadUniversityCourses>(_onLoadUniversityCourses);
     on<SelectCourse>(_onSelectCourse);
+    on<SelectDocument>(_onSelectDocument);
     on<UploadDocument>(_onUploadDocument);
     on<SendQuery>(_onSendQuery);
     on<CreateCourse>(_onCreateCourse);
@@ -246,8 +247,11 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
 
       // Rename session if first message
       if (isFirstMessage) {
-        // Create title from first few words
-        final title = event.query.split(' ').take(4).join(' ');
+        // Create title from first message (like ChatGPT)
+        String title = event.query.trim();
+        if (title.length > 50) {
+          title = '${title.substring(0, 50)}...';
+        }
         add(RenameChatSession(sessionId: state.sessionId!, title: title));
       }
     } catch (_) {}
@@ -399,5 +403,12 @@ class MwanachuomindBloc extends Bloc<MwanachuomindEvent, MwanachuomindState> {
         ),
       );
     }
+  }
+
+  void _onSelectDocument(
+    SelectDocument event,
+    Emitter<MwanachuomindState> emit,
+  ) {
+    emit(state.copyWith(selectedDocument: event.document));
   }
 }

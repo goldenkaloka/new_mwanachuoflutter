@@ -10,6 +10,7 @@ class MwanachuomindState extends Equatable {
   final MwanachuomindStatus status;
   final List<Course> courses;
   final Course? selectedCourse;
+  final Document? selectedDocument;
   final Course? enrolledCourse;
   final List<ChatMessage> chatHistory;
   final List<Document> courseDocuments;
@@ -23,6 +24,7 @@ class MwanachuomindState extends Equatable {
     this.status = MwanachuomindStatus.initial,
     this.courses = const [],
     this.selectedCourse,
+    this.selectedDocument,
     this.enrolledCourse,
     this.chatHistory = const [],
     this.courseDocuments = const [],
@@ -37,6 +39,7 @@ class MwanachuomindState extends Equatable {
     MwanachuomindStatus? status,
     List<Course>? courses,
     Course? selectedCourse,
+    Document? selectedDocument,
     Course? enrolledCourse,
     List<ChatMessage>? chatHistory,
     List<Document>? courseDocuments,
@@ -50,6 +53,7 @@ class MwanachuomindState extends Equatable {
       status: status ?? this.status,
       courses: courses ?? this.courses,
       selectedCourse: selectedCourse ?? this.selectedCourse,
+      selectedDocument: selectedDocument, // Allow null to clear
       enrolledCourse: enrolledCourse ?? this.enrolledCourse,
       chatHistory: chatHistory ?? this.chatHistory,
       courseDocuments: courseDocuments ?? this.courseDocuments,
@@ -66,6 +70,7 @@ class MwanachuomindState extends Equatable {
     status,
     courses,
     selectedCourse,
+    selectedDocument,
     enrolledCourse,
     chatHistory,
     courseDocuments,
