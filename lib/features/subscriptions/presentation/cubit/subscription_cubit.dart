@@ -2,7 +2,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/usecases/usecase.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/cancel_subscription.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/check_subscription_status.dart';
-import 'package:mwanachuo/features/subscriptions/domain/usecases/create_checkout_session.dart';
+
 import 'package:mwanachuo/features/subscriptions/domain/usecases/create_subscription.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_payment_history.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_seller_subscription.dart';
@@ -18,7 +18,7 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
   final CancelSubscription cancelSubscription;
   final UpdateSubscription updateSubscription;
   final GetPaymentHistory getPaymentHistory;
-  final CreateCheckoutSession createCheckoutSession;
+
 
   SubscriptionCubit({
     required this.getSubscriptionPlans,
@@ -28,7 +28,7 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
     required this.cancelSubscription,
     required this.updateSubscription,
     required this.getPaymentHistory,
-    required this.createCheckoutSession,
+
   }) : super(SubscriptionInitial());
 
   /// Load subscription plans
@@ -82,32 +82,16 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
     return result.fold((failure) => false, (canCreate) => canCreate);
   }
 
-  /// Create checkout session
-  Future<void> createCheckout({
-    required String sellerId,
-    required String planId,
-    required String billingPeriod,
-  }) async {
-    emit(SubscriptionLoading());
-    final result = await createCheckoutSession(
-      CreateCheckoutSessionParams(
-        sellerId: sellerId,
-        planId: planId,
-        billingPeriod: billingPeriod,
-      ),
-    );
-    result.fold(
-      (failure) => emit(SubscriptionError(failure.message)),
-      (paymentData) => emit(StripePaymentDataReady(paymentData)),
-    );
-  }
+
 
   /// Create subscription (after payment)
   Future<void> subscribe({
     required String sellerId,
     required String planId,
     required String billingPeriod,
-    required String stripeCheckoutSessionId,
+    required String sellerId,
+    required String planId,
+    required String billingPeriod,
   }) async {
     emit(SubscriptionLoading());
     final result = await createSubscription(
@@ -115,7 +99,7 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
         sellerId: sellerId,
         planId: planId,
         billingPeriod: billingPeriod,
-        stripeCheckoutSessionId: stripeCheckoutSessionId,
+        billingPeriod: billingPeriod,
       ),
     );
     result.fold(

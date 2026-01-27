@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
-import 'package:flutter_stripe/flutter_stripe.dart';
+
 import 'package:mwanachuo/config/onesignal_config.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/theme/app_theme.dart';
@@ -96,14 +96,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         debugPrint('AppLinks initialization failed: $e');
       }
 
-      // Initialize Stripe
-      try {
-        Stripe.publishableKey = SupabaseConfig.stripePublishableKey;
-        Stripe.merchantIdentifier = SupabaseConfig.stripeMerchantIdentifier;
-        await Stripe.instance.applySettings();
-      } catch (e) {
-        debugPrint('Stripe initialization failed: $e');
-      }
+
 
       // Initialize OneSignal
       try {
@@ -146,64 +139,8 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
     if (uri.scheme != 'mwanachuo') {
       return;
     }
-
-    final path = uri.path;
-    final context = navigatorKey.currentContext;
-
-    if (context == null) {
-      // If context is not available yet, wait a bit and try again
-      Future.delayed(const Duration(milliseconds: 500), () {
-        _handleDeepLink(uri);
-      });
-      return;
-    }
-
-    if (path == '/subscription-success') {
-      // Extract session_id from query parameters (can be used for verification later)
-      // final sessionId = uri.queryParameters['session_id'];
-
-      // Navigate to subscription plans page
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/subscription-plans',
-        (route) => route.isFirst || route.settings.name == '/home',
-      );
-
-      // Show success message
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: const Text(
-                'Payment successful! Your subscription is now active.',
-              ),
-              backgroundColor: kPrimaryColor,
-              duration: const Duration(seconds: 5),
-            ),
-          );
-        }
-      });
-    } else if (path == '/subscription-cancel') {
-      // Navigate to subscription plans page
-      Navigator.of(context).pushNamedAndRemoveUntil(
-        '/subscription-plans',
-        (route) => route.isFirst || route.settings.name == '/home',
-      );
-
-      // Show cancel message
-      Future.delayed(const Duration(milliseconds: 500), () {
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Payment was cancelled. You can try again anytime.',
-              ),
-              backgroundColor: Colors.orange,
-              duration: Duration(seconds: 5),
-            ),
-          );
-        }
-      });
-    }
+    
+    // Stripe deep link handling removed
   }
 
   @override

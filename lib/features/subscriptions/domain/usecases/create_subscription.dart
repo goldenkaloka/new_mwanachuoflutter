@@ -19,7 +19,6 @@ class CreateSubscription
       sellerId: params.sellerId,
       planId: params.planId,
       billingPeriod: params.billingPeriod,
-      stripeCheckoutSessionId: params.stripeCheckoutSessionId,
     );
   }
 }
@@ -28,16 +27,16 @@ class CreateSubscriptionParams extends Equatable {
   final String sellerId;
   final String planId;
   final String billingPeriod; // 'monthly' or 'yearly'
-  final String stripeCheckoutSessionId;
+
 
   const CreateSubscriptionParams({
     required this.sellerId,
     required this.planId,
     required this.billingPeriod,
-    required this.stripeCheckoutSessionId,
+
   });
 
   @override
-  List<Object> get props => [sellerId, planId, billingPeriod, stripeCheckoutSessionId];
+  List<Object> get props => [sellerId, planId, billingPeriod];
 }
 

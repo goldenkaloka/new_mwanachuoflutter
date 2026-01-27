@@ -7,7 +7,7 @@ class SubscriptionPaymentModel extends SubscriptionPaymentEntity {
     required super.amount,
     super.currency,
     required super.status,
-    super.stripePaymentIntentId,
+
     super.receiptUrl,
     super.paidAt,
     required super.createdAt,
@@ -39,7 +39,7 @@ class SubscriptionPaymentModel extends SubscriptionPaymentEntity {
       amount: (json['amount'] as num).toDouble(),
       currency: json['currency'] as String? ?? 'USD',
       status: status,
-      stripePaymentIntentId: json['stripe_payment_intent_id'] as String?,
+
       receiptUrl: json['receipt_url'] as String?,
       paidAt: json['paid_at'] != null
           ? DateTime.parse(json['paid_at'] as String)
@@ -71,7 +71,7 @@ class SubscriptionPaymentModel extends SubscriptionPaymentEntity {
       'amount': amount,
       'currency': currency,
       'status': statusStr,
-      'stripe_payment_intent_id': stripePaymentIntentId,
+
       'receipt_url': receiptUrl,
       'paid_at': paidAt?.toIso8601String(),
       'created_at': createdAt.toIso8601String(),

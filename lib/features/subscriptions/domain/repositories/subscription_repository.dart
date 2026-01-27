@@ -24,7 +24,6 @@ abstract class SubscriptionRepository {
     required String sellerId,
     required String planId,
     required String billingPeriod, // 'monthly' or 'yearly'
-    required String stripeCheckoutSessionId,
   });
 
   /// Cancel a subscription
@@ -42,10 +41,5 @@ abstract class SubscriptionRepository {
     String subscriptionId,
   );
 
-  /// Create Stripe checkout session or Payment Intent
-  Future<Either<Failure, Map<String, dynamic>>> createCheckoutSession({
-    required String sellerId,
-    required String planId,
-    required String billingPeriod,
-  });
+
 }

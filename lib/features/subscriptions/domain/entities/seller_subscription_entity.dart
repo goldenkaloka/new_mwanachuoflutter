@@ -25,8 +25,7 @@ class SellerSubscriptionEntity extends Equatable {
   final DateTime? gracePeriodEnd;
   final bool isTrial;
   final DateTime? trialEndsAt;
-  final String? stripeSubscriptionId;
-  final String? stripeCustomerId;
+
   final bool autoRenew;
   final DateTime createdAt;
   final DateTime? updatedAt;
@@ -42,8 +41,7 @@ class SellerSubscriptionEntity extends Equatable {
     this.gracePeriodEnd,
     required this.isTrial,
     this.trialEndsAt,
-    this.stripeSubscriptionId,
-    this.stripeCustomerId,
+
     required this.autoRenew,
     required this.createdAt,
     this.updatedAt,
@@ -80,8 +78,7 @@ class SellerSubscriptionEntity extends Equatable {
         gracePeriodEnd,
         isTrial,
         trialEndsAt,
-        stripeSubscriptionId,
-        stripeCustomerId,
+
         autoRenew,
         createdAt,
         updatedAt,

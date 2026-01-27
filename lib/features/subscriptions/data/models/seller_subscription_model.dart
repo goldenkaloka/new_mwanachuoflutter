@@ -12,8 +12,7 @@ class SellerSubscriptionModel extends SellerSubscriptionEntity {
     super.gracePeriodEnd,
     required super.isTrial,
     super.trialEndsAt,
-    super.stripeSubscriptionId,
-    super.stripeCustomerId,
+
     required super.autoRenew,
     required super.createdAt,
     super.updatedAt,
@@ -73,8 +72,7 @@ class SellerSubscriptionModel extends SellerSubscriptionEntity {
       trialEndsAt: json['trial_ends_at'] != null
           ? DateTime.parse(json['trial_ends_at'] as String)
           : null,
-      stripeSubscriptionId: json['stripe_subscription_id'] as String?,
-      stripeCustomerId: json['stripe_customer_id'] as String?,
+
       autoRenew: json['auto_renew'] as bool? ?? true,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
@@ -127,8 +125,7 @@ class SellerSubscriptionModel extends SellerSubscriptionEntity {
       'grace_period_end': gracePeriodEnd?.toIso8601String(),
       'is_trial': isTrial,
       'trial_ends_at': trialEndsAt?.toIso8601String(),
-      'stripe_subscription_id': stripeSubscriptionId,
-      'stripe_customer_id': stripeCustomerId,
+
       'auto_renew': autoRenew,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),

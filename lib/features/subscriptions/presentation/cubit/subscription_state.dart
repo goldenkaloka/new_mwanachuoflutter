@@ -60,14 +60,7 @@ class PaymentHistoryLoaded extends SubscriptionState {
   List<Object> get props => [payments];
 }
 
-class StripePaymentDataReady extends SubscriptionState {
-  final Map<String, dynamic> data;
 
-  const StripePaymentDataReady(this.data);
-
-  @override
-  List<Object> get props => [data];
-}
 
 class SubscriptionError extends SubscriptionState {
   final String message;

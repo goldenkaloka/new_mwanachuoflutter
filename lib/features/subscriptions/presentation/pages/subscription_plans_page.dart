@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'dart:io' show Platform;
-import 'package:flutter_stripe/flutter_stripe.dart' hide Card;
+
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
@@ -42,102 +42,24 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
         value: _cubit,
         child: BlocConsumer<SubscriptionCubit, SubscriptionState>(
           listener: (context, state) async {
-            if (state is StripePaymentDataReady) {
-              final data = state.data;
-              final isMobile =
-                  !kIsWeb && (Platform.isAndroid || Platform.isIOS);
-
-              // 1. Native Stripe Payment Sheet logic - Prioritized only on supported mobile platforms
-              if (isMobile &&
-                  data.containsKey('paymentIntent') &&
-                  data['paymentIntent'] != null) {
-                try {
-                  // Initialize Payment Sheet
-                  await Stripe.instance.initPaymentSheet(
-                    paymentSheetParameters: SetupPaymentSheetParameters(
-                      paymentIntentClientSecret: data['paymentIntent'],
-                      customerEphemeralKeySecret: data['ephemeralKey'],
-                      customerId: data['customer'],
-                      merchantDisplayName: 'Mwanachuo',
-                      style: Theme.of(context).brightness == Brightness.dark
-                          ? ThemeMode.dark
-                          : ThemeMode.light,
-                      appearance: const PaymentSheetAppearance(
-                        colors: PaymentSheetAppearanceColors(
-                          primary: kPrimaryColor,
-                        ),
-                      ),
-                    ),
-                  );
-
-                  // Display Payment Sheet
-                  await Stripe.instance.presentPaymentSheet();
-
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Payment successful!'),
-                        backgroundColor: Colors.green,
-                      ),
-                    );
-                    final authState = context.read<AuthBloc>().state;
-                    if (authState is Authenticated) {
-                      _cubit.loadSellerSubscription(authState.user.id);
-                    }
+            if (state is SubscriptionLoaded) {
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Subscription successfully activated!'),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+                // Refresh auth state or navigate home
+                final authState = context.read<AuthBloc>().state;
+                  if (authState is Authenticated) {
+                     _cubit.loadSellerSubscription(authState.user.id);
                   }
-                  return; // Exit on success
-                } catch (e) {
-                  if (e is StripeException) {
-                    if (e.error.code == FailureCode.Canceled) {
-                      debugPrint('Payment Sheet cancelled by user');
-                      return;
-                    }
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            'Stripe Error: ${e.error.localizedMessage}',
-                          ),
-                        ),
-                      );
-                    }
-                    return;
-                  }
-                  // For other errors, we might want to try the web fallback if available
-                }
-              }
-
-              // 2. Fallback for old checkout URL - Use ONLY if native flow is unavailable or failed
-              if (data.containsKey('checkout_url') &&
-                  data['checkout_url'] != null) {
-                try {
-                  final uri = Uri.parse(data['checkout_url']);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  } else {
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Could not open checkout page'),
-                        ),
-                      );
-                    }
-                  }
-                } catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: Text('Error opening checkout: $e')),
-                    );
-                  }
-                }
+                Navigator.of(context).pop();
               }
             } else if (state is SubscriptionError) {
               final errorMessage = state.message;
-              final isStripeConfigError =
-                  errorMessage.toLowerCase().contains(
-                    'stripe not configured',
-                  ) ||
-                  errorMessage.toLowerCase().contains('stripe_secret_key');
+
 
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
@@ -245,7 +167,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                                       .read<AuthBloc>()
                                       .state;
                                   if (authState is Authenticated) {
-                                    _cubit.createCheckout(
+                                    _cubit.subscribe(
                                       sellerId: authState.user.id,
                                       planId: plan.id,
                                       billingPeriod: selectedBillingPeriod,

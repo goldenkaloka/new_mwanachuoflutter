@@ -81,7 +81,9 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     required String sellerId,
     required String planId,
     required String billingPeriod,
-    required String stripeCheckoutSessionId,
+    required String sellerId,
+    required String planId,
+    required String billingPeriod,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
@@ -92,7 +94,7 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
         sellerId: sellerId,
         planId: planId,
         billingPeriod: billingPeriod,
-        stripeCheckoutSessionId: stripeCheckoutSessionId,
+        billingPeriod: billingPeriod,
       );
       return Right(subscription);
     } on ServerException catch (e) {
@@ -162,27 +164,4 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     }
   }
 
-  @override
-  Future<Either<Failure, Map<String, dynamic>>> createCheckoutSession({
-    required String sellerId,
-    required String planId,
-    required String billingPeriod,
-  }) async {
-    if (!await networkInfo.isConnected) {
-      return const Left(NetworkFailure('No internet connection'));
-    }
 
-    try {
-      final paymentData = await remoteDataSource.createCheckoutSession(
-        sellerId: sellerId,
-        planId: planId,
-        billingPeriod: billingPeriod,
-      );
-      return Right(paymentData);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
-}

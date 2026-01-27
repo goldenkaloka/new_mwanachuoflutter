@@ -13,7 +13,7 @@ class SubscriptionPaymentEntity extends Equatable {
   final double amount;
   final String currency;
   final PaymentStatus status;
-  final String? stripePaymentIntentId;
+
   final String? receiptUrl;
   final DateTime? paidAt;
   final DateTime createdAt;
@@ -24,7 +24,7 @@ class SubscriptionPaymentEntity extends Equatable {
     required this.amount,
     this.currency = 'USD',
     required this.status,
-    this.stripePaymentIntentId,
+
     this.receiptUrl,
     this.paidAt,
     required this.createdAt,
@@ -37,7 +37,7 @@ class SubscriptionPaymentEntity extends Equatable {
         amount,
         currency,
         status,
-        stripePaymentIntentId,
+
         receiptUrl,
         paidAt,
         createdAt,
