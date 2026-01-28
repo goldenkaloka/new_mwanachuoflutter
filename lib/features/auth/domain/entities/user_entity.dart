@@ -22,7 +22,20 @@ class UserEntity extends Equatable {
     this.phone,
     required this.createdAt,
     required this.updatedAt,
+    this.businessName,
+    this.tinNumber,
+    this.businessCategory,
+    this.registrationNumber,
+    this.programName,
+    this.userType,
   });
+
+  final String? businessName;
+  final String? tinNumber;
+  final String? businessCategory;
+  final String? registrationNumber;
+  final String? programName;
+  final String? userType;
 
   bool get isBuyer => role == UserRole.buyer;
   bool get isSeller => role == UserRole.seller || role == UserRole.admin;
@@ -38,7 +51,14 @@ class UserEntity extends Equatable {
         profilePicture,
         phone,
         createdAt,
+        createdAt,
         updatedAt,
+        businessName,
+        tinNumber,
+        businessCategory,
+        registrationNumber,
+        programName,
+        userType,
       ];
 }
 

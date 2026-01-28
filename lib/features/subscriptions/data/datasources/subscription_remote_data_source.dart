@@ -27,7 +27,6 @@ abstract class SubscriptionRemoteDataSource {
   Future<List<SubscriptionPaymentModel>> getPaymentHistory(
     String subscriptionId,
   );
-
 }
 
 class SubscriptionRemoteDataSourceImpl implements SubscriptionRemoteDataSource {
@@ -231,7 +230,4 @@ class SubscriptionRemoteDataSourceImpl implements SubscriptionRemoteDataSource {
       throw ServerException('Failed to fetch payment history: ${e.toString()}');
     }
   }
-
-  @override
-
 }

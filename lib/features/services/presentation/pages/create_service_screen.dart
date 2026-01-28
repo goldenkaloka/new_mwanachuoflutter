@@ -364,7 +364,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                                 }
                                 
                                 return DropdownButtonFormField<String>(
-                                  initialValue: _selectedCategory,
+                                  value: _selectedCategory,
                                   decoration: InputDecoration(
                                     labelText: 'Category',
                                     border: OutlineInputBorder(

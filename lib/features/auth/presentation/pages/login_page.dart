@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/services/push_notification_service.dart';
-import 'package:mwanachuo/features/auth/presentation/pages/create_account_screen.dart';
+import 'package:mwanachuo/features/auth/presentation/pages/registration_type_screen.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
@@ -315,7 +315,7 @@ class _LoginPageState extends State<LoginPage> {
                                           context,
                                           MaterialPageRoute(
                                             builder: (context) =>
-                                                const CreateAccountScreen(),
+                                                const RegistrationTypeScreen(),
                                           ),
                                         );
                                       },

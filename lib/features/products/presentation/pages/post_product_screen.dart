@@ -8,8 +8,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
-import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
@@ -48,41 +47,7 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
   @override
   void initState() {
     super.initState();
-    _checkSellerAccess();
-  }
-
-  void _checkSellerAccess() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      final authState = context.read<AuthBloc>().state;
-      if (authState is Authenticated) {
-        final userRole = authState.user.role.value;
-
-        if (userRole == 'buyer') {
-          debugPrint('❌ Buyer attempting to post product - redirecting');
-          Navigator.of(context).pop();
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'You need to become a seller to post products',
-                style: GoogleFonts.plusJakartaSans(),
-              ),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'Request Access',
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.pushNamed(context, '/become-seller');
-                },
-              ),
-            ),
-          );
-        }
-      }
-    });
+    // Seller check removed for free market transition
   }
 
   void _handlePostProduct() {
@@ -1261,7 +1226,7 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
             }
 
             return DropdownButtonFormField<String>(
-              initialValue: _selectedCategory,
+              value: _selectedCategory,
               decoration: InputDecoration(
                 filled: true,
                 fillColor: isDarkMode
@@ -1391,7 +1356,7 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
             }
 
             return DropdownButtonFormField<String>(
-              initialValue: _selectedCondition,
+              value: _selectedCondition,
               decoration: InputDecoration(
                 filled: true,
                 fillColor: isDarkMode

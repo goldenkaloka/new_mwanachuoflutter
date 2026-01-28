@@ -19,7 +19,6 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
   final UpdateSubscription updateSubscription;
   final GetPaymentHistory getPaymentHistory;
 
-
   SubscriptionCubit({
     required this.getSubscriptionPlans,
     required this.getSellerSubscription,
@@ -28,7 +27,6 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
     required this.cancelSubscription,
     required this.updateSubscription,
     required this.getPaymentHistory,
-
   }) : super(SubscriptionInitial());
 
   /// Load subscription plans
@@ -82,13 +80,8 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
     return result.fold((failure) => false, (canCreate) => canCreate);
   }
 
-
-
   /// Create subscription (after payment)
   Future<void> subscribe({
-    required String sellerId,
-    required String planId,
-    required String billingPeriod,
     required String sellerId,
     required String planId,
     required String billingPeriod,
@@ -98,7 +91,6 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
       CreateSubscriptionParams(
         sellerId: sellerId,
         planId: planId,
-        billingPeriod: billingPeriod,
         billingPeriod: billingPeriod,
       ),
     );

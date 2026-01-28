@@ -308,7 +308,7 @@ class _EditProductViewState extends State<_EditProductView> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                initialValue: _selectedCategory,
+                                value: _selectedCategory,
                                 decoration: InputDecoration(
                                   labelText: 'Category *',
                                   border: OutlineInputBorder(
@@ -339,7 +339,7 @@ class _EditProductViewState extends State<_EditProductView> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                initialValue: _selectedCondition,
+                                value: _selectedCondition,
                                 decoration: InputDecoration(
                                   labelText: 'Condition *',
                                   border: OutlineInputBorder(
@@ -449,7 +449,7 @@ class _EditProductViewState extends State<_EditProductView> {
                             style: TextStyle(color: secondaryTextColor),
                           ),
                           value: _isActive,
-                          activeThumbColor: kPrimaryColor,
+                          thumbColor: WidgetStateProperty.all( kPrimaryColor),
                           onChanged: (value) {
                             setState(() {
                               _isActive = value;

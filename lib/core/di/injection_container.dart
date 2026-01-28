@@ -10,14 +10,9 @@ import 'package:mwanachuo/features/auth/data/datasources/auth_local_data_source.
 import 'package:mwanachuo/features/auth/data/datasources/auth_remote_data_source.dart';
 import 'package:mwanachuo/features/auth/data/repositories/auth_repository_impl.dart';
 import 'package:mwanachuo/features/auth/domain/repositories/auth_repository.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/approve_seller_request.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/check_registration_completion.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/complete_registration.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/get_current_user.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/get_seller_request_status.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/get_seller_requests.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/reject_seller_request.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/request_seller_access.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_in.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_out.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_up.dart';
@@ -98,7 +93,7 @@ import 'package:mwanachuo/features/subscriptions/data/repositories/subscription_
 import 'package:mwanachuo/features/subscriptions/domain/repositories/subscription_repository.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/cancel_subscription.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/check_subscription_status.dart';
-import 'package:mwanachuo/features/subscriptions/domain/usecases/create_checkout_session.dart';
+
 import 'package:mwanachuo/features/subscriptions/domain/usecases/create_subscription.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_payment_history.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_seller_subscription.dart';
@@ -242,13 +237,8 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton(() => SignUp(sl()));
   sl.registerLazySingleton(() => SignOut(sl()));
   sl.registerLazySingleton(() => GetCurrentUser(sl()));
-  sl.registerLazySingleton(() => RequestSellerAccess(sl()));
-  sl.registerLazySingleton(() => ApproveSellerRequest(sl()));
-  sl.registerLazySingleton(() => RejectSellerRequest(sl()));
-  sl.registerLazySingleton(() => GetSellerRequests(sl()));
   sl.registerLazySingleton(() => CompleteRegistration(sl()));
   sl.registerLazySingleton(() => CheckRegistrationCompletion(sl()));
-  sl.registerLazySingleton(() => GetSellerRequestStatus(sl()));
 
   // BLoC
   sl.registerFactory(
@@ -257,13 +247,8 @@ Future<void> initializeDependencies() async {
       signUp: sl(),
       signOut: sl(),
       getCurrentUser: sl(),
-      requestSellerAccess: sl(),
-      approveSellerRequest: sl(),
-      rejectSellerRequest: sl(),
-      getSellerRequests: sl(),
       completeRegistration: sl(),
       checkRegistrationCompletion: sl(),
-      getSellerRequestStatus: sl(),
     ),
   );
 }
@@ -525,7 +510,6 @@ void _initSubscriptionsFeature() {
   sl.registerLazySingleton(() => CancelSubscription(sl()));
   sl.registerLazySingleton(() => UpdateSubscription(sl()));
   sl.registerLazySingleton(() => GetPaymentHistory(sl()));
-  sl.registerLazySingleton(() => CreateCheckoutSession(sl()));
 
   // Repository
   sl.registerLazySingleton<SubscriptionRepository>(
@@ -547,7 +531,6 @@ void _initSubscriptionsFeature() {
       cancelSubscription: sl(),
       updateSubscription: sl(),
       getPaymentHistory: sl(),
-      createCheckoutSession: sl(),
     ),
   );
 }
@@ -584,9 +567,7 @@ void _initProductsFeature() {
   sl.registerLazySingleton(() => GetProducts(sl()));
   sl.registerLazySingleton(() => GetProductById(sl()));
   sl.registerLazySingleton(() => GetMyProducts(sl()));
-  sl.registerLazySingleton(
-    () => CreateProduct(sl(), sl<CheckSubscriptionStatus>()),
-  );
+  sl.registerLazySingleton(() => CreateProduct(sl()));
   sl.registerLazySingleton(() => UpdateProduct(sl()));
   sl.registerLazySingleton(() => DeleteProduct(sl()));
   sl.registerLazySingleton(() => IncrementViewCount(sl()));
@@ -631,9 +612,7 @@ void _initServicesFeature() {
   sl.registerLazySingleton(() => GetServices(sl()));
   sl.registerLazySingleton(() => GetServiceById(sl()));
   sl.registerLazySingleton(() => GetMyServices(sl()));
-  sl.registerLazySingleton(
-    () => CreateService(sl(), sl<CheckSubscriptionStatus>()),
-  );
+  sl.registerLazySingleton(() => CreateService(sl()));
   sl.registerLazySingleton(() => UpdateService(sl()));
   sl.registerLazySingleton(() => DeleteService(sl()));
 
@@ -676,9 +655,7 @@ void _initAccommodationsFeature() {
   sl.registerLazySingleton(() => GetAccommodations(sl()));
   sl.registerLazySingleton(() => GetAccommodationById(sl()));
   sl.registerLazySingleton(() => GetMyAccommodations(sl()));
-  sl.registerLazySingleton(
-    () => CreateAccommodation(sl(), sl<CheckSubscriptionStatus>()),
-  );
+  sl.registerLazySingleton(() => CreateAccommodation(sl()));
   sl.registerLazySingleton(() => UpdateAccommodation(sl()));
   sl.registerLazySingleton(() => DeleteAccommodation(sl()));
   sl.registerLazySingleton(() => mwanachuo.IncrementViewCount(sl()));

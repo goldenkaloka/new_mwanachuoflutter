@@ -245,7 +245,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                           children: [
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                initialValue: _selectedRoomType,
+                                value: _selectedRoomType,
                                 decoration: InputDecoration(
                                   labelText: 'Room Type *',
                                   border: OutlineInputBorder(
@@ -270,7 +270,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                initialValue: _selectedPriceType,
+                                value: _selectedPriceType,
                                 decoration: InputDecoration(
                                   labelText: 'Price Type *',
                                   border: OutlineInputBorder(
@@ -500,7 +500,7 @@ class _EditAccommodationViewState extends State<_EditAccommodationView> {
                             style: TextStyle(color: secondaryTextColor),
                           ),
                           value: _isActive,
-                          activeThumbColor: kPrimaryColor,
+                          thumbColor: WidgetStateProperty.all( kPrimaryColor),
                           onChanged: (value) {
                             setState(() {
                               _isActive = value;

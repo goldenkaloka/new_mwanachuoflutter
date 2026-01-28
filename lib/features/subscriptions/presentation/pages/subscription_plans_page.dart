@@ -52,22 +52,17 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                 );
                 // Refresh auth state or navigate home
                 final authState = context.read<AuthBloc>().state;
-                  if (authState is Authenticated) {
-                     _cubit.loadSellerSubscription(authState.user.id);
-                  }
+                if (authState is Authenticated) {
+                  _cubit.loadSellerSubscription(authState.user.id);
+                }
                 Navigator.of(context).pop();
               }
             } else if (state is SubscriptionError) {
               final errorMessage = state.message;
 
-
               ScaffoldMessenger.of(context).showSnackBar(
                 SnackBar(
-                  content: Text(
-                    isStripeConfigError
-                        ? 'Stripe not configured. Please add STRIPE_SECRET_KEY to Supabase Edge Function secrets.'
-                        : errorMessage,
-                  ),
+                  content: Text(errorMessage),
                   duration: const Duration(seconds: 5),
                 ),
               );

@@ -15,8 +15,8 @@ import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 
-class SellerDashboardScreen extends StatelessWidget {
-  const SellerDashboardScreen({super.key});
+class DashboardScreen extends StatelessWidget {
+  const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -48,42 +48,10 @@ class _DashboardViewState extends State<_DashboardView> {
   @override
   void initState() {
     super.initState();
-    _checkSellerAccess();
+    // Seller check removed
   }
 
-  void _checkSellerAccess() {
-    // Verify user is seller or admin
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      final authState = context.read<AuthBloc>().state;
-      if (authState is Authenticated) {
-        final userRole = authState.user.role.value;
-
-        if (userRole == 'buyer') {
-          debugPrint('❌ Buyer attempting to access dashboard - redirecting');
-          Navigator.of(context).pushReplacementNamed('/home');
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'You need to become a seller to access the dashboard',
-                style: GoogleFonts.plusJakartaSans(),
-              ),
-              backgroundColor: Colors.orange,
-              action: SnackBarAction(
-                label: 'Request Access',
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.pushNamed(context, '/become-seller');
-                },
-              ),
-            ),
-          );
-        }
-      }
-    });
-  }
+  // Seller check method removed
 
   @override
   Widget build(BuildContext context) {

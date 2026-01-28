@@ -1,6 +1,5 @@
 import 'package:dartz/dartz.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
-import 'package:mwanachuo/features/auth/domain/entities/seller_request_entity.dart';
 import 'package:mwanachuo/features/auth/domain/entities/user_entity.dart';
 
 abstract class AuthRepository {
@@ -16,6 +15,12 @@ abstract class AuthRepository {
     required String password,
     required String name,
     required String phone,
+    String? businessName,
+    String? tinNumber,
+    String? businessCategory,
+    String? registrationNumber,
+    String? programName,
+    String? userType,
   });
 
   /// Sign out current user
@@ -26,26 +31,6 @@ abstract class AuthRepository {
 
   /// Check if user is logged in
   Future<Either<Failure, bool>> isLoggedIn();
-
-  /// Request seller access
-  Future<Either<Failure, void>> requestSellerAccess({
-    required String userId,
-    required String reason,
-  });
-
-  /// Approve seller request (Admin only)
-  Future<Either<Failure, void>> approveSellerRequest({
-    required String requestId,
-    required String adminId,
-    String? notes,
-  });
-
-  /// Reject seller request (Admin only)
-  Future<Either<Failure, void>> rejectSellerRequest({
-    required String requestId,
-    required String adminId,
-    String? notes,
-  });
 
   /// Update user profile
   Future<Either<Failure, UserEntity>> updateProfile({
@@ -64,19 +49,6 @@ abstract class AuthRepository {
 
   /// Check if current user has completed registration
   Future<Either<Failure, bool>> checkRegistrationCompletion();
-
-  /// Get seller request status for current user
-  Future<Either<Failure, String?>> getSellerRequestStatus();
-
-  /// Get all seller requests (Admin only)
-  Future<Either<Failure, List<SellerRequestEntity>>> getSellerRequests({
-    String? status, // pending, approved, rejected, or null for all
-  });
-
-  /// Get seller request by ID (Admin only)
-  Future<Either<Failure, SellerRequestEntity>> getSellerRequestById(
-    String requestId,
-  );
 
   /// Stream auth state changes
   Stream<Either<Failure, UserEntity?>> watchAuthState();

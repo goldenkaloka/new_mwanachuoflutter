@@ -388,7 +388,7 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
                             
                             // Type Dropdown
                             DropdownButtonFormField<String>(
-                              initialValue: _selectedType,
+                              value: _selectedType,
                               decoration: InputDecoration(
                                 labelText: 'Room Type',
                                 border: OutlineInputBorder(

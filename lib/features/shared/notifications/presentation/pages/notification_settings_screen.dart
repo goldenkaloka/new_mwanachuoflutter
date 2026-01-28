@@ -936,7 +936,7 @@ class _NotificationSettingsScreenState
               Switch(
                 value: item.value,
                 onChanged: item.enabled == false ? null : item.onChanged,
-                activeThumbColor: kPrimaryColor,
+                thumbColor: WidgetStateProperty.all( kPrimaryColor),
               ),
             ],
           ),

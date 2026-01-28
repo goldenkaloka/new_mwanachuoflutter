@@ -22,16 +22,39 @@ class SignUpEvent extends AuthEvent {
   final String password;
   final String name;
   final String phone;
+  final String? businessName;
+  final String? tinNumber;
+  final String? businessCategory;
+  final String? registrationNumber;
+  final String? programName;
+  final String? userType;
 
   const SignUpEvent({
     required this.email,
     required this.password,
     required this.name,
     required this.phone,
+    this.businessName,
+    this.tinNumber,
+    this.businessCategory,
+    this.registrationNumber,
+    this.programName,
+    this.userType,
   });
 
   @override
-  List<Object> get props => [email, password, name, phone];
+  List<Object?> get props => [
+    email,
+    password,
+    name,
+    phone,
+    businessName,
+    tinNumber,
+    businessCategory,
+    registrationNumber,
+    programName,
+    userType,
+  ];
 }
 
 class SignOutEvent extends AuthEvent {
@@ -40,16 +63,6 @@ class SignOutEvent extends AuthEvent {
 
 class CheckAuthStatusEvent extends AuthEvent {
   const CheckAuthStatusEvent();
-}
-
-class RequestSellerAccessEvent extends AuthEvent {
-  final String userId;
-  final String reason;
-
-  const RequestSellerAccessEvent({required this.userId, required this.reason});
-
-  @override
-  List<Object> get props => [userId, reason];
 }
 
 class UpdateProfileEvent extends AuthEvent {
@@ -90,47 +103,4 @@ class CompleteRegistrationEvent extends AuthEvent {
 
 class CheckRegistrationCompletionEvent extends AuthEvent {
   const CheckRegistrationCompletionEvent();
-}
-
-class GetSellerRequestStatusEvent extends AuthEvent {
-  const GetSellerRequestStatusEvent();
-}
-
-class ApproveSellerRequestEvent extends AuthEvent {
-  final String requestId;
-  final String adminId;
-  final String? notes;
-
-  const ApproveSellerRequestEvent({
-    required this.requestId,
-    required this.adminId,
-    this.notes,
-  });
-
-  @override
-  List<Object?> get props => [requestId, adminId, notes];
-}
-
-class RejectSellerRequestEvent extends AuthEvent {
-  final String requestId;
-  final String adminId;
-  final String? notes;
-
-  const RejectSellerRequestEvent({
-    required this.requestId,
-    required this.adminId,
-    this.notes,
-  });
-
-  @override
-  List<Object?> get props => [requestId, adminId, notes];
-}
-
-class LoadSellerRequestsEvent extends AuthEvent {
-  final String? status; // pending, approved, rejected, or null for all
-
-  const LoadSellerRequestsEvent({this.status});
-
-  @override
-  List<Object?> get props => [status];
 }

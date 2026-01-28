@@ -5,17 +5,17 @@ import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/core/usecases/usecase.dart';
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 import 'package:mwanachuo/features/accommodations/domain/repositories/accommodation_repository.dart';
-import 'package:mwanachuo/features/subscriptions/domain/usecases/check_subscription_status.dart';
-import 'package:mwanachuo/config/supabase_config.dart';
 
-class CreateAccommodation implements UseCase<AccommodationEntity, CreateAccommodationParams> {
+class CreateAccommodation
+    implements UseCase<AccommodationEntity, CreateAccommodationParams> {
   final AccommodationRepository repository;
-  final CheckSubscriptionStatus checkSubscriptionStatus;
 
-  CreateAccommodation(this.repository, this.checkSubscriptionStatus);
+  CreateAccommodation(this.repository);
 
   @override
-  Future<Either<Failure, AccommodationEntity>> call(CreateAccommodationParams params) async {
+  Future<Either<Failure, AccommodationEntity>> call(
+    CreateAccommodationParams params,
+  ) async {
     if (params.name.trim().isEmpty) {
       return Left(ValidationFailure('Name cannot be empty'));
     }
@@ -27,24 +27,9 @@ class CreateAccommodation implements UseCase<AccommodationEntity, CreateAccommod
     }
 
     // Check subscription status before creating accommodation
-    final currentUser = SupabaseConfig.client.auth.currentUser;
-    if (currentUser != null) {
-      final subscriptionCheck = await checkSubscriptionStatus(
-        CheckSubscriptionStatusParams(
-          sellerId: currentUser.id,
-          listingType: 'accommodation',
-        ),
-      );
-      final canCreate = subscriptionCheck.fold(
-        (failure) => false,
-        (result) => result,
-      );
-      if (!canCreate) {
-        return Left(ServerFailure(
-          'Subscription required. Please subscribe to create listings.',
-        ));
-      }
-    }
+    // Subscription check removed for free market transition
+    // final currentUser = SupabaseConfig.client.auth.currentUser;
+    // ...
 
     return await repository.createAccommodation(
       name: params.name.trim(),
@@ -97,19 +82,18 @@ class CreateAccommodationParams extends Equatable {
 
   @override
   List<Object?> get props => [
-        name,
-        description,
-        price,
-        priceType,
-        roomType,
-        images,
-        location,
-        contactPhone,
-        contactEmail,
-        amenities,
-        bedrooms,
-        bathrooms,
-        metadata,
-      ];
+    name,
+    description,
+    price,
+    priceType,
+    roomType,
+    images,
+    location,
+    contactPhone,
+    contactEmail,
+    amenities,
+    bedrooms,
+    bathrooms,
+    metadata,
+  ];
 }
-

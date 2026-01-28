@@ -1,14 +1,10 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/usecases/usecase.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/approve_seller_request.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/check_registration_completion.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/complete_registration.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/get_current_user.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/get_seller_request_status.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/get_seller_requests.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/reject_seller_request.dart';
-import 'package:mwanachuo/features/auth/domain/usecases/request_seller_access.dart';
+
 import 'package:mwanachuo/features/auth/domain/usecases/sign_in.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_out.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_up.dart';
@@ -20,38 +16,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SignUp signUp;
   final SignOut signOut;
   final GetCurrentUser getCurrentUser;
-  final RequestSellerAccess requestSellerAccess;
-  final ApproveSellerRequest approveSellerRequest;
-  final RejectSellerRequest rejectSellerRequest;
-  final GetSellerRequests getSellerRequests;
   final CompleteRegistration completeRegistration;
   final CheckRegistrationCompletion checkRegistrationCompletion;
-  final GetSellerRequestStatus getSellerRequestStatus;
 
   AuthBloc({
     required this.signIn,
     required this.signUp,
     required this.signOut,
     required this.getCurrentUser,
-    required this.requestSellerAccess,
-    required this.approveSellerRequest,
-    required this.rejectSellerRequest,
-    required this.getSellerRequests,
     required this.completeRegistration,
     required this.checkRegistrationCompletion,
-    required this.getSellerRequestStatus,
   }) : super(const AuthInitial()) {
     on<SignInEvent>(_onSignIn);
     on<SignUpEvent>(_onSignUp);
     on<SignOutEvent>(_onSignOut);
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
-    on<RequestSellerAccessEvent>(_onRequestSellerAccess);
-    on<ApproveSellerRequestEvent>(_onApproveSellerRequest);
-    on<RejectSellerRequestEvent>(_onRejectSellerRequest);
-    on<LoadSellerRequestsEvent>(_onLoadSellerRequests);
     on<CompleteRegistrationEvent>(_onCompleteRegistration);
     on<CheckRegistrationCompletionEvent>(_onCheckRegistrationCompletion);
-    on<GetSellerRequestStatusEvent>(_onGetSellerRequestStatus);
   }
 
   Future<void> _onSignIn(SignInEvent event, Emitter<AuthState> emit) async {
@@ -76,6 +57,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         password: event.password,
         name: event.name,
         phone: event.phone,
+        businessName: event.businessName,
+        tinNumber: event.tinNumber,
+        businessCategory: event.businessCategory,
+        registrationNumber: event.registrationNumber,
+        programName: event.programName,
+        userType: event.userType,
       ),
     );
 
@@ -116,22 +103,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     });
   }
 
-  Future<void> _onRequestSellerAccess(
-    RequestSellerAccessEvent event,
-    Emitter<AuthState> emit,
-  ) async {
-    emit(const AuthLoading());
-
-    final result = await requestSellerAccess(
-      RequestSellerAccessParams(userId: event.userId, reason: event.reason),
-    );
-
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (_) => emit(const SellerRequestSubmitted()),
-    );
-  }
-
   Future<void> _onCompleteRegistration(
     CompleteRegistrationEvent event,
     Emitter<AuthState> emit,
@@ -149,30 +120,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     await result.fold((failure) async => emit(AuthError(failure.message)), (
       _,
     ) async {
-      debugPrint('✅ Registration completed with universities');
-
-      // Emit temporary state
-      emit(const RegistrationCompleted());
-
-      // Get updated user data with universities
-      final userResult = await getCurrentUser(NoParams());
-      userResult.fold(
-        (failure) => emit(
-          AuthError(
-            'Registration completed but failed to load user: ${failure.message}',
-          ),
-        ),
-        (user) {
-          if (user != null) {
-            debugPrint(
-              '✅ User authenticated with universities - ID: ${user.id}',
-            );
-            emit(Authenticated(user));
-          } else {
-            emit(const Unauthenticated());
-          }
-        },
-      );
+      // After completion, reload user
+      add(const CheckAuthStatusEvent());
     });
   }
 
@@ -180,83 +129,25 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     CheckRegistrationCompletionEvent event,
     Emitter<AuthState> emit,
   ) async {
-    emit(const AuthLoading());
-
     final result = await checkRegistrationCompletion(NoParams());
 
     result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (isCompleted) => emit(RegistrationCheckCompleted(isCompleted)),
-    );
-  }
-
-  Future<void> _onGetSellerRequestStatus(
-    GetSellerRequestStatusEvent event,
-    Emitter<AuthState> emit,
-  ) async {
-    emit(const AuthLoading());
-
-    final result = await getSellerRequestStatus(NoParams());
-
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (status) => emit(SellerRequestStatusLoaded(status)),
-    );
-  }
-
-  Future<void> _onApproveSellerRequest(
-    ApproveSellerRequestEvent event,
-    Emitter<AuthState> emit,
-  ) async {
-    emit(const AuthLoading());
-
-    final result = await approveSellerRequest(
-      ApproveSellerRequestParams(
-        requestId: event.requestId,
-        adminId: event.adminId,
-        notes: event.notes,
-      ),
-    );
-
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (_) => emit(const SellerRequestApproved()),
-    );
-  }
-
-  Future<void> _onRejectSellerRequest(
-    RejectSellerRequestEvent event,
-    Emitter<AuthState> emit,
-  ) async {
-    emit(const AuthLoading());
-
-    final result = await rejectSellerRequest(
-      RejectSellerRequestParams(
-        requestId: event.requestId,
-        adminId: event.adminId,
-        notes: event.notes,
-      ),
-    );
-
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (_) => emit(const SellerRequestRejected()),
-    );
-  }
-
-  Future<void> _onLoadSellerRequests(
-    LoadSellerRequestsEvent event,
-    Emitter<AuthState> emit,
-  ) async {
-    emit(const SellerRequestsLoading());
-
-    final result = await getSellerRequests(
-      GetSellerRequestsParams(status: event.status),
-    );
-
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (requests) => emit(SellerRequestsLoaded(requests: requests)),
+      (failure) => null, // Keep current state on failure
+      (isComplete) {
+        if (!isComplete) {
+          emit(const RegistrationIncomplete());
+        } else {
+          // If complete, we might want to check auth status again or just stay authenticated?
+          // Usually we check this after login. If complete, we are Authenticated.
+          // If we are already Authenticated, no change needed. But if we were Unauthenticated?
+          // This event is usually triggered after login success if we are unsure.
+          // But based on _onSignUp logic, we emit RegistrationIncomplete.
+          // If isComplete is true, we should probably emit Authenticated(user).
+          // But we need the user object.
+          // Let's just trigger CheckAuthStatusEvent if complete.
+          add(const CheckAuthStatusEvent());
+        }
+      },
     );
   }
 }

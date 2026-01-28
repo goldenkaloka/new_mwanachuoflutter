@@ -1,6 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';
-import 'package:mwanachuo/features/auth/data/models/seller_request_model.dart';
+
 import 'package:mwanachuo/features/auth/data/models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
@@ -10,23 +10,16 @@ abstract class AuthRemoteDataSource {
     required String password,
     required String name,
     required String phone,
+    String? businessName,
+    String? tinNumber,
+    String? businessCategory,
+    String? registrationNumber,
+    String? programName,
+    String? userType,
   });
   Future<void> signOut();
   Future<UserModel?> getCurrentUser();
-  Future<void> requestSellerAccess({
-    required String userId,
-    required String reason,
-  });
-  Future<void> approveSellerRequest({
-    required String requestId,
-    required String adminId,
-    String? notes,
-  });
-  Future<void> rejectSellerRequest({
-    required String requestId,
-    required String adminId,
-    String? notes,
-  });
+
   Future<UserModel> updateProfile({
     required String userId,
     String? name,
@@ -39,9 +32,7 @@ abstract class AuthRemoteDataSource {
     required List<String> subsidiaryUniversityIds,
   });
   Future<bool> checkRegistrationCompletion();
-  Future<String?> getSellerRequestStatus();
-  Future<List<SellerRequestModel>> getSellerRequests({String? status});
-  Future<SellerRequestModel> getSellerRequestById(String requestId);
+
   Stream<UserModel?> watchAuthState();
 }
 
@@ -86,12 +77,32 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     required String password,
     required String name,
     required String phone,
+    String? businessName,
+    String? tinNumber,
+    String? businessCategory,
+    String? registrationNumber,
+    String? programName,
+    String? userType,
   }) async {
     try {
+      final Map<String, dynamic> data = {
+        'name': name,
+        'phone_number': phone,
+        'user_type': userType ?? 'student',
+      };
+
+      if (businessName != null) data['business_name'] = businessName;
+      if (tinNumber != null) data['tin_number'] = tinNumber;
+      if (businessCategory != null)
+        data['business_category'] = businessCategory;
+      if (registrationNumber != null)
+        data['registration_number'] = registrationNumber;
+      if (programName != null) data['program_name'] = programName;
+
       final response = await supabase.auth.signUp(
         email: email,
         password: password,
-        data: {'name': name, 'phone_number': phone},
+        data: data,
       );
 
       if (response.user == null) {
@@ -184,59 +195,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   }
 
   @override
-  Future<void> requestSellerAccess({
-    required String userId,
-    required String reason,
-  }) async {
-    try {
-      await supabase.from('seller_requests').insert({
-        'user_id': userId,
-        'reason': reason,
-        'status': 'pending',
-      });
-    } catch (e) {
-      throw ServerException(e.toString());
-    }
-  }
-
-  @override
-  Future<void> approveSellerRequest({
-    required String requestId,
-    required String adminId,
-    String? notes,
-  }) async {
-    try {
-      await supabase.rpc(
-        'approve_seller_request',
-        params: {'request_id': requestId, 'admin_id': adminId, 'notes': notes},
-      );
-    } catch (e) {
-      throw ServerException(e.toString());
-    }
-  }
-
-  @override
-  Future<void> rejectSellerRequest({
-    required String requestId,
-    required String adminId,
-    String? notes,
-  }) async {
-    try {
-      await supabase
-          .from('seller_requests')
-          .update({
-            'status': 'rejected',
-            'reviewed_by': adminId,
-            'review_notes': notes,
-            'reviewed_at': DateTime.now().toIso8601String(),
-          })
-          .eq('id', requestId);
-    } catch (e) {
-      throw ServerException(e.toString());
-    }
-  }
-
-  @override
   Future<UserModel> updateProfile({
     required String userId,
     String? name,
@@ -300,76 +258,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       return userData['registration_completed'] as bool? ?? false;
     } catch (e) {
       throw ServerException(e.toString());
-    }
-  }
-
-  @override
-  Future<String?> getSellerRequestStatus() async {
-    try {
-      final userId = supabase.auth.currentUser?.id;
-      if (userId == null) {
-        return null;
-      }
-
-      final response = await supabase
-          .from('seller_requests')
-          .select('status')
-          .eq('user_id', userId)
-          .order('created_at', ascending: false)
-          .limit(1)
-          .maybeSingle();
-
-      if (response == null) {
-        return null;
-      }
-
-      return response['status'] as String?;
-    } catch (e) {
-      throw ServerException(e.toString());
-    }
-  }
-
-  @override
-  Future<List<SellerRequestModel>> getSellerRequests({String? status}) async {
-    try {
-      var query = supabase.from('seller_requests').select('''
-            *,
-            requester:users!seller_requests_user_id_fkey(id, full_name, email, avatar_url),
-            reviewer:users!seller_requests_reviewed_by_fkey(id, full_name, email)
-          ''');
-
-      if (status != null) {
-        query = query.eq('status', status);
-      }
-
-      final data = await query.order('created_at', ascending: false);
-
-      return (data as List)
-          .map(
-            (json) => SellerRequestModel.fromJson(json as Map<String, dynamic>),
-          )
-          .toList();
-    } catch (e) {
-      throw ServerException('Failed to get seller requests: $e');
-    }
-  }
-
-  @override
-  Future<SellerRequestModel> getSellerRequestById(String requestId) async {
-    try {
-      final data = await supabase
-          .from('seller_requests')
-          .select('''
-            *,
-            requester:users!seller_requests_user_id_fkey(id, full_name, email, avatar_url),
-            reviewer:users!seller_requests_reviewed_by_fkey(id, full_name, email)
-          ''')
-          .eq('id', requestId)
-          .single();
-
-      return SellerRequestModel.fromJson(data);
-    } catch (e) {
-      throw ServerException('Failed to get seller request: $e');
     }
   }
 

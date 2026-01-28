@@ -12,6 +12,12 @@ class UserModel extends UserEntity {
     super.phone,
     required super.createdAt,
     required super.updatedAt,
+    super.businessName,
+    super.tinNumber,
+    super.businessCategory,
+    super.registrationNumber,
+    super.programName,
+    super.userType,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -27,6 +33,12 @@ class UserModel extends UserEntity {
       updatedAt: json['updated_at'] != null 
           ? DateTime.parse(json['updated_at'] as String)
           : DateTime.parse(json['created_at'] as String),
+      businessName: json['business_name'] as String?,
+      tinNumber: json['tin_number'] as String?,
+      businessCategory: json['business_category'] as String?,
+      registrationNumber: json['registration_number'] as String?,
+      programName: json['program_name'] as String?,
+      userType: json['user_type'] as String?,
     );
   }
 
@@ -41,6 +53,12 @@ class UserModel extends UserEntity {
       'phone_number': phone,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
+      'business_name': businessName,
+      'tin_number': tinNumber,
+      'business_category': businessCategory,
+      'registration_number': registrationNumber,
+      'program_name': programName,
+      'user_type': userType,
     };
   }
 
@@ -54,6 +72,12 @@ class UserModel extends UserEntity {
     String? phone,
     DateTime? createdAt,
     DateTime? updatedAt,
+    String? businessName,
+    String? tinNumber,
+    String? businessCategory,
+    String? registrationNumber,
+    String? programName,
+    String? userType,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -65,6 +89,12 @@ class UserModel extends UserEntity {
       phone: phone ?? this.phone,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      businessName: businessName ?? this.businessName,
+      tinNumber: tinNumber ?? this.tinNumber,
+      businessCategory: businessCategory ?? this.businessCategory,
+      registrationNumber: registrationNumber ?? this.registrationNumber,
+      programName: programName ?? this.programName,
+      userType: userType ?? this.userType,
     );
   }
 }

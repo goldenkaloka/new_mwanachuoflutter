@@ -332,7 +332,7 @@ class _EditServiceViewState extends State<_EditServiceView> {
                                   }
                                   
                                   return DropdownButtonFormField<String>(
-                                    initialValue: _selectedCategory,
+                                    value: _selectedCategory,
                                     decoration: InputDecoration(
                                       labelText: 'Category *',
                                       border: OutlineInputBorder(
@@ -363,7 +363,7 @@ class _EditServiceViewState extends State<_EditServiceView> {
                             const SizedBox(width: 12),
                             Expanded(
                               child: DropdownButtonFormField<String>(
-                                initialValue: _selectedPriceType,
+                                value: _selectedPriceType,
                                 decoration: InputDecoration(
                                   labelText: 'Price Type *',
                                   border: OutlineInputBorder(
@@ -509,7 +509,7 @@ class _EditServiceViewState extends State<_EditServiceView> {
                             style: TextStyle(color: secondaryTextColor),
                           ),
                           value: _isActive,
-                          activeThumbColor: kPrimaryColor,
+                          thumbColor: WidgetStateProperty.all( kPrimaryColor),
                           onChanged: (value) {
                             setState(() {
                               _isActive = value;

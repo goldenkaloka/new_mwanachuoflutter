@@ -81,9 +81,6 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
     required String sellerId,
     required String planId,
     required String billingPeriod,
-    required String sellerId,
-    required String planId,
-    required String billingPeriod,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
@@ -93,7 +90,6 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       final subscription = await remoteDataSource.createSubscription(
         sellerId: sellerId,
         planId: planId,
-        billingPeriod: billingPeriod,
         billingPeriod: billingPeriod,
       );
       return Right(subscription);
@@ -163,5 +159,4 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
-
-
+}

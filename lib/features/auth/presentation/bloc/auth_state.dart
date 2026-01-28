@@ -1,5 +1,5 @@
 import 'package:equatable/equatable.dart';
-import 'package:mwanachuo/features/auth/domain/entities/seller_request_entity.dart';
+
 import 'package:mwanachuo/features/auth/domain/entities/user_entity.dart';
 
 abstract class AuthState extends Equatable {
@@ -39,10 +39,6 @@ class AuthError extends AuthState {
   List<Object> get props => [message];
 }
 
-class SellerRequestSubmitted extends AuthState {
-  const SellerRequestSubmitted();
-}
-
 class ProfileUpdated extends AuthState {
   final UserEntity user;
 
@@ -68,34 +64,3 @@ class RegistrationCheckCompleted extends AuthState {
   @override
   List<Object> get props => [isCompleted];
 }
-
-class SellerRequestStatusLoaded extends AuthState {
-  final String? status;
-
-  const SellerRequestStatusLoaded(this.status);
-
-  @override
-  List<Object?> get props => [status];
-}
-
-class SellerRequestApproved extends AuthState {
-  const SellerRequestApproved();
-}
-
-class SellerRequestRejected extends AuthState {
-  const SellerRequestRejected();
-}
-
-class SellerRequestsLoading extends AuthState {
-  const SellerRequestsLoading();
-}
-
-class SellerRequestsLoaded extends AuthState {
-  final List<SellerRequestEntity> requests;
-
-  const SellerRequestsLoaded({required this.requests});
-
-  @override
-  List<Object> get props => [requests];
-}
-

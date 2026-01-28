@@ -4,7 +4,7 @@ import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:mwanachuo/features/auth/data/datasources/auth_remote_data_source.dart';
-import 'package:mwanachuo/features/auth/domain/entities/seller_request_entity.dart';
+
 import 'package:mwanachuo/features/auth/domain/entities/user_entity.dart';
 import 'package:mwanachuo/features/auth/domain/repositories/auth_repository.dart';
 
@@ -50,6 +50,12 @@ class AuthRepositoryImpl implements AuthRepository {
     required String password,
     required String name,
     required String phone,
+    String? businessName,
+    String? tinNumber,
+    String? businessCategory,
+    String? registrationNumber,
+    String? programName,
+    String? userType,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
@@ -61,6 +67,12 @@ class AuthRepositoryImpl implements AuthRepository {
         password: password,
         name: name,
         phone: phone,
+        businessName: businessName,
+        tinNumber: tinNumber,
+        businessCategory: businessCategory,
+        registrationNumber: registrationNumber,
+        programName: programName,
+        userType: userType,
       );
       await localDataSource.cacheUser(user);
       return Right(user);
@@ -144,76 +156,6 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<Either<Failure, void>> requestSellerAccess({
-    required String userId,
-    required String reason,
-  }) async {
-    if (!await networkInfo.isConnected) {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-
-    try {
-      await remoteDataSource.requestSellerAccess(
-        userId: userId,
-        reason: reason,
-      );
-      return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> approveSellerRequest({
-    required String requestId,
-    required String adminId,
-    String? notes,
-  }) async {
-    if (!await networkInfo.isConnected) {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-
-    try {
-      await remoteDataSource.approveSellerRequest(
-        requestId: requestId,
-        adminId: adminId,
-        notes: notes,
-      );
-      return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, void>> rejectSellerRequest({
-    required String requestId,
-    required String adminId,
-    String? notes,
-  }) async {
-    if (!await networkInfo.isConnected) {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-
-    try {
-      await remoteDataSource.rejectSellerRequest(
-        requestId: requestId,
-        adminId: adminId,
-        notes: notes,
-      );
-      return const Right(null);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
-
-  @override
   Future<Either<Failure, UserEntity>> updateProfile({
     required String userId,
     String? name,
@@ -286,58 +228,6 @@ class AuthRepositoryImpl implements AuthRepository {
       }
 
       return Right(isCompleted);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, String?>> getSellerRequestStatus() async {
-    if (!await networkInfo.isConnected) {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-
-    try {
-      final status = await remoteDataSource.getSellerRequestStatus();
-      return Right(status);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, List<SellerRequestEntity>>> getSellerRequests({
-    String? status,
-  }) async {
-    if (!await networkInfo.isConnected) {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-
-    try {
-      final requests = await remoteDataSource.getSellerRequests(status: status);
-      return Right(requests);
-    } on ServerException catch (e) {
-      return Left(ServerFailure(e.message));
-    } catch (e) {
-      return Left(ServerFailure(e.toString()));
-    }
-  }
-
-  @override
-  Future<Either<Failure, SellerRequestEntity>> getSellerRequestById(
-    String requestId,
-  ) async {
-    if (!await networkInfo.isConnected) {
-      return const Left(NetworkFailure('No internet connection'));
-    }
-
-    try {
-      final request = await remoteDataSource.getSellerRequestById(requestId);
-      return Right(request);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {

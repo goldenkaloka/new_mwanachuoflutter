@@ -1,16 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:mwanachuo/config/supabase_config.dart';
 
 import 'package:mwanachuo/config/onesignal_config.dart';
-import 'package:mwanachuo/core/constants/app_constants.dart';
+
 import 'package:mwanachuo/core/theme/app_theme.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/auth_pages.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/signup_university_selection.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/initial_route_handler.dart';
-import 'package:mwanachuo/features/auth/presentation/pages/become_seller_screen.dart';
-import 'package:mwanachuo/features/admin/presentation/pages/seller_requests_page.dart';
+
 import 'package:mwanachuo/features/admin/presentation/pages/admin_course_list_page.dart';
 import 'package:mwanachuo/features/home/home_page.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
@@ -30,7 +28,11 @@ import 'package:mwanachuo/features/shared/search/presentation/pages/search_resul
 import 'package:mwanachuo/features/shared/search/presentation/cubit/search_cubit.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
 import 'package:mwanachuo/features/shared/notifications/presentation/pages/notifications_page.dart';
-import 'package:mwanachuo/features/dashboard/presentation/pages/seller_dashboard_screen.dart';
+import 'package:mwanachuo/features/dashboard/presentation/pages/dashboard_screen.dart';
+// ... (Logic to skip other imports if using replace_file_content for import replacement is complex, I will just do exact match replace for import line and separate for route)
+
+// Wait, I can use multi_replace for main_app.dart or just replace_file_content if usage and import are close? No they are far.
+// I will use multi_replace.
 import 'package:mwanachuo/features/accommodations/presentation/pages/student_housing_screen.dart';
 import 'package:mwanachuo/features/accommodations/presentation/pages/accommodation_detail_page.dart';
 import 'package:mwanachuo/features/accommodations/presentation/pages/create_accommodation_screen.dart';
@@ -96,8 +98,6 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         debugPrint('AppLinks initialization failed: $e');
       }
 
-
-
       // Initialize OneSignal
       try {
         await OneSignalConfig.initialize();
@@ -139,7 +139,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
     if (uri.scheme != 'mwanachuo') {
       return;
     }
-    
+
     // Stripe deep link handling removed
   }
 
@@ -229,8 +229,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           '/onboarding': (context) => const OnboardingScreen(),
           '/signup-university-selection': (context) =>
               const SignupUniversitySelectionScreen(),
-          '/become-seller': (context) => const BecomeSellerScreen(),
-          '/seller-requests': (context) => const SellerRequestsPage(),
+
           '/admin-courses': (context) => const AdminCourseListPage(),
           '/home': (context) => PersistentBottomNavWrapper(
             initialIndex: 0,
@@ -300,7 +299,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           ),
           '/dashboard': (context) => PersistentBottomNavWrapper(
             initialIndex: 2,
-            child: const SellerDashboardScreen(),
+            child: const DashboardScreen(),
           ),
           '/student-housing': (context) => BlocProvider(
             create: (context) => sl<AccommodationBloc>(),
