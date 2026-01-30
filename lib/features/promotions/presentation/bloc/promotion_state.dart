@@ -30,3 +30,11 @@ class PromotionError extends PromotionState {
   List<Object?> get props => [message];
 }
 
+class PromotionCreated extends PromotionState {
+  final PromotionEntity promotion;
+
+  const PromotionCreated({required this.promotion});
+
+  @override
+  List<Object?> get props => [promotion];
+}

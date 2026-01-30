@@ -17,13 +17,13 @@ class PromotionCubit extends Cubit<PromotionState> {
 
   Future<void> loadActivePromotions() async {
     if (isClosed) return;
-    
+
     // Prevent reloading if already loading
     if (state is PromotionsLoading) {
       debugPrint('⏭️  Promotions already loading, skipping...');
       return;
     }
-    
+
     debugPrint('🎉 Loading promotions...');
     emit(PromotionsLoading());
 
@@ -80,6 +80,10 @@ class PromotionCubit extends Cubit<PromotionState> {
         debugPrint('   Start Date: ${promotion.startDate}');
         debugPrint('   End Date: ${promotion.endDate}');
         debugPrint('   Is Active: ${promotion.isActive}');
+
+        // Emit PromotionCreated state
+        emit(PromotionCreated(promotion: promotion));
+
         // Reload promotions to include the new one
         loadActivePromotions();
       },
