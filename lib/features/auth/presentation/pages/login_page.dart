@@ -61,6 +61,13 @@ class _LoginPageState extends State<LoginPage> {
               backgroundColor: Colors.redAccent,
             ),
           );
+        } else if (state is PasswordResetSent) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Password reset link sent to your email'),
+              backgroundColor: Colors.green,
+            ),
+          );
         }
       },
       builder: (context, authState) {
@@ -173,9 +180,7 @@ class _LoginPageState extends State<LoginPage> {
                                 ],
                               ),
                               TextButton(
-                                onPressed: () {
-                                  // TODO: Implement forgot password
-                                },
+                                onPressed: _showForgotPasswordDialog,
                                 child: Text(
                                   'Forgot Password',
                                   style: GoogleFonts.plusJakartaSans(
@@ -384,5 +389,52 @@ class _LoginPageState extends State<LoginPage> {
     } catch (e) {
       // Ignore errors - will check when needed
     }
+  }
+
+  void _showForgotPasswordDialog() {
+    final emailController = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(
+          'Reset Password',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Enter your email to receive a password reset link.',
+              style: GoogleFonts.plusJakartaSans(),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: emailController,
+              decoration: const InputDecoration(
+                labelText: 'Email',
+                border: OutlineInputBorder(),
+              ),
+              keyboardType: TextInputType.emailAddress,
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text('Cancel', style: GoogleFonts.plusJakartaSans()),
+          ),
+          TextButton(
+            onPressed: () {
+              final email = emailController.text.trim();
+              if (email.isNotEmpty) {
+                context.read<AuthBloc>().add(ResetPasswordEvent(email: email));
+                Navigator.pop(context);
+              }
+            },
+            child: Text('Send Link', style: GoogleFonts.plusJakartaSans()),
+          ),
+        ],
+      ),
+    );
   }
 }

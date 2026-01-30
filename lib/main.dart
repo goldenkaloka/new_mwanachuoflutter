@@ -5,6 +5,7 @@ import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/main_app.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 
 void main() {
   // Preserve native splash screen until Flutter is ready to draw its first frame
@@ -51,10 +52,9 @@ class _MwanachuoAppWrapperState extends State<MwanachuoAppWrapper> {
       });
 
       // Run critical initializations in parallel
-      await Future.wait([
-        SupabaseConfig.initialize(),
-        initializeDependencies(),
-      ]);
+      await Future.wait([SupabaseConfig.initialize(), Hive.initFlutter()]);
+
+      await initializeDependencies();
 
       if (mounted) {
         setState(() {

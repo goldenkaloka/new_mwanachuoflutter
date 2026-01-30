@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:mwanachuo/features/profile/domain/entities/user_profile_entity.dart';
+import 'package:mwanachuo/features/shared/university/domain/entities/course_entity.dart';
 
 abstract class ProfileState extends Equatable {
   const ProfileState();
@@ -41,3 +42,11 @@ class ProfileError extends ProfileState {
   List<Object?> get props => [message];
 }
 
+class ProfileEnrolledCourseLoaded extends ProfileState {
+  final CourseEntity? course;
+
+  const ProfileEnrolledCourseLoaded({this.course});
+
+  @override
+  List<Object?> get props => [course];
+}

@@ -16,6 +16,10 @@ abstract class AuthRemoteDataSource {
     String? registrationNumber,
     String? programName,
     String? userType,
+    String? universityId,
+    String? enrolledCourseId,
+    int? yearOfStudy,
+    int? currentSemester,
   });
   Future<void> signOut();
   Future<UserModel?> getCurrentUser();
@@ -34,6 +38,7 @@ abstract class AuthRemoteDataSource {
   Future<bool> checkRegistrationCompletion();
 
   Stream<UserModel?> watchAuthState();
+  Future<void> resetPassword(String email);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -83,6 +88,10 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? registrationNumber,
     String? programName,
     String? userType,
+    String? universityId,
+    String? enrolledCourseId,
+    int? yearOfStudy,
+    int? currentSemester,
   }) async {
     try {
       final Map<String, dynamic> data = {
@@ -93,11 +102,19 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       if (businessName != null) data['business_name'] = businessName;
       if (tinNumber != null) data['tin_number'] = tinNumber;
-      if (businessCategory != null)
+      if (businessCategory != null) {
         data['business_category'] = businessCategory;
-      if (registrationNumber != null)
+      }
+      if (registrationNumber != null) {
         data['registration_number'] = registrationNumber;
+      }
       if (programName != null) data['program_name'] = programName;
+      if (universityId != null) data['primary_university_id'] = universityId;
+      if (enrolledCourseId != null) {
+        data['enrolled_course_id'] = enrolledCourseId;
+      }
+      if (yearOfStudy != null) data['year_of_study'] = yearOfStudy;
+      if (currentSemester != null) data['current_semester'] = currentSemester;
 
       final response = await supabase.auth.signUp(
         email: email,
@@ -109,52 +126,49 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw const AuthenticationException('Sign up failed');
       }
 
+      // Prepare database updates from metadata
+      final dbUpdates = Map<String, dynamic>.from(data);
+      // Map 'name' to 'full_name' for database column
+      if (dbUpdates.containsKey('name')) {
+        dbUpdates['full_name'] = dbUpdates.remove('name');
+      }
+      dbUpdates['updated_at'] = DateTime.now().toIso8601String();
+
       // Wait for the trigger to create user record (give it a moment)
       await Future.delayed(const Duration(milliseconds: 1500));
 
-      // Fetch user data from users table
+      // Check if user exists
       final userData = await supabase
           .from('users')
           .select()
           .eq('id', response.user!.id)
           .maybeSingle();
 
-      // If user record not created by trigger yet, create it manually
       if (userData == null) {
-        await supabase.from('users').insert({
-          'id': response.user!.id,
-          'email': email,
-          'full_name': name,
-          'phone_number': phone,
-          'role': 'buyer',
-        });
+        // Create user manually if trigger failed
+        final insertData = Map<String, dynamic>.from(dbUpdates);
+        insertData['id'] = response.user!.id;
+        insertData['email'] = email;
+        insertData['role'] = 'buyer'; // Default role
 
-        final newUserData = await supabase
-            .from('users')
-            .select()
-            .eq('id', response.user!.id)
-            .single();
-
-        return UserModel.fromJson(newUserData);
-      }
-
-      // If user data exists but phone wasn't set by trigger from metadata
-      if (userData['phone_number'] == null ||
-          (userData['phone_number'] as String).isEmpty) {
+        await supabase.from('users').insert(insertData);
+      } else {
+        // Update existing user to ensure all metadata fields are synced
+        // This is crucial because the trigger might missed some fields
         await supabase
             .from('users')
-            .update({'phone_number': phone})
+            .update(dbUpdates)
             .eq('id', response.user!.id);
-
-        final updatedData = await supabase
-            .from('users')
-            .select()
-            .eq('id', response.user!.id)
-            .single();
-        return UserModel.fromJson(updatedData);
       }
 
-      return UserModel.fromJson(userData);
+      // Fetch final user data
+      final finalUserData = await supabase
+          .from('users')
+          .select()
+          .eq('id', response.user!.id)
+          .single();
+
+      return UserModel.fromJson(finalUserData);
     } on AuthException catch (e) {
       throw AuthenticationException(e.message);
     } catch (e) {
@@ -186,10 +200,24 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           .from('users')
           .select()
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
+
+      if (userData == null) {
+        return null;
+      }
 
       return UserModel.fromJson(userData);
     } catch (e) {
+      // If the error indicates invalid authentication (e.g. deleted user, expired token),
+      // we must return null so the repository clears the cache.
+      final msg = e.toString().toLowerCase();
+      if (msg.contains('jwt') ||
+          msg.contains('json web token') ||
+          msg.contains('unauthorized') ||
+          msg.contains('invalid refresh token')) {
+        return null;
+      }
+
       throw ServerException(e.toString());
     }
   }
@@ -246,7 +274,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     try {
       final userId = supabase.auth.currentUser?.id;
       if (userId == null) {
-        return false;
+        throw const AuthenticationException('User not authenticated');
       }
 
       final userData = await supabase
@@ -282,5 +310,16 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         return null;
       }
     });
+  }
+
+  @override
+  Future<void> resetPassword(String email) async {
+    try {
+      await supabase.auth.resetPasswordForEmail(email);
+    } on AuthException catch (e) {
+      throw AuthenticationException(e.message);
+    } catch (e) {
+      throw ServerException(e.toString());
+    }
   }
 }

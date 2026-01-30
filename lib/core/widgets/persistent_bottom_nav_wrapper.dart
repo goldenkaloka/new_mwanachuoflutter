@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import 'package:mwanachuo/core/utils/responsive.dart';
-import 'package:mwanachuo/config/supabase_config.dart';
 
 /// Wrapper widget that provides persistent bottom navigation bar across main pages
 class PersistentBottomNavWrapper extends StatefulWidget {
@@ -23,85 +22,48 @@ class PersistentBottomNavWrapper extends StatefulWidget {
 class _PersistentBottomNavWrapperState
     extends State<PersistentBottomNavWrapper> {
   int _selectedIndex = 0;
-  String _userRole = 'buyer';
-  bool _roleLoaded = false;
 
   @override
   void initState() {
     super.initState();
     _selectedIndex = widget.initialIndex;
-    _loadUserRole().then((_) {
-      if (mounted) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) {
-            _updateSelectedIndexFromRoute();
-          }
-        });
-      }
-    });
+    if (mounted) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _updateSelectedIndexFromRoute();
+        }
+      });
+    }
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted && _roleLoaded) {
+      if (mounted) {
         _updateSelectedIndexFromRoute();
       }
     });
   }
 
-  Future<void> _loadUserRole() async {
-    _selectedIndex = widget.initialIndex;
-    final currentUser = SupabaseConfig.client.auth.currentUser;
-    if (currentUser != null) {
-      try {
-        final userData = await SupabaseConfig.client
-            .from('users')
-            .select('role')
-            .eq('id', currentUser.id)
-            .single();
-        if (mounted) {
-          setState(() {
-            _userRole = userData['role'] as String? ?? 'buyer';
-            _roleLoaded = true;
-          });
-        }
-      } catch (e) {
-        if (mounted) {
-          setState(() {
-            _roleLoaded = true;
-          });
-        }
-      }
-    } else {
-      if (mounted) {
-        setState(() {
-          _roleLoaded = true;
-        });
-      }
-    }
-  }
-
   void _updateSelectedIndexFromRoute() {
-    if (!mounted || !_roleLoaded) return;
+    if (!mounted) return;
     final route = ModalRoute.of(context);
     if (route == null) return;
 
     final routeName = route.settings.name;
-    final isSeller = _userRole == 'seller' || _userRole == 'admin';
 
     int? newIndex;
     if (routeName == '/home') {
       newIndex = 0;
     } else if (routeName == '/listings' || routeName == '/browse-listings') {
       newIndex = 1;
-    } else if (routeName == '/mwanachuomind') {
+    } else if (routeName == '/copilot') {
       newIndex = 2;
     } else if (routeName == '/dashboard') {
-      newIndex = isSeller ? 3 : null;
+      newIndex = 3;
     } else if (routeName == '/profile') {
-      newIndex = isSeller ? 4 : 3;
+      newIndex = 4;
     }
 
     if (newIndex != null && newIndex != _selectedIndex) {
@@ -113,7 +75,6 @@ class _PersistentBottomNavWrapperState
 
   void _onItemTapped(int index) {
     HapticFeedback.lightImpact();
-    final isSeller = _userRole == 'seller' || _userRole == 'admin';
 
     setState(() {
       _selectedIndex = index;
@@ -124,12 +85,10 @@ class _PersistentBottomNavWrapperState
     } else if (index == 1) {
       Navigator.pushNamed(context, '/listings', arguments: null);
     } else if (index == 2) {
-      Navigator.pushNamed(context, '/mwanachuomind');
-    } else if (isSeller && index == 3) {
+      Navigator.pushNamed(context, '/copilot');
+    } else if (index == 3) {
       Navigator.pushNamed(context, '/dashboard');
-    } else if (isSeller && index == 4) {
-      Navigator.pushNamed(context, '/profile');
-    } else if (!isSeller && index == 3) {
+    } else if (index == 4) {
       Navigator.pushNamed(context, '/profile');
     }
 
@@ -185,8 +144,6 @@ class _PersistentBottomNavWrapperState
   }
 
   List<Widget> _buildNavItems(bool isDarkMode, Color activeColor) {
-    final isSeller = _userRole == 'seller' || _userRole == 'admin';
-
     Widget buildNavItem({
       required int index,
       required IconData icon,
@@ -235,96 +192,38 @@ class _PersistentBottomNavWrapperState
       );
     }
 
-    if (!_roleLoaded) {
-      return [
-        buildNavItem(
-          index: 0,
-          icon: Icons.home_outlined,
-          activeIcon: Icons.home_rounded,
-          label: 'Home',
-        ),
-        buildNavItem(
-          index: 1,
-          icon: Icons.view_list_rounded,
-          activeIcon: Icons.view_list_rounded,
-          label: 'Listings',
-        ),
-        buildNavItem(
-          index: 2,
-          icon: Icons.auto_awesome_outlined,
-          activeIcon: Icons.auto_awesome,
-          label: 'Mind',
-        ),
-        buildNavItem(
-          index: 3,
-          icon: Icons.person_outline_rounded,
-          activeIcon: Icons.person_rounded,
-          label: 'Profile',
-        ),
-      ];
-    }
-
-    if (isSeller) {
-      return [
-        buildNavItem(
-          index: 0,
-          icon: Icons.home_outlined,
-          activeIcon: Icons.home_rounded,
-          label: 'Home',
-        ),
-        buildNavItem(
-          index: 1,
-          icon: Icons.view_list_rounded,
-          activeIcon: Icons.view_list_rounded,
-          label: 'Listings',
-        ),
-        buildNavItem(
-          index: 2,
-          icon: Icons.auto_awesome_outlined,
-          activeIcon: Icons.auto_awesome,
-          label: 'Mind',
-        ),
-        buildNavItem(
-          index: 3,
-          icon: Icons.dashboard_outlined,
-          activeIcon: Icons.dashboard_rounded,
-          label: 'Dashboard',
-        ),
-        buildNavItem(
-          index: 4,
-          icon: Icons.person_outline_rounded,
-          activeIcon: Icons.person_rounded,
-          label: 'Profile',
-        ),
-      ];
-    } else {
-      return [
-        buildNavItem(
-          index: 0,
-          icon: Icons.home_outlined,
-          activeIcon: Icons.home_rounded,
-          label: 'Home',
-        ),
-        buildNavItem(
-          index: 1,
-          icon: Icons.view_list_rounded,
-          activeIcon: Icons.view_list_rounded,
-          label: 'Listings',
-        ),
-        buildNavItem(
-          index: 2,
-          icon: Icons.auto_awesome_outlined,
-          activeIcon: Icons.auto_awesome,
-          label: 'Mind',
-        ),
-        buildNavItem(
-          index: 3,
-          icon: Icons.person_outline_rounded,
-          activeIcon: Icons.person_rounded,
-          label: 'Profile',
-        ),
-      ];
-    }
+    return [
+      buildNavItem(
+        index: 0,
+        icon: Icons.home_outlined,
+        activeIcon: Icons.home_rounded,
+        label: 'Home',
+      ),
+      buildNavItem(
+        index: 1,
+        icon: Icons.view_list_rounded,
+        activeIcon: Icons.view_list_rounded,
+        label: 'Listings',
+      ),
+      buildNavItem(
+        index: 2,
+        icon: Icons.auto_awesome_outlined,
+        activeIcon: Icons.auto_awesome,
+        label: 'Copilot',
+      ),
+      buildNavItem(
+        index: 3,
+        icon: Icons.dashboard_outlined,
+        activeIcon: Icons.dashboard_rounded,
+        label: 'Dashboard',
+      ),
+      buildNavItem(
+        index: 4,
+        icon: Icons.person_outline_rounded,
+        activeIcon: Icons.person_rounded,
+        label: 'Profile',
+      ),
+    ];
   }
 
   Widget _buildIcon({

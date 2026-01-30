@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 
 /// Predefined empty state types for consistency across the app
@@ -15,9 +16,9 @@ enum EmptyStateType {
 }
 
 /// A standardized empty state widget that displays when there's no data
-/// 
+///
 /// Provides consistent empty states with helpful icons, messages, and actions.
-/// 
+///
 /// Example:
 /// ```dart
 /// EmptyState(
@@ -54,39 +55,48 @@ class EmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Icon Container
-            Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                color: config.backgroundColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(kRadiusXl),
+            // Icon/Image Container
+            if (config.svgAsset != null)
+              SizedBox(
+                width: 250,
+                height: 250,
+                child: SvgPicture.asset(config.svgAsset!, fit: BoxFit.contain),
+              )
+            else
+              Container(
+                width: 96,
+                height: 96,
+                decoration: BoxDecoration(
+                  color: config.backgroundColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(kRadiusXl),
+                ),
+                child:
+                    customIcon ??
+                    Icon(
+                      config.icon,
+                      size: kIconSize2xl,
+                      color: config.iconColor,
+                    ),
               ),
-              child: customIcon ?? Icon(
-                config.icon,
-                size: kIconSize2xl,
-                color: config.iconColor,
-              ),
-            ),
             const SizedBox(height: kSpacing2xl),
-            
+
             // Title
             Text(
               title ?? config.defaultTitle,
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.w600,
-              ),
+              style: Theme.of(
+                context,
+              ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: kSpacingMd),
-            
+
             // Subtitle
             Text(
               subtitle ?? config.defaultSubtitle,
               style: Theme.of(context).textTheme.bodyMedium,
               textAlign: TextAlign.center,
             ),
-            
+
             // Action button
             if (onAction != null) ...[
               const SizedBox(height: kSpacing2xl),
@@ -106,13 +116,14 @@ class EmptyState extends StatelessWidget {
       case EmptyStateType.noProducts:
         return const _EmptyStateConfig(
           icon: Icons.shopping_bag_outlined,
+          svgAsset: 'assets/svgs/Shopping bag-amico.svg',
           iconColor: kPrimaryColor,
           backgroundColor: kPrimaryColor,
           defaultTitle: 'No Products Yet',
           defaultSubtitle: 'Check back later for new listings',
           defaultActionLabel: 'Browse Categories',
         );
-        
+
       case EmptyStateType.noServices:
         return const _EmptyStateConfig(
           icon: Icons.build_outlined,
@@ -122,7 +133,7 @@ class EmptyState extends StatelessWidget {
           defaultSubtitle: 'Be the first to offer a service!',
           defaultActionLabel: 'Add Service',
         );
-        
+
       case EmptyStateType.noAccommodations:
         return const _EmptyStateConfig(
           icon: Icons.home_outlined,
@@ -132,7 +143,7 @@ class EmptyState extends StatelessWidget {
           defaultSubtitle: 'Try adjusting your search filters',
           defaultActionLabel: 'Clear Filters',
         );
-        
+
       case EmptyStateType.noConversations:
         return const _EmptyStateConfig(
           icon: Icons.chat_bubble_outline,
@@ -142,27 +153,29 @@ class EmptyState extends StatelessWidget {
           defaultSubtitle: 'Start browsing to connect with sellers',
           defaultActionLabel: 'Explore',
         );
-        
+
       case EmptyStateType.noNotifications:
         return const _EmptyStateConfig(
           icon: Icons.notifications_none_outlined,
+          svgAsset: 'assets/svgs/Empty-cuate.svg',
           iconColor: kWarningColor,
           backgroundColor: kWarningColor,
           defaultTitle: 'No Notifications',
           defaultSubtitle: 'You\'re all caught up!',
           defaultActionLabel: 'Go to Home',
         );
-        
+
       case EmptyStateType.noResults:
         return const _EmptyStateConfig(
           icon: Icons.search_off_outlined,
+          svgAsset: 'assets/svgs/Empty-bro.svg',
           iconColor: kTextSecondary,
           backgroundColor: kTextSecondary,
           defaultTitle: 'No Results Found',
           defaultSubtitle: 'Try different keywords or filters',
           defaultActionLabel: 'Clear Search',
         );
-        
+
       case EmptyStateType.noConnection:
         return const _EmptyStateConfig(
           icon: Icons.wifi_off_outlined,
@@ -172,7 +185,7 @@ class EmptyState extends StatelessWidget {
           defaultSubtitle: 'Please check your connection and try again',
           defaultActionLabel: 'Retry',
         );
-        
+
       case EmptyStateType.error:
         return const _EmptyStateConfig(
           icon: Icons.error_outline,
@@ -182,7 +195,7 @@ class EmptyState extends StatelessWidget {
           defaultSubtitle: 'We couldn\'t load the data. Please try again',
           defaultActionLabel: 'Retry',
         );
-        
+
       case EmptyStateType.networkError:
         return const _EmptyStateConfig(
           icon: Icons.cloud_off_outlined,
@@ -199,6 +212,7 @@ class EmptyState extends StatelessWidget {
 /// Configuration class for empty state appearance
 class _EmptyStateConfig {
   final IconData icon;
+  final String? svgAsset;
   final Color iconColor;
   final Color backgroundColor;
   final String defaultTitle;
@@ -207,6 +221,7 @@ class _EmptyStateConfig {
 
   const _EmptyStateConfig({
     required this.icon,
+    this.svgAsset,
     required this.iconColor,
     required this.backgroundColor,
     required this.defaultTitle,
@@ -216,7 +231,7 @@ class _EmptyStateConfig {
 }
 
 /// A compact empty state for inline use (e.g., in tabs or sections)
-/// 
+///
 /// A smaller version of EmptyState for use in constrained spaces.
 class CompactEmptyState extends StatelessWidget {
   final IconData icon;
@@ -233,8 +248,8 @@ class CompactEmptyState extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    final effectiveIconColor = iconColor ?? 
-      (isDarkMode ? kTextSecondaryDark : kTextSecondary);
+    final effectiveIconColor =
+        iconColor ?? (isDarkMode ? kTextSecondaryDark : kTextSecondary);
 
     return Center(
       child: Padding(
@@ -243,11 +258,7 @@ class CompactEmptyState extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.center,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(
-              icon,
-              size: kIconSize2xl,
-              color: effectiveIconColor,
-            ),
+            Icon(icon, size: kIconSize2xl, color: effectiveIconColor),
             const SizedBox(height: kSpacingLg),
             Text(
               message,
@@ -262,17 +273,13 @@ class CompactEmptyState extends StatelessWidget {
 }
 
 /// Loading state with message
-/// 
+///
 /// Displays a loading indicator with optional message.
 class LoadingState extends StatelessWidget {
   final String? message;
   final Color? color;
 
-  const LoadingState({
-    super.key,
-    this.message,
-    this.color,
-  });
+  const LoadingState({super.key, this.message, this.color});
 
   @override
   Widget build(BuildContext context) {
@@ -281,9 +288,7 @@ class LoadingState extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         mainAxisSize: MainAxisSize.min,
         children: [
-          CircularProgressIndicator(
-            color: color ?? kPrimaryColor,
-          ),
+          CircularProgressIndicator(color: color ?? kPrimaryColor),
           if (message != null) ...[
             const SizedBox(height: kSpacingLg),
             Text(
@@ -299,7 +304,7 @@ class LoadingState extends StatelessWidget {
 }
 
 /// Error state with retry option
-/// 
+///
 /// Displays an error message with a retry button.
 class ErrorState extends StatelessWidget {
   final String? title;
@@ -362,4 +367,3 @@ class ErrorState extends StatelessWidget {
     );
   }
 }
-

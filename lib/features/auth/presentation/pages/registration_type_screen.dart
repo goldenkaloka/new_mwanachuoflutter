@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:mwanachuo/core/constants/app_constants.dart';
+
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/business_registration_screen.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/student_registration_screen.dart';
@@ -61,7 +61,8 @@ class RegistrationTypeScreen extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const StudentRegistrationScreen(),
+                              builder: (context) =>
+                                  const StudentRegistrationScreen(),
                             ),
                           );
                         },
@@ -76,10 +77,11 @@ class RegistrationTypeScreen extends StatelessWidget {
                         icon: Icons.storefront_outlined,
                         color: const Color(0xFFE65100),
                         onTap: () {
-                           Navigator.push(
+                          Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const BusinessRegistrationScreen(),
+                              builder: (context) =>
+                                  const BusinessRegistrationScreen(),
                             ),
                           );
                         },

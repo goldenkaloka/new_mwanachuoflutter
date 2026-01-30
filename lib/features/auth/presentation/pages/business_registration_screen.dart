@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -194,7 +195,7 @@ class _BusinessRegistrationScreenState
                           AuthTextField(
                             controller: _tinController,
                             label: 'TIN Number (Optional)',
-                            hintText: '123-456-789',
+                            hintText: 'Enter your TIN number',
                             prefixIcon: Icons.numbers_outlined,
                             isDarkMode: isDarkMode,
                             keyboardType: TextInputType.number,
@@ -354,9 +355,7 @@ class _BusinessRegistrationScreenState
                                           fontWeight: FontWeight.bold,
                                         ),
                                         recognizer: TapGestureRecognizer()
-                                          ..onTap = () {
-                                            // TODO: Open Privacy Policy
-                                          },
+                                          ..onTap = _openPrivacyPolicy,
                                       ),
                                     ],
                                   ),
@@ -415,5 +414,16 @@ class _BusinessRegistrationScreenState
         );
       },
     );
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    final Uri url = Uri.parse('https://mwanachuo.com/privacy-policy');
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open privacy policy')),
+        );
+      }
+    }
   }
 }

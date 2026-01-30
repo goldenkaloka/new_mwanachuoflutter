@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/core/widgets/empty_state.dart';
 import 'package:mwanachuo/core/services/notification_grouping_service.dart';
 
 import 'package:mwanachuo/features/shared/notifications/domain/entities/notification_group_entity.dart';
@@ -80,25 +81,8 @@ class _NotificationsPageState extends State<NotificationsPage> {
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: kPrimaryColor))
           : _groups.isEmpty
-          ? Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(
-                    Icons.notifications_off,
-                    size: 64,
-                    color: secondaryTextColor,
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'No notifications yet',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: secondaryTextColor,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
+          ? const Center(
+              child: EmptyState(type: EmptyStateType.noNotifications),
             )
           : RefreshIndicator(
               onRefresh: _loadGroups,
@@ -179,102 +163,102 @@ class _NotificationsPageState extends State<NotificationsPage> {
             borderRadius: BorderRadius.circular(16),
           ),
           child: ListTile(
-          contentPadding: const EdgeInsets.all(16),
-          leading: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: iconColor.withValues(alpha: 0.1),
-              shape: BoxShape.circle,
-            ),
-            child: Icon(icon, color: iconColor),
-          ),
-          title: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Text(
-                  group.title,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: primaryTextColor,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+            contentPadding: const EdgeInsets.all(16),
+            leading: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
               ),
-              if (group.latestNotificationAt != null)
-                Text(
-                  timeago.format(
-                    group.latestNotificationAt!,
-                    locale: 'en_short',
-                  ),
-                  style: GoogleFonts.plusJakartaSans(
-                    color: secondaryTextColor,
-                    fontSize: 12,
-                  ),
-                ),
-            ],
-          ),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 4),
-              if (group.summary != null)
-                Text(
-                  group.summary!,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: secondaryTextColor,
-                    fontSize: 14,
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              if (group.unreadCount > 0) ...[
-                const SizedBox(height: 8),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 2,
-                  ),
-                  decoration: BoxDecoration(
-                    color: kPrimaryColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+              child: Icon(icon, color: iconColor),
+            ),
+            title: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
                   child: Text(
-                    '${group.unreadCount} new',
+                    group.title,
                     style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                      color: primaryTextColor,
+                      fontWeight: FontWeight.w600,
+                      fontSize: 16,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (group.latestNotificationAt != null)
+                  Text(
+                    timeago.format(
+                      group.latestNotificationAt!,
+                      locale: 'en_short',
+                    ),
+                    style: GoogleFonts.plusJakartaSans(
+                      color: secondaryTextColor,
+                      fontSize: 12,
                     ),
                   ),
-                ),
               ],
-            ],
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const SizedBox(height: 4),
+                if (group.summary != null)
+                  Text(
+                    group.summary!,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: secondaryTextColor,
+                      fontSize: 14,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                if (group.unreadCount > 0) ...[
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
+                    decoration: BoxDecoration(
+                      color: kPrimaryColor,
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '${group.unreadCount} new',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            onTap: () {
+              // Handle navigation based on category
+              if (group.category == 'message') {
+                // Extract conversation ID from group key if possible
+                // Format: message_conversation_ID
+                final parts = group.groupKey.split('_');
+                if (parts.length >= 3 && parts[1] == 'conversation') {
+                  Navigator.pushNamed(context, '/chat', arguments: parts[2]);
+                }
+              }
+              // Mark as read
+              _groupingService.markGroupAsRead(group.id);
+              setState(() {
+                // Update local state to reflect read status
+                final index = _groups.indexOf(group);
+                if (index != -1) {
+                  _groups[index] = group.copyWith(unreadCount: 0);
+                }
+              });
+            },
           ),
-          onTap: () {
-            // Handle navigation based on category
-            if (group.category == 'message') {
-              // Extract conversation ID from group key if possible
-              // Format: message_conversation_ID
-              final parts = group.groupKey.split('_');
-              if (parts.length >= 3 && parts[1] == 'conversation') {
-                Navigator.pushNamed(context, '/chat', arguments: parts[2]);
-              }
-            }
-            // Mark as read
-            _groupingService.markGroupAsRead(group.id);
-            setState(() {
-              // Update local state to reflect read status
-              final index = _groups.indexOf(group);
-              if (index != -1) {
-                _groups[index] = group.copyWith(unreadCount: 0);
-              }
-            });
-          },
         ),
-      ),
       ),
     );
   }
@@ -336,7 +320,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
     setState(() {
       _groups.removeWhere((g) => g.id == group.id);
     });
-    
+
     // Show snackbar confirmation
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(

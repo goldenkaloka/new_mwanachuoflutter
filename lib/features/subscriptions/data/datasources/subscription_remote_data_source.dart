@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mwanachuo/core/constants/database_constants.dart';
 import 'package:mwanachuo/core/errors/exceptions.dart';

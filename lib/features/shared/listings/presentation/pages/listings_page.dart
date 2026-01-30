@@ -11,6 +11,7 @@ import 'package:mwanachuo/features/accommodations/presentation/pages/accommodati
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
+import 'package:mwanachuo/core/widgets/empty_state.dart';
 import 'package:flutter_staggered_grid_view/flutter_staggered_grid_view.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 
@@ -257,27 +258,7 @@ class _ListingsPageState extends State<ListingsPage>
         } else if (state is SearchResults) {
           if (state.results.isEmpty && !state.isLoadingMore) {
             return SliverFillRemaining(
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.search_off_rounded,
-                      size: 64,
-                      color: Colors.grey[300],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No listings found',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w500,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              child: EmptyState(type: EmptyStateType.noResults),
             );
           }
 
@@ -365,7 +346,7 @@ class _ListingCard extends StatelessWidget {
           // No rounded corners and no shadows as requested
           border: Border.all(
             color: isDark
-                ? Colors.white.withOpacity(0.05)
+                ? Colors.white.withValues(alpha: 0.05)
                 : Colors.grey.shade100,
             width: 0.5,
           ),
@@ -419,7 +400,7 @@ class _ListingCard extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(4),
                       decoration: BoxDecoration(
-                        color: Colors.black.withOpacity(0.4),
+                        color: Colors.black.withValues(alpha: 0.4),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(

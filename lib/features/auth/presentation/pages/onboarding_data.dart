@@ -1,13 +1,13 @@
 class OnboardingData {
   final String title;
   final String body;
-  final String imageUrl;
+  final String assetPath;
   final String buttonText;
 
   OnboardingData({
     required this.title,
     required this.body,
-    required this.imageUrl,
+    required this.assetPath,
     required this.buttonText,
   });
 }
@@ -16,25 +16,22 @@ final List<OnboardingData> onboardingPages = [
   OnboardingData(
     title: 'Welcome to Mwanachuoshop!',
     body:
-        'The ultimate marketplace for university students, covering everything from textbooks to dorm essentials.',
-    imageUrl:
-        'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
+        'The ultimate marketplace for university students. Buy, sell, and connect with your campus community.',
+    assetPath: 'assets/svgs/college students-amico.svg',
     buttonText: 'Next',
   ),
   OnboardingData(
-    title: 'Discover Everything You Need',
+    title: 'Buy & Sell Easily',
     body:
-        'From textbooks and electronics to dorm furniture, tutoring services, and event tickets, find everything for your university life right here.',
-    imageUrl:
-        'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
+        'Find textbooks, electronics, dorm essentials, and more. List your own items to make extra cash!',
+    assetPath: 'assets/svgs/Shopping-pana.svg',
     buttonText: 'Next',
   ),
   OnboardingData(
-    title: 'Connect & Earn',
+    title: 'Connect & Grow',
     body:
-        'Chat directly with sellers for a better buying experience and list your own items to make extra money on campus.',
-    imageUrl:
-        'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=800&q=80',
+        'Join a network of students, find services, and check out what others are doing on campus.',
+    assetPath: 'assets/svgs/Contact us-bro.svg',
     buttonText: 'Get Started',
   ),
 ];

@@ -1,6 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'dart:io' show Platform;
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
@@ -9,7 +7,6 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_state.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class SubscriptionPlansPage extends StatefulWidget {
   const SubscriptionPlansPage({super.key});

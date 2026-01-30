@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
-import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/onboarding_data.dart';
-import 'package:mwanachuo/features/auth/presentation/pages/login_page.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 
 class OnboardingScreen extends StatefulWidget {
@@ -33,7 +32,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   void _nextPage() {
     if (_currentPage < onboardingPages.length - 1) {
       _pageController.nextPage(
-        duration: const Duration(milliseconds: 400),
+        duration: const Duration(milliseconds: 300),
         curve: Curves.easeInOut,
       );
     } else {
@@ -42,7 +41,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   }
 
   void _finishOnboarding() {
-    // Navigate to login/signup page
     Navigator.pushReplacementNamed(context, '/login');
   }
 
@@ -54,11 +52,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isLastPage = _currentPage == onboardingPages.length - 1;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       backgroundColor: Theme.of(context).scaffoldBackgroundColor,
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        actions: [
+          TextButton(
+            onPressed: _finishOnboarding,
+            child: Text(
+              'Skip',
+              style: GoogleFonts.plusJakartaSans(
+                color: isDarkMode ? Colors.white70 : Colors.grey[600],
+                fontWeight: FontWeight.w600,
+                fontSize: 16,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+        ],
+      ),
       body: ResponsiveBuilder(
         builder: (context, screenSize) {
           return Column(
@@ -69,306 +84,98 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   itemCount: onboardingPages.length,
                   itemBuilder: (context, index) {
                     final page = onboardingPages[index];
-                    return ResponsiveContainer(
-                      padding: EdgeInsets.all(
-                        ResponsiveBreakpoints.responsiveValue(
-                          context,
-                          compact: 24.0,
-                          medium: 32.0,
-                          expanded: 48.0,
-                        ),
-                      ),
-                      child: LayoutBuilder(
-                        builder: (context, constraints) {
-                          return SingleChildScrollView(
-                            child: ConstrainedBox(
-                              constraints: BoxConstraints(
-                                minHeight: constraints.maxHeight - ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 48.0,
-                                  medium: 64.0,
-                                  expanded: 80.0,
-                                ),
-                              ),
-                              child: IntrinsicHeight(
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    // Image container
-                                    Container(
-                                      height: ResponsiveBreakpoints.responsiveValue(
-                                        context,
-                                        compact: constraints.maxHeight * 0.4,
-                                        medium: constraints.maxHeight * 0.45,
-                                        expanded: constraints.maxHeight * 0.5,
-                                      ),
-                                      constraints: BoxConstraints(
-                                        maxHeight: ResponsiveBreakpoints.responsiveValue(
-                                          context,
-                                          compact: 300.0,
-                                          medium: 400.0,
-                                          expanded: 500.0,
-                                        ),
-                                      ),
-                                      margin: EdgeInsets.only(
-                                        bottom: ResponsiveBreakpoints.responsiveValue(
-                                          context,
-                                          compact: 40.0,
-                                          medium: 48.0,
-                                          expanded: 56.0,
-                                        ),
-                                      ),
-                                      child: NetworkImageWithFallback(
-                                        imageUrl: page.imageUrl,
-                                        fit: BoxFit.cover,
-                                        borderRadius: kBaseRadius,
-                                      ),
-                                    ),
-                                    // Title
-                                    Text(
-                                      page.title,
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: ResponsiveBreakpoints.responsiveValue(
-                                          context,
-                                          compact: 28.0,
-                                          medium: 32.0,
-                                          expanded: 36.0,
-                                        ),
-                                        fontWeight: FontWeight.bold,
-                                        color: isDarkMode ? Colors.white : Colors.black87,
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: ResponsiveBreakpoints.responsiveValue(
-                                        context,
-                                        compact: 16.0,
-                                        medium: 20.0,
-                                        expanded: 24.0,
-                                      ),
-                                    ),
-                                    // Body text
-                                    Text(
-                                      page.body,
-                                      textAlign: TextAlign.center,
-                                      style: GoogleFonts.plusJakartaSans(
-                                        fontSize: ResponsiveBreakpoints.responsiveValue(
-                                          context,
-                                          compact: 16.0,
-                                          medium: 17.0,
-                                          expanded: 18.0,
-                                        ),
-                                        color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
-                                      ),
-                                    ),
-                                    SizedBox(
-                                      height: ResponsiveBreakpoints.responsiveValue(
-                                        context,
-                                        compact: 24.0,
-                                        medium: 32.0,
-                                        expanded: 40.0,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Expanded(
+                            flex: 5,
+                            child: SvgPicture.asset(
+                              page.assetPath,
+                              fit: BoxFit.contain,
+                              width: double.infinity,
                             ),
-                          );
-                        },
+                          ),
+                          const SizedBox(height: 32),
+                          Expanded(
+                            flex: 3,
+                            child: Column(
+                              children: [
+                                Text(
+                                  page.title,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 28,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDarkMode
+                                        ? Colors.white
+                                        : const Color(0xFF1E293B),
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                Text(
+                                  page.body,
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 16,
+                                    color: isDarkMode
+                                        ? Colors.white70
+                                        : Colors.grey[600],
+                                    height: 1.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
                     );
                   },
                 ),
               ),
-              // Bottom controls
-              Container(
-                padding: EdgeInsets.all(
-                  ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 24.0,
-                    medium: 32.0,
-                    expanded: 40.0,
-                  ),
-                ),
-                child: Column(
+              // Bottom Section
+              Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Page indicators
+                    // Page Indicator
                     Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List.generate(onboardingPages.length, (index) {
-                        return Container(
-                          margin: EdgeInsets.symmetric(
-                            horizontal: ResponsiveBreakpoints.responsiveValue(
-                              context,
-                              compact: 4.0,
-                              medium: 6.0,
-                              expanded: 8.0,
-                            ),
-                          ),
-                          width: _currentPage == index
-                              ? ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 24.0,
-                                  medium: 28.0,
-                                  expanded: 32.0,
-                                )
-                              : ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 8.0,
-                                  medium: 10.0,
-                                  expanded: 12.0,
-                                ),
-                          height: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: 8.0,
-                            medium: 10.0,
-                            expanded: 12.0,
-                          ),
+                      children: List.generate(
+                        onboardingPages.length,
+                        (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.only(right: 8),
+                          height: 8,
+                          width: _currentPage == index ? 24 : 8,
                           decoration: BoxDecoration(
                             color: _currentPage == index
                                 ? kPrimaryColor
-                                : Theme.of(context).colorScheme.secondary.withValues(alpha: 0.3),
+                                : (isDarkMode
+                                      ? Colors.white24
+                                      : Colors.grey[300]),
                             borderRadius: BorderRadius.circular(4),
                           ),
-                        );
-                      }),
-                    ),
-                    SizedBox(
-                      height: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 24.0,
-                        medium: 32.0,
-                        expanded: 40.0,
-                      ),
-                    ),
-                    // Action button
-                    Center(
-                      child: ConstrainedBox(
-                        constraints: BoxConstraints(
-                          maxWidth: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: double.infinity,
-                            medium: 400.0,
-                            expanded: 450.0,
-                          ),
-                        ),
-                        child: SizedBox(
-                          width: ResponsiveBreakpoints.isCompact(context) 
-                              ? double.infinity 
-                              : null,
-                          height: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: 56.0,
-                            medium: 52.0,
-                            expanded: 54.0,
-                          ),
-                          child: ElevatedButton(
-                            onPressed: _nextPage,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: kPrimaryColor,
-                              foregroundColor: kBackgroundColorDark,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(
-                                  ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 16.0,
-                                    medium: 18.0,
-                                    expanded: 20.0,
-                                  ),
-                                ),
-                              ),
-                              elevation: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 4.0,
-                                medium: 5.0,
-                                expanded: 6.0,
-                              ),
-                              padding: EdgeInsets.symmetric(
-                                horizontal: ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 24.0,
-                                  medium: 32.0,
-                                  expanded: 36.0,
-                                ),
-                              ),
-                            ),
-                            child: Text(
-                              isLastPage ? 'Get Started' : 'Next',
-                              style: GoogleFonts.plusJakartaSans(
-                                fontSize: ResponsiveBreakpoints.responsiveValue(
-                                  context,
-                                  compact: 16.0,
-                                  medium: 17.0,
-                                  expanded: 18.0,
-                                ),
-                                fontWeight: FontWeight.bold,
-                                letterSpacing: 0.5,
-                              ),
-                            ),
-                          ),
                         ),
                       ),
                     ),
-                    SizedBox(
-                      height: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 16.0,
-                        medium: 20.0,
-                        expanded: 24.0,
+                    // Next Button
+                    ElevatedButton(
+                      onPressed: _nextPage,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimaryColor,
+                        foregroundColor: Colors.white,
+                        shape: const CircleBorder(),
+                        padding: const EdgeInsets.all(20),
+                        elevation: 4,
                       ),
-                    ),
-                    // Skip button
-                    TextButton(
-                      onPressed: _finishOnboarding,
-                      child: Text(
-                        'Skip',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Theme.of(context).colorScheme.secondary,
-                          fontSize: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: 16.0,
-                            medium: 17.0,
-                            expanded: 18.0,
-                          ),
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
-                    ),
-                    SizedBox(
-                      height: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 8.0,
-                        medium: 12.0,
-                        expanded: 16.0,
-                      ),
-                    ),
-                    // Login link
-                    TextButton(
-                      onPressed: () {
-                        Navigator.pushReplacement(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => const LoginPage(),
-                          ),
-                        );
-                      },
-                      child: Text(
-                        'Already have an account? Login',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: kPrimaryColor,
-                          fontSize: ResponsiveBreakpoints.responsiveValue(
-                            context,
-                            compact: 16.0,
-                            medium: 17.0,
-                            expanded: 18.0,
-                          ),
-                          fontWeight: FontWeight.normal,
-                        ),
-                      ),
+                      child: const Icon(Icons.arrow_forward),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(height: 16),
             ],
           );
         },
@@ -376,4 +183,3 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     );
   }
 }
-

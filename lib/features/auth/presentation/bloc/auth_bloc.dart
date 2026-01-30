@@ -8,6 +8,7 @@ import 'package:mwanachuo/features/auth/domain/usecases/get_current_user.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_in.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_out.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_up.dart';
+import 'package:mwanachuo/features/auth/domain/usecases/reset_password.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -18,6 +19,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final GetCurrentUser getCurrentUser;
   final CompleteRegistration completeRegistration;
   final CheckRegistrationCompletion checkRegistrationCompletion;
+  final ResetPassword resetPassword;
 
   AuthBloc({
     required this.signIn,
@@ -26,6 +28,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     required this.getCurrentUser,
     required this.completeRegistration,
     required this.checkRegistrationCompletion,
+    required this.resetPassword,
   }) : super(const AuthInitial()) {
     on<SignInEvent>(_onSignIn);
     on<SignUpEvent>(_onSignUp);
@@ -33,6 +36,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
     on<CompleteRegistrationEvent>(_onCompleteRegistration);
     on<CheckRegistrationCompletionEvent>(_onCheckRegistrationCompletion);
+    on<ResetPasswordEvent>(_onResetPassword);
   }
 
   Future<void> _onSignIn(SignInEvent event, Emitter<AuthState> emit) async {
@@ -63,15 +67,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         registrationNumber: event.registrationNumber,
         programName: event.programName,
         userType: event.userType,
+        universityId: event.universityId,
+        enrolledCourseId: event.enrolledCourseId,
+        yearOfStudy: event.yearOfStudy,
+        currentSemester: event.currentSemester,
       ),
     );
 
     result.fold((failure) => emit(AuthError(failure.message)), (user) {
-      // After signup, user is created but registration is incomplete
-      // They must select universities before accessing the app
+      // Registration is now complete with all required fields
       debugPrint('✅ User account created - ID: ${user.id}');
-      debugPrint('⏳ Registration incomplete - user must select universities');
-      emit(const RegistrationIncomplete());
+      debugPrint('✅ Registration complete - redirecting to home');
+      emit(Authenticated(user));
     });
   }
 
@@ -131,23 +138,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   ) async {
     final result = await checkRegistrationCompletion(NoParams());
 
+    result.fold((failure) => emit(AuthError(failure.message)), (isComplete) {
+      if (!isComplete) {
+        emit(const RegistrationIncomplete());
+      } else {
+        emit(const RegistrationCheckCompleted(true));
+      }
+    });
+  }
+
+  Future<void> _onResetPassword(
+    ResetPasswordEvent event,
+    Emitter<AuthState> emit,
+  ) async {
+    emit(const AuthLoading());
+
+    final result = await resetPassword(ResetPasswordParams(email: event.email));
+
     result.fold(
-      (failure) => null, // Keep current state on failure
-      (isComplete) {
-        if (!isComplete) {
-          emit(const RegistrationIncomplete());
-        } else {
-          // If complete, we might want to check auth status again or just stay authenticated?
-          // Usually we check this after login. If complete, we are Authenticated.
-          // If we are already Authenticated, no change needed. But if we were Unauthenticated?
-          // This event is usually triggered after login success if we are unsure.
-          // But based on _onSignUp logic, we emit RegistrationIncomplete.
-          // If isComplete is true, we should probably emit Authenticated(user).
-          // But we need the user object.
-          // Let's just trigger CheckAuthStatusEvent if complete.
-          add(const CheckAuthStatusEvent());
-        }
-      },
+      (failure) => emit(AuthError(failure.message)),
+      (_) => emit(const PasswordResetSent()),
     );
   }
 }

@@ -21,6 +21,10 @@ abstract class AuthRepository {
     String? registrationNumber,
     String? programName,
     String? userType,
+    String? universityId,
+    String? enrolledCourseId,
+    int? yearOfStudy,
+    int? currentSemester,
   });
 
   /// Sign out current user
@@ -52,4 +56,7 @@ abstract class AuthRepository {
 
   /// Stream auth state changes
   Stream<Either<Failure, UserEntity?>> watchAuthState();
+
+  /// Reset password for email
+  Future<Either<Failure, void>> resetPassword(String email);
 }

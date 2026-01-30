@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/core/services/presence_service.dart';
+import 'package:http/http.dart' as http;
 
 // Auth
 import 'package:mwanachuo/features/auth/data/datasources/auth_local_data_source.dart';
@@ -14,18 +15,21 @@ import 'package:mwanachuo/features/auth/domain/usecases/check_registration_compl
 import 'package:mwanachuo/features/auth/domain/usecases/complete_registration.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/get_current_user.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_in.dart';
+import 'package:mwanachuo/features/auth/domain/usecases/reset_password.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_out.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_up.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
-import 'package:mwanachuo/features/shared/university/data/datasources/university_local_data_source.dart';
 import 'package:mwanachuo/features/shared/university/data/datasources/university_remote_data_source.dart';
+import 'package:mwanachuo/features/shared/university/data/datasources/university_local_data_source.dart';
 import 'package:mwanachuo/features/shared/university/data/repositories/university_repository_impl.dart';
 import 'package:mwanachuo/features/shared/university/domain/repositories/university_repository.dart';
-import 'package:mwanachuo/features/shared/university/domain/usecases/get_selected_university.dart';
 import 'package:mwanachuo/features/shared/university/domain/usecases/get_universities.dart';
+import 'package:mwanachuo/features/shared/university/domain/usecases/get_selected_university.dart';
 import 'package:mwanachuo/features/shared/university/domain/usecases/search_universities.dart';
 import 'package:mwanachuo/features/shared/university/domain/usecases/set_selected_university.dart';
+import 'package:mwanachuo/features/shared/university/domain/usecases/get_university_courses.dart';
 import 'package:mwanachuo/features/shared/university/presentation/cubit/university_cubit.dart';
+import 'package:mwanachuo/features/shared/university/presentation/bloc/university_bloc.dart';
 import 'package:mwanachuo/features/shared/media/data/datasources/media_local_data_source.dart';
 import 'package:mwanachuo/features/shared/media/data/datasources/media_remote_data_source.dart';
 import 'package:mwanachuo/features/shared/media/data/repositories/media_repository_impl.dart';
@@ -142,6 +146,8 @@ import 'package:mwanachuo/features/profile/data/repositories/profile_repository_
 import 'package:mwanachuo/features/profile/domain/repositories/profile_repository.dart';
 import 'package:mwanachuo/features/profile/domain/usecases/get_my_profile.dart';
 import 'package:mwanachuo/features/profile/domain/usecases/update_profile.dart';
+import 'package:mwanachuo/features/profile/domain/usecases/get_enrolled_course.dart';
+import 'package:mwanachuo/features/profile/domain/usecases/enroll_in_course.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_bloc.dart';
 import 'package:mwanachuo/features/dashboard/data/datasources/dashboard_remote_data_source.dart';
 import 'package:mwanachuo/features/dashboard/data/repositories/dashboard_repository_impl.dart';
@@ -156,15 +162,18 @@ import 'package:mwanachuo/features/promotions/domain/usecases/create_promotion.d
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:uuid/uuid.dart';
 
-// Mwanachuomind
-import 'package:mwanachuo/features/mwanachuomind/data/datasources/mwanachuomind_remote_datasource.dart';
-import 'package:mwanachuo/features/mwanachuomind/data/repositories/mwanachuomind_repository_impl.dart';
-import 'package:mwanachuo/features/mwanachuomind/domain/repositories/mwanachuomind_repository.dart';
-import 'package:mwanachuo/features/mwanachuomind/domain/usecases/get_university_courses_usecase.dart';
-import 'package:mwanachuo/features/mwanachuomind/domain/usecases/upload_document_usecase.dart';
-import 'package:mwanachuo/features/mwanachuomind/domain/usecases/send_query_usecase.dart';
-import 'package:mwanachuo/features/mwanachuomind/domain/usecases/create_course_usecase.dart';
-import 'package:mwanachuo/features/mwanachuomind/presentation/bloc/mwanachuomind_bloc.dart';
+import 'package:mwanachuo/features/copilot/data/datasources/copilot_local_data_source.dart';
+import 'package:mwanachuo/features/copilot/data/datasources/copilot_remote_data_source.dart';
+import 'package:mwanachuo/features/copilot/data/repositories/copilot_repository_impl.dart';
+import 'package:mwanachuo/features/copilot/domain/repositories/copilot_repository.dart';
+import 'package:mwanachuo/features/copilot/domain/usecases/download_note_for_offline.dart';
+import 'package:mwanachuo/features/copilot/domain/usecases/get_course_notes.dart';
+import 'package:mwanachuo/features/copilot/domain/usecases/query_note_with_rag.dart';
+import 'package:mwanachuo/features/copilot/domain/usecases/semantic_search_notes.dart';
+import 'package:mwanachuo/features/copilot/domain/usecases/upload_note.dart';
+import 'package:mwanachuo/features/copilot/presentation/bloc/copilot_bloc.dart';
+
+// Mwanachuomind (Legacy - Removed)
 
 final sl = GetIt.instance;
 
@@ -178,6 +187,8 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton(() => Connectivity());
 
   sl.registerLazySingleton(() => SupabaseConfig.client);
+
+  sl.registerLazySingleton(() => http.Client());
 
   // ============================================================================
   // Core
@@ -208,7 +219,8 @@ Future<void> initializeDependencies() async {
   _initProfileFeature();
   _initDashboardFeature();
   _initPromotionsFeature();
-  _initMwanachuomindFeature();
+  // _initMwanachuomindFeature(); // Removed
+  _initCopilotFeature();
 
   // ============================================================================
   // Features - Authentication
@@ -239,6 +251,7 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton(() => GetCurrentUser(sl()));
   sl.registerLazySingleton(() => CompleteRegistration(sl()));
   sl.registerLazySingleton(() => CheckRegistrationCompletion(sl()));
+  sl.registerLazySingleton(() => ResetPassword(sl()));
 
   // BLoC
   sl.registerFactory(
@@ -249,6 +262,7 @@ Future<void> initializeDependencies() async {
       getCurrentUser: sl(),
       completeRegistration: sl(),
       checkRegistrationCompletion: sl(),
+      resetPassword: sl(),
     ),
   );
 }
@@ -262,6 +276,7 @@ void _initUniversityFeature() {
   sl.registerLazySingleton(() => GetSelectedUniversity(sl()));
   sl.registerLazySingleton(() => SetSelectedUniversity(sl()));
   sl.registerLazySingleton(() => SearchUniversities(sl()));
+  sl.registerLazySingleton(() => GetUniversityCourses(sl()));
 
   // Repository
   sl.registerLazySingleton<UniversityRepository>(
@@ -288,6 +303,11 @@ void _initUniversityFeature() {
       setSelectedUniversity: sl(),
       searchUniversities: sl(),
     ),
+  );
+
+  // Bloc
+  sl.registerFactory(
+    () => UniversityBloc(repository: sl(), getUniversityCourses: sl()),
   );
 }
 
@@ -698,6 +718,8 @@ void _initAccommodationsFeature() {
 void _initProfileFeature() {
   sl.registerLazySingleton(() => GetMyProfile(sl()));
   sl.registerLazySingleton(() => UpdateProfile(sl()));
+  sl.registerLazySingleton(() => GetEnrolledCourse(sl()));
+  sl.registerLazySingleton(() => EnrollInCourse(sl()));
 
   sl.registerLazySingleton<ProfileRepository>(
     () => ProfileRepositoryImpl(
@@ -719,7 +741,12 @@ void _initProfileFeature() {
   );
 
   sl.registerFactory(
-    () => ProfileBloc(getMyProfile: sl(), updateProfile: sl()),
+    () => ProfileBloc(
+      getMyProfile: sl(),
+      updateProfile: sl(),
+      getEnrolledCourse: sl(),
+      enrollInCourse: sl(),
+    ),
   );
 }
 
@@ -766,32 +793,37 @@ void _initPromotionsFeature() {
 }
 
 // ============================================
-// MWANACHUOMIND FEATURE (STANDALONE)
+// MWANACHUO COPILOT FEATURE (NEW)
 // ============================================
-void _initMwanachuomindFeature() {
+void _initCopilotFeature() {
   // Use Cases
-  sl.registerLazySingleton(() => GetUniversityCoursesUseCase(sl()));
-  sl.registerLazySingleton(() => UploadDocumentUseCase(sl()));
-  sl.registerLazySingleton(() => SendQueryUseCase(sl()));
-  sl.registerLazySingleton(() => CreateCourseUseCase(sl()));
+  sl.registerLazySingleton(() => UploadNote(sl()));
+  sl.registerLazySingleton(() => GetCourseNotes(sl()));
+  sl.registerLazySingleton(() => QueryNoteWithRag(sl()));
+  sl.registerLazySingleton(() => DownloadNoteForOffline(sl()));
+  sl.registerLazySingleton(() => SemanticSearchNotes(sl()));
 
   // Repository
-  sl.registerLazySingleton<MwanachuomindRepository>(
-    () => MwanachuomindRepositoryImpl(remoteDataSource: sl()),
+  sl.registerLazySingleton<CopilotRepository>(
+    () => CopilotRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
   );
 
   // Data Sources
-  sl.registerLazySingleton<MwanachuomindRemoteDataSource>(
-    () => MwanachuomindRemoteDataSourceImpl(client: sl()),
+  sl.registerLazySingleton<CopilotRemoteDataSource>(
+    () => CopilotRemoteDataSourceImpl(supabase: sl(), httpClient: sl()),
+  );
+  sl.registerLazySingleton<CopilotLocalDataSource>(
+    () => CopilotLocalDataSourceImpl(),
   );
 
   // BLoC
   sl.registerFactory(
-    () => MwanachuomindBloc(
-      getUniversityCoursesUseCase: sl(),
-      uploadDocumentUseCase: sl(),
-      sendQueryUseCase: sl(),
-      createCourseUseCase: sl(),
+    () => CopilotBloc(
+      uploadNote: sl(),
+      getCourseNotes: sl(),
+      queryNoteWithRag: sl(),
+      downloadNoteForOffline: sl(),
+      semanticSearchNotes: sl(),
       repository: sl(),
     ),
   );

@@ -3,9 +3,10 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
-import 'package:mwanachuo/features/mwanachuomind/domain/repositories/mwanachuomind_repository.dart';
+import 'package:mwanachuo/features/copilot/domain/repositories/copilot_repository.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
-import 'package:mwanachuo/features/mwanachuomind/domain/entities/document.dart';
+import 'package:mwanachuo/features/copilot/domain/entities/note_entity.dart';
+import 'package:uuid/uuid.dart';
 
 class AdminCourseDocumentsPage extends StatefulWidget {
   final String courseId;
@@ -23,8 +24,8 @@ class AdminCourseDocumentsPage extends StatefulWidget {
 }
 
 class _AdminCourseDocumentsPageState extends State<AdminCourseDocumentsPage> {
-  final _repository = sl<MwanachuomindRepository>();
-  List<Document> _documents = [];
+  final _repository = sl<CopilotRepository>();
+  List<NoteEntity> _documents = [];
   bool _isLoading = true;
 
   @override
@@ -36,13 +37,29 @@ class _AdminCourseDocumentsPageState extends State<AdminCourseDocumentsPage> {
   Future<void> _loadDocuments() async {
     setState(() => _isLoading = true);
     try {
-      final docs = await _repository.getCourseDocuments(widget.courseId);
-      if (mounted) {
-        setState(() {
-          _documents = docs;
-          _isLoading = false;
-        });
-      }
+      final result = await _repository.getCourseNotes(
+        courseId: widget.courseId,
+      );
+      result.fold(
+        (failure) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error loading documents: ${failure.message}'),
+              ),
+            );
+          }
+        },
+        (notes) {
+          if (mounted) {
+            setState(() {
+              _documents = notes;
+              _isLoading = false;
+            });
+          }
+        },
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -108,6 +125,10 @@ class _AdminCourseDocumentsPageState extends State<AdminCourseDocumentsPage> {
                       setState(() {
                         selectedFile = File(result.files.single.path!);
                         selectedFileName = result.files.single.name;
+                        // Auto-fill title if empty
+                        if (titleController.text.isEmpty) {
+                          titleController.text = selectedFileName!;
+                        }
                       });
                     }
                   },
@@ -174,20 +195,38 @@ class _AdminCourseDocumentsPageState extends State<AdminCourseDocumentsPage> {
   Future<void> _performUpload(String title, File file) async {
     setState(() => _isLoading = true);
     try {
-      await _repository.uploadDocument(
+      final noteId = const Uuid().v4();
+      final result = await _repository.uploadAndAnalyze(
         courseId: widget.courseId,
-        title: title,
+        noteId: noteId,
         file: file,
+        title: title,
       );
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Document uploaded successfully!'),
-            backgroundColor: Colors.green,
-          ),
-        );
-        _loadDocuments();
-      }
+
+      result.fold(
+        (failure) {
+          if (mounted) {
+            setState(() => _isLoading = false);
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Upload failed: ${failure.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        },
+        (success) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Document uploaded successfully!'),
+                backgroundColor: Colors.green,
+              ),
+            );
+            _loadDocuments();
+          }
+        },
+      );
     } catch (e) {
       if (mounted) {
         setState(() => _isLoading = false);

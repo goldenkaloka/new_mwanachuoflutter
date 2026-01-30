@@ -224,7 +224,7 @@ class _FilterBottomSheetState extends State<FilterBottomSheet> {
               width: 36,
               height: 4,
               decoration: BoxDecoration(
-                color: secondaryTextColor.withOpacity(0.3),
+                color: secondaryTextColor.withValues(alpha: 0.3),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),

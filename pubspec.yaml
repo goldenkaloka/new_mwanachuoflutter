@@ -56,6 +56,7 @@ dependencies:
   carousel_slider: ^5.1.1
   google_fonts: ^6.1.0
   shared_preferences: ^2.2.2
+  http: ^1.2.0
   shimmer: ^3.0.0
   flutter_slidable: ^3.1.1
   
@@ -79,7 +80,9 @@ dependencies:
   flutter_staggered_grid_view: ^0.7.0
   syncfusion_flutter_pdf: ^24.1.41
   docx_to_text: ^1.0.1
-  flutter_ai_toolkit: ^1.0.0
+  flutter_svg: ^2.2.3
+  mime: ^2.0.0
+  # flutter_ai_toolkit: ^1.0.0  # Temporarily disabled for Windows builds - Firebase C++ SDK incompatibility
 
 dependency_overrides:
   archive: ^4.0.0
@@ -113,6 +116,7 @@ flutter:
   # Assets
   assets:
     - assets/
+    - assets/svgs/
     
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

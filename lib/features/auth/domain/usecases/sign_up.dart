@@ -23,6 +23,10 @@ class SignUp implements UseCase<UserEntity, SignUpParams> {
       registrationNumber: params.registrationNumber,
       programName: params.programName,
       userType: params.userType,
+      universityId: params.universityId,
+      enrolledCourseId: params.enrolledCourseId,
+      yearOfStudy: params.yearOfStudy,
+      currentSemester: params.currentSemester,
     );
   }
 }
@@ -38,6 +42,10 @@ class SignUpParams extends Equatable {
   final String? registrationNumber;
   final String? programName;
   final String? userType;
+  final String? universityId;
+  final String? enrolledCourseId;
+  final int? yearOfStudy;
+  final int? currentSemester;
 
   const SignUpParams({
     required this.email,
@@ -50,6 +58,10 @@ class SignUpParams extends Equatable {
     this.registrationNumber,
     this.programName,
     this.userType,
+    this.universityId,
+    this.enrolledCourseId,
+    this.yearOfStudy,
+    this.currentSemester,
   });
 
   @override
@@ -64,5 +76,9 @@ class SignUpParams extends Equatable {
     registrationNumber,
     programName,
     userType,
+    universityId,
+    enrolledCourseId,
+    yearOfStudy,
+    currentSemester,
   ];
 }

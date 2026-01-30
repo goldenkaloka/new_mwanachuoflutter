@@ -5,6 +5,7 @@ import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/features/shared/university/data/datasources/university_local_data_source.dart';
 import 'package:mwanachuo/features/shared/university/data/datasources/university_remote_data_source.dart';
 import 'package:mwanachuo/features/shared/university/domain/entities/university_entity.dart';
+import 'package:mwanachuo/features/shared/university/domain/entities/course_entity.dart';
 import 'package:mwanachuo/features/shared/university/domain/repositories/university_repository.dart';
 
 /// Implementation of UniversityRepository
@@ -33,8 +34,8 @@ class UniversityRepositoryImpl implements UniversityRepository {
     } else {
       // Return cached universities if offline
       try {
-        final cachedUniversities =
-            await localDataSource.getCachedUniversities();
+        final cachedUniversities = await localDataSource
+            .getCachedUniversities();
         return Right(cachedUniversities);
       } on CacheException catch (e) {
         return Left(CacheFailure(e.message));
@@ -43,13 +44,12 @@ class UniversityRepositoryImpl implements UniversityRepository {
   }
 
   @override
-  Future<Either<Failure, UniversityEntity>> getUniversityById(
-    String id,
-  ) async {
+  Future<Either<Failure, UniversityEntity>> getUniversityById(String id) async {
     // Try cache first
     try {
-      final cachedUniversity =
-          await localDataSource.getCachedUniversityById(id);
+      final cachedUniversity = await localDataSource.getCachedUniversityById(
+        id,
+      );
       if (cachedUniversity != null) {
         return Right(cachedUniversity);
       }
@@ -127,8 +127,8 @@ class UniversityRepositoryImpl implements UniversityRepository {
     } else {
       // Search in cache if offline
       try {
-        final cachedUniversities =
-            await localDataSource.getCachedUniversities();
+        final cachedUniversities = await localDataSource
+            .getCachedUniversities();
         final filteredUniversities = cachedUniversities.where((u) {
           final lowerQuery = query.toLowerCase();
           return u.name.toLowerCase().contains(lowerQuery) ||
@@ -141,6 +141,22 @@ class UniversityRepositoryImpl implements UniversityRepository {
       }
     }
   }
+
+  @override
+  Future<Either<Failure, List<CourseEntity>>> getUniversityCourses(
+    String universityId,
+  ) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final courses = await remoteDataSource.getUniversityCourses(
+          universityId,
+        );
+        return Right(courses);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      }
+    } else {
+      return Left(NetworkFailure('No internet connection'));
+    }
+  }
 }
-
-

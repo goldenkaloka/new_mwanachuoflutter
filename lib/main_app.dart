@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/features/profile/presentation/bloc/profile_bloc.dart';
 
 import 'package:mwanachuo/config/onesignal_config.dart';
 
 import 'package:mwanachuo/core/theme/app_theme.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/auth_pages.dart';
-import 'package:mwanachuo/features/auth/presentation/pages/signup_university_selection.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/initial_route_handler.dart';
 
 import 'package:mwanachuo/features/admin/presentation/pages/admin_course_list_page.dart';
@@ -41,8 +41,11 @@ import 'package:mwanachuo/features/services/presentation/pages/service_detail_pa
 import 'package:mwanachuo/features/services/presentation/pages/create_service_screen.dart';
 import 'package:mwanachuo/features/promotions/presentation/pages/create_promotion_screen.dart';
 import 'package:mwanachuo/features/promotions/presentation/pages/promotion_detail_page.dart';
-import 'package:mwanachuo/features/mwanachuomind/presentation/pages/mwanachuomind_wrapper_page.dart';
-import 'package:mwanachuo/features/mwanachuomind/presentation/bloc/mwanachuomind_bloc.dart';
+import 'package:mwanachuo/features/copilot/presentation/pages/copilot_wrapper_page.dart';
+import 'package:mwanachuo/features/copilot/presentation/pages/copilot_library_page.dart';
+import 'package:mwanachuo/features/copilot/presentation/pages/copilot_document_viewer_page.dart';
+import 'package:mwanachuo/features/copilot/presentation/pages/copilot_upload_page.dart';
+import 'package:mwanachuo/features/copilot/presentation/bloc/copilot_bloc.dart';
 import 'package:mwanachuo/features/shared/notifications/presentation/pages/notification_settings_screen.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/pages/subscription_plans_page.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
@@ -227,8 +230,6 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           '/login': (context) => const LoginPage(),
           '/signup': (context) => const CreateAccountScreen(),
           '/onboarding': (context) => const OnboardingScreen(),
-          '/signup-university-selection': (context) =>
-              const SignupUniversitySelectionScreen(),
 
           '/admin-courses': (context) => const AdminCourseListPage(),
           '/home': (context) => PersistentBottomNavWrapper(
@@ -250,7 +251,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           ),
 
           '/profile': (context) => PersistentBottomNavWrapper(
-            initialIndex: 4, // Updated to 4 for unified nav
+            initialIndex: 4,
             child: const ProfilePage(),
           ),
           '/search': (context) {
@@ -298,7 +299,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             child: const MyListingsScreen(),
           ),
           '/dashboard': (context) => PersistentBottomNavWrapper(
-            initialIndex: 2,
+            initialIndex: 3,
             child: const DashboardScreen(),
           ),
           '/student-housing': (context) => BlocProvider(
@@ -342,13 +343,46 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             create: (context) => sl<SubscriptionCubit>(),
             child: const SubscriptionPlansPage(),
           ),
-          '/mwanachuomind': (context) => PersistentBottomNavWrapper(
+          '/copilot': (context) => PersistentBottomNavWrapper(
             initialIndex: 2,
             child: BlocProvider(
-              create: (context) => sl<MwanachuomindBloc>(),
-              child: const MwanachuomindWrapperPage(),
+              create: (context) => sl<ProfileBloc>(),
+              child: const CopilotWrapperPage(),
             ),
           ),
+          '/copilot-library': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return BlocProvider(
+              create: (context) => sl<CopilotBloc>(),
+              child: CopilotLibraryPage(
+                courseId: args['courseId'],
+                initialSearchQuery: args['initialSearchQuery'],
+              ),
+            );
+          },
+          '/copilot-viewer': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return BlocProvider(
+              create: (context) => sl<CopilotBloc>(),
+              child: CopilotDocumentViewerPage(
+                noteId: args['noteId'],
+                courseId: args['courseId'],
+              ),
+            );
+          },
+          '/copilot-upload': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return BlocProvider(
+              create: (context) => sl<CopilotBloc>(),
+              child: CopilotUploadPage(courseId: args['courseId']),
+            );
+          },
         },
       ),
     );

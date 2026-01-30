@@ -651,6 +651,14 @@ class _DashboardViewState extends State<_DashboardView> {
         'label': 'Manage AI',
         'route': '/admin-courses',
       },
+      // Upload Note - only show if user has enrolled in a course
+      if (authState is Authenticated && authState.user.enrolledCourseId != null)
+        {
+          'icon': Icons.upload_file,
+          'label': 'Upload Note',
+          'route': '/copilot-upload',
+          'requiresCourseId': true,
+        },
     ];
 
     return GridView.count(
@@ -662,7 +670,21 @@ class _DashboardViewState extends State<_DashboardView> {
       mainAxisSpacing: 12,
       children: actions.map((action) {
         return InkWell(
-          onTap: () => Navigator.pushNamed(context, action['route'] as String),
+          onTap: () {
+            final route = action['route'] as String;
+            final requiresCourseId =
+                action['requiresCourseId'] as bool? ?? false;
+
+            if (requiresCourseId && authState is Authenticated) {
+              Navigator.pushNamed(
+                context,
+                route,
+                arguments: {'courseId': authState.user.enrolledCourseId},
+              );
+            } else {
+              Navigator.pushNamed(context, route);
+            }
+          },
           child: Container(
             decoration: BoxDecoration(
               color: cardBgColor,

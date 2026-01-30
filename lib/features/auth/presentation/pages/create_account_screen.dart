@@ -1,4 +1,5 @@
 import 'package:flutter/gestures.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -249,9 +250,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                           fontWeight: FontWeight.bold,
                                         ),
                                         recognizer: TapGestureRecognizer()
-                                          ..onTap = () {
-                                            // TODO: Open Privacy Policy
-                                          },
+                                          ..onTap = _openPrivacyPolicy,
                                       ),
                                     ],
                                   ),
@@ -339,5 +338,16 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
         );
       },
     );
+  }
+
+  Future<void> _openPrivacyPolicy() async {
+    final Uri url = Uri.parse('https://mwanachuo.com/privacy-policy');
+    if (!await launchUrl(url)) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Could not open privacy policy')),
+        );
+      }
+    }
   }
 }

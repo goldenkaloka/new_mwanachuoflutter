@@ -28,6 +28,10 @@ class SignUpEvent extends AuthEvent {
   final String? registrationNumber;
   final String? programName;
   final String? userType;
+  final String? universityId;
+  final String? enrolledCourseId;
+  final int? yearOfStudy;
+  final int? currentSemester;
 
   const SignUpEvent({
     required this.email,
@@ -40,6 +44,10 @@ class SignUpEvent extends AuthEvent {
     this.registrationNumber,
     this.programName,
     this.userType,
+    this.universityId,
+    this.enrolledCourseId,
+    this.yearOfStudy,
+    this.currentSemester,
   });
 
   @override
@@ -54,6 +62,10 @@ class SignUpEvent extends AuthEvent {
     registrationNumber,
     programName,
     userType,
+    universityId,
+    enrolledCourseId,
+    yearOfStudy,
+    currentSemester,
   ];
 }
 
@@ -103,4 +115,13 @@ class CompleteRegistrationEvent extends AuthEvent {
 
 class CheckRegistrationCompletionEvent extends AuthEvent {
   const CheckRegistrationCompletionEvent();
+}
+
+class ResetPasswordEvent extends AuthEvent {
+  final String email;
+
+  const ResetPasswordEvent({required this.email});
+
+  @override
+  List<Object> get props => [email];
 }

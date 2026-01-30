@@ -1,6 +1,7 @@
 import 'package:dartz/dartz.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/features/shared/university/domain/entities/university_entity.dart';
+import 'package:mwanachuo/features/shared/university/domain/entities/course_entity.dart';
 
 /// University repository interface
 /// Defines the contract for university data operations
@@ -24,6 +25,9 @@ abstract class UniversityRepository {
   Future<Either<Failure, List<UniversityEntity>>> searchUniversities(
     String query,
   );
+
+  /// Get courses for a specific university
+  Future<Either<Failure, List<CourseEntity>>> getUniversityCourses(
+    String universityId,
+  );
 }
-
-

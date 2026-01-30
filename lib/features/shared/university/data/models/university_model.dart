@@ -17,7 +17,7 @@ class UniversityModel extends UniversityEntity {
     return UniversityModel(
       id: json['id'] as String,
       name: json['name'] as String,
-      shortName: json['short_name'] as String,
+      shortName: (json['short_name'] as String?) ?? (json['name'] as String),
       location: json['location'] as String,
       logoUrl: json['logo_url'] as String?,
       description: json['description'] as String?,
@@ -51,5 +51,3 @@ class UniversityModel extends UniversityEntity {
     );
   }
 }
-
-

@@ -56,6 +56,10 @@ class AuthRepositoryImpl implements AuthRepository {
     String? registrationNumber,
     String? programName,
     String? userType,
+    String? universityId,
+    String? enrolledCourseId,
+    int? yearOfStudy,
+    int? currentSemester,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
@@ -73,6 +77,10 @@ class AuthRepositoryImpl implements AuthRepository {
         registrationNumber: registrationNumber,
         programName: programName,
         userType: userType,
+        universityId: universityId,
+        enrolledCourseId: enrolledCourseId,
+        yearOfStudy: yearOfStudy,
+        currentSemester: currentSemester,
       );
       await localDataSource.cacheUser(user);
       return Right(user);
@@ -109,33 +117,33 @@ class AuthRepositoryImpl implements AuthRepository {
         return Right(cachedUser);
       }
 
-      // If we have a cached user, we can return it as a "preliminary" result
-      // But we should also verify/refresh with remote if possible.
-      // For the sake of this repository's simple interface (non-stream),
-      // we'll return cache immediately if available to speed up startup.
-      if (cachedUser != null) {
-        // We return cache but fire-and-forget a remote sync to update local cache
-        // Note: This won't update the UI until the user pulls-to-refresh or navigates,
-        // unless we use a Stream. For startup, this is a huge win.
-        remoteDataSource
-            .getCurrentUser()
-            .then((user) async {
-              if (user != null) {
-                await localDataSource.cacheUser(user);
-              }
-            })
-            .catchError((_) {
-              // Ignore background errors
-            });
-        return Right(cachedUser);
+      if (await networkInfo.isConnected) {
+        try {
+          final user = await remoteDataSource.getCurrentUser();
+          if (user != null) {
+            await localDataSource.cacheUser(user);
+            return Right(user);
+          } else {
+            // User validation failed on server (e.g. deleted account)
+            await localDataSource.clearCache();
+            return Left(ServerFailure('User no longer exists'));
+          }
+        } catch (e) {
+          // If server check failed but we have cache, fallback to cache
+          // UNLESS the error indicates the user is gone (e.g. "JSON/Single" error from empty row)
+          // But determining that is hard. For standard network errors, use cache.
+          if (cachedUser != null) {
+            return Right(cachedUser);
+          }
+          return Left(ServerFailure(e.toString()));
+        }
+      } else {
+        // Offline
+        if (cachedUser != null) {
+          return Right(cachedUser);
+        }
+        return const Left(NetworkFailure('No internet connection'));
       }
-
-      // 2. No cache, or we want a fresh remote fetch forced (handled by caller if needed)
-      final user = await remoteDataSource.getCurrentUser();
-      if (user != null) {
-        await localDataSource.cacheUser(user);
-      }
-      return Right(user);
     } on CacheException catch (e) {
       return Left(CacheFailure(e.message));
     } on ServerException catch (e) {
@@ -243,5 +251,23 @@ class AuthRepositoryImpl implements AuthRepository {
         .handleError((error) {
           return Left<Failure, UserEntity?>(ServerFailure(error.toString()));
         });
+  }
+
+  @override
+  Future<Either<Failure, void>> resetPassword(String email) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      await remoteDataSource.resetPassword(email);
+      return const Right(null);
+    } on AuthenticationException catch (e) {
+      return Left(AuthFailure(e.message));
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
   }
 }

@@ -64,3 +64,7 @@ class RegistrationCheckCompleted extends AuthState {
   @override
   List<Object> get props => [isCompleted];
 }
+
+class PasswordResetSent extends AuthState {
+  const PasswordResetSent();
+}

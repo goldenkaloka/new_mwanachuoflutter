@@ -49,3 +49,22 @@ class UpdateProfileEvent extends ProfileEvent {
     universityName,
   ];
 }
+
+class LoadEnrolledCourse extends ProfileEvent {
+  final String userId;
+
+  const LoadEnrolledCourse({required this.userId});
+
+  @override
+  List<Object?> get props => [userId];
+}
+
+class EnrollUserInCourse extends ProfileEvent {
+  final String userId;
+  final String courseId;
+
+  const EnrollUserInCourse({required this.userId, required this.courseId});
+
+  @override
+  List<Object?> get props => [userId, courseId];
+}

@@ -534,8 +534,8 @@ class _HomePageState extends State<HomePage> {
           isDarkMode,
         ),
         _buildNavItem(
-          Icons.school_outlined,
-          'Mwanachuomind',
+          Icons.smart_toy_outlined,
+          'Copilot',
           5,
           primaryTextColor,
           isDarkMode,
@@ -570,7 +570,7 @@ class _HomePageState extends State<HomePage> {
             _loadSelectedUniversity();
           });
         } else if (index == 5) {
-          Navigator.pushNamed(context, '/mwanachuomind');
+          Navigator.pushNamed(context, '/copilot');
         }
       },
       child: Container(

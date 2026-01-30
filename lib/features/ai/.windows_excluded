@@ -1,0 +1,3 @@
+// Placeholder - flutter_ai_toolkit removed for Windows builds
+// Firebase C++ SDK has compatibility issues with Visual Studio 2019
+// This package will work on mobile platforms (Android/iOS) only

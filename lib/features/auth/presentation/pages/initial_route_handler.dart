@@ -64,37 +64,23 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
       // User is not authenticated, go to onboarding
       debugPrint('👤 No user authenticated, going to onboarding');
       Navigator.of(context).pushReplacementNamed('/onboarding');
-    } else if (state is RegistrationIncomplete) {
-      if (_hasNavigated) return;
-      _hasNavigated = true;
-      // Remove native splash before navigation
-      FlutterNativeSplash.remove();
-      // Account created but needs university selection
-      debugPrint(
-        '⚠️ Registration incomplete, redirecting to university selection',
-      );
-      Navigator.of(
-        context,
-      ).pushReplacementNamed('/signup-university-selection');
     } else if (state is RegistrationCheckCompleted) {
       if (_hasNavigated) return;
       _hasNavigated = true;
       // Remove native splash before navigation
       FlutterNativeSplash.remove();
 
-      if (state.isCompleted) {
-        // Registration complete with universities, go to home
-        debugPrint('✅ Registration complete, going to home');
-        Navigator.of(context).pushReplacementNamed('/home');
-      } else {
-        // Registration incomplete, go to university selection
-        debugPrint(
-          '⚠️ Registration incomplete, redirecting to university selection',
-        );
-        Navigator.of(
-          context,
-        ).pushReplacementNamed('/signup-university-selection');
-      }
+      // Registration is always complete now, go to home
+      debugPrint('✅ Registration complete, going to home');
+      Navigator.of(context).pushReplacementNamed('/home');
+    } else if (state is AuthError) {
+      if (_hasNavigated) return;
+      _hasNavigated = true;
+      // Remove native splash before navigation
+      FlutterNativeSplash.remove();
+      // On error during startup (e.g. invalid refresh token), logout/onboarding
+      debugPrint('❌ Auth error during startup: ${state.message}');
+      Navigator.of(context).pushReplacementNamed('/onboarding');
     }
   }
 
