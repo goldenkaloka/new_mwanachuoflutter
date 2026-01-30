@@ -51,11 +51,22 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
       filterBy: event.filterBy,
     );
 
-    result.fold(
-      (failure) => emit(CopilotError(message: failure.message)),
-      (notes) =>
-          emit(CopilotNotesLoaded(notes: notes, currentFilter: event.filterBy)),
+    final downloadedResult = await repository.getDownloadedNotes(
+      event.courseId,
     );
+
+    result.fold((failure) => emit(CopilotError(message: failure.message)), (
+      notes,
+    ) {
+      final downloadedNotes = downloadedResult.getOrElse(() => []);
+      emit(
+        CopilotNotesLoaded(
+          notes: notes,
+          downloadedNotes: downloadedNotes,
+          currentFilter: event.filterBy,
+        ),
+      );
+    });
   }
 
   Future<void> _onUploadNote(
@@ -71,11 +82,13 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
       courseId: event.courseId,
     );
 
-    result.fold(
-      (failure) => emit(CopilotError(message: failure.message)),
-      (analysisResult) =>
-          emit(CopilotUploadSuccess(analysisResult: analysisResult)),
-    );
+    result.fold((failure) => emit(CopilotError(message: failure.message)), (
+      analysisResult,
+    ) {
+      emit(CopilotUploadSuccess(analysisResult: analysisResult));
+      // Refresh the notes list so the new note appears on the dashboard
+      add(LoadCourseNotes(courseId: event.courseId));
+    });
   }
 
   Future<void> _onQueryWithRag(
@@ -126,6 +139,9 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
       final flashcardsResult = await repository.getNoteFlashcards(event.noteId);
       final tagsResult = await repository.getNoteTags(event.noteId);
       final isDownloaded = await repository.isNoteDownloaded(event.noteId);
+      final localFilePath = isDownloaded
+          ? await repository.getLocalFilePath(event.noteId)
+          : null;
 
       noteResult.fold(
         (failure) => emit(CopilotError(message: failure.message)),
@@ -141,6 +157,7 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
               flashcards: flashcards,
               tags: tags,
               isDownloaded: isDownloaded,
+              localFilePath: localFilePath,
             ),
           );
         },

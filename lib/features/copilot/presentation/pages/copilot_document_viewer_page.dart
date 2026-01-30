@@ -1,6 +1,9 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
+import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class CopilotDocumentViewerPage extends StatefulWidget {
   final String noteId;
@@ -37,7 +40,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Document'),
+        title: const Text('Document Viewer'),
         actions: [
           IconButton(
             icon: const Icon(Icons.download),
@@ -78,111 +81,11 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
           flex: _showAIPanel ? 2 : 1,
           child: Column(
             children: [
-              // Concepts Bar
-              Container(
-                padding: const EdgeInsets.all(16),
-                color: const Color(0xFFccfbf1).withValues(alpha: 0.3),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(
-                          Icons.lightbulb_outline,
-                          color: Color(0xFF0d9488),
-                          size: 20,
-                        ),
-                        const SizedBox(width: 8),
-                        Text(
-                          'AI Extracted Concepts',
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                fontWeight: FontWeight.bold,
-                                color: const Color(0xFF0d9488),
-                              ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 12),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: state.concepts.take(5).map((concept) {
-                        return Chip(
-                          label: Text(
-                            concept.conceptText,
-                            style: const TextStyle(fontSize: 11),
-                          ),
-                          backgroundColor: Colors.white,
-                          side: const BorderSide(color: Color(0xFF0d9488)),
-                        );
-                      }).toList(),
-                    ),
-                  ],
-                ),
-              ),
+              // Concepts Bar (Optional shortcut to AI)
+              _buildConceptsBar(state),
 
-              // Document Content (placeholder)
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        state.note.title,
-                        style: Theme.of(context).textTheme.headlineSmall
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      if (state.note.description != null)
-                        Text(
-                          state.note.description!,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(color: Colors.grey[600]),
-                        ),
-                      const SizedBox(height: 24),
-                      // File preview placeholder
-                      Container(
-                        height: 400,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[100],
-                          borderRadius: BorderRadius.circular(12),
-                          border: Border.all(color: Colors.grey[300]!),
-                        ),
-                        child: Center(
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.description,
-                                size: 64,
-                                color: Colors.grey[400],
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'Document Preview',
-                                style: TextStyle(
-                                  color: Colors.grey[600],
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                state.note.fileType,
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 12,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              // Document Content
+              Expanded(child: _buildFileContent(state)),
             ],
           ),
         ),
@@ -199,6 +102,119 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
           ),
       ],
     );
+  }
+
+  Widget _buildConceptsBar(CopilotNoteDetailsLoaded state) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      color: const Color(0xFFccfbf1).withValues(alpha: 0.3),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Row(
+          children: [
+            const Icon(
+              Icons.lightbulb_outline,
+              color: Color(0xFF0d9488),
+              size: 16,
+            ),
+            const SizedBox(width: 8),
+            ...state.concepts.take(3).map((concept) {
+              return Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: ActionChip(
+                  label: Text(
+                    concept.conceptText,
+                    style: const TextStyle(fontSize: 10),
+                  ),
+                  onPressed: () {
+                    if (!_showAIPanel) setState(() => _showAIPanel = true);
+                    _questionController.text = "Explain ${concept.conceptText}";
+                  },
+                  backgroundColor: Colors.white,
+                  padding: EdgeInsets.zero,
+                  visualDensity: VisualDensity.compact,
+                ),
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileContent(CopilotNoteDetailsLoaded state) {
+    final mimeType = state.note.fileType.toLowerCase();
+    final isPdf = mimeType.contains('pdf');
+    final isImage = mimeType.contains('image');
+    final localPath = state.localFilePath;
+
+    // 1. Image Viewer
+    if (isImage) {
+      return Center(
+        child: SingleChildScrollView(
+          child: localPath != null
+              ? Image.file(File(localPath), fit: BoxFit.contain)
+              : Image.network(state.note.fileUrl, fit: BoxFit.contain),
+        ),
+      );
+    }
+
+    // 2. PDF Viewer
+    if (isPdf) {
+      if (localPath != null && File(localPath).existsSync()) {
+        return SfPdfViewer.file(File(localPath));
+      }
+      return SfPdfViewer.network(state.note.fileUrl);
+    }
+
+    // 3. Other Types (Word, PPT, etc.)
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(_getFileIcon(mimeType), size: 84, color: Colors.grey[400]),
+          const SizedBox(height: 24),
+          Text(
+            'Preview not available in-app',
+            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[700],
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            state.note.fileType.split('/').last.toUpperCase(),
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () => _launchURL(state.note.fileUrl),
+            icon: const Icon(Icons.open_in_new),
+            label: const Text('Open with External App'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0d9488),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  IconData _getFileIcon(String mimeType) {
+    if (mimeType.contains('word')) return Icons.description;
+    if (mimeType.contains('powerpoint') || mimeType.contains('presentation')) {
+      return Icons.slideshow;
+    }
+    return Icons.insert_drive_file;
+  }
+
+  Future<void> _launchURL(String url) async {
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    }
   }
 
   Widget _buildAIPanel() {
@@ -288,7 +304,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
                       vertical: 12,
                     ),
                   ),
-                  onSubmitted: _submitQuestion,
+                  onSubmitted: (val) => _submitQuestion(val),
                 ),
               ),
               const SizedBox(width: 8),

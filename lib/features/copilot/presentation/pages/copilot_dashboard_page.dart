@@ -42,12 +42,12 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const SizedBox(height: 16),
-                    // _buildAIStudyPaths(), // Removed hardcoded data
-                    // const SizedBox(height: 24),
+                    const SizedBox(height: 24),
+                    _buildDownloadedSection(),
+                    const SizedBox(height: 32),
+                    _buildUnitMaterialsSection(),
+                    const SizedBox(height: 32),
                     _buildRecentlyProcessed(),
-                    // const SizedBox(height: 24),
-                    // _buildAIInsightCard(), // Removed hardcoded data
                     const SizedBox(height: 100),
                   ],
                 ),
@@ -56,7 +56,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
           ],
         ),
       ),
-      floatingActionButton: _buildAskAIButton(),
+      floatingActionButton: _buildUploadNoteButton(),
     );
   }
 
@@ -185,6 +185,240 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
     );
   }
 
+  Widget _buildDownloadedSection() {
+    return BlocBuilder<CopilotBloc, CopilotState>(
+      builder: (context, state) {
+        if (state is CopilotNotesLoaded && state.downloadedNotes.isNotEmpty) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.offline_pin_outlined,
+                      color: Color(0xFF0d9488),
+                      size: 20,
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Ready for Offline Study',
+                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    Text(
+                      '${state.downloadedNotes.length} notes',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey[500],
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              SizedBox(
+                height: 140,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: state.downloadedNotes.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    final note = state.downloadedNotes[index];
+                    return _buildOfflineNoteCard(note);
+                  },
+                ),
+              ),
+            ],
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildOfflineNoteCard(note) {
+    return InkWell(
+      onTap: () {
+        Navigator.pushNamed(
+          context,
+          '/copilot-viewer',
+          arguments: {'noteId': note.id, 'courseId': widget.courseId},
+        );
+      },
+      child: Container(
+        width: 130,
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF0d9488).withValues(alpha: 0.2),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF0d9488).withValues(alpha: 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: const Color(0xFFccfbf1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Icon(
+                Icons.file_download_done,
+                color: Color(0xFF0f766e),
+                size: 20,
+              ),
+            ),
+            const Spacer(),
+            Text(
+              note.title,
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+            ),
+            const SizedBox(height: 4),
+            Text(
+              note.fileType.split('/').last.toUpperCase(),
+              style: TextStyle(color: Colors.grey[500], fontSize: 10),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUnitMaterialsSection() {
+    return BlocBuilder<CopilotBloc, CopilotState>(
+      builder: (context, state) {
+        if (state is CopilotNotesLoaded) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Text(
+                      'Unit Materials',
+                      style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const Spacer(),
+                    TextButton(
+                      onPressed: () {
+                        Navigator.pushNamed(
+                          context,
+                          '/copilot-library',
+                          arguments: {'courseId': widget.courseId},
+                        );
+                      },
+                      child: const Text(
+                        'View All',
+                        style: TextStyle(color: Color(0xFF0d9488)),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        const Color(0xFF0d9488),
+                        const Color(0xFF0d9488).withValues(alpha: 0.8),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(20),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0d9488).withValues(alpha: 0.3),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'Course Library',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 18,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Browse ${state.notes.length} academic resources',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.9),
+                                fontSize: 13,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  '/copilot-library',
+                                  arguments: {'courseId': widget.courseId},
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.white,
+                                foregroundColor: const Color(0xFF0d9488),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 8,
+                                ),
+                              ),
+                              child: const Text('Open Library'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      const Icon(
+                        Icons.library_books,
+                        size: 64,
+                        color: Colors.white24,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
   Widget _buildRecentlyProcessed() {
     return BlocBuilder<CopilotBloc, CopilotState>(
       builder: (context, state) {
@@ -271,34 +505,48 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                 const SizedBox(height: 4),
                 Row(
                   children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 6,
-                        vertical: 2,
-                      ),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFccfbf1),
-                        borderRadius: BorderRadius.circular(4),
-                      ),
-                      child: const Text(
-                        'AI SUMMARIZED',
-                        style: TextStyle(
-                          fontSize: 9,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF0f766e),
-                          letterSpacing: 0.5,
-                        ),
+                    Text(
+                      'by ${note.uploaderName ?? 'User'}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        color: Colors.grey[600],
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Text(
-                      '2h ago',
+                      '•',
+                      style: TextStyle(color: Colors.grey[400], fontSize: 10),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      _getTimeAgo(note.createdAt),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
                         color: const Color(0xFF14b8a6).withValues(alpha: 0.7),
                         fontSize: 10,
                       ),
                     ),
                   ],
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFccfbf1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: const Text(
+                    'AI SUMMARIZED',
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0f766e),
+                      letterSpacing: 0.5,
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -313,21 +561,37 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
     );
   }
 
-  Widget _buildAskAIButton() {
+  Widget _buildUploadNoteButton() {
     return FloatingActionButton.extended(
-      onPressed: () {},
+      onPressed: () {
+        Navigator.pushNamed(
+          context,
+          '/copilot-upload',
+          arguments: {'courseId': widget.courseId},
+        );
+      },
       backgroundColor: const Color(0xFF0d9488),
+      extendedIconLabelSpacing: 12,
+      extendedPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
       elevation: 8,
-      label: const Row(
-        children: [
-          Icon(Icons.auto_awesome, color: Colors.white),
-          SizedBox(width: 8),
-          Text(
-            'Ask AI Anything',
-            style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
-          ),
-        ],
+      icon: const Icon(Icons.upload_file, color: Colors.white, size: 24),
+      label: const Text(
+        'Upload Note',
+        style: TextStyle(
+          fontWeight: FontWeight.bold,
+          color: Colors.white,
+          fontSize: 14,
+          letterSpacing: 0.5,
+        ),
       ),
     );
+  }
+
+  String _getTimeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'now';
   }
 }

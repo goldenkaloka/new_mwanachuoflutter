@@ -82,6 +82,7 @@ dependencies:
   docx_to_text: ^1.0.1
   flutter_svg: ^2.2.3
   mime: ^2.0.0
+  syncfusion_flutter_pdfviewer: ^24.2.9
   # flutter_ai_toolkit: ^1.0.0  # Temporarily disabled for Windows builds - Firebase C++ SDK incompatibility
 
 dependency_overrides:

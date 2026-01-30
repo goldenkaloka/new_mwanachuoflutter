@@ -15,6 +15,7 @@ class NoteModel extends NoteEntity {
     required super.downloadCount,
     required super.viewCount,
     required super.isOfficial,
+    super.uploaderName,
     required super.createdAt,
     required super.updatedAt,
   });
@@ -34,6 +35,7 @@ class NoteModel extends NoteEntity {
       downloadCount: json['download_count'] as int,
       viewCount: json['view_count'] as int,
       isOfficial: json['is_official'] as bool,
+      uploaderName: json['uploader_name'] as String?,
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: DateTime.parse(json['updated_at'] as String),
     );
@@ -54,6 +56,7 @@ class NoteModel extends NoteEntity {
       'download_count': downloadCount,
       'view_count': viewCount,
       'is_official': isOfficial,
+      'uploader_name': uploaderName,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
@@ -73,6 +76,7 @@ class NoteModel extends NoteEntity {
     int? downloadCount,
     int? viewCount,
     bool? isOfficial,
+    String? uploaderName,
     DateTime? createdAt,
     DateTime? updatedAt,
   }) {
@@ -90,6 +94,7 @@ class NoteModel extends NoteEntity {
       downloadCount: downloadCount ?? this.downloadCount,
       viewCount: viewCount ?? this.viewCount,
       isOfficial: isOfficial ?? this.isOfficial,
+      uploaderName: uploaderName ?? this.uploaderName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
     );

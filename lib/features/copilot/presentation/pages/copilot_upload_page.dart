@@ -29,14 +29,24 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
-      allowedExtensions: ['pdf', 'docx', 'doc'],
+      allowedExtensions: [
+        'pdf',
+        'docx',
+        'doc',
+        'pptx',
+        'ppt',
+        'jpg',
+        'jpeg',
+        'png',
+        'webp',
+      ],
     );
 
     if (result != null) {
       setState(() {
         _selectedFile = File(result.files.single.path!);
         _titleController.text = result.files.single.name.replaceAll(
-          RegExp(r'\.(pdf|docx|doc)$'),
+          RegExp(r'\.(pdf|docx|doc|pptx|ppt|jpg|jpeg|png|webp)$'),
           '',
         );
       });
@@ -139,7 +149,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'PDF or DOCX files only',
+                    'PDF, Word, PPT or Images supported',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),

@@ -5,7 +5,6 @@ import 'package:mwanachuo/features/copilot/data/models/concept_model.dart';
 import 'package:mwanachuo/features/copilot/data/models/flashcard_model.dart';
 import 'package:mwanachuo/features/copilot/data/models/tag_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'dart:convert';
 import 'dart:async';
 import 'package:mime/mime.dart'; // Ensure you have this package or use lookupMimeType logic
 
@@ -124,7 +123,7 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
     try {
       PostgrestFilterBuilder query = supabase
           .from('course_notes')
-          .select()
+          .select('*, users:uploaded_by(full_name)')
           .eq('course_id', courseId);
 
       // Apply filter
@@ -138,9 +137,14 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
       }
 
       final response = await query.order('created_at', ascending: false);
-      return (response as List)
-          .map((json) => NoteModel.fromJson(json as Map<String, dynamic>))
-          .toList();
+      return (response as List).map((json) {
+        final Map<String, dynamic> noteJson = Map<String, dynamic>.from(json);
+        final users = noteJson['users'];
+        if (users != null) {
+          noteJson['uploader_name'] = users['full_name'];
+        }
+        return NoteModel.fromJson(noteJson);
+      }).toList();
     } catch (e) {
       throw Exception('Failed to get course notes: $e');
     }
@@ -151,11 +155,16 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
     try {
       final response = await supabase
           .from('course_notes')
-          .select()
+          .select('*, users:uploaded_by(full_name)')
           .eq('id', noteId)
           .single();
 
-      return NoteModel.fromJson(response);
+      final Map<String, dynamic> noteJson = Map<String, dynamic>.from(response);
+      final users = noteJson['users'];
+      if (users != null) {
+        noteJson['uploader_name'] = users['full_name'];
+      }
+      return NoteModel.fromJson(noteJson);
     } catch (e) {
       throw Exception('Failed to get note: $e');
     }
@@ -247,8 +256,20 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
     required String courseId,
     int limit = 10,
   }) async {
-    // TODO: Implement semantic search edge function if needed.
-    // For now, this is a placeholder as the main focus is RAG Chat.
-    return [];
+    try {
+      final response = await supabase.functions.invoke(
+        'semantic-search',
+        body: {'query': query, 'course_id': courseId, 'limit': limit},
+      );
+
+      final data = response.data;
+      if (data != null && data['results'] != null) {
+        final List results = data['results'];
+        return results.map((json) => NoteModel.fromJson(json)).toList();
+      }
+      return [];
+    } catch (e) {
+      throw Exception('Semantic search failed: $e');
+    }
   }
 }

@@ -220,7 +220,7 @@ Future<void> initializeDependencies() async {
   _initDashboardFeature();
   _initPromotionsFeature();
   // _initMwanachuomindFeature(); // Removed
-  _initCopilotFeature();
+  await _initCopilotFeature();
 
   // ============================================================================
   // Features - Authentication
@@ -795,7 +795,7 @@ void _initPromotionsFeature() {
 // ============================================
 // MWANACHUO COPILOT FEATURE (NEW)
 // ============================================
-void _initCopilotFeature() {
+Future<void> _initCopilotFeature() async {
   // Use Cases
   sl.registerLazySingleton(() => UploadNote(sl()));
   sl.registerLazySingleton(() => GetCourseNotes(sl()));
@@ -812,8 +812,11 @@ void _initCopilotFeature() {
   sl.registerLazySingleton<CopilotRemoteDataSource>(
     () => CopilotRemoteDataSourceImpl(supabase: sl(), httpClient: sl()),
   );
+
+  final copilotLocalDataSource = CopilotLocalDataSourceImpl();
+  await copilotLocalDataSource.init();
   sl.registerLazySingleton<CopilotLocalDataSource>(
-    () => CopilotLocalDataSourceImpl(),
+    () => copilotLocalDataSource,
   );
 
   // BLoC

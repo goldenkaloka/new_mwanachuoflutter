@@ -17,19 +17,26 @@ class CopilotLoading extends CopilotState {}
 
 class CopilotNotesLoaded extends CopilotState {
   final List<NoteEntity> notes;
+  final List<NoteEntity> downloadedNotes;
   final String? currentFilter;
 
-  const CopilotNotesLoaded({required this.notes, this.currentFilter});
+  const CopilotNotesLoaded({
+    required this.notes,
+    this.downloadedNotes = const [],
+    this.currentFilter,
+  });
 
   @override
-  List<Object?> get props => [notes, currentFilter];
+  List<Object?> get props => [notes, downloadedNotes, currentFilter];
 
   CopilotNotesLoaded copyWith({
     List<NoteEntity>? notes,
+    List<NoteEntity>? downloadedNotes,
     String? currentFilter,
   }) {
     return CopilotNotesLoaded(
       notes: notes ?? this.notes,
+      downloadedNotes: downloadedNotes ?? this.downloadedNotes,
       currentFilter: currentFilter ?? this.currentFilter,
     );
   }
@@ -41,6 +48,7 @@ class CopilotNoteDetailsLoaded extends CopilotState {
   final List<FlashcardEntity> flashcards;
   final List<TagEntity> tags;
   final bool isDownloaded;
+  final String? localFilePath;
 
   const CopilotNoteDetailsLoaded({
     required this.note,
@@ -48,10 +56,18 @@ class CopilotNoteDetailsLoaded extends CopilotState {
     required this.flashcards,
     required this.tags,
     required this.isDownloaded,
+    this.localFilePath,
   });
 
   @override
-  List<Object?> get props => [note, concepts, flashcards, tags, isDownloaded];
+  List<Object?> get props => [
+    note,
+    concepts,
+    flashcards,
+    tags,
+    isDownloaded,
+    localFilePath,
+  ];
 }
 
 class CopilotUploading extends CopilotState {

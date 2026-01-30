@@ -57,6 +57,12 @@ abstract class CopilotRepository {
   /// Check if note is downloaded
   Future<bool> isNoteDownloaded(String noteId);
 
+  /// Get local file path for a downloaded note
+  Future<String?> getLocalFilePath(String noteId);
+
+  /// Get all downloaded notes for a course
+  Future<Either<Failure, List<NoteEntity>>> getDownloadedNotes(String courseId);
+
   /// Delete downloaded note
   Future<Either<Failure, void>> deleteDownloadedNote(String noteId);
 }

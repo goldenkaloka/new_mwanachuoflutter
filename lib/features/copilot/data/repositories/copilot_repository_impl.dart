@@ -154,7 +154,24 @@ class CopilotRepositoryImpl implements CopilotRepository {
       );
       return Right(results);
     } catch (e) {
-      return Left(ServerFailure(e.toString()));
+      // Fallback to local keyword search if remote fails (quota, offline, etc)
+      try {
+        final cachedNotes = await localDataSource.getCachedCourseNotes(
+          courseId,
+        );
+        final lowercaseQuery = query.toLowerCase();
+
+        final filteredNotes = cachedNotes.where((note) {
+          final titleMatch = note.title.toLowerCase().contains(lowercaseQuery);
+          final descMatch =
+              note.description?.toLowerCase().contains(lowercaseQuery) ?? false;
+          return titleMatch || descMatch;
+        }).toList();
+
+        return Right(filteredNotes);
+      } catch (cacheError) {
+        return Left(ServerFailure(e.toString()));
+      }
     }
   }
 
@@ -191,6 +208,32 @@ class CopilotRepositoryImpl implements CopilotRepository {
   @override
   Future<bool> isNoteDownloaded(String noteId) async {
     return await localDataSource.isNoteDownloaded(noteId);
+  }
+
+  @override
+  Future<String?> getLocalFilePath(String noteId) async {
+    return await localDataSource.getLocalFilePath(noteId);
+  }
+
+  @override
+  Future<Either<Failure, List<NoteEntity>>> getDownloadedNotes(
+    String courseId,
+  ) async {
+    try {
+      final downloadedNotes = await localDataSource.getCachedCourseNotes(
+        courseId,
+      );
+      // Filter only those that are actually in downloadsBox
+      final List<NoteEntity> actuallyDownloaded = [];
+      for (var note in downloadedNotes) {
+        if (await localDataSource.isNoteDownloaded(note.id)) {
+          actuallyDownloaded.add(note);
+        }
+      }
+      return Right(actuallyDownloaded);
+    } catch (e) {
+      return Left(CacheFailure(e.toString()));
+    }
   }
 
   @override

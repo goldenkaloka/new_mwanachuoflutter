@@ -64,6 +64,41 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
                     return _buildEmptyState();
                   }
                   return _buildNotesList(state.notes);
+                } else if (state is CopilotSearchResults) {
+                  return Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 8,
+                        ),
+                        color: Colors.grey[100],
+                        child: Row(
+                          children: [
+                            Text(
+                              'Search results for: "${state.query}"',
+                              style: const TextStyle(
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                            const Spacer(),
+                            TextButton(
+                              onPressed: () {
+                                context.read<CopilotBloc>().add(
+                                  LoadCourseNotes(courseId: widget.courseId),
+                                );
+                              },
+                              child: const Text('Clear'),
+                            ),
+                          ],
+                        ),
+                      ),
+                      if (state.results.isEmpty)
+                        Expanded(child: _buildEmptySearchState())
+                      else
+                        Expanded(child: _buildNotesList(state.results)),
+                    ],
+                  );
                 } else if (state is CopilotError) {
                   return Center(child: Text('Error: ${state.message}'));
                 }
@@ -82,8 +117,22 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
           );
         },
         backgroundColor: const Color(0xFF0d9488),
-        icon: const Icon(Icons.upload_file),
-        label: const Text('Upload Note'),
+        extendedIconLabelSpacing: 12,
+        extendedPadding: const EdgeInsets.symmetric(
+          horizontal: 20,
+          vertical: 12,
+        ),
+        elevation: 8,
+        icon: const Icon(Icons.upload_file, color: Colors.white, size: 24),
+        label: const Text(
+          'Upload Note',
+          style: TextStyle(
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+            fontSize: 14,
+            letterSpacing: 0.5,
+          ),
+        ),
       ),
     );
   }
@@ -168,6 +217,36 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
                           note.title,
                           style: Theme.of(context).textTheme.titleMedium
                               ?.copyWith(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              'by ${note.uploaderName ?? 'User'}',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Colors.grey[600],
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              '•',
+                              style: TextStyle(
+                                color: Colors.grey[400],
+                                fontSize: 11,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              _getTimeAgo(note.createdAt),
+                              style: Theme.of(context).textTheme.bodySmall
+                                  ?.copyWith(
+                                    color: const Color(0xFF14b8a6),
+                                    fontSize: 10,
+                                  ),
+                            ),
+                          ],
                         ),
                         if (note.description != null) ...[
                           const SizedBox(height: 4),
@@ -333,6 +412,31 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
     );
   }
 
+  Widget _buildEmptySearchState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.search_off_outlined, size: 64, color: Colors.grey[400]),
+          const SizedBox(height: 16),
+          Text(
+            'No matching notes',
+            style: Theme.of(
+              context,
+            ).textTheme.titleLarge?.copyWith(color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Try a different concept or keyword',
+            style: Theme.of(
+              context,
+            ).textTheme.bodyMedium?.copyWith(color: Colors.grey[500]),
+          ),
+        ],
+      ),
+    );
+  }
+
   Future<void> _showSearchDialog() async {
     final controller = TextEditingController();
     final result = await showDialog<String>(
@@ -368,5 +472,13 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
         );
       }
     }
+  }
+
+  String _getTimeAgo(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inDays > 0) return '${diff.inDays}d ago';
+    if (diff.inHours > 0) return '${diff.inHours}h ago';
+    if (diff.inMinutes > 0) return '${diff.inMinutes}m ago';
+    return 'now';
   }
 }

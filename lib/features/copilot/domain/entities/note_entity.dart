@@ -12,6 +12,7 @@ class NoteEntity {
   final int downloadCount;
   final int viewCount;
   final bool isOfficial;
+  final String? uploaderName;
   final DateTime createdAt;
   final DateTime updatedAt;
 
@@ -29,6 +30,7 @@ class NoteEntity {
     required this.downloadCount,
     required this.viewCount,
     required this.isOfficial,
+    this.uploaderName,
     required this.createdAt,
     required this.updatedAt,
   });
