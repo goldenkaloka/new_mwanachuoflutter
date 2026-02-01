@@ -213,7 +213,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                         color: const Color(0xFF0d9488),
                         borderRadius: BorderRadius.circular(8),
                       ),
-                      child: InkWell(
+                      child: GestureDetector(
                         onTap: () {
                           if (_searchController.text.isNotEmpty) {
                             _navigateToChat(_searchController.text);
@@ -232,6 +232,10 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                   ],
                 ),
                 border: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                errorBorder: InputBorder.none,
+                disabledBorder: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: 16,
                   vertical: 14,
