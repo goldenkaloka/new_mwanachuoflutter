@@ -49,8 +49,12 @@ class PromotionCubit extends Cubit<PromotionState> {
     required DateTime startDate,
     required DateTime endDate,
     File? image,
+    File? video,
     String? targetUrl,
     List<String>? terms,
+    String type = 'banner',
+    int priority = 0,
+    String buttonText = 'Shop Now',
   }) async {
     if (isClosed) return;
 
@@ -64,8 +68,12 @@ class PromotionCubit extends Cubit<PromotionState> {
         startDate: startDate,
         endDate: endDate,
         image: image,
+        video: video,
         targetUrl: targetUrl,
         terms: terms,
+        type: type,
+        priority: priority,
+        buttonText: buttonText,
       ),
     );
 

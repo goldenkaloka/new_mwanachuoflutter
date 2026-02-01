@@ -14,7 +14,8 @@ class UpdateAccommodation
 
   @override
   Future<Either<Failure, AccommodationEntity>> call(
-      UpdateAccommodationParams params) async {
+    UpdateAccommodationParams params,
+  ) async {
     return await repository.updateAccommodation(
       accommodationId: params.accommodationId,
       name: params.name,
@@ -32,6 +33,7 @@ class UpdateAccommodation
       bathrooms: params.bathrooms,
       isActive: params.isActive,
       metadata: params.metadata,
+      isGlobal: params.isGlobal,
     );
   }
 }
@@ -53,6 +55,7 @@ class UpdateAccommodationParams extends Equatable {
   final int? bathrooms;
   final bool? isActive;
   final Map<String, dynamic>? metadata;
+  final bool? isGlobal;
 
   const UpdateAccommodationParams({
     required this.accommodationId,
@@ -71,26 +74,26 @@ class UpdateAccommodationParams extends Equatable {
     this.bathrooms,
     this.isActive,
     this.metadata,
+    this.isGlobal,
   });
 
   @override
   List<Object?> get props => [
-        accommodationId,
-        name,
-        description,
-        price,
-        priceType,
-        roomType,
-        newImages,
-        existingImages,
-        location,
-        contactPhone,
-        contactEmail,
-        amenities,
-        bedrooms,
-        bathrooms,
-        isActive,
-        metadata,
-      ];
+    accommodationId,
+    name,
+    description,
+    price,
+    priceType,
+    roomType,
+    newImages,
+    existingImages,
+    location,
+    contactPhone,
+    contactEmail,
+    amenities,
+    bedrooms,
+    bathrooms,
+    isActive,
+    metadata,
+  ];
 }
-

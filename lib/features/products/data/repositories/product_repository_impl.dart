@@ -134,67 +134,85 @@ class ProductRepositoryImpl implements ProductRepository {
     required List<File> images,
     required String location,
     Map<String, dynamic>? metadata,
+    double? oldPrice,
+    bool isGlobal = false,
   }) async {
-      LoggerService.info('ProductRepository: Creating product - $title');
-      
-      if (!await networkInfo.isConnected) {
-        LoggerService.warning('ProductRepository: No internet connection');
-        return Left(NetworkFailure('No internet connection'));
-      }
+    LoggerService.info('ProductRepository: Creating product - $title');
 
-      try {
-        // Upload images first
-        LoggerService.info('ProductRepository: Uploading ${images.length} images...');
-        final uploadResult = await uploadImages(
-          UploadMultipleImagesParams(
-            imageFiles: images,
-            bucket: DatabaseConstants.productImagesBucket,
-            folder: 'products',
-          ),
-        );
+    if (!await networkInfo.isConnected) {
+      LoggerService.warning('ProductRepository: No internet connection');
+      return Left(NetworkFailure('No internet connection'));
+    }
 
-        return await uploadResult.fold(
-          (failure) {
-            LoggerService.error('ProductRepository: Image upload failed', failure.message);
-            return Left(failure);
-          },
-          (uploadedMedia) async {
-            final imageUrls = uploadedMedia.map((m) => m.url).toList();
-            LoggerService.info('ProductRepository: Images uploaded successfully - ${imageUrls.length} URLs');
+    try {
+      // Upload images first
+      LoggerService.info(
+        'ProductRepository: Uploading ${images.length} images...',
+      );
+      final uploadResult = await uploadImages(
+        UploadMultipleImagesParams(
+          imageFiles: images,
+          bucket: DatabaseConstants.productImagesBucket,
+          folder: 'products',
+        ),
+      );
 
-            LoggerService.info('ProductRepository: Creating product in database...');
-            final product = await remoteDataSource.createProduct(
-              title: title,
-              description: description,
-              price: price,
-              category: category,
-              condition: condition,
-              imageUrls: imageUrls,
-              location: location,
-              metadata: metadata,
+      return await uploadResult.fold(
+        (failure) {
+          LoggerService.error(
+            'ProductRepository: Image upload failed',
+            failure.message,
+          );
+          return Left(failure);
+        },
+        (uploadedMedia) async {
+          final imageUrls = uploadedMedia.map((m) => m.url).toList();
+          LoggerService.info(
+            'ProductRepository: Images uploaded successfully - ${imageUrls.length} URLs',
+          );
+
+          LoggerService.info(
+            'ProductRepository: Creating product in database...',
+          );
+          final product = await remoteDataSource.createProduct(
+            title: title,
+            description: description,
+            price: price,
+            category: category,
+            condition: condition,
+            imageUrls: imageUrls,
+            location: location,
+            metadata: metadata,
+            oldPrice: oldPrice,
+            isGlobal: isGlobal,
+          );
+
+          LoggerService.info(
+            'ProductRepository: Product created - ID: ${product.id}',
+          );
+
+          // Add product to cache (incremental update)
+          try {
+            await localDataSource.addProductToCache(product);
+            LoggerService.debug('ProductRepository: Product added to cache');
+          } catch (e) {
+            LoggerService.warning(
+              'ProductRepository: Failed to cache product',
+              e,
             );
+            // Non-critical error, continue
+          }
 
-            LoggerService.info('ProductRepository: Product created - ID: ${product.id}');
-
-            // Add product to cache (incremental update)
-            try {
-              await localDataSource.addProductToCache(product);
-              LoggerService.debug('ProductRepository: Product added to cache');
-            } catch (e) {
-              LoggerService.warning('ProductRepository: Failed to cache product', e);
-              // Non-critical error, continue
-            }
-
-            return Right(product);
-          },
-        );
-      } on ServerException catch (e) {
-        LoggerService.error('ProductRepository: ServerException', e.message);
-        return Left(ServerFailure(e.message));
-      } catch (e, stackTrace) {
-        LoggerService.error('ProductRepository: Unexpected error', e, stackTrace);
-        return Left(ServerFailure('Failed to create product: $e'));
-      }
+          return Right(product);
+        },
+      );
+    } on ServerException catch (e) {
+      LoggerService.error('ProductRepository: ServerException', e.message);
+      return Left(ServerFailure(e.message));
+    } catch (e, stackTrace) {
+      LoggerService.error('ProductRepository: Unexpected error', e, stackTrace);
+      return Left(ServerFailure('Failed to create product: $e'));
+    }
   }
 
   @override
@@ -210,6 +228,8 @@ class ProductRepositoryImpl implements ProductRepository {
     String? location,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    double? oldPrice,
+    bool? isGlobal,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -234,10 +254,7 @@ class ProductRepositoryImpl implements ProductRepository {
         );
 
         // Combine existing and new images
-        finalImageUrls = [
-          ...(existingImages ?? []),
-          ...newImageUrls,
-        ];
+        finalImageUrls = [...(existingImages ?? []), ...newImageUrls];
       } else if (existingImages != null) {
         finalImageUrls = existingImages;
       }
@@ -253,16 +270,18 @@ class ProductRepositoryImpl implements ProductRepository {
         location: location,
         isActive: isActive,
         metadata: metadata,
+        oldPrice: oldPrice,
+        isGlobal: isGlobal,
       );
 
-              // Update product in cache (incremental update)
-              try {
-                await localDataSource.updateProductInCache(product);
-                LoggerService.debug('ProductRepository: Product updated in cache');
-              } catch (e) {
-                LoggerService.warning('ProductRepository: Failed to update cache', e);
-                // Non-critical error, continue
-              }
+      // Update product in cache (incremental update)
+      try {
+        await localDataSource.updateProductInCache(product);
+        LoggerService.debug('ProductRepository: Product updated in cache');
+      } catch (e) {
+        LoggerService.warning('ProductRepository: Failed to update cache', e);
+        // Non-critical error, continue
+      }
 
       return Right(product);
     } on ServerException catch (e) {
@@ -315,4 +334,3 @@ class ProductRepositoryImpl implements ProductRepository {
     return Left(ServerFailure('Feature not implemented'));
   }
 }
-

@@ -15,6 +15,10 @@ abstract class PromotionRemoteDataSource {
     String? imageUrl,
     String? targetUrl,
     List<String>? terms,
+    String type = 'banner',
+    String? videoUrl,
+    int priority = 0,
+    String buttonText = 'Shop Now',
   });
 }
 
@@ -36,7 +40,9 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
           .gte('end_date', now)
           .order('created_at', ascending: false);
 
-      return (response as List).map((json) => PromotionModel.fromJson(json)).toList();
+      return (response as List)
+          .map((json) => PromotionModel.fromJson(json))
+          .toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
@@ -71,6 +77,10 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
     String? imageUrl,
     String? targetUrl,
     List<String>? terms,
+    String type = 'banner',
+    String? videoUrl,
+    int priority = 0,
+    String buttonText = 'Shop Now',
   }) async {
     try {
       final response = await supabaseClient
@@ -84,6 +94,10 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
             'image_url': imageUrl,
             'target_url': targetUrl,
             'terms': terms,
+            'type': type,
+            'video_url': videoUrl,
+            'priority': priority,
+            'button_text': buttonText,
             'created_at': DateTime.now().toIso8601String(),
           })
           .select()
@@ -97,4 +111,3 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
     }
   }
 }
-

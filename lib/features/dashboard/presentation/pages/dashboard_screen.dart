@@ -14,6 +14,7 @@ import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_state.dart';
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
+import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
@@ -30,6 +31,9 @@ class DashboardScreen extends StatelessWidget {
         BlocProvider(
           create: (context) =>
               sl<SubscriptionCubit>()..loadSellerSubscription(userId ?? ''),
+        ),
+        BlocProvider(
+          create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
         ),
       ],
       child: const _DashboardView(),
@@ -276,9 +280,234 @@ class _DashboardViewState extends State<_DashboardView> {
                           },
                         ),
 
-                        // Recent Activity
+                        // Use BlocListener for side effects like snackbars
+                        BlocListener<WalletBloc, WalletState>(
+                          listener: (context, state) {
+                            if (state is WalletTopUpFailure) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Top Up Failed: ${state.message}',
+                                  ),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            } else if (state is WalletTopUpInitiated) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Payment initiated! Check your phone for the prompt.',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
+                            }
+                          },
+                          child: BlocBuilder<WalletBloc, WalletState>(
+                            builder: (context, walletState) {
+                              // Debug: Print current state
+                              debugPrint(
+                                'Dashboard - WalletState: $walletState',
+                              );
+
+                              if (walletState is WalletLoading) {
+                                // Show skeleton loader while loading
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF008080),
+                                        Color(0xFF004D4D),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                  ),
+                                  child: const Center(
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                );
+                              }
+
+                              if (walletState is WalletError) {
+                                // Show error state
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(16),
+                                    border: Border.all(
+                                      color: Colors.red.withValues(alpha: 0.3),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    children: [
+                                      const Icon(
+                                        Icons.error_outline,
+                                        color: Colors.red,
+                                        size: 32,
+                                      ),
+                                      const SizedBox(height: 8),
+                                      Text(
+                                        'Failed to load wallet',
+                                        style: GoogleFonts.inter(
+                                          color: primaryTextColor,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        walletState.message,
+                                        style: GoogleFonts.inter(
+                                          color: secondaryTextColor,
+                                          fontSize: 12,
+                                        ),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 12),
+                                      TextButton(
+                                        onPressed: () {
+                                          context.read<WalletBloc>().add(
+                                            LoadWalletData(),
+                                          );
+                                        },
+                                        child: const Text('Retry'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+
+                              // Check for any state that contains a wallet
+                              final wallet = walletState is WalletLoaded
+                                  ? walletState.wallet
+                                  : walletState is WalletTopUpInitiated
+                                  ? walletState.wallet
+                                  : walletState is WalletTopUpFailure
+                                  ? walletState.wallet
+                                  : null;
+
+                              if (wallet != null) {
+                                final currencyFormat = NumberFormat.currency(
+                                  symbol: 'TZS ',
+                                  decimalDigits: 0,
+                                );
+                                return Container(
+                                  margin: const EdgeInsets.only(bottom: 16),
+                                  padding: const EdgeInsets.all(20),
+                                  decoration: BoxDecoration(
+                                    gradient: const LinearGradient(
+                                      colors: [
+                                        Color(0xFF008080),
+                                        Color(0xFF004D4D),
+                                      ],
+                                      begin: Alignment.topLeft,
+                                      end: Alignment.bottomRight,
+                                    ),
+                                    borderRadius: BorderRadius.circular(16),
+                                    boxShadow: [
+                                      BoxShadow(
+                                        color: Colors.teal.withValues(
+                                          alpha: 0.3,
+                                        ),
+                                        blurRadius: 8,
+                                        offset: const Offset(0, 4),
+                                      ),
+                                    ],
+                                  ),
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Row(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Wallet Balance',
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white70,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 4),
+                                              Text(
+                                                currencyFormat.format(
+                                                  wallet.balance,
+                                                ),
+                                                style: GoogleFonts.inter(
+                                                  color: Colors.white,
+                                                  fontSize: 28,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          ElevatedButton.icon(
+                                            onPressed: () =>
+                                                _showTopUpDialog(context),
+                                            icon: const Icon(
+                                              Icons.add,
+                                              size: 18,
+                                            ),
+                                            label: const Text('Top Up'),
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor: Colors.white,
+                                              foregroundColor: Colors.teal,
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 16,
+                                                    vertical: 10,
+                                                  ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(30),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                      const SizedBox(height: 12),
+                                      TextButton.icon(
+                                        onPressed: () {
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/wallet',
+                                          );
+                                        },
+                                        icon: const Icon(
+                                          Icons.history,
+                                          color: Colors.white70,
+                                          size: 16,
+                                        ),
+                                        label: Text(
+                                          'View Transactions',
+                                          style: GoogleFonts.inter(
+                                            color: Colors.white70,
+                                            fontSize: 13,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }
+                              return const SizedBox.shrink();
+                            },
+                          ),
+                        ), // Quick Stats
                         Text(
-                          'Recent Activity',
+                          'Quick Stats',
                           style: GoogleFonts.inter(
                             fontSize: 22,
                             fontWeight: FontWeight.bold,
@@ -287,7 +516,7 @@ class _DashboardViewState extends State<_DashboardView> {
                           ),
                         ),
                         const SizedBox(height: 12),
-                        _buildRecentActivity(
+                        _buildQuickStats(
                           context,
                           stats,
                           cardBgColor,
@@ -346,7 +575,7 @@ class _DashboardViewState extends State<_DashboardView> {
     );
   }
 
-  Widget _buildRecentActivity(
+  Widget _buildQuickStats(
     BuildContext context,
     dynamic stats,
     Color cardBgColor,
@@ -713,6 +942,129 @@ class _DashboardViewState extends State<_DashboardView> {
           ),
         );
       }).toList(),
+    );
+  }
+
+  void _showTopUpDialog(BuildContext context) {
+    final walletBloc = context.read<WalletBloc>();
+    final phoneController = TextEditingController();
+    final amountController = TextEditingController();
+    String? selectedProvider;
+
+    final providers = [
+      {'label': 'mixx by yass', 'value': 'TIGOPESA'},
+      {'label': 'Vodacom', 'value': 'M-PESA'},
+      {'label': 'Airtel', 'value': 'AIRTEL MONEY'},
+      {'label': 'Halopesa', 'value': 'HALOPESA'},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (stateContext, setState) => AlertDialog(
+          title: const Text('Top Up Wallet'),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                DropdownButtonFormField<String>(
+                  value: selectedProvider,
+                  decoration: const InputDecoration(
+                    labelText: 'Mobile Provider',
+                    border: OutlineInputBorder(),
+                  ),
+                  items: providers.map((provider) {
+                    return DropdownMenuItem(
+                      value: provider['value'],
+                      child: Text(provider['label']!),
+                    );
+                  }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      selectedProvider = value;
+                    });
+                  },
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: phoneController,
+                  decoration: const InputDecoration(
+                    labelText: 'Phone Number',
+                    hintText: '0712345678',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: amountController,
+                  decoration: const InputDecoration(
+                    labelText: 'Amount (TZS)',
+                    hintText: 'Min: 1,000',
+                    border: OutlineInputBorder(),
+                  ),
+                  keyboardType: TextInputType.number,
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(dialogContext),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () {
+                final phone = phoneController.text.trim();
+                final amountText = amountController.text.trim();
+                final amount = double.tryParse(amountText);
+
+                if (selectedProvider == null) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Please select a mobile provider'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                if (phone.isEmpty || !RegExp(r'^0[67]\d{8}$').hasMatch(phone)) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Invalid phone number (use format: 07XXXXXXXX)',
+                      ),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                if (amount == null || amount < 1000) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Minimum top-up amount is 1,000 TZS'),
+                      backgroundColor: Colors.orange,
+                    ),
+                  );
+                  return;
+                }
+
+                Navigator.pop(dialogContext);
+                walletBloc.add(
+                  InitiateWalletTopUp(
+                    amount: amount,
+                    phone: phoneController.text.replaceAll(RegExp(r'\s+'), ''),
+                    provider: selectedProvider!,
+                  ),
+                );
+              },
+              child: const Text('Confirm'),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

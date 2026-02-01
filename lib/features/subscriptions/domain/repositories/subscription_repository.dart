@@ -41,5 +41,11 @@ abstract class SubscriptionRepository {
     String subscriptionId,
   );
 
-
+  /// Initiate payment for subscription (ZenoPay)
+  Future<Either<Failure, String>> initiateSubscriptionPayment({
+    required double amount,
+    required String phone,
+    required String planId,
+    required String sellerId,
+  });
 }

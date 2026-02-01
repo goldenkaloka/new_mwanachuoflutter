@@ -43,7 +43,9 @@ class ServiceRepositoryImpl implements ServiceRepository {
         final cached = await localDataSource.getCachedServices();
         return Right(cached);
       } on CacheException {
-        return Left(NetworkFailure('No internet connection and no cached data'));
+        return Left(
+          NetworkFailure('No internet connection and no cached data'),
+        );
       }
     }
 
@@ -72,13 +74,17 @@ class ServiceRepositoryImpl implements ServiceRepository {
   }
 
   @override
-  Future<Either<Failure, ServiceEntity>> getServiceById(String serviceId) async {
+  Future<Either<Failure, ServiceEntity>> getServiceById(
+    String serviceId,
+  ) async {
     if (!await networkInfo.isConnected) {
       try {
         final cached = await localDataSource.getCachedService(serviceId);
         return Right(cached);
       } on CacheException {
-        return Left(NetworkFailure('No internet connection and no cached data'));
+        return Left(
+          NetworkFailure('No internet connection and no cached data'),
+        );
       }
     }
 
@@ -128,6 +134,7 @@ class ServiceRepositoryImpl implements ServiceRepository {
     String? contactEmail,
     required List<String> availability,
     Map<String, dynamic>? metadata,
+    bool isGlobal = false,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -142,35 +149,35 @@ class ServiceRepositoryImpl implements ServiceRepository {
         ),
       );
 
-      return await uploadResult.fold(
-        (failure) => Left(failure),
-        (uploadedMedia) async {
-          final imageUrls = uploadedMedia.map((m) => m.url).toList();
+      return await uploadResult.fold((failure) => Left(failure), (
+        uploadedMedia,
+      ) async {
+        final imageUrls = uploadedMedia.map((m) => m.url).toList();
 
-          final service = await remoteDataSource.createService(
-            title: title,
-            description: description,
-            price: price,
-            category: category,
-            priceType: priceType,
-            imageUrls: imageUrls,
-            location: location,
-            contactPhone: contactPhone,
-            contactEmail: contactEmail,
-            availability: availability,
-            metadata: metadata,
-          );
+        final service = await remoteDataSource.createService(
+          title: title,
+          description: description,
+          price: price,
+          category: category,
+          priceType: priceType,
+          imageUrls: imageUrls,
+          location: location,
+          contactPhone: contactPhone,
+          contactEmail: contactEmail,
+          availability: availability,
+          metadata: metadata,
+          isGlobal: isGlobal,
+        );
 
-          // Add service to cache (incremental update)
-          try {
-            await localDataSource.addServiceToCache(service);
-          } catch (e) {
-            // Non-critical error, continue
-          }
-          
-          return Right(service);
-        },
-      );
+        // Add service to cache (incremental update)
+        try {
+          await localDataSource.addServiceToCache(service);
+        } catch (e) {
+          // Non-critical error, continue
+        }
+
+        return Right(service);
+      });
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
@@ -194,6 +201,7 @@ class ServiceRepositoryImpl implements ServiceRepository {
     List<String>? availability,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    bool? isGlobal,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -235,6 +243,7 @@ class ServiceRepositoryImpl implements ServiceRepository {
         availability: availability,
         isActive: isActive,
         metadata: metadata,
+        isGlobal: isGlobal,
       );
 
       // Update service in cache (incremental update)
@@ -243,7 +252,7 @@ class ServiceRepositoryImpl implements ServiceRepository {
       } catch (e) {
         // Non-critical error, continue
       }
-      
+
       return Right(service);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -285,4 +294,3 @@ class ServiceRepositoryImpl implements ServiceRepository {
     }
   }
 }
-

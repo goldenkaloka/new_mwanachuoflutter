@@ -15,6 +15,11 @@ import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_state.dart';
+import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.dart';
+import 'package:mwanachuo/features/subscriptions/domain/usecases/get_seller_subscription.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mwanachuo/features/auth/domain/repositories/auth_repository.dart';
 
 class PostProductScreen extends StatelessWidget {
   const PostProductScreen({super.key});
@@ -39,18 +44,12 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
   final TextEditingController _priceController = TextEditingController();
+  final TextEditingController _oldPriceController = TextEditingController();
   final TextEditingController _locationController = TextEditingController();
   String? _selectedCategory;
   String? _selectedCondition;
   final List<File> _selectedImages = [];
-
-  @override
-  void initState() {
-    super.initState();
-    // Seller check removed for free market transition
-  }
-
-  void _handlePostProduct() {
+  Future<void> _handlePostProduct() async {
     // Validate all required fields
     if (_titleController.text.trim().isEmpty) {
       _showError('Please enter a product title');
@@ -95,16 +94,159 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
       return;
     }
 
-    // Dispatch create product event
+    final oldPrice = double.tryParse(_oldPriceController.text.trim());
+
+    // Check auth and subscription status
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) {
+      _showError('Please login to post products');
+      return;
+    }
+
+    // Show loading while checking subscription
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final getSubscription = sl<GetSellerSubscription>();
+    final result = await getSubscription(authState.user.id);
+
+    // Close loading
+    if (mounted) Navigator.pop(context);
+
+    bool isSubscriber = false;
+    result.fold(
+      (l) => isSubscriber = false,
+      (s) => isSubscriber = s != null && s.isActive,
+    );
+
+    // Check if user has free listings (Student Offer)
+    final int freeListings = authState.user.freeListingsCount;
+
+    if (isSubscriber || freeListings > 0) {
+      if (freeListings > 0 && !isSubscriber) {
+        // Show free listing confirmation
+        if (!mounted) return;
+        final confirmFree = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Use Free Listing?'),
+            content: Text(
+              'You have $freeListings free listings remaining as a student. Would you like to use one for this post?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Use Free Listing'),
+              ),
+            ],
+          ),
+        );
+
+        if (confirmFree == true) {
+          // Show loading
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => const Center(child: CircularProgressIndicator()),
+          );
+
+          final authRepo = sl<AuthRepository>();
+          final result = await authRepo.consumeFreeListing(authState.user.id);
+
+          if (!mounted) return;
+          Navigator.pop(context); // Close loading
+
+          result.fold(
+            (failure) =>
+                _showError('Failed to consume free listing. Please try again.'),
+            (_) => _dispatchCreateProduct(price, oldPrice),
+          );
+          return;
+        }
+      } else {
+        // Business subscriber - post directly
+        _dispatchCreateProduct(price, oldPrice);
+        return;
+      }
+    }
+
+    // Default: 0.5% Fee Logic
+    final fee = price * 0.005;
+    if (!mounted) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Listing Fee'),
+        content: Text(
+          'You are on a standard plan. A 0.5% listing fee of ${fee.toStringAsFixed(0)} TZS will be deducted from your wallet.\n\nSubscribe to Business Plan for unlimited listings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Pay & Post'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // Show specific loading for payment
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final walletRepo = sl<WalletRepository>();
+      final deductResult = await walletRepo.deductBalance(
+        amount: fee,
+        description: 'Listing Fee: ${_titleController.text.trim()}',
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Open payment loading
+
+      deductResult.fold(
+        (failure) {
+          _showError('Insufficient wallet balance. Please top up via ZenoPay.');
+        },
+        (_) {
+          _dispatchCreateProduct(price, oldPrice);
+        },
+      );
+    }
+  }
+
+  void _dispatchCreateProduct(double price, [double? oldPrice]) {
+    final authState = context.read<AuthBloc>().state;
+    final isGlobal =
+        authState is Authenticated && authState.user.userType == 'business';
+
     context.read<ProductBloc>().add(
       CreateProductEvent(
         title: _titleController.text.trim(),
         description: _descriptionController.text.trim(),
         price: price,
+        oldPrice: oldPrice,
         category: _selectedCategory!,
         condition: _selectedCondition!,
         images: _selectedImages,
         location: _locationController.text.trim(),
+        isGlobal: isGlobal,
       ),
     );
   }
@@ -274,6 +416,7 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
     _titleController.dispose();
     _descriptionController.dispose();
     _priceController.dispose();
+    _oldPriceController.dispose();
     _locationController.dispose();
     super.dispose();
   }
@@ -362,9 +505,9 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
                           SizedBox(
                             height: ResponsiveBreakpoints.responsiveValue(
                               context,
-                              compact: 24.0,
-                              medium: 32.0,
-                              expanded: 40.0,
+                              compact: 16.0,
+                              medium: 20.0,
+                              expanded: 24.0,
                             ),
                           ),
                           // Form Fields
@@ -1137,7 +1280,7 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
               ),
               color: secondaryTextColor,
             ),
-            prefixText: '\$ ',
+            prefixText: 'TZS ',
             prefixStyle: GoogleFonts.plusJakartaSans(
               fontSize: ResponsiveBreakpoints.responsiveValue(
                 context,
@@ -1183,6 +1326,112 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
             ),
           ),
         ),
+        SizedBox(
+          height: ResponsiveBreakpoints.responsiveValue(
+            context,
+            compact: 16.0,
+            medium: 20.0,
+            expanded: 24.0,
+          ),
+        ),
+        Text(
+          'Original Price (Optional)',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 16.0,
+              medium: 17.0,
+              expanded: 18.0,
+            ),
+            fontWeight: FontWeight.w600,
+            color: primaryTextColor,
+          ),
+        ),
+        SizedBox(
+          height: ResponsiveBreakpoints.responsiveValue(
+            context,
+            compact: 4.0,
+            medium: 6.0,
+            expanded: 8.0,
+          ),
+        ),
+        TextFormField(
+          controller: _oldPriceController,
+          keyboardType: TextInputType.number,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 16.0,
+              medium: 17.0,
+              expanded: 18.0,
+            ),
+            color: primaryTextColor,
+          ),
+          decoration: InputDecoration(
+            hintText: 'e.g. 50000',
+            hintStyle: GoogleFonts.plusJakartaSans(
+              fontSize: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 17.0,
+                expanded: 18.0,
+              ),
+              color: secondaryTextColor,
+            ),
+            prefixText: 'TZS ',
+            prefixStyle: GoogleFonts.plusJakartaSans(
+              fontSize: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 17.0,
+                expanded: 18.0,
+              ),
+              color: secondaryTextColor,
+            ),
+            filled: true,
+            fillColor: isDarkMode
+                ? kBackgroundColorDark.withValues(alpha: 0.5)
+                : Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: kBaseRadius,
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+              ),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: kBaseRadius,
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
+              ),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: kBaseRadius,
+              borderSide: BorderSide(color: kPrimaryColor, width: 2),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 20.0,
+                expanded: 24.0,
+              ),
+              vertical: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 18.0,
+                expanded: 20.0,
+              ),
+            ),
+          ),
+        ),
+        SizedBox(height: 4),
+        Text(
+          'Adding an original price will show a discount badge to buyers.',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            color: secondaryTextColor,
+          ),
+        ),
       ],
     );
   }
@@ -1220,9 +1469,21 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
           builder: (context, categoryState) {
             List<String> categories = ['Select category'];
             if (categoryState is CategoriesLoaded) {
-              categories.addAll(
-                categoryState.categories.map((c) => c.name).toList(),
-              );
+              final loadedNames = categoryState.categories
+                  .map((c) => c.name)
+                  .toList();
+              categories.addAll(loadedNames);
+
+              // Ensure selected category is in the list to prevent crashes
+              if (_selectedCategory != null &&
+                  !loadedNames.contains(_selectedCategory) &&
+                  _selectedCategory != 'Select category') {
+                categories.add(_selectedCategory!);
+              }
+            } else if (_selectedCategory != null &&
+                _selectedCategory != 'Select category') {
+              // If not loaded but we have a selection, add it to prevent crash
+              categories.add(_selectedCategory!);
             }
 
             return DropdownButtonFormField<String>(
@@ -1350,9 +1611,21 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
           builder: (context, categoryState) {
             List<String> conditions = ['Select condition'];
             if (categoryState is CategoriesLoaded) {
-              conditions.addAll(
-                categoryState.conditions.map((c) => c.name).toList(),
-              );
+              final loadedConditions = categoryState.conditions
+                  .map((c) => c.name)
+                  .toList();
+              conditions.addAll(loadedConditions);
+
+              // Ensure selected condition is in the list
+              if (_selectedCondition != null &&
+                  !loadedConditions.contains(_selectedCondition) &&
+                  _selectedCondition != 'Select condition') {
+                conditions.add(_selectedCondition!);
+              }
+            } else if (_selectedCondition != null &&
+                _selectedCondition != 'Select condition') {
+              // If not loaded but we have a selection, add it to prevent crash
+              conditions.add(_selectedCondition!);
             }
 
             return DropdownButtonFormField<String>(

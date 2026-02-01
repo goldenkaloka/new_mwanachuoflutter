@@ -182,6 +182,8 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         images: event.images,
         location: event.location,
         metadata: event.metadata,
+        oldPrice: event.oldPrice,
+        isGlobal: event.isGlobal,
       ),
     );
 
@@ -228,6 +230,8 @@ class ProductBloc extends Bloc<ProductEvent, ProductState> {
         location: event.location,
         isActive: event.isActive,
         metadata: event.metadata,
+        oldPrice: event.oldPrice,
+        isGlobal: event.isGlobal,
       ),
     );
 

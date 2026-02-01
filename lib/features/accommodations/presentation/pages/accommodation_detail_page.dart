@@ -336,11 +336,13 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
                   'TZS ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType}',
               actionButtonText: 'Contact Owner',
               onActionTap: () {
+                final itemUrl =
+                    'https://www.mwanachuoshop.com/accommodations/${accommodation.id}';
                 WhatsAppContactHelper.contactSeller(
                   context: context,
                   phoneNumber: accommodation.contactPhone,
                   message:
-                      'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi?',
+                      'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?',
                 );
               },
             ),
@@ -661,11 +663,13 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
           ),
           IconButton(
             onPressed: () {
+              final itemUrl =
+                  'https://www.mwanachuoshop.com/accommodations/${accommodation.id}';
               WhatsAppContactHelper.contactSeller(
                 context: context,
                 phoneNumber: accommodation.contactPhone,
                 message:
-                    'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi?',
+                    'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?',
               );
             },
             icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),

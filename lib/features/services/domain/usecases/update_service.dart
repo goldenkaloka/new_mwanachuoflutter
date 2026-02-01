@@ -12,7 +12,9 @@ class UpdateService implements UseCase<ServiceEntity, UpdateServiceParams> {
   UpdateService(this.repository);
 
   @override
-  Future<Either<Failure, ServiceEntity>> call(UpdateServiceParams params) async {
+  Future<Either<Failure, ServiceEntity>> call(
+    UpdateServiceParams params,
+  ) async {
     return await repository.updateService(
       serviceId: params.serviceId,
       title: params.title,
@@ -28,6 +30,7 @@ class UpdateService implements UseCase<ServiceEntity, UpdateServiceParams> {
       availability: params.availability,
       isActive: params.isActive,
       metadata: params.metadata,
+      isGlobal: params.isGlobal,
     );
   }
 }
@@ -47,6 +50,7 @@ class UpdateServiceParams extends Equatable {
   final List<String>? availability;
   final bool? isActive;
   final Map<String, dynamic>? metadata;
+  final bool? isGlobal;
 
   const UpdateServiceParams({
     required this.serviceId,
@@ -63,24 +67,24 @@ class UpdateServiceParams extends Equatable {
     this.availability,
     this.isActive,
     this.metadata,
+    this.isGlobal,
   });
 
   @override
   List<Object?> get props => [
-        serviceId,
-        title,
-        description,
-        price,
-        category,
-        priceType,
-        newImages,
-        existingImages,
-        location,
-        contactPhone,
-        contactEmail,
-        availability,
-        isActive,
-        metadata,
-      ];
+    serviceId,
+    title,
+    description,
+    price,
+    category,
+    priceType,
+    newImages,
+    existingImages,
+    location,
+    contactPhone,
+    contactEmail,
+    availability,
+    isActive,
+    metadata,
+  ];
 }
-

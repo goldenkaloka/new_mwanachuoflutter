@@ -43,6 +43,7 @@ abstract class ServiceRepository {
     String? contactEmail,
     required List<String> availability,
     Map<String, dynamic>? metadata,
+    bool isGlobal = false,
   });
 
   /// Update a service
@@ -61,6 +62,7 @@ abstract class ServiceRepository {
     List<String>? availability,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    bool? isGlobal,
   });
 
   /// Delete a service
@@ -69,4 +71,3 @@ abstract class ServiceRepository {
   /// Increment view count
   Future<Either<Failure, void>> incrementViewCount(String serviceId);
 }
-

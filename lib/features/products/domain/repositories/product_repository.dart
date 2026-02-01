@@ -37,6 +37,8 @@ abstract class ProductRepository {
     required List<File> images,
     required String location,
     Map<String, dynamic>? metadata,
+    double? oldPrice,
+    bool isGlobal = false,
   });
 
   /// Update a product
@@ -52,6 +54,8 @@ abstract class ProductRepository {
     String? location,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    double? oldPrice,
+    bool? isGlobal,
   });
 
   /// Delete a product
@@ -63,4 +67,3 @@ abstract class ProductRepository {
   /// Mark/Unmark product as featured
   Future<Either<Failure, void>> toggleFeatured(String productId);
 }
-

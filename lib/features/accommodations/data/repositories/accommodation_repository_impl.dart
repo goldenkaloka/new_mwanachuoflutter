@@ -75,7 +75,9 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
     }
 
     try {
-      final accommodation = await remoteDataSource.getAccommodationById(accommodationId);
+      final accommodation = await remoteDataSource.getAccommodationById(
+        accommodationId,
+      );
       return Right(accommodation);
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
@@ -121,6 +123,7 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
     required int bedrooms,
     required int bathrooms,
     Map<String, dynamic>? metadata,
+    bool isGlobal = false,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -135,30 +138,30 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
         ),
       );
 
-      return await uploadResult.fold(
-        (failure) => Left(failure),
-        (uploadedMedia) async {
-          final imageUrls = uploadedMedia.map((m) => m.url).toList();
+      return await uploadResult.fold((failure) => Left(failure), (
+        uploadedMedia,
+      ) async {
+        final imageUrls = uploadedMedia.map((m) => m.url).toList();
 
-          final accommodation = await remoteDataSource.createAccommodation(
-            name: name,
-            description: description,
-            price: price,
-            priceType: priceType,
-            roomType: roomType,
-            imageUrls: imageUrls,
-            location: location,
-            contactPhone: contactPhone,
-            contactEmail: contactEmail,
-            amenities: amenities,
-            bedrooms: bedrooms,
-            bathrooms: bathrooms,
-            metadata: metadata,
-          );
+        final accommodation = await remoteDataSource.createAccommodation(
+          name: name,
+          description: description,
+          price: price,
+          priceType: priceType,
+          roomType: roomType,
+          imageUrls: imageUrls,
+          location: location,
+          contactPhone: contactPhone,
+          contactEmail: contactEmail,
+          amenities: amenities,
+          bedrooms: bedrooms,
+          bathrooms: bathrooms,
+          metadata: metadata,
+          isGlobal: isGlobal,
+        );
 
-          return Right(accommodation);
-        },
-      );
+        return Right(accommodation);
+      });
     } on ServerException catch (e) {
       return Left(ServerFailure(e.message));
     } catch (e) {
@@ -184,6 +187,7 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
     int? bathrooms,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    bool? isGlobal,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -227,6 +231,7 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
         bathrooms: bathrooms,
         isActive: isActive,
         metadata: metadata,
+        isGlobal: isGlobal,
       );
 
       return Right(accommodation);
@@ -238,7 +243,9 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
   }
 
   @override
-  Future<Either<Failure, void>> deleteAccommodation(String accommodationId) async {
+  Future<Either<Failure, void>> deleteAccommodation(
+    String accommodationId,
+  ) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
     }
@@ -254,7 +261,9 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
   }
 
   @override
-  Future<Either<Failure, void>> incrementViewCount(String accommodationId) async {
+  Future<Either<Failure, void>> incrementViewCount(
+    String accommodationId,
+  ) async {
     if (!await networkInfo.isConnected) {
       return const Right(null);
     }
@@ -269,4 +278,3 @@ class AccommodationRepositoryImpl implements AccommodationRepository {
     }
   }
 }
-

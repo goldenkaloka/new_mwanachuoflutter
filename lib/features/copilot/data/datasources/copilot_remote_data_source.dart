@@ -8,6 +8,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'dart:async';
 import 'package:mime/mime.dart'; // Ensure you have this package or use lookupMimeType logic
 
+import 'package:path/path.dart' as p;
+
 abstract class CopilotRemoteDataSource {
   /// Upload file to Supabase Storage and create note record
   Future<Map<String, dynamic>> uploadAndAnalyze({
@@ -72,7 +74,11 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
       if (userId == null) throw Exception('User not logged in');
 
       // 1. Upload to Supabase Storage
-      final fileExt = file.path.split('.').last;
+      final String fileName = p.basename(file.path);
+      // Ensure specific extension handling if needed, but basename handles filename.ext correctly
+      // However, typical file upload paths often need the extension separately if not just uploading the blob with a name.
+      // But here we construct "noteId.ext".
+      final fileExt = p.extension(file.path).replaceAll('.', '');
       final filePath = '$userId/$courseId/$noteId.$fileExt';
 
       await supabase.storage
@@ -91,7 +97,7 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
       // Note: We use the existing noteId passed from the repository
       final noteData = {
         'id': noteId,
-        'title': title ?? file.path.split('/').last,
+        'title': title ?? fileName,
         'course_id': courseId,
         'uploaded_by': userId,
         'file_url': publicUrl,

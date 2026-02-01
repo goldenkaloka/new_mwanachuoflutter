@@ -138,6 +138,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
     String? location,
     File? avatarImage,
     String? primaryUniversityId,
+    int? yearOfStudy,
+    int? currentSemester,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -172,6 +174,8 @@ class ProfileRepositoryImpl implements ProfileRepository {
         location: location,
         avatarUrl: avatarUrl,
         primaryUniversityId: primaryUniversityId,
+        yearOfStudy: yearOfStudy,
+        currentSemester: currentSemester,
       );
 
       // Update cache after successful update

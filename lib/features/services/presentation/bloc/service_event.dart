@@ -29,7 +29,15 @@ class LoadServicesEvent extends ServiceEvent {
   });
 
   @override
-  List<Object?> get props => [category, universityId, providerId, isFeatured, limit, offset, filter];
+  List<Object?> get props => [
+    category,
+    universityId,
+    providerId,
+    isFeatured,
+    limit,
+    offset,
+    filter,
+  ];
 }
 
 /// Apply filter event
@@ -78,6 +86,7 @@ class CreateServiceEvent extends ServiceEvent {
   final String? contactEmail;
   final List<String> availability;
   final Map<String, dynamic>? metadata;
+  final bool isGlobal;
 
   const CreateServiceEvent({
     required this.title,
@@ -91,22 +100,24 @@ class CreateServiceEvent extends ServiceEvent {
     this.contactEmail,
     required this.availability,
     this.metadata,
+    this.isGlobal = false,
   });
 
   @override
   List<Object?> get props => [
-        title,
-        description,
-        price,
-        category,
-        priceType,
-        images,
-        location,
-        contactPhone,
-        contactEmail,
-        availability,
-        metadata,
-      ];
+    title,
+    description,
+    price,
+    category,
+    priceType,
+    images,
+    location,
+    contactPhone,
+    contactEmail,
+    availability,
+    metadata,
+    isGlobal,
+  ];
 }
 
 class UpdateServiceEvent extends ServiceEvent {
@@ -144,21 +155,21 @@ class UpdateServiceEvent extends ServiceEvent {
 
   @override
   List<Object?> get props => [
-        serviceId,
-        title,
-        description,
-        price,
-        category,
-        priceType,
-        newImages,
-        existingImages,
-        location,
-        contactPhone,
-        contactEmail,
-        availability,
-        isActive,
-        metadata,
-      ];
+    serviceId,
+    title,
+    description,
+    price,
+    category,
+    priceType,
+    newImages,
+    existingImages,
+    location,
+    contactPhone,
+    contactEmail,
+    availability,
+    isActive,
+    metadata,
+  ];
 }
 
 class DeleteServiceEvent extends ServiceEvent {
@@ -195,4 +206,3 @@ class LoadMoreServicesEvent extends ServiceEvent {
   @override
   List<Object?> get props => [category, universityId, offset, filter];
 }
-

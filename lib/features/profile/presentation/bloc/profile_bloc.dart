@@ -54,6 +54,8 @@ class ProfileBloc extends Bloc<ProfileEvent, ProfileState> {
         location: event.location,
         avatarImage: event.avatarImage,
         primaryUniversityId: event.primaryUniversityId,
+        yearOfStudy: event.yearOfStudy,
+        currentSemester: event.currentSemester,
       ),
     );
 

@@ -12,12 +12,17 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_bloc.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_event.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_state.dart';
+import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.dart';
+import 'package:mwanachuo/features/subscriptions/domain/usecases/get_seller_subscription.dart';
+import 'package:mwanachuo/features/auth/domain/repositories/auth_repository.dart';
 
 class CreateAccommodationScreen extends StatefulWidget {
   const CreateAccommodationScreen({super.key});
 
   @override
-  State<CreateAccommodationScreen> createState() => _CreateAccommodationScreenState();
+  State<CreateAccommodationScreen> createState() =>
+      _CreateAccommodationScreenState();
 }
 
 class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
@@ -64,15 +69,17 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
   void _checkSellerAccess() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      
+
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
         final userRole = authState.user.role.value;
-        
+
         if (userRole == 'buyer') {
-          debugPrint('❌ Buyer attempting to create accommodation - redirecting');
+          debugPrint(
+            '❌ Buyer attempting to create accommodation - redirecting',
+          );
           Navigator.of(context).pop();
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -108,10 +115,12 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
 
     try {
       final remainingSlots = 5 - _selectedImages.length;
-      
+
       // Check if running on desktop (Windows, macOS, Linux)
-      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
-      
+      final isDesktop =
+          !kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
       if (isDesktop) {
         // Use file_picker for desktop platforms
         final result = await FilePicker.platform.pickFiles(
@@ -119,22 +128,22 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
           allowMultiple: true,
           dialogTitle: 'Select accommodation images (max $remainingSlots)',
         );
-        
+
         if (result != null && result.files.isNotEmpty) {
           final List<File> newFiles = [];
           final filesToAdd = result.files.take(remainingSlots);
-          
+
           for (var file in filesToAdd) {
             if (file.path != null) {
               newFiles.add(File(file.path!));
             }
           }
-          
+
           if (newFiles.isNotEmpty) {
             setState(() {
               _selectedImages.addAll(newFiles);
             });
-            
+
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -147,7 +156,7 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
       } else {
         // Use WeChat Assets Picker for mobile platforms
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        
+
         final List<AssetEntity>? result = await AssetPicker.pickAssets(
           context,
           pickerConfig: AssetPickerConfig(
@@ -157,9 +166,13 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
             pickerTheme: ThemeData(
               brightness: isDarkMode ? Brightness.dark : Brightness.light,
               primaryColor: kPrimaryColor,
-              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              scaffoldBackgroundColor: isDarkMode
+                  ? kBackgroundColorDark
+                  : Colors.white,
               appBarTheme: AppBarTheme(
-                backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+                backgroundColor: isDarkMode
+                    ? kBackgroundColorDark
+                    : Colors.white,
                 foregroundColor: isDarkMode ? Colors.white : Colors.black,
                 elevation: 0,
                 iconTheme: IconThemeData(
@@ -234,9 +247,9 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_selectedImages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -246,7 +259,7 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
       );
       return;
     }
-    
+
     if (_selectedType == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -256,7 +269,7 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
       );
       return;
     }
-    
+
     final price = double.tryParse(_priceController.text.trim());
     if (price == null || price <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -267,36 +280,199 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
       );
       return;
     }
-    
+
     // Get selected amenities
     final selectedAmenities = _selectedAmenities.entries
         .where((entry) => entry.value)
         .map((entry) => entry.key)
         .toList();
-    
-    // Dispatch create accommodation event
-    context.read<AccommodationBloc>().add(
-          CreateAccommodationEvent(
-            name: _titleController.text.trim(),
-            description: _descriptionController.text.trim(),
-            price: price,
-            priceType: 'per_month', // Default
-            roomType: _selectedType!,
-            images: _selectedImages,
-            location: _locationController.text.trim(),
-            contactPhone: _contactController.text.trim(),
-            amenities: selectedAmenities,
-            bedrooms: 1, // Default
-            bathrooms: 1, // Default
+
+    // Check auth and subscription status
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please login to list accommodations'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show loading while checking subscription
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final getSubscription = sl<GetSellerSubscription>();
+    final result = await getSubscription(authState.user.id);
+
+    // Close loading
+    if (mounted) Navigator.pop(context);
+
+    bool isSubscriber = false;
+    result.fold(
+      (l) => isSubscriber = false,
+      (s) => isSubscriber = s != null && s.isActive,
+    );
+
+    // Check if user has free listings (Student Offer)
+    final int freeListings = authState.user.freeListingsCount;
+
+    if (isSubscriber || freeListings > 0) {
+      if (freeListings > 0 && !isSubscriber) {
+        // Show free listing confirmation
+        if (!mounted) return;
+        final confirmFree = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Use Free Listing?'),
+            content: Text(
+              'You have $freeListings free listings remaining as a student. Would you like to use one for this accommodation?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Use Free Listing'),
+              ),
+            ],
           ),
         );
+
+        if (confirmFree == true) {
+          // Show loading
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => const Center(child: CircularProgressIndicator()),
+          );
+
+          final authRepo = sl<AuthRepository>();
+          final result = await authRepo.consumeFreeListing(authState.user.id);
+
+          if (!mounted) return;
+          Navigator.pop(context); // Close loading
+
+          result.fold(
+            (failure) => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Failed to consume free listing. Please try again.',
+                ),
+              ),
+            ),
+            (_) => _dispatchCreateAccommodation(price, selectedAmenities),
+          );
+          return;
+        }
+      } else {
+        // Business subscriber - post directly
+        _dispatchCreateAccommodation(price, selectedAmenities);
+        return;
+      }
+    }
+
+    // 2% Fee Logic
+    final fee = price * 0.02;
+    if (!mounted) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Listing Fee'),
+        content: Text(
+          'You are on a standard plan. A 2% listing fee of ${fee.toStringAsFixed(0)} TZS will be deducted from your wallet.\n\nSubscribe to Business Plan for unlimited listings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Pay & Post'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // Show loading for payment
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final walletRepo = sl<WalletRepository>();
+      final deductResult = await walletRepo.deductBalance(
+        amount: fee,
+        description:
+            'Accommodation Listing Fee: ${_titleController.text.trim()}',
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close payment loading
+
+      deductResult.fold(
+        (failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Insufficient wallet balance. Please top up via ZenoPay.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
+        (_) {
+          _dispatchCreateAccommodation(price, selectedAmenities);
+        },
+      );
+    }
+  }
+
+  void _dispatchCreateAccommodation(
+    double price,
+    List<String> selectedAmenities,
+  ) {
+    final authState = context.read<AuthBloc>().state;
+    final isGlobal =
+        authState is Authenticated && authState.user.userType == 'business';
+
+    context.read<AccommodationBloc>().add(
+      CreateAccommodationEvent(
+        name: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        price: price,
+        priceType: 'per_month', // Default
+        roomType: _selectedType!,
+        images: _selectedImages,
+        location: _locationController.text.trim(),
+        contactPhone: _contactController.text.trim(),
+        amenities: selectedAmenities,
+        bedrooms: 1, // Default
+        bathrooms: 1, // Default
+        isGlobal: isGlobal,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
     final borderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
 
     return BlocConsumer<AccommodationBloc, AccommodationState>(
@@ -326,258 +502,299 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+          backgroundColor: isDarkMode
+              ? kBackgroundColorDark
+              : kBackgroundColorLight,
           body: ResponsiveBuilder(
             builder: (context, screenSize) {
-          return Column(
-            children: [
-              // Top App Bar
-              _buildTopAppBar(context, primaryTextColor, secondaryTextColor, screenSize),
-              
-              // Form
-              Expanded(
-                child: SingleChildScrollView(
-                  child: ResponsiveContainer(
-                    child: Padding(
-                      padding: EdgeInsets.all(
-                        ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-                      ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              height: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 24.0,
-                                medium: 32.0,
-                                expanded: 40.0,
-                              ),
+              return Column(
+                children: [
+                  // Top App Bar
+                  _buildTopAppBar(
+                    context,
+                    primaryTextColor,
+                    secondaryTextColor,
+                    screenSize,
+                  ),
+
+                  // Form
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: ResponsiveContainer(
+                        child: Padding(
+                          padding: EdgeInsets.all(
+                            ResponsiveBreakpoints.responsiveHorizontalPadding(
+                              context,
                             ),
-                            
-                            // Photo Upload
-                            _buildPhotoUpload(primaryTextColor, secondaryTextColor, borderColor),
-                            
-                            const SizedBox(height: 24.0),
-                            
-                            // Accommodation Title
-                            TextFormField(
-                              controller: _titleController,
-                              decoration: InputDecoration(
-                                labelText: 'Property Name',
-                                hintText: 'e.g., Cozy Studio near Campus',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  height: ResponsiveBreakpoints.responsiveValue(
+                                    context,
+                                    compact: 24.0,
+                                    medium: 32.0,
+                                    expanded: 40.0,
+                                  ),
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
+
+                                // Photo Upload
+                                _buildPhotoUpload(
+                                  primaryTextColor,
+                                  secondaryTextColor,
+                                  borderColor,
                                 ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a property name';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Type Dropdown
-                            DropdownButtonFormField<String>(
-                              value: _selectedType,
-                              decoration: InputDecoration(
-                                labelText: 'Room Type',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
+
+                                const SizedBox(height: 24.0),
+
+                                // Accommodation Title
+                                TextFormField(
+                                  controller: _titleController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Property Name',
+                                    hintText: 'e.g., Cozy Studio near Campus',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a property name';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                              items: _types.map((type) {
-                                return DropdownMenuItem(
-                                  value: type,
-                                  child: Text(type),
-                                );
-                              }).toList(),
-                              onChanged: (value) {
-                                setState(() {
-                                  _selectedType = value;
-                                });
-                              },
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please select a room type';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Location
-                            TextFormField(
-                              controller: _locationController,
-                              decoration: InputDecoration(
-                                labelText: 'Location',
-                                hintText: 'e.g., 2km from University Gate',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                prefixIcon: const Icon(Icons.location_on),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a location';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Description
-                            TextFormField(
-                              controller: _descriptionController,
-                              maxLines: 5,
-                              decoration: InputDecoration(
-                                labelText: 'Description',
-                                hintText: 'Describe the property, nearby amenities, and facilities...',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a description';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Price
-                            TextFormField(
-                              controller: _priceController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Price per Month',
-                                hintText: '0.00',
-                                prefixText: '\$ ',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a price';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 24.0),
-                            
-                            // Amenities
-                            Text(
-                              'Amenities',
-                              style: GoogleFonts.plusJakartaSans(
-                                color: primaryTextColor,
-                                fontSize: 16.0,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                            const SizedBox(height: 12.0),
-                            Wrap(
-                              spacing: 12.0,
-                              runSpacing: 12.0,
-                              children: _amenities.map((amenity) {
-                                return FilterChip(
-                                  label: Text(amenity),
-                                  selected: _selectedAmenities[amenity]!,
-                                  onSelected: (selected) {
+
+                                const SizedBox(height: 20.0),
+
+                                // Type Dropdown
+                                DropdownButtonFormField<String>(
+                                  value: _selectedType,
+                                  decoration: InputDecoration(
+                                    labelText: 'Room Type',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  items: _types.map((type) {
+                                    return DropdownMenuItem(
+                                      value: type,
+                                      child: Text(type),
+                                    );
+                                  }).toList(),
+                                  onChanged: (value) {
                                     setState(() {
-                                      _selectedAmenities[amenity] = selected;
+                                      _selectedType = value;
                                     });
                                   },
-                                  selectedColor: kPrimaryColor.withValues(alpha: 0.2),
-                                  checkmarkColor: kPrimaryColor,
-                                );
-                              }).toList(),
-                            ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Contact Information
-                            TextFormField(
-                              controller: _contactController,
-                              decoration: InputDecoration(
-                                labelText: 'Contact Information',
-                                hintText: 'Email or phone number',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please select a room type';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
+
+                                const SizedBox(height: 20.0),
+
+                                // Location
+                                TextFormField(
+                                  controller: _locationController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Location',
+                                    hintText: 'e.g., 2km from University Gate',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    prefixIcon: const Icon(Icons.location_on),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a location';
+                                    }
+                                    return null;
+                                  },
                                 ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter contact information';
-                                }
-                                return null;
-                              },
+
+                                const SizedBox(height: 20.0),
+
+                                // Description
+                                TextFormField(
+                                  controller: _descriptionController,
+                                  maxLines: 5,
+                                  decoration: InputDecoration(
+                                    labelText: 'Description',
+                                    hintText:
+                                        'Describe the property, nearby amenities, and facilities...',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a description';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 20.0),
+
+                                // Price
+                                TextFormField(
+                                  controller: _priceController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    labelText: 'Price per Month',
+                                    hintText: '0.00',
+                                    prefixText: '\$ ',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a price';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 24.0),
+
+                                // Amenities
+                                Text(
+                                  'Amenities',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    color: primaryTextColor,
+                                    fontSize: 16.0,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                const SizedBox(height: 12.0),
+                                Wrap(
+                                  spacing: 12.0,
+                                  runSpacing: 12.0,
+                                  children: _amenities.map((amenity) {
+                                    return FilterChip(
+                                      label: Text(amenity),
+                                      selected: _selectedAmenities[amenity]!,
+                                      onSelected: (selected) {
+                                        setState(() {
+                                          _selectedAmenities[amenity] =
+                                              selected;
+                                        });
+                                      },
+                                      selectedColor: kPrimaryColor.withValues(
+                                        alpha: 0.2,
+                                      ),
+                                      checkmarkColor: kPrimaryColor,
+                                    );
+                                  }).toList(),
+                                ),
+
+                                const SizedBox(height: 24.0),
+
+                                // Contact Information
+                                TextFormField(
+                                  controller: _contactController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Contact Information',
+                                    hintText: 'Email or phone number',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter contact information';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                SizedBox(
+                                  height: ResponsiveBreakpoints.responsiveValue(
+                                    context,
+                                    compact: 120.0,
+                                    medium: 100.0,
+                                    expanded: 80.0,
+                                  ),
+                                ),
+                              ],
                             ),
-                            
-                            SizedBox(
-                              height: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 120.0,
-                                medium: 100.0,
-                                expanded: 80.0,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              
-              // Submit Button
-              _buildSubmitButton(context, primaryTextColor, screenSize),
-            ],
-          );
-        },
-      ),
+
+                  // Submit Button
+                  _buildSubmitButton(context, primaryTextColor, screenSize),
+                ],
+              );
+            },
+          ),
+        );
+      },
     );
-  },
-);
   }
 
   Widget _buildTopAppBar(
@@ -586,7 +803,9 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
     Color secondaryTextColor,
     ScreenSize screenSize,
   ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return Container(
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
@@ -644,9 +863,13 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
     );
   }
 
-  Widget _buildPhotoUpload(Color primaryTextColor, Color secondaryTextColor, Color borderColor) {
+  Widget _buildPhotoUpload(
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color borderColor,
+  ) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -657,9 +880,15 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border.all(color: borderColor, width: 2.0, style: BorderStyle.solid),
+              border: Border.all(
+                color: borderColor,
+                width: 2.0,
+                style: BorderStyle.solid,
+              ),
               borderRadius: BorderRadius.circular(16.0),
-              color: isDarkMode ? kBackgroundColorDark.withValues(alpha: 0.5) : Colors.white,
+              color: isDarkMode
+                  ? kBackgroundColorDark.withValues(alpha: 0.5)
+                  : Colors.white,
             ),
             child: _selectedImages.isEmpty
                 ? Column(
@@ -754,9 +983,14 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
     );
   }
 
-  Widget _buildSubmitButton(BuildContext context, Color primaryTextColor, ScreenSize screenSize) {
-    final isLoading = context.watch<AccommodationBloc>().state is AccommodationLoading;
-    
+  Widget _buildSubmitButton(
+    BuildContext context,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    final isLoading =
+        context.watch<AccommodationBloc>().state is AccommodationLoading;
+
     return Container(
       padding: EdgeInsets.all(
         ResponsiveBreakpoints.responsiveHorizontalPadding(context),
@@ -798,7 +1032,9 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : Text(
@@ -817,4 +1053,3 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
     );
   }
 }
-

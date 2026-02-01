@@ -5,6 +5,8 @@ import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import 'package:flutter_markdown/flutter_markdown.dart';
+
 class CopilotDocumentViewerPage extends StatefulWidget {
   final String noteId;
   final String courseId;
@@ -20,9 +22,26 @@ class CopilotDocumentViewerPage extends StatefulWidget {
       _CopilotDocumentViewerPageState();
 }
 
+class ChatMessage {
+  final String text;
+  final bool isUser;
+  final DateTime timestamp;
+
+  ChatMessage({
+    required this.text,
+    required this.isUser,
+    required this.timestamp,
+  });
+}
+
 class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
   final TextEditingController _questionController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   bool _showAIPanel = false;
+  CopilotNoteDetailsLoaded? _lastLoadedDetails;
+
+  // Chat State
+  final List<ChatMessage> _messages = [];
 
   @override
   void initState() {
@@ -33,7 +52,18 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
   @override
   void dispose() {
     _questionController.dispose();
+    _scrollController.dispose();
     super.dispose();
+  }
+
+  void _scrollToBottom() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        _scrollController.position.maxScrollExtent,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeOut,
+      );
+    }
   }
 
   @override
@@ -42,11 +72,31 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
       appBar: AppBar(
         title: const Text('Document Viewer'),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.download),
-            onPressed: () {
-              context.read<CopilotBloc>().add(
-                DownloadNoteForOffline(widget.noteId),
+          BlocBuilder<CopilotBloc, CopilotState>(
+            builder: (context, state) {
+              if (state is CopilotDownloading &&
+                  state.noteId == widget.noteId) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(12.0),
+                    child: SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  ),
+                );
+              }
+              return IconButton(
+                icon: const Icon(Icons.download),
+                onPressed: () {
+                  context.read<CopilotBloc>().add(
+                    DownloadNoteForOffline(widget.noteId),
+                  );
+                },
               );
             },
           ),
@@ -58,15 +108,90 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
           ),
         ],
       ),
-      body: BlocBuilder<CopilotBloc, CopilotState>(
-        builder: (context, state) {
-          if (state is CopilotLoading) {
-            return const Center(child: CircularProgressIndicator());
-          } else if (state is CopilotNoteDetailsLoaded) {
-            return _buildDocumentView(state);
+      body: BlocConsumer<CopilotBloc, CopilotState>(
+        listener: (context, state) {
+          if (state is CopilotNoteDetailsLoaded) {
+            setState(() => _lastLoadedDetails = state);
+          } else if (state is CopilotDownloadSuccess) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Document downloaded successfully!'),
+                backgroundColor: Color(0xFF0d9488),
+              ),
+            );
+            context.read<CopilotBloc>().add(LoadNoteDetails(widget.noteId));
+          } else if (state is CopilotRagQuerying) {
+            setState(() {
+              // If last message is AI but not complete, update it?
+              // Simple approach: remove last AI message if exists and incomplete,
+              // or just use a temporary "typing" placeholder in UI.
+              // Here we will use the stream to update the last message in real-time.
+
+              if (_messages.isNotEmpty && !_messages.last.isUser) {
+                // Update existing
+                _messages.removeLast();
+              }
+              _messages.add(
+                ChatMessage(
+                  text: state.currentResponse, // Stream updates this
+                  isUser: false,
+                  timestamp: DateTime.now(),
+                ),
+              );
+            });
+            _scrollToBottom();
+          } else if (state is CopilotRagQueryComplete) {
+            setState(() {
+              if (_messages.isNotEmpty && !_messages.last.isUser) {
+                _messages.removeLast();
+              }
+              _messages.add(
+                ChatMessage(
+                  text: state.fullResponse,
+                  isUser: false,
+                  timestamp: DateTime.now(),
+                ),
+              );
+            });
+            _scrollToBottom();
           } else if (state is CopilotError) {
-            return Center(child: Text('Error: ${state.message}'));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Error: ${state.message}'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
+        },
+        builder: (context, state) {
+          if (state is CopilotLoading && _lastLoadedDetails == null) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          if (_lastLoadedDetails != null) {
+            return _buildDocumentView(_lastLoadedDetails!);
+          }
+
+          if (state is CopilotError && _lastLoadedDetails == null) {
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text('Error: ${state.message}'),
+                  const SizedBox(height: 16),
+                  ElevatedButton(
+                    onPressed: () => context.read<CopilotBloc>().add(
+                      LoadNoteDetails(widget.noteId),
+                    ),
+                    child: const Text('Retry'),
+                  ),
+                ],
+              ),
+            );
+          }
+
           return const SizedBox.shrink();
         },
       ),
@@ -128,7 +253,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
                   ),
                   onPressed: () {
                     if (!_showAIPanel) setState(() => _showAIPanel = true);
-                    _questionController.text = "Explain ${concept.conceptText}";
+                    _submitQuestion("Explain ${concept.conceptText}");
                   },
                   backgroundColor: Colors.white,
                   padding: EdgeInsets.zero,
@@ -253,33 +378,34 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
 
         // Chat Area
         Expanded(
-          child: BlocBuilder<CopilotBloc, CopilotState>(
-            builder: (context, state) {
-              if (state is CopilotRagQuerying) {
-                return _buildChatResponse(state.currentResponse, false);
-              } else if (state is CopilotRagQueryComplete) {
-                return _buildChatResponse(state.fullResponse, true);
-              }
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      size: 48,
-                      color: Colors.grey[400],
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Ask anything about\nthis document',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                    ),
-                  ],
+          child: _messages.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.chat_bubble_outline,
+                        size: 48,
+                        color: Colors.grey[400],
+                      ),
+                      const SizedBox(height: 16),
+                      Text(
+                        'Ask anything about\nthis document',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                      ),
+                    ],
+                  ),
+                )
+              : ListView.builder(
+                  controller: _scrollController,
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _messages.length,
+                  itemBuilder: (context, index) {
+                    final msg = _messages[index];
+                    return _buildMessageBubble(msg);
+                  },
                 ),
-              );
-            },
-          ),
         ),
 
         // Input
@@ -323,49 +449,85 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
     );
   }
 
-  Widget _buildChatResponse(String response, bool isComplete) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: const Color(0xFFccfbf1).withValues(alpha: 0.3),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              children: [
-                const Icon(
-                  Icons.auto_awesome,
-                  color: Color(0xFF0d9488),
-                  size: 16,
-                ),
-                const SizedBox(width: 8),
-                Text(
-                  isComplete ? 'AI Response' : 'AI is typing...',
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
+  Widget _buildMessageBubble(ChatMessage msg) {
+    return Align(
+      alignment: msg.isUser ? Alignment.centerRight : Alignment.centerLeft,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 12),
+        constraints: const BoxConstraints(maxWidth: 280),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: msg.isUser ? const Color(0xFF0d9488) : const Color(0xFFf3f4f6),
+          borderRadius: BorderRadius.only(
+            topLeft: const Radius.circular(12),
+            topRight: const Radius.circular(12),
+            bottomLeft: msg.isUser ? const Radius.circular(12) : Radius.zero,
+            bottomRight: msg.isUser ? Radius.zero : const Radius.circular(12),
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (!msg.isUser)
+              Row(
+                children: [
+                  const Icon(
+                    Icons.auto_awesome,
+                    size: 12,
                     color: Color(0xFF0d9488),
                   ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 12),
-          Expanded(
-            child: SingleChildScrollView(
-              child: Text(response, style: const TextStyle(height: 1.6)),
-            ),
-          ),
-        ],
+                  const SizedBox(width: 4),
+                  Text(
+                    "AI Copilot",
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[700],
+                    ),
+                  ),
+                ],
+              ),
+            if (!msg.isUser) const SizedBox(height: 4),
+
+            msg.isUser
+                ? Text(msg.text, style: const TextStyle(color: Colors.white))
+                : MarkdownBody(
+                    data: msg.text,
+                    styleSheet: MarkdownStyleSheet(
+                      p: const TextStyle(fontSize: 14, color: Colors.black87),
+                      tableBorder: TableBorder.all(color: Colors.grey[300]!),
+                      tableHeadAlign: TextAlign.center,
+                      code: TextStyle(
+                        backgroundColor: Colors.grey[200],
+                        fontFamily: 'monospace',
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+          ],
+        ),
       ),
     );
   }
 
   void _submitQuestion(String question) {
     if (question.trim().isEmpty) return;
+
+    // Add user message immediately
+    setState(() {
+      _messages.add(
+        ChatMessage(text: question, isUser: true, timestamp: DateTime.now()),
+      );
+      // Add placeholder for AI
+      _messages.add(
+        ChatMessage(
+          text: "Thinking...",
+          isUser: false,
+          timestamp: DateTime.now(),
+        ),
+      );
+    });
+    _scrollToBottom();
 
     context.read<CopilotBloc>().add(
       QueryWithRag(

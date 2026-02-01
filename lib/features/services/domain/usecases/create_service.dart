@@ -49,6 +49,7 @@ class CreateService implements UseCase<ServiceEntity, CreateServiceParams> {
       contactEmail: params.contactEmail?.trim(),
       availability: params.availability,
       metadata: params.metadata,
+      isGlobal: params.isGlobal,
     );
   }
 }
@@ -65,6 +66,7 @@ class CreateServiceParams extends Equatable {
   final String? contactEmail;
   final List<String> availability;
   final Map<String, dynamic>? metadata;
+  final bool isGlobal;
 
   const CreateServiceParams({
     required this.title,
@@ -78,6 +80,7 @@ class CreateServiceParams extends Equatable {
     this.contactEmail,
     required this.availability,
     this.metadata,
+    this.isGlobal = false,
   });
 
   @override
@@ -93,5 +96,6 @@ class CreateServiceParams extends Equatable {
     contactEmail,
     availability,
     metadata,
+    isGlobal,
   ];
 }

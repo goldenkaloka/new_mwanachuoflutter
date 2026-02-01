@@ -117,12 +117,12 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
           );
         },
         backgroundColor: const Color(0xFF0d9488),
-        extendedIconLabelSpacing: 12,
+        extendedIconLabelSpacing: 16,
         extendedPadding: const EdgeInsets.symmetric(
-          horizontal: 20,
+          horizontal: 24,
           vertical: 12,
         ),
-        elevation: 8,
+        elevation: 12,
         icon: const Icon(Icons.upload_file, color: Colors.white, size: 24),
         label: const Text(
           'Upload Note',

@@ -62,8 +62,12 @@ class PromotionRepositoryImpl implements PromotionRepository {
     required DateTime startDate,
     required DateTime endDate,
     File? image,
+    File? video,
     String? targetUrl,
     List<String>? terms,
+    String type = 'banner',
+    int priority = 0,
+    String buttonText = 'Shop Now',
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -71,6 +75,7 @@ class PromotionRepositoryImpl implements PromotionRepository {
 
     try {
       String? imageUrl;
+      String? videoUrl;
 
       if (image != null) {
         final uploadResult = await uploadImage(
@@ -81,10 +86,19 @@ class PromotionRepositoryImpl implements PromotionRepository {
           ),
         );
 
-        imageUrl = uploadResult.fold(
-          (failure) => null,
-          (media) => media.url,
+        imageUrl = uploadResult.fold((failure) => null, (media) => media.url);
+      }
+
+      if (video != null) {
+        final uploadResult = await uploadImage(
+          UploadImageParams(
+            imageFile: video,
+            bucket: 'promotion_videos',
+            folder: 'promotions',
+          ),
         );
+
+        videoUrl = uploadResult.fold((failure) => null, (media) => media.url);
       }
 
       final promotion = await remoteDataSource.createPromotion(
@@ -96,6 +110,10 @@ class PromotionRepositoryImpl implements PromotionRepository {
         imageUrl: imageUrl,
         targetUrl: targetUrl,
         terms: terms,
+        type: type,
+        videoUrl: videoUrl,
+        priority: priority,
+        buttonText: buttonText,
       );
 
       return Right(promotion);
@@ -106,4 +124,3 @@ class PromotionRepositoryImpl implements PromotionRepository {
     }
   }
 }
-

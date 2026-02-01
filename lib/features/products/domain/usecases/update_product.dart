@@ -39,6 +39,8 @@ class UpdateProduct implements UseCase<ProductEntity, UpdateProductParams> {
       location: params.location?.trim(),
       isActive: params.isActive,
       metadata: params.metadata,
+      oldPrice: params.oldPrice,
+      isGlobal: params.isGlobal,
     );
   }
 }
@@ -55,6 +57,8 @@ class UpdateProductParams extends Equatable {
   final String? location;
   final bool? isActive;
   final Map<String, dynamic>? metadata;
+  final double? oldPrice;
+  final bool? isGlobal;
 
   const UpdateProductParams({
     required this.productId,
@@ -68,21 +72,24 @@ class UpdateProductParams extends Equatable {
     this.location,
     this.isActive,
     this.metadata,
+    this.oldPrice,
+    this.isGlobal,
   });
 
   @override
   List<Object?> get props => [
-        productId,
-        title,
-        description,
-        price,
-        category,
-        condition,
-        newImages,
-        existingImages,
-        location,
-        isActive,
-        metadata,
-      ];
+    productId,
+    title,
+    description,
+    price,
+    category,
+    condition,
+    newImages,
+    existingImages,
+    location,
+    isActive,
+    metadata,
+    oldPrice,
+    isGlobal,
+  ];
 }
-

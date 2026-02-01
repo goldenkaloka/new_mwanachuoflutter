@@ -14,6 +14,8 @@ abstract class ProfileRepository {
     String? location,
     File? avatarImage,
     String? primaryUniversityId,
+    int? yearOfStudy,
+    int? currentSemester,
   });
   Future<Either<Failure, void>> updateAvatar(File avatarImage);
   Future<Either<Failure, void>> deleteAvatar();

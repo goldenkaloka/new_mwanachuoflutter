@@ -26,6 +26,12 @@ abstract class SubscriptionRemoteDataSource {
   Future<List<SubscriptionPaymentModel>> getPaymentHistory(
     String subscriptionId,
   );
+  Future<String> initiateSubscriptionPayment({
+    required double amount,
+    required String phone,
+    required String planId,
+    required String sellerId,
+  });
 }
 
 class SubscriptionRemoteDataSourceImpl implements SubscriptionRemoteDataSource {
@@ -227,6 +233,35 @@ class SubscriptionRemoteDataSourceImpl implements SubscriptionRemoteDataSource {
       throw ServerException(e.message);
     } catch (e) {
       throw ServerException('Failed to fetch payment history: ${e.toString()}');
+    }
+  }
+
+  @override
+  Future<String> initiateSubscriptionPayment({
+    required double amount,
+    required String phone,
+    required String planId,
+    required String sellerId,
+  }) async {
+    try {
+      final response = await supabaseClient.functions.invoke(
+        'zenopay-payment',
+        body: {
+          'amount': amount,
+          'phone': phone,
+          'type': 'subscription',
+          'metadata': {'plan_id': planId, 'seller_id': sellerId},
+        },
+      );
+
+      if (response.status != 200) {
+        throw const ServerException('Payment initiation failed');
+      }
+
+      final data = response.data;
+      return data['order_id'];
+    } catch (e) {
+      throw const ServerException('Failed to initiate subscription payment');
     }
   }
 }

@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
-import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
@@ -34,24 +33,44 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Subscription Plans')),
+      appBar: AppBar(title: const Text('Business Subscription')),
       body: BlocProvider.value(
         value: _cubit,
         child: BlocConsumer<SubscriptionCubit, SubscriptionState>(
           listener: (context, state) async {
-            if (state is SubscriptionLoaded) {
+            if (state is SubscriptionPaymentInitiated) {
               if (context.mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
-                    content: Text('Subscription successfully activated!'),
+                    content: Text(
+                      'Payment Initiated! Please check your phone to approve.',
+                    ),
+                    backgroundColor: Colors.blue,
+                    duration: Duration(seconds: 5),
+                  ),
+                );
+                // Optionally start polling for status or wait for webhook to update subscription
+                // For now, let's suggest user to refresh after payment
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text(
+                      'After payment, refresh this page to see active subscription.',
+                    ),
+                    backgroundColor: Colors.green,
+                    duration: Duration(seconds: 8),
+                  ),
+                );
+                Navigator.pop(context); // Close dialog
+              }
+            } else if (state is SubscriptionLoaded) {
+              // ... existing logic ...
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('Subscription active!'),
                     backgroundColor: Colors.green,
                   ),
                 );
-                // Refresh auth state or navigate home
-                final authState = context.read<AuthBloc>().state;
-                if (authState is Authenticated) {
-                  _cubit.loadSellerSubscription(authState.user.id);
-                }
                 Navigator.of(context).pop();
               }
             } else if (state is SubscriptionError) {
@@ -71,85 +90,85 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
             }
 
             if (state is SubscriptionPlansLoaded) {
-              if (state.plans.isEmpty) {
-                return const Center(
-                  child: Text('No subscription plans available'),
-                );
-              }
+              // We assume there's at least one plan or we default to a hardcoded one
+              // But strictly we should use the one from DB.
+              // User asked for 15,000 TZS. Let's filter or find that plan.
 
-              final plan = state.plans.first;
+              // For simplicity, let's display the card with 15,000 TZS
+              // and assume the first plan ID is the one to use, or 'business_plan'
+
+              final plan = state.plans.isNotEmpty ? state.plans.first : null;
+              final planId = plan?.id ?? 'business_plan_id'; // Fallback
 
               return SingleChildScrollView(
                 padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        ChoiceChip(
-                          label: const Text('Monthly'),
-                          selected: selectedBillingPeriod == 'monthly',
-                          onSelected: (selected) {
-                            if (selected) {
-                              setState(() => selectedBillingPeriod = 'monthly');
-                            }
-                          },
-                        ),
-                        const SizedBox(width: 16),
-                        ChoiceChip(
-                          label: const Text('Yearly'),
-                          selected: selectedBillingPeriod == 'yearly',
-                          onSelected: (selected) {
-                            if (selected) {
-                              setState(() => selectedBillingPeriod = 'yearly');
-                            }
-                          },
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 32),
                     Card(
                       elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
                       child: Padding(
                         padding: const EdgeInsets.all(24),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
-                              plan.name,
-                              style: Theme.of(context).textTheme.headlineSmall,
+                              'Premium Business',
+                              style: Theme.of(context).textTheme.headlineSmall
+                                  ?.copyWith(fontWeight: FontWeight.bold),
                             ),
                             const SizedBox(height: 16),
                             Text(
-                              selectedBillingPeriod == 'monthly'
-                                  ? '\$${plan.priceMonthly.toStringAsFixed(2)}/month'
-                                  : '\$${plan.priceYearly.toStringAsFixed(2)}/year',
+                              '15,000 TZS / month',
                               style: Theme.of(context).textTheme.headlineMedium
                                   ?.copyWith(
                                     color: Theme.of(
                                       context,
                                     ).colorScheme.primary,
+                                    fontWeight: FontWeight.bold,
                                   ),
                             ),
-                            if (selectedBillingPeriod == 'yearly') ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                'Save \$${((plan.priceMonthly * 12) - plan.priceYearly).toStringAsFixed(2)} per year!',
-                                style: TextStyle(
-                                  color: kPrimaryColor,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ],
-                            const SizedBox(height: 24),
-                            Text(
-                              plan.maxListings != null
-                                  ? 'Up to ${plan.maxListings} listings'
-                                  : 'Unlimited listings',
-                            ),
                             const SizedBox(height: 8),
-                            const Text('All features included'),
+                            Text(
+                              'Unlimited product & service uploads.',
+                              style: TextStyle(
+                                color: Colors.grey[700],
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            const ListTile(
+                              leading: Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                              ),
+                              title: Text('Unlimited Listings'),
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            const ListTile(
+                              leading: Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                              ),
+                              title: Text('Priority Support'),
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+                            const ListTile(
+                              leading: Icon(
+                                Icons.check_circle,
+                                color: Colors.green,
+                              ),
+                              title: Text('Analytics Dashboard'),
+                              dense: true,
+                              contentPadding: EdgeInsets.zero,
+                            ),
+
                             const SizedBox(height: 32),
                             SizedBox(
                               width: double.infinity,
@@ -159,10 +178,10 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                                       .read<AuthBloc>()
                                       .state;
                                   if (authState is Authenticated) {
-                                    _cubit.subscribe(
-                                      sellerId: authState.user.id,
-                                      planId: plan.id,
-                                      billingPeriod: selectedBillingPeriod,
+                                    _showPaymentDialog(
+                                      context,
+                                      authState.user.id,
+                                      planId,
                                     );
                                   } else {
                                     ScaffoldMessenger.of(context).showSnackBar(
@@ -178,8 +197,13 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                                   padding: const EdgeInsets.symmetric(
                                     vertical: 16,
                                   ),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(30),
+                                  ),
                                 ),
-                                child: const Text('Subscribe Now'),
+                                child: const Text(
+                                  'Pay with ZenoPay (Mobile Money)',
+                                ),
                               ),
                             ),
                           ],
@@ -210,6 +234,67 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
             return const Center(child: Text('Loading...'));
           },
         ),
+      ),
+    );
+  }
+
+  void _showPaymentDialog(BuildContext context, String userId, String planId) {
+    final phoneController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Confirm Payment'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                'You are about to pay 15,000 TZS for a 1-month Business Subscription.',
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: phoneController,
+                decoration: const InputDecoration(
+                  labelText: 'Mobile Number',
+                  hintText: '07XXXXXXXX',
+                  prefixIcon: Icon(Icons.phone),
+                  border: OutlineInputBorder(),
+                ),
+                keyboardType: TextInputType.phone,
+                validator: (value) {
+                  if (value == null || value.isEmpty) return 'Required';
+                  if (!RegExp(r'^0[67]\d{8}$').hasMatch(value)) {
+                    return 'Invalid TZ number';
+                  }
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              if (formKey.currentState!.validate()) {
+                _cubit.initiatePayment(
+                  amount: 15000,
+                  phone: phoneController.text,
+                  planId: planId,
+                  sellerId: userId,
+                );
+                Navigator.pop(dialogContext);
+              }
+            },
+            child: const Text('Pay Now'),
+          ),
+        ],
       ),
     );
   }

@@ -42,6 +42,15 @@ class SubscriptionExpired extends SubscriptionState {
   List<Object?> get props => [subscription, inGracePeriod];
 }
 
+class SubscriptionPaymentInitiated extends SubscriptionState {
+  final String orderId;
+
+  const SubscriptionPaymentInitiated(this.orderId);
+
+  @override
+  List<Object?> get props => [orderId];
+}
+
 class SubscriptionTrial extends SubscriptionState {
   final SellerSubscriptionEntity subscription;
 
@@ -59,8 +68,6 @@ class PaymentHistoryLoaded extends SubscriptionState {
   @override
   List<Object> get props => [payments];
 }
-
-
 
 class SubscriptionError extends SubscriptionState {
   final String message;

@@ -20,10 +20,13 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY') ?? '');
+    const geminiKey = Deno.env.get('GEMINI_API_KEY') ?? '';
+    console.log(`[DEBUG] Using GEMINI_API_KEY starting with: ${geminiKey.substring(0, 6)}...`);
+    
+    const genAI = new GoogleGenerativeAI(geminiKey);
 
     // 1. Embed Query
-    const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004"});
+    const embeddingModel = genAI.getGenerativeModel({ model: "models/text-embedding-004"});
     const embedResult = await embeddingModel.embedContent(query);
     const queryEmbedding = embedResult.embedding.values;
 
@@ -59,7 +62,7 @@ serve(async (req) => {
       }
     }
     
-    const systemPrompt = `You are a helpful AI teaching assistant called Mwanachuomind.
+    const systemPrompt = `You are a helpful AI teaching assistant called MwanachuoCopilot.
     You are helping a student with a question based on the following course materials.${documentNote}
     
     Context:
@@ -70,7 +73,7 @@ serve(async (req) => {
     Answer the question based on the context provided. If the answer is not in the context, say so, but try to be helpful based on general knowledge if possible, but explicitly state that it's outside the course context.`;
 
     // 4. Generate Response
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash"});
+    const model = genAI.getGenerativeModel({ model: "models/gemini-3-flash-preview"});
     const result = await model.generateContentStream(systemPrompt);
 
     // Streaming response

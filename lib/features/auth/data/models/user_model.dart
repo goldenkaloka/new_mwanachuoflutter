@@ -21,6 +21,7 @@ class UserModel extends UserEntity {
     super.registrationNumber,
     super.programName,
     super.userType,
+    super.freeListingsCount = 0,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +47,7 @@ class UserModel extends UserEntity {
       registrationNumber: json['registration_number'] as String?,
       programName: json['program_name'] as String?,
       userType: json['user_type'] as String?,
+      freeListingsCount: json['free_listings_count'] as int? ?? 0,
     );
   }
 
@@ -69,6 +71,7 @@ class UserModel extends UserEntity {
       'registration_number': registrationNumber,
       'program_name': programName,
       'user_type': userType,
+      'free_listings_count': freeListingsCount,
     };
   }
 
@@ -91,6 +94,7 @@ class UserModel extends UserEntity {
     String? registrationNumber,
     String? programName,
     String? userType,
+    int? freeListingsCount,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -111,6 +115,7 @@ class UserModel extends UserEntity {
       registrationNumber: registrationNumber ?? this.registrationNumber,
       programName: programName ?? this.programName,
       userType: userType ?? this.userType,
+      freeListingsCount: freeListingsCount ?? this.freeListingsCount,
     );
   }
 }

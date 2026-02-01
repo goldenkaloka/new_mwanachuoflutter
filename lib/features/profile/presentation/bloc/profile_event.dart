@@ -27,6 +27,8 @@ class UpdateProfileEvent extends ProfileEvent {
   final File? avatarImage;
   final String? primaryUniversityId;
   final String? universityName;
+  final int? yearOfStudy;
+  final int? currentSemester;
 
   const UpdateProfileEvent({
     this.fullName,
@@ -36,6 +38,8 @@ class UpdateProfileEvent extends ProfileEvent {
     this.avatarImage,
     this.primaryUniversityId,
     this.universityName,
+    this.yearOfStudy,
+    this.currentSemester,
   });
 
   @override
@@ -47,6 +51,8 @@ class UpdateProfileEvent extends ProfileEvent {
     avatarImage,
     primaryUniversityId,
     universityName,
+    yearOfStudy,
+    currentSemester,
   ];
 }
 

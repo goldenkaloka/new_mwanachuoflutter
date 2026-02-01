@@ -12,6 +12,10 @@ class PromotionEntity extends Equatable {
   final String? targetUrl;
   final List<String>? terms;
   final DateTime createdAt;
+  final String type; // 'banner' or 'video'
+  final String? videoUrl;
+  final int priority;
+  final String buttonText;
 
   const PromotionEntity({
     required this.id,
@@ -25,6 +29,10 @@ class PromotionEntity extends Equatable {
     this.targetUrl,
     this.terms,
     required this.createdAt,
+    this.type = 'banner',
+    this.videoUrl,
+    this.priority = 0,
+    this.buttonText = 'Shop Now',
   });
 
   bool get isValid {
@@ -34,17 +42,20 @@ class PromotionEntity extends Equatable {
 
   @override
   List<Object?> get props => [
-        id,
-        title,
-        subtitle,
-        description,
-        imageUrl,
-        startDate,
-        endDate,
-        isActive,
-        targetUrl,
-        terms,
-        createdAt,
-      ];
+    id,
+    title,
+    subtitle,
+    description,
+    imageUrl,
+    startDate,
+    endDate,
+    isActive,
+    targetUrl,
+    terms,
+    createdAt,
+    type,
+    videoUrl,
+    priority,
+    buttonText,
+  ];
 }
-

@@ -8,6 +8,7 @@ import 'package:mwanachuo/features/subscriptions/domain/usecases/get_payment_his
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_seller_subscription.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_subscription_plans.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/update_subscription.dart';
+import 'package:mwanachuo/features/subscriptions/domain/usecases/initiate_subscription_payment.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_state.dart';
 
 class SubscriptionCubit extends Cubit<SubscriptionState> {
@@ -18,6 +19,7 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
   final CancelSubscription cancelSubscription;
   final UpdateSubscription updateSubscription;
   final GetPaymentHistory getPaymentHistory;
+  final InitiateSubscriptionPayment initiateSubscriptionPayment;
 
   SubscriptionCubit({
     required this.getSubscriptionPlans,
@@ -27,7 +29,10 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
     required this.cancelSubscription,
     required this.updateSubscription,
     required this.getPaymentHistory,
+    required this.initiateSubscriptionPayment,
   }) : super(SubscriptionInitial());
+
+  // ... (rest of the file until initiatePayment)
 
   /// Load subscription plans
   Future<void> loadSubscriptionPlans() async {
@@ -142,6 +147,28 @@ class SubscriptionCubit extends Cubit<SubscriptionState> {
     result.fold(
       (failure) => emit(SubscriptionError(failure.message)),
       (payments) => emit(PaymentHistoryLoaded(payments)),
+    );
+  }
+
+  /// Initiate subscription payment
+  Future<void> initiatePayment({
+    required double amount,
+    required String phone,
+    required String planId,
+    required String sellerId,
+  }) async {
+    // emit(SubscriptionLoading()); // Optional, might disrupt UI
+    final result = await initiateSubscriptionPayment(
+      InitiateSubscriptionPaymentParams(
+        amount: amount,
+        phone: phone,
+        planId: planId,
+        sellerId: sellerId,
+      ),
+    );
+    result.fold(
+      (failure) => emit(SubscriptionError(failure.message)),
+      (orderId) => emit(SubscriptionPaymentInitiated(orderId)),
     );
   }
 }

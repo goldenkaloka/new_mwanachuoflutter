@@ -14,6 +14,7 @@ class UserEntity extends Equatable {
   final String? phone;
   final DateTime createdAt;
   final DateTime updatedAt;
+  final int freeListingsCount;
 
   const UserEntity({
     required this.id,
@@ -28,6 +29,7 @@ class UserEntity extends Equatable {
     this.phone,
     required this.createdAt,
     required this.updatedAt,
+    this.freeListingsCount = 0,
     this.businessName,
     this.tinNumber,
     this.businessCategory,
@@ -68,5 +70,6 @@ class UserEntity extends Equatable {
     registrationNumber,
     programName,
     userType,
+    freeListingsCount,
   ];
 }

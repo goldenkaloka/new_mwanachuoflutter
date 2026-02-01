@@ -29,7 +29,15 @@ class LoadAccommodationsEvent extends AccommodationEvent {
   });
 
   @override
-  List<Object?> get props => [roomType, universityId, ownerId, isFeatured, limit, offset, filter];
+  List<Object?> get props => [
+    roomType,
+    universityId,
+    ownerId,
+    isFeatured,
+    limit,
+    offset,
+    filter,
+  ];
 }
 
 /// Apply filter event
@@ -70,6 +78,7 @@ class CreateAccommodationEvent extends AccommodationEvent {
   final int bedrooms;
   final int bathrooms;
   final Map<String, dynamic>? metadata;
+  final bool isGlobal;
 
   const CreateAccommodationEvent({
     required this.name,
@@ -85,34 +94,32 @@ class CreateAccommodationEvent extends AccommodationEvent {
     required this.bedrooms,
     required this.bathrooms,
     this.metadata,
+    this.isGlobal = false,
   });
 
   @override
   List<Object?> get props => [
-        name,
-        description,
-        price,
-        priceType,
-        roomType,
-        images,
-        location,
-        contactPhone,
-        contactEmail,
-        amenities,
-        bedrooms,
-        bathrooms,
-        metadata,
-      ];
+    name,
+    description,
+    price,
+    priceType,
+    roomType,
+    images,
+    location,
+    contactPhone,
+    contactEmail,
+    amenities,
+    bedrooms,
+    bathrooms,
+    metadata,
+  ];
 }
 
 class LoadMyAccommodationsEvent extends AccommodationEvent {
   final int? limit;
   final int? offset;
 
-  const LoadMyAccommodationsEvent({
-    this.limit,
-    this.offset,
-  });
+  const LoadMyAccommodationsEvent({this.limit, this.offset});
 
   @override
   List<Object?> get props => [limit, offset];
@@ -135,6 +142,7 @@ class UpdateAccommodationEvent extends AccommodationEvent {
   final int? bathrooms;
   final bool? isActive;
   final Map<String, dynamic>? metadata;
+  final bool? isGlobal;
 
   const UpdateAccommodationEvent({
     required this.accommodationId,
@@ -153,27 +161,28 @@ class UpdateAccommodationEvent extends AccommodationEvent {
     this.bathrooms,
     this.isActive,
     this.metadata,
+    this.isGlobal,
   });
 
   @override
   List<Object?> get props => [
-        accommodationId,
-        name,
-        description,
-        price,
-        priceType,
-        roomType,
-        newImages,
-        existingImages,
-        location,
-        contactPhone,
-        contactEmail,
-        amenities,
-        bedrooms,
-        bathrooms,
-        isActive,
-        metadata,
-      ];
+    accommodationId,
+    name,
+    description,
+    price,
+    priceType,
+    roomType,
+    newImages,
+    existingImages,
+    location,
+    contactPhone,
+    contactEmail,
+    amenities,
+    bedrooms,
+    bathrooms,
+    isActive,
+    metadata,
+  ];
 }
 
 class DeleteAccommodationEvent extends AccommodationEvent {
@@ -210,4 +219,3 @@ class LoadMoreAccommodationsEvent extends AccommodationEvent {
   @override
   List<Object?> get props => [roomType, universityId, offset, filter];
 }
-

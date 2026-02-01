@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'package:video_player/video_player.dart';
+import 'package:chewie/chewie.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
@@ -9,6 +11,7 @@ import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
 import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class PromotionDetailPage extends StatelessWidget {
   const PromotionDetailPage({super.key});
@@ -45,10 +48,49 @@ class PromotionDetailPage extends StatelessWidget {
   }
 }
 
-class _PromotionDetailView extends StatelessWidget {
+class _PromotionDetailView extends StatefulWidget {
   final String promotionId;
 
   const _PromotionDetailView({required this.promotionId});
+
+  @override
+  State<_PromotionDetailView> createState() => _PromotionDetailViewState();
+}
+
+class _PromotionDetailViewState extends State<_PromotionDetailView> {
+  VideoPlayerController? _videoPlayerController;
+  ChewieController? _chewieController;
+
+  @override
+  void dispose() {
+    _videoPlayerController?.dispose();
+    _chewieController?.dispose();
+    super.dispose();
+  }
+
+  Future<void> _initializeVideoPlayer(String videoUrl) async {
+    if (_videoPlayerController != null) return;
+
+    _videoPlayerController = VideoPlayerController.networkUrl(
+      Uri.parse(videoUrl),
+    );
+    await _videoPlayerController!.initialize();
+
+    _chewieController = ChewieController(
+      videoPlayerController: _videoPlayerController!,
+      autoPlay: true,
+      looping: false,
+      aspectRatio: _videoPlayerController!.value.aspectRatio,
+      placeholder: const Center(child: CircularProgressIndicator()),
+      materialProgressColors: ChewieProgressColors(
+        playedColor: kPrimaryColor,
+        handleColor: kPrimaryColor,
+        backgroundColor: Colors.grey,
+        bufferedColor: Colors.white,
+      ),
+    );
+    setState(() {});
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,7 +146,9 @@ class _PromotionDetailView extends StatelessWidget {
           // Find the promotion by ID
           PromotionEntity? promotion;
           try {
-            promotion = state.promotions.firstWhere((p) => p.id == promotionId);
+            promotion = state.promotions.firstWhere(
+              (p) => p.id == widget.promotionId,
+            );
           } catch (e) {
             // Promotion not found
             return Scaffold(
@@ -136,6 +180,10 @@ class _PromotionDetailView extends StatelessWidget {
                 ),
               ),
             );
+          }
+
+          if (promotion.type == 'video' && promotion.videoUrl != null) {
+            _initializeVideoPlayer(promotion.videoUrl!);
           }
 
           return _buildPromotionContent(
@@ -182,8 +230,16 @@ class _PromotionDetailView extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        // Promotion Banner
-                        _buildPromotionBanner(context, promotion, screenSize),
+                        // Promotion Media (Video or Banner)
+                        if (promotion.type == 'video' &&
+                            _chewieController != null)
+                          AspectRatio(
+                            aspectRatio:
+                                _videoPlayerController!.value.aspectRatio,
+                            child: Chewie(controller: _chewieController!),
+                          )
+                        else
+                          _buildPromotionBanner(context, promotion, screenSize),
 
                         Padding(
                           padding: EdgeInsets.all(
@@ -223,20 +279,21 @@ class _PromotionDetailView extends StatelessWidget {
                               const SizedBox(height: 12.0),
 
                               // Subtitle
-                              Text(
-                                promotion.subtitle,
-                                style: GoogleFonts.inter(
-                                  color: kPrimaryColor,
-                                  fontSize:
-                                      ResponsiveBreakpoints.responsiveValue(
-                                        context,
-                                        compact: 16.0,
-                                        medium: 18.0,
-                                        expanded: 20.0,
-                                      ),
-                                  fontWeight: FontWeight.w600,
+                              if (promotion.subtitle.isNotEmpty)
+                                Text(
+                                  promotion.subtitle,
+                                  style: GoogleFonts.inter(
+                                    color: kPrimaryColor,
+                                    fontSize:
+                                        ResponsiveBreakpoints.responsiveValue(
+                                          context,
+                                          compact: 16.0,
+                                          medium: 18.0,
+                                          expanded: 20.0,
+                                        ),
+                                    fontWeight: FontWeight.w600,
+                                  ),
                                 ),
-                              ),
 
                               const SizedBox(height: 20.0),
 
@@ -288,7 +345,8 @@ class _PromotionDetailView extends StatelessWidget {
                               const SizedBox(height: 32.0),
 
                               // Terms & Conditions
-                              if (promotion.terms != null && promotion.terms!.isNotEmpty) ...[
+                              if (promotion.terms != null &&
+                                  promotion.terms!.isNotEmpty) ...[
                                 Text(
                                   'Terms & Conditions',
                                   style: GoogleFonts.inter(
@@ -354,7 +412,7 @@ class _PromotionDetailView extends StatelessWidget {
               ),
 
               // Bottom CTA
-              _buildBottomCTA(context, screenSize),
+              _buildBottomCTA(context, promotion, screenSize),
             ],
           );
         },
@@ -478,7 +536,11 @@ class _PromotionDetailView extends StatelessWidget {
     );
   }
 
-  Widget _buildBottomCTA(BuildContext context, ScreenSize screenSize) {
+  Widget _buildBottomCTA(
+    BuildContext context,
+    PromotionEntity promotion,
+    ScreenSize screenSize,
+  ) {
     return Container(
       padding: EdgeInsets.all(
         ResponsiveBreakpoints.responsiveHorizontalPadding(context),
@@ -500,8 +562,20 @@ class _PromotionDetailView extends StatelessWidget {
           width: double.infinity,
           height: 56.0,
           child: ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, '/all-products');
+            onPressed: () async {
+              if (promotion.targetUrl != null &&
+                  promotion.targetUrl!.isNotEmpty) {
+                if (promotion.targetUrl!.startsWith('http')) {
+                  final uri = Uri.parse(promotion.targetUrl!);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri);
+                  }
+                } else {
+                  Navigator.pushNamed(context, promotion.targetUrl!);
+                }
+              } else {
+                Navigator.pushNamed(context, '/all-products');
+              }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: kPrimaryColor,
@@ -511,7 +585,7 @@ class _PromotionDetailView extends StatelessWidget {
               ),
             ),
             child: Text(
-              'Shop Now',
+              promotion.buttonText,
               style: GoogleFonts.inter(
                 fontSize: 16.0,
                 fontWeight: FontWeight.w600,

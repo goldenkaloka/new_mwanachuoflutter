@@ -24,11 +24,9 @@ class EditServiceScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MultiBlocProvider(
       providers: [
+        BlocProvider(create: (context) => sl<ServiceBloc>()),
         BlocProvider(
-          create: (context) => sl<ServiceBloc>(),
-        ),
-        BlocProvider(
-          create: (context) => sl<CategoryCubit>()..loadAll(),
+          create: (context) => sl<CategoryCubit>()..loadServiceCategories(),
         ),
       ],
       child: _EditServiceView(service: service),
@@ -61,11 +59,7 @@ class _EditServiceViewState extends State<_EditServiceView> {
   List<String> _availability = [];
   bool _isActive = true;
 
-  final List<String> _priceTypes = [
-    'hourly',
-    'fixed',
-    'per_session',
-  ];
+  final List<String> _priceTypes = ['hourly', 'fixed', 'per_session'];
 
   @override
   void initState() {
@@ -107,7 +101,9 @@ class _EditServiceViewState extends State<_EditServiceView> {
 
     try {
       final remainingSlots = 5 - (_existingImages.length + _newImages.length);
-      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+      final isDesktop =
+          !kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
       if (isDesktop) {
         final result = await FilePicker.platform.pickFiles(
@@ -143,7 +139,9 @@ class _EditServiceViewState extends State<_EditServiceView> {
             pickerTheme: ThemeData(
               brightness: isDarkMode ? Brightness.dark : Brightness.light,
               primaryColor: kPrimaryColor,
-              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              scaffoldBackgroundColor: isDarkMode
+                  ? kBackgroundColorDark
+                  : Colors.white,
             ),
           ),
         );
@@ -326,11 +324,22 @@ class _EditServiceViewState extends State<_EditServiceView> {
                                 builder: (context, categoryState) {
                                   List<String> categories = ['Select category'];
                                   if (categoryState is CategoriesLoaded) {
-                                    categories.addAll(
-                                      categoryState.categories.map((c) => c.name).toList(),
-                                    );
+                                    final loadedCategoryNames = categoryState
+                                        .categories
+                                        .map((c) => c.name)
+                                        .toList();
+                                    categories.addAll(loadedCategoryNames);
+
+                                    // Ensure the current selection is in the list to prevent crashes
+                                    if (_selectedCategory != null &&
+                                        !loadedCategoryNames.contains(
+                                          _selectedCategory,
+                                        ) &&
+                                        _selectedCategory!.isNotEmpty) {
+                                      categories.add(_selectedCategory!);
+                                    }
                                   }
-                                  
+
                                   return DropdownButtonFormField<String>(
                                     value: _selectedCategory,
                                     decoration: InputDecoration(
@@ -341,7 +350,9 @@ class _EditServiceViewState extends State<_EditServiceView> {
                                     ),
                                     items: categories.map((category) {
                                       return DropdownMenuItem(
-                                        value: category == 'Select category' ? null : category,
+                                        value: category == 'Select category'
+                                            ? null
+                                            : category,
                                         child: Text(category),
                                       );
                                     }).toList(),
@@ -370,14 +381,21 @@ class _EditServiceViewState extends State<_EditServiceView> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                items: _priceTypes
-                                    .map(
-                                      (type) => DropdownMenuItem(
-                                        value: type,
-                                        child: Text(type),
-                                      ),
-                                    )
-                                    .toList(),
+                                items:
+                                    (_priceTypes.contains(_selectedPriceType)
+                                            ? _priceTypes
+                                            : [
+                                                ..._priceTypes,
+                                                if (_selectedPriceType != null)
+                                                  _selectedPriceType!,
+                                              ])
+                                        .map(
+                                          (type) => DropdownMenuItem(
+                                            value: type,
+                                            child: Text(type),
+                                          ),
+                                        )
+                                        .toList(),
                                 onChanged: (value) {
                                   setState(() {
                                     _selectedPriceType = value;
@@ -509,7 +527,7 @@ class _EditServiceViewState extends State<_EditServiceView> {
                             style: TextStyle(color: secondaryTextColor),
                           ),
                           value: _isActive,
-                          thumbColor: WidgetStateProperty.all( kPrimaryColor),
+                          thumbColor: WidgetStateProperty.all(kPrimaryColor),
                           onChanged: (value) {
                             setState(() {
                               _isActive = value;
@@ -677,4 +695,3 @@ class _EditServiceViewState extends State<_EditServiceView> {
     );
   }
 }
-

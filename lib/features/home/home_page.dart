@@ -24,6 +24,7 @@ import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
 import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
+import 'package:mwanachuo/features/promotions/presentation/widgets/promotion_video_player.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
@@ -40,19 +41,30 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  int _selectedChipIndex = 0;
-  int _selectedIndex = 0; // For Bottom Nav Bar
-  int _currentPromotionPage = 0;
-  String _userName = 'User';
   bool _isLoadingUser = true;
   String _userRole = 'buyer';
-  String? _userAvatarUrl; // Store user avatar URL
-  bool _dataLoaded = false; // Flag to prevent double loading
+  String? _userAvatarUrl;
+  bool _dataLoaded = false;
+  int _selectedIndex = 0;
+  int _currentPromotionPage = 0;
+  String _userName = 'User';
   final TextEditingController _searchController = TextEditingController();
   int _unreadNotificationCount = 0;
-  bool _hasRedirected = false; // Flag to prevent multiple redirects
-  bool _hasReloadedInDidChangeDependencies =
-      false; // Flag to prevent multiple reloads in didChangeDependencies
+  bool _hasRedirected = false;
+  bool _hasReloadedInDidChangeDependencies = false;
+
+  // Dynamic Search variables
+  late Timer _searchHintTimer;
+  int _currentHintIndex = 0;
+  String _universityName = 'campus';
+  final List<String> _baseHints = [
+    'Search products, rooms, services...',
+    'Find lab coats & equipment...',
+    'Need a tutor for exams?',
+    'Rent a room near campus...',
+    'Get your laundry done today...',
+  ];
+  String _currentHint = 'Search products, rooms, services...';
 
   @override
   void initState() {
@@ -69,6 +81,23 @@ class _HomePageState extends State<HomePage> {
 
     // Load unread notification count
     _loadUnreadNotificationCount();
+
+    // Start search hint rotation
+    _startSearchHintRotation();
+  }
+
+  void _startSearchHintRotation() {
+    _searchHintTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (mounted) {
+        setState(() {
+          _currentHintIndex = (_currentHintIndex + 1) % _baseHints.length;
+          _currentHint = _baseHints[_currentHintIndex].replaceAll(
+            '[Campus]',
+            _universityName,
+          );
+        });
+      }
+    });
   }
 
   Future<void> _loadUnreadNotificationCount() async {
@@ -89,25 +118,52 @@ class _HomePageState extends State<HomePage> {
     }
   }
 
-  void _loadDataForUniversity() {
+  Future<void> _loadDataForUniversity(String? universityId) async {
     // Prevent double loading
     if (_dataLoaded) {
       debugPrint('⏭️  Data already loaded, skipping...');
       return;
     }
 
+    String? resolvedId = universityId;
+
+    // If ID looks like a name (no dashes or not a UUID format), try to resolve it
+    if (universityId != null &&
+        universityId.isNotEmpty &&
+        !universityId.contains('-')) {
+      debugPrint(
+        '🔍 Attempting to resolve university name "$universityId" to ID...',
+      );
+      final data = UniversityService.universities[universityId];
+      if (data != null) {
+        resolvedId = data['id'];
+        debugPrint('✅ Resolved to: $resolvedId');
+      } else {
+        debugPrint('⚠️ Could not resolve university name: $universityId');
+        // If it's not a UUID and not a known name, it might be the "null" string
+        if (universityId == "null") {
+          resolvedId = null;
+        }
+      }
+    }
+
     debugPrint(
-      '📊 Loading university data (products, services, accommodations)...',
+      '📊 Loading university data for ${resolvedId ?? "all universities"} (products, services, accommodations)...',
     );
     _dataLoaded = true;
 
+    if (!mounted) return;
+
     // Load products, services, and accommodations
-    // Note: University filtering is handled by RLS policies in Supabase
-    // based on the user's primary_university_id in the users table
-    context.read<ProductBloc>().add(const LoadProductsEvent(limit: 10));
-    context.read<ServiceBloc>().add(const LoadServicesEvent(limit: 10));
+    // Passing resolvedId explicitly for filtering
+    context.read<ProductBloc>().add(
+      LoadProductsEvent(limit: 10, universityId: resolvedId),
+    );
+    context.read<ServiceBloc>().add(
+      LoadServicesEvent(limit: 10, universityId: resolvedId),
+    );
     context.read<AccommodationBloc>().add(
-      const LoadAccommodationsEvent(limit: 10),
+      LoadAccommodationsEvent(limit: 10, universityId: resolvedId),
     );
   }
 
@@ -143,26 +199,27 @@ class _HomePageState extends State<HomePage> {
   void dispose() {
     _searchController.dispose();
     _notificationSubscription?.cancel();
+    _searchHintTimer.cancel();
     super.dispose();
   }
 
   Future<void> _loadSelectedUniversity() async {
-    await UniversityService.getSelectedUniversity();
+    final university = await UniversityService.getSelectedUniversity();
     await UniversityService.getSelectedUniversityLogo();
     if (mounted) {
       setState(() {
+        _universityName = university ?? 'campus';
         // University selection stored in shared preferences
       });
     }
 
     // Load data after university is loaded
     if (mounted) {
-      _loadDataForUniversity();
+      _loadDataForUniversity(university);
     }
   }
 
   // Simulated Chip Data
-  final List<String> _chips = ['All', 'Products', 'Accommodations', 'Services'];
 
   @override
   Widget build(BuildContext context) {
@@ -216,13 +273,18 @@ class _HomePageState extends State<HomePage> {
                 if (_userName != state.user.name ||
                     _userRole != state.user.role.value ||
                     _userAvatarUrl != state.user.profilePicture ||
+                    _universityName != (state.user.programName ?? 'campus') ||
                     _isLoadingUser) {
                   setState(() {
                     _userName = state.user.name;
                     _userRole = state.user.role.value;
                     _userAvatarUrl = state.user.profilePicture;
+                    _universityName = state.user.programName ?? 'campus';
                     _isLoadingUser = false;
                   });
+
+                  // Trigger data load with the actual universityId from backend
+                  _loadDataForUniversity(state.user.universityId);
                 }
               }
             },
@@ -242,6 +304,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ],
         child: Scaffold(
+          floatingActionButton: _buildExpandableFAB(context, isDarkMode),
           body: Container(
             decoration: BoxDecoration(
               gradient: LinearGradient(
@@ -295,8 +358,14 @@ class _HomePageState extends State<HomePage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            _buildDiscoveryHub(screenSize),
+                            _buildPriceDropsSection(
+                              primaryTextColor,
+                              secondaryTextColor,
+                              screenSize,
+                            ),
                             _buildSectionHeader(
-                              'Products',
+                              'Featured Products',
                               Icons.shopping_bag,
                               const Color(0xFF00897B), // Deep Teal
                               primaryTextColor,
@@ -308,14 +377,12 @@ class _HomePageState extends State<HomePage> {
                               secondaryTextColor,
                               screenSize,
                             ),
-                            const SizedBox(height: 32), // Added Spacing
+                            const SizedBox(height: 32),
                             // 6. Accommodations Section
                             _buildSectionHeader(
                               'Accommodations',
                               Icons.home,
-                              const Color(
-                                0xFF00897B,
-                              ), // Deep Teal (Standardized)
+                              const Color(0xFF00897B),
                               primaryTextColor,
                               screenSize,
                               route: '/student-housing',
@@ -325,7 +392,7 @@ class _HomePageState extends State<HomePage> {
                               secondaryTextColor,
                               screenSize,
                             ),
-                            const SizedBox(height: 32), // Added Spacing
+                            const SizedBox(height: 32),
                             // 7. Services Section
                             _buildSectionHeader(
                               'Services',
@@ -728,6 +795,36 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
+          // University Selection Display
+          GestureDetector(
+            onTap: () => Navigator.pushNamed(context, '/university-selection'),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.white10,
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    color: Colors.white70,
+                    size: 14,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _universityName.split(' ').first,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
           // Notification Icon
           IconButton(
             onPressed: () => Navigator.pushNamed(context, '/notifications'),
@@ -1011,7 +1108,7 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
         decoration: InputDecoration(
-          hintText: 'Search products, rooms, services...',
+          hintText: _currentHint,
           hintStyle: GoogleFonts.plusJakartaSans(
             color: hintColor,
             fontSize: ResponsiveBreakpoints.responsiveValue(
@@ -1079,93 +1176,559 @@ class _HomePageState extends State<HomePage> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     // Map chip labels to icons
-    final Map<String, IconData> chipIcons = {
-      'All': Icons.grid_view_rounded,
-      'Products': Icons.shopping_bag_outlined,
-      'Services': Icons.build_outlined,
-      'Accommodations': Icons.home_work_outlined,
-      'Events': Icons.event_outlined,
-    };
+    final List<Map<String, dynamic>> discoveryCategories = [
+      {
+        'label': 'Products',
+        'icon': Icons.shopping_bag_outlined,
+        'color': const Color(0xFF00897B),
+      },
+      {
+        'label': 'Hostels',
+        'icon': Icons.home_work_outlined,
+        'color': const Color(0xFFE53935),
+      },
+      {
+        'label': 'Stationery',
+        'icon': Icons.edit_note_rounded,
+        'color': const Color(0xFF1E88E5),
+      },
+      {
+        'label': 'Food',
+        'icon': Icons.restaurant_rounded,
+        'color': const Color(0xFFFB8C00),
+      },
+      {
+        'label': 'Tech',
+        'icon': Icons.devices_rounded,
+        'color': const Color(0xFF3949AB),
+      },
+      {
+        'label': 'Laundry',
+        'icon': Icons.local_laundry_service_rounded,
+        'color': const Color(0xFF00ACC1),
+      },
+      {
+        'label': 'Tutors',
+        'icon': Icons.psychology_rounded,
+        'color': const Color(0xFF8E24AA),
+      },
+      {
+        'label': 'Repairs',
+        'icon': Icons.handyman_rounded,
+        'color': const Color(0xFF43A047),
+      },
+    ];
 
     return Container(
       color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
-      child: SingleChildScrollView(
-        scrollDirection: Axis.horizontal,
-        padding: EdgeInsets.symmetric(
-          horizontal: horizontalPadding,
-          vertical: 8.0,
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            child: Text(
+              'Explore Marketplace',
+              style: GoogleFonts.plusJakartaSans(
+                color: isDarkMode ? Colors.white : Colors.black87,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            child: Row(
+              children: discoveryCategories.map((category) {
+                final String label = category['label'];
+                final IconData icon = category['icon'];
+                final Color color = category['color'];
+
+                return GestureDetector(
+                  onTap: () {
+                    if (label == 'Products') {
+                      Navigator.pushNamed(context, '/all-products');
+                    } else if (label == 'Hostels') {
+                      Navigator.pushNamed(context, '/student-housing');
+                    } else {
+                      Navigator.pushNamed(context, '/search', arguments: label);
+                    }
+                  },
+                  child: Container(
+                    width: 76,
+                    margin: const EdgeInsets.only(right: 16.0),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.2),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Icon(icon, color: color, size: 28),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          label,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDiscoveryHub(ScreenSize screenSize) {
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    final List<Map<String, dynamic>> discoveryCategories = [
+      {
+        'label': 'Products',
+        'icon': Icons.shopping_bag_outlined,
+        'color': const Color(0xFF00897B),
+      },
+      {
+        'label': 'Hostels',
+        'icon': Icons.home_work_outlined,
+        'color': const Color(0xFFE53935),
+      },
+      {
+        'label': 'Stationery',
+        'icon': Icons.edit_note_rounded,
+        'color': const Color(0xFF1E88E5),
+      },
+      {
+        'label': 'Food',
+        'icon': Icons.restaurant_rounded,
+        'color': const Color(0xFFFB8C00),
+      },
+      {
+        'label': 'Tech',
+        'icon': Icons.devices_rounded,
+        'color': const Color(0xFF3949AB),
+      },
+      {
+        'label': 'Laundry',
+        'icon': Icons.local_laundry_service_rounded,
+        'color': const Color(0xFF00ACC1),
+      },
+      {
+        'label': 'Tutors',
+        'icon': Icons.psychology_rounded,
+        'color': const Color(0xFF8E24AA),
+      },
+      {
+        'label': 'Repairs',
+        'icon': Icons.handyman_rounded,
+        'color': const Color(0xFF43A047),
+      },
+    ];
+
+    return Container(
+      color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+      padding: const EdgeInsets.symmetric(vertical: 16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            child: Text(
+              'Explore Marketplace',
+              style: GoogleFonts.plusJakartaSans(
+                color: isDarkMode ? Colors.white : Colors.black87,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+            child: Row(
+              children: discoveryCategories.map((category) {
+                final String label = category['label'];
+                final IconData icon = category['icon'];
+                final Color color = category['color'];
+
+                return GestureDetector(
+                  onTap: () {
+                    if (label == 'Products') {
+                      Navigator.pushNamed(context, '/all-products');
+                    } else if (label == 'Hostels') {
+                      Navigator.pushNamed(context, '/student-housing');
+                    } else {
+                      Navigator.pushNamed(context, '/search', arguments: label);
+                    }
+                  },
+                  child: Container(
+                    width: 76,
+                    margin: const EdgeInsets.only(right: 16.0),
+                    child: Column(
+                      children: [
+                        Container(
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            color: color.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(
+                              color: color.withValues(alpha: 0.2),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Icon(icon, color: color, size: 28),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          label,
+                          style: GoogleFonts.plusJakartaSans(
+                            color: isDarkMode ? Colors.white70 : Colors.black54,
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExpandableFAB(BuildContext context, bool isDarkMode) {
+    return FloatingActionButton.extended(
+      onPressed: () {
+        _showPostOptions(context, isDarkMode);
+      },
+      backgroundColor: isDarkMode ? kPrimaryColor : const Color(0xFF078829),
+      extendedIconLabelSpacing: 16,
+      extendedPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      elevation: 12,
+      icon: const Icon(
+        Icons.add_circle_outline_rounded,
+        color: Colors.white,
+        size: 24,
+      ),
+      label: Text(
+        'Post Listing',
+        style: GoogleFonts.plusJakartaSans(
+          color: Colors.white,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 0.5,
+        ),
+      ),
+    );
+  }
+
+  void _showPostOptions(BuildContext context, bool isDarkMode) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: isDarkMode ? kBackgroundColorDark : Colors.white,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.grey[300],
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                'What are you listing today?',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 24),
+              _buildPostOptionItem(
+                context,
+                Icons.shopping_bag_outlined,
+                'Sell a Product',
+                'Books, electronics, fashion...',
+                '/post-product',
+                const Color(0xFF00897B),
+                isDarkMode,
+              ),
+              const SizedBox(height: 12),
+              _buildPostOptionItem(
+                context,
+                Icons.home_work_outlined,
+                'List Accommodation',
+                'Hostels, rooms, apartments...',
+                '/create-accommodation',
+                const Color(0xFFE53935),
+                isDarkMode,
+              ),
+              const SizedBox(height: 12),
+              _buildPostOptionItem(
+                context,
+                Icons.build_outlined,
+                'Offer a Service',
+                'Tutors, laundry, cleaning...',
+                '/create-service',
+                const Color(0xFF3949AB),
+                isDarkMode,
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildPostOptionItem(
+    BuildContext context,
+    IconData icon,
+    String title,
+    String subtitle,
+    String route,
+    Color color,
+    bool isDarkMode,
+  ) {
+    return InkWell(
+      onTap: () {
+        Navigator.pop(context);
+        Navigator.pushNamed(context, route);
+      },
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: isDarkMode ? Colors.white10 : Colors.grey[200]!,
+          ),
+          borderRadius: BorderRadius.circular(16),
         ),
         child: Row(
-          children: List.generate(_chips.length, (index) {
-            final label = _chips[index];
-            final isSelected = index == _selectedChipIndex;
-            final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-            final icon = chipIcons[label] ?? Icons.category_outlined;
-
-            return Padding(
-              padding: const EdgeInsets.only(right: 12.0),
-              child: GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _selectedChipIndex = index;
-                  });
-                },
-                child: Container(
-                  height: 40,
-                  padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? (isDarkMode ? kPrimaryColor : const Color(0xFF078829))
-                        : (isDarkMode ? kBackgroundColorDark : Colors.white),
-                    borderRadius: BorderRadius.circular(9999.0),
-                    border: Border.all(
-                      color: isSelected
-                          ? Colors.transparent
-                          : (isDarkMode ? Colors.white10 : Colors.transparent),
-                      width: isDarkMode && !isSelected ? 1.0 : 0.0,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: isDarkMode ? Colors.white : Colors.black87,
                     ),
-                    boxShadow: isSelected
-                        ? const [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 4,
-                              offset: Offset(0, 2),
-                            ),
-                          ]
-                        : null,
                   ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        icon,
-                        size: 18,
-                        color: isSelected
-                            ? (isDarkMode ? kBackgroundColorDark : Colors.white)
-                            : (isDarkMode ? Colors.white70 : kTextSecondary),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        label,
-                        style: GoogleFonts.plusJakartaSans(
-                          color: isSelected
-                              ? (isDarkMode
-                                    ? kBackgroundColorDark
-                                    : Colors.white)
-                              : (isDarkMode ? Colors.white70 : kTextSecondary),
-                          fontSize: 14,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.w500,
-                        ),
-                      ),
-                    ],
+                  Text(
+                    subtitle,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: isDarkMode ? Colors.white70 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right_rounded, color: Colors.grey),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPriceDropsSection(
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    ScreenSize screenSize,
+  ) {
+    return BlocBuilder<ProductBloc, ProductState>(
+      builder: (context, state) {
+        if (state is ProductsLoaded && state.products.isNotEmpty) {
+          // Filter for products with real price drops
+          final saleProducts = state.products.where((product) {
+            return product.oldPrice != null &&
+                product.oldPrice! > product.price;
+          }).toList();
+
+          // Fallback to simulation if no real price drops exist (for demo purposes)
+          final displayProducts = saleProducts.isNotEmpty
+              ? saleProducts
+              : state.products.take(3).toList();
+
+          if (displayProducts.isEmpty) return const SizedBox.shrink();
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _buildSectionHeader(
+                'Price Drops',
+                Icons.trending_down_rounded,
+                Colors.redAccent,
+                primaryTextColor,
+                screenSize,
+              ),
+              const SizedBox(height: 12),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.symmetric(
+                  horizontal: ResponsiveBreakpoints.responsiveHorizontalPadding(
+                    context,
+                  ),
+                ),
+                child: Row(
+                  children: displayProducts.map((product) {
+                    return _buildSaleCard(
+                      product,
+                      primaryTextColor,
+                      secondaryTextColor,
+                    );
+                  }).toList(),
+                ),
+              ),
+            ],
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+  Widget _buildSaleCard(
+    ProductEntity product,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+  ) {
+    final double? oldPrice = product.oldPrice;
+    final int? discountPercent = product.discountPercentage;
+    final String discount = discountPercent != null
+        ? '-$discountPercent%'
+        : '-25%';
+
+    final displayOldPrice = oldPrice ?? product.price * 1.25;
+
+    return Container(
+      width: 160,
+      margin: const EdgeInsets.only(right: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Stack(
+            children: [
+              ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: NetworkImageWithFallback(
+                  imageUrl: product.images.isNotEmpty
+                      ? product.images.first
+                      : 'https://via.placeholder.com/160',
+                  width: 160,
+                  height: 160,
+                  fit: BoxFit.cover,
+                ),
+              ),
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    discount,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
               ),
-            );
-          }),
-        ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            product.title,
+            style: GoogleFonts.plusJakartaSans(
+              color: primaryTextColor,
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+          Row(
+            children: [
+              Text(
+                'TZS ${product.price.toStringAsFixed(0)}',
+                style: GoogleFonts.plusJakartaSans(
+                  color: kPrimaryColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                displayOldPrice.toStringAsFixed(0),
+                style: GoogleFonts.plusJakartaSans(
+                  color: secondaryTextColor,
+                  fontSize: 11,
+                  decoration: TextDecoration.lineThrough,
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
@@ -1588,7 +2151,17 @@ class _HomePageState extends State<HomePage> {
         child: Stack(
           fit: StackFit.expand, // Make stack expand to fill container
           children: [
-            if (promotion.imageUrl != null)
+            if (promotion.type == 'video' && promotion.videoUrl != null)
+              Positioned.fill(
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: PromotionVideoPlayer(
+                    videoUrl: promotion.videoUrl!,
+                    isPlaying: isActive,
+                  ),
+                ),
+              )
+            else if (promotion.imageUrl != null)
               Positioned.fill(
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(8.0),

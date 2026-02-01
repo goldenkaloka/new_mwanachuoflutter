@@ -33,6 +33,7 @@ abstract class ServiceRemoteDataSource {
     String? contactEmail,
     required List<String> availability,
     Map<String, dynamic>? metadata,
+    bool isGlobal = false,
   });
   Future<ServiceModel> updateService({
     required String serviceId,
@@ -48,6 +49,7 @@ abstract class ServiceRemoteDataSource {
     List<String>? availability,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    bool? isGlobal,
   });
   Future<void> deleteService(String serviceId);
   Future<void> incrementViewCount(String serviceId);
@@ -79,10 +81,20 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
           .select('*, users!inner(full_name, avatar_url)')
           .eq('is_active', true);
 
-      if (category != null) queryBuilder = queryBuilder.eq('category', category);
-      if (universityId != null) queryBuilder = queryBuilder.eq('university_id', universityId);
-      if (providerId != null) queryBuilder = queryBuilder.eq('provider_id', providerId);
-      if (isFeatured == true) queryBuilder = queryBuilder.eq('is_featured', true);
+      if (category != null) {
+        queryBuilder = queryBuilder.eq('category', category);
+      }
+      if (universityId != null) {
+        queryBuilder = queryBuilder.or(
+          'university_ids.cs.{"$universityId"},university_ids.eq.{}',
+        );
+      }
+      if (providerId != null) {
+        queryBuilder = queryBuilder.eq('provider_id', providerId);
+      }
+      if (isFeatured == true) {
+        queryBuilder = queryBuilder.eq('is_featured', true);
+      }
 
       // Text search
       if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -123,11 +135,13 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 
       return (response as List)
-          .map((json) => ServiceModel.fromJson({
-                ...json,
-                'provider_name': json['users']['full_name'],
-                'provider_avatar': json['users']['avatar_url'],
-              }))
+          .map(
+            (json) => ServiceModel.fromJson({
+              ...json,
+              'provider_name': json['users']['full_name'],
+              'provider_avatar': json['users']['avatar_url'],
+            }),
+          )
           .toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
@@ -172,11 +186,13 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 
       return (response as List)
-          .map((json) => ServiceModel.fromJson({
-                ...json,
-                'provider_name': json['users']['full_name'],
-                'provider_avatar': json['users']['avatar_url'],
-              }))
+          .map(
+            (json) => ServiceModel.fromJson({
+              ...json,
+              'provider_name': json['users']['full_name'],
+              'provider_avatar': json['users']['avatar_url'],
+            }),
+          )
           .toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
@@ -198,6 +214,7 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
     String? contactEmail,
     required List<String> availability,
     Map<String, dynamic>? metadata,
+    bool isGlobal = false,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -206,7 +223,7 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
       debugPrint('💾 Creating service with multi-university transaction...');
       debugPrint('👤 Provider ID: ${currentUser.id}');
       debugPrint('📝 Title: $title');
-      
+
       // Use transaction function to create service with all user's universities
       // This will also send notifications to users with matching universities
       final result = await supabaseClient.rpc(
@@ -224,6 +241,7 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
           'p_contact_email': contactEmail,
           'p_availability': availability,
           'p_metadata': metadata,
+          'p_is_global': isGlobal,
         },
       );
 
@@ -265,6 +283,7 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
     List<String>? availability,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    bool? isGlobal,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -285,6 +304,7 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
       if (contactEmail != null) updateData['contact_email'] = contactEmail;
       if (availability != null) updateData['availability'] = availability;
       if (isActive != null) updateData['is_active'] = isActive;
+      if (isGlobal != null) updateData['is_global'] = isGlobal;
       if (metadata != null) updateData['metadata'] = metadata;
 
       final response = await supabaseClient
@@ -328,9 +348,10 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
   @override
   Future<void> incrementViewCount(String serviceId) async {
     try {
-      await supabaseClient.rpc('increment_service_views', params: {
-        'service_id': serviceId,
-      });
+      await supabaseClient.rpc(
+        'increment_service_views',
+        params: {'service_id': serviceId},
+      );
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
@@ -338,4 +359,3 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
     }
   }
 }
-

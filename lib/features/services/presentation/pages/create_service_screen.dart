@@ -14,6 +14,10 @@ import 'package:mwanachuo/features/services/presentation/bloc/service_event.dart
 import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_state.dart';
+import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.dart';
+import 'package:mwanachuo/features/subscriptions/domain/usecases/get_seller_subscription.dart';
+import 'package:mwanachuo/features/auth/domain/repositories/auth_repository.dart';
 
 class CreateServiceScreen extends StatefulWidget {
   const CreateServiceScreen({super.key});
@@ -35,20 +39,21 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
   void initState() {
     super.initState();
     _checkSellerAccess();
+    context.read<CategoryCubit>().loadServiceCategories();
   }
 
   void _checkSellerAccess() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
-      
+
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
         final userRole = authState.user.role.value;
-        
+
         if (userRole == 'buyer') {
           debugPrint('❌ Buyer attempting to create service - redirecting');
           Navigator.of(context).pop();
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -84,10 +89,12 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
 
     try {
       final remainingSlots = 5 - _selectedImages.length;
-      
+
       // Check if running on desktop (Windows, macOS, Linux)
-      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
-      
+      final isDesktop =
+          !kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
       if (isDesktop) {
         // Use file_picker for desktop platforms
         final result = await FilePicker.platform.pickFiles(
@@ -95,22 +102,22 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
           allowMultiple: true,
           dialogTitle: 'Select service images (max $remainingSlots)',
         );
-        
+
         if (result != null && result.files.isNotEmpty) {
           final List<File> newFiles = [];
           final filesToAdd = result.files.take(remainingSlots);
-          
+
           for (var file in filesToAdd) {
             if (file.path != null) {
               newFiles.add(File(file.path!));
             }
           }
-          
+
           if (newFiles.isNotEmpty) {
             setState(() {
               _selectedImages.addAll(newFiles);
             });
-            
+
             if (!mounted) return;
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
@@ -123,7 +130,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       } else {
         // Use WeChat Assets Picker for mobile platforms
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        
+
         final List<AssetEntity>? result = await AssetPicker.pickAssets(
           context,
           pickerConfig: AssetPickerConfig(
@@ -133,9 +140,13 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
             pickerTheme: ThemeData(
               brightness: isDarkMode ? Brightness.dark : Brightness.light,
               primaryColor: kPrimaryColor,
-              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              scaffoldBackgroundColor: isDarkMode
+                  ? kBackgroundColorDark
+                  : Colors.white,
               appBarTheme: AppBarTheme(
-                backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+                backgroundColor: isDarkMode
+                    ? kBackgroundColorDark
+                    : Colors.white,
                 foregroundColor: isDarkMode ? Colors.white : Colors.black,
                 elevation: 0,
                 iconTheme: IconThemeData(
@@ -209,9 +220,9 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     super.dispose();
   }
 
-  void _handleSubmit() {
+  Future<void> _handleSubmit() async {
     if (!_formKey.currentState!.validate()) return;
-    
+
     if (_selectedImages.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -221,7 +232,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       );
       return;
     }
-    
+
     if (_selectedCategory == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -231,7 +242,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       );
       return;
     }
-    
+
     final price = double.tryParse(_priceController.text.trim());
     if (price == null || price <= 0) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -242,28 +253,187 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       );
       return;
     }
-    
-    // Dispatch create service event
-    context.read<ServiceBloc>().add(
-          CreateServiceEvent(
-            title: _titleController.text.trim(),
-            description: _descriptionController.text.trim(),
-            price: price,
-            category: _selectedCategory!,
-            priceType: 'fixed', // Default, you can add a dropdown for this
-            images: _selectedImages,
-            location: 'Campus', // Default, you can add a location field
-            contactPhone: _contactController.text.trim(),
-            availability: [], // You can add availability selector
+
+    // Check auth and subscription status
+    final authState = context.read<AuthBloc>().state;
+    if (authState is! Authenticated) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Please login to create services'),
+          backgroundColor: Colors.orange,
+        ),
+      );
+      return;
+    }
+
+    // Show loading while checking subscription
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    final getSubscription = sl<GetSellerSubscription>();
+    final result = await getSubscription(authState.user.id);
+
+    // Close loading
+    if (mounted) Navigator.pop(context);
+
+    bool isSubscriber = false;
+    result.fold(
+      (l) => isSubscriber = false,
+      (s) => isSubscriber = s != null && s.isActive,
+    );
+
+    // Check if user has free listings (Student Offer)
+    final int freeListings = authState.user.freeListingsCount;
+
+    if (isSubscriber || freeListings > 0) {
+      if (freeListings > 0 && !isSubscriber) {
+        // Show free listing confirmation
+        if (!mounted) return;
+        final confirmFree = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Use Free Listing?'),
+            content: Text(
+              'You have $freeListings free listings remaining as a student. Would you like to use one for this service?',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context, false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.pop(context, true),
+                child: const Text('Use Free Listing'),
+              ),
+            ],
           ),
         );
+
+        if (confirmFree == true) {
+          // Show loading
+          if (!mounted) return;
+          showDialog(
+            context: context,
+            barrierDismissible: false,
+            builder: (_) => const Center(child: CircularProgressIndicator()),
+          );
+
+          final authRepo = sl<AuthRepository>();
+          final result = await authRepo.consumeFreeListing(authState.user.id);
+
+          if (!mounted) return;
+          Navigator.pop(context); // Close loading
+
+          result.fold(
+            (failure) => ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text(
+                  'Failed to consume free listing. Please try again.',
+                ),
+              ),
+            ),
+            (_) => _dispatchCreateService(price),
+          );
+          return;
+        }
+      } else {
+        // Business subscriber - post directly
+        _dispatchCreateService(price);
+        return;
+      }
+    }
+
+    // Default: 0.5% Fee Logic
+    final fee = price * 0.005;
+    if (!mounted) return;
+
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirm Listing Fee'),
+        content: Text(
+          'You are on a standard plan. A 0.5% listing fee of ${fee.toStringAsFixed(0)} TZS will be deducted from your wallet.\n\nSubscribe to Business Plan for unlimited listings.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Pay & Post'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      // Show loading for payment
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final walletRepo = sl<WalletRepository>();
+      final deductResult = await walletRepo.deductBalance(
+        amount: fee,
+        description: 'Service Listing Fee: ${_titleController.text.trim()}',
+      );
+
+      if (!mounted) return;
+      Navigator.pop(context); // Close payment loading
+
+      deductResult.fold(
+        (failure) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'Insufficient wallet balance. Please top up via ZenoPay.',
+              ),
+              backgroundColor: Colors.red,
+            ),
+          );
+        },
+        (_) {
+          _dispatchCreateService(price);
+        },
+      );
+    }
+  }
+
+  void _dispatchCreateService(double price) {
+    final authState = context.read<AuthBloc>().state;
+    final isGlobal =
+        authState is Authenticated && authState.user.userType == 'business';
+
+    context.read<ServiceBloc>().add(
+      CreateServiceEvent(
+        title: _titleController.text.trim(),
+        description: _descriptionController.text.trim(),
+        price: price,
+        category: _selectedCategory!,
+        priceType: 'fixed', // Default, you can add a dropdown for this
+        images: _selectedImages,
+        location: 'Campus', // Default, you can add a location field
+        contactPhone: _contactController.text.trim(),
+        availability: [], // You can add availability selector
+        isGlobal: isGlobal,
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
-    final secondaryTextColor = isDarkMode ? Colors.grey[400]! : Colors.grey[600]!;
+    final secondaryTextColor = isDarkMode
+        ? Colors.grey[400]!
+        : Colors.grey[600]!;
     final borderColor = isDarkMode ? Colors.grey[700]! : Colors.grey[300]!;
 
     return BlocConsumer<ServiceBloc, ServiceState>(
@@ -293,210 +463,269 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       },
       builder: (context, state) {
         return Scaffold(
-          backgroundColor: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
+          backgroundColor: isDarkMode
+              ? kBackgroundColorDark
+              : kBackgroundColorLight,
           body: ResponsiveBuilder(
             builder: (context, screenSize) {
-          return Column(
-            children: [
-              // Top App Bar
-              _buildTopAppBar(context, primaryTextColor, secondaryTextColor, screenSize),
-              
-              // Form
-              Expanded(
-                child: SingleChildScrollView(
-                  child: ResponsiveContainer(
-                    child: Padding(
-                      padding: EdgeInsets.all(
-                        ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-                      ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              height: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 24.0,
-                                medium: 32.0,
-                                expanded: 40.0,
-                              ),
+              return Column(
+                children: [
+                  // Top App Bar
+                  _buildTopAppBar(
+                    context,
+                    primaryTextColor,
+                    secondaryTextColor,
+                    screenSize,
+                  ),
+
+                  // Form
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: ResponsiveContainer(
+                        child: Padding(
+                          padding: EdgeInsets.all(
+                            ResponsiveBreakpoints.responsiveHorizontalPadding(
+                              context,
                             ),
-                            
-                            // Photo Upload
-                            _buildPhotoUpload(primaryTextColor, secondaryTextColor, borderColor),
-                            
-                            const SizedBox(height: 24.0),
-                            
-                            // Service Title
-                            TextFormField(
-                              controller: _titleController,
-                              decoration: InputDecoration(
-                                labelText: 'Service Title',
-                                hintText: 'e.g., Mathematics Tutoring',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                SizedBox(
+                                  height: ResponsiveBreakpoints.responsiveValue(
+                                    context,
+                                    compact: 24.0,
+                                    medium: 32.0,
+                                    expanded: 40.0,
+                                  ),
                                 ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
+
+                                // Photo Upload
+                                _buildPhotoUpload(
+                                  primaryTextColor,
+                                  secondaryTextColor,
+                                  borderColor,
                                 ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a service title';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Category Dropdown
-                            BlocBuilder<CategoryCubit, CategoryState>(
-                              builder: (context, categoryState) {
-                                List<String> categories = ['Select category'];
-                                if (categoryState is CategoriesLoaded) {
-                                  categories.addAll(
-                                    categoryState.categories.map((c) => c.name).toList(),
-                                  );
-                                }
-                                
-                                return DropdownButtonFormField<String>(
-                                  value: _selectedCategory,
+
+                                const SizedBox(height: 24.0),
+
+                                // Service Title
+                                TextFormField(
+                                  controller: _titleController,
                                   decoration: InputDecoration(
-                                    labelText: 'Category',
+                                    labelText: 'Service Title',
+                                    hintText: 'e.g., Mathematics Tutoring',
                                     border: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(color: borderColor),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
                                     ),
                                     enabledBorder: OutlineInputBorder(
                                       borderRadius: BorderRadius.circular(12.0),
-                                      borderSide: BorderSide(color: borderColor),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
                                     ),
                                   ),
-                                  items: categories.map((category) {
-                                    return DropdownMenuItem(
-                                      value: category == 'Select category' ? null : category,
-                                      child: Text(category),
-                                    );
-                                  }).toList(),
-                                  onChanged: (value) {
-                                    setState(() {
-                                      _selectedCategory = value;
-                                    });
-                                  },
                                   validator: (value) {
                                     if (value == null || value.isEmpty) {
-                                      return 'Please select a category';
+                                      return 'Please enter a service title';
                                     }
                                     return null;
                                   },
-                                );
-                              },
+                                ),
+
+                                const SizedBox(height: 20.0),
+
+                                // Category Dropdown
+                                BlocBuilder<CategoryCubit, CategoryState>(
+                                  builder: (context, categoryState) {
+                                    List<String> categories = [
+                                      'Select category',
+                                    ];
+                                    if (categoryState is CategoriesLoaded) {
+                                      final loadedNames = categoryState
+                                          .categories
+                                          .map((c) => c.name)
+                                          .toList();
+                                      categories.addAll(loadedNames);
+
+                                      // Ensure selected category is in the list
+                                      if (_selectedCategory != null &&
+                                          !loadedNames.contains(
+                                            _selectedCategory,
+                                          ) &&
+                                          _selectedCategory !=
+                                              'Select category') {
+                                        categories.add(_selectedCategory!);
+                                      }
+                                    } else if (_selectedCategory != null &&
+                                        _selectedCategory !=
+                                            'Select category') {
+                                      // If not loaded but we somehow have a selection, add it to prevent crash
+                                      categories.add(_selectedCategory!);
+                                    }
+
+                                    return DropdownButtonFormField<String>(
+                                      value: _selectedCategory,
+                                      decoration: InputDecoration(
+                                        labelText: 'Category',
+                                        border: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12.0,
+                                          ),
+                                          borderSide: BorderSide(
+                                            color: borderColor,
+                                          ),
+                                        ),
+                                        enabledBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(
+                                            12.0,
+                                          ),
+                                          borderSide: BorderSide(
+                                            color: borderColor,
+                                          ),
+                                        ),
+                                      ),
+                                      items: categories.map((category) {
+                                        return DropdownMenuItem(
+                                          value: category == 'Select category'
+                                              ? null
+                                              : category,
+                                          child: Text(category),
+                                        );
+                                      }).toList(),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          _selectedCategory = value;
+                                        });
+                                      },
+                                      validator: (value) {
+                                        if (value == null || value.isEmpty) {
+                                          return 'Please select a category';
+                                        }
+                                        return null;
+                                      },
+                                    );
+                                  },
+                                ),
+
+                                const SizedBox(height: 20.0),
+
+                                // Description
+                                TextFormField(
+                                  controller: _descriptionController,
+                                  maxLines: 5,
+                                  decoration: InputDecoration(
+                                    labelText: 'Description',
+                                    hintText:
+                                        'Describe your service, experience, and what makes you qualified...',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a description';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 20.0),
+
+                                // Price
+                                TextFormField(
+                                  controller: _priceController,
+                                  keyboardType: TextInputType.number,
+                                  decoration: InputDecoration(
+                                    labelText: 'Price per Hour',
+                                    hintText: '0.00',
+                                    prefixText: '\$ ',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a price';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 24.0),
+
+                                // Contact Information
+                                TextFormField(
+                                  controller: _contactController,
+                                  decoration: InputDecoration(
+                                    labelText: 'Contact Information',
+                                    hintText: 'Email or phone number',
+                                    border: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12.0),
+                                      borderSide: BorderSide(
+                                        color: borderColor,
+                                      ),
+                                    ),
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter contact information';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                SizedBox(
+                                  height: ResponsiveBreakpoints.responsiveValue(
+                                    context,
+                                    compact: 120.0,
+                                    medium: 100.0,
+                                    expanded: 80.0,
+                                  ),
+                                ),
+                              ],
                             ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Description
-                            TextFormField(
-                              controller: _descriptionController,
-                              maxLines: 5,
-                              decoration: InputDecoration(
-                                labelText: 'Description',
-                                hintText: 'Describe your service, experience, and what makes you qualified...',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a description';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Price
-                            TextFormField(
-                              controller: _priceController,
-                              keyboardType: TextInputType.number,
-                              decoration: InputDecoration(
-                                labelText: 'Price per Hour',
-                                hintText: '0.00',
-                                prefixText: '\$ ',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a price';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            const SizedBox(height: 20.0),
-                            
-                            // Contact Information
-                            TextFormField(
-                              controller: _contactController,
-                              decoration: InputDecoration(
-                                labelText: 'Contact Information',
-                                hintText: 'Email or phone number',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter contact information';
-                                }
-                                return null;
-                              },
-                            ),
-                            
-                            SizedBox(
-                              height: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 120.0,
-                                medium: 100.0,
-                                expanded: 80.0,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
-              
-              // Submit Button
-              _buildSubmitButton(context, primaryTextColor, screenSize),
-            ],
-          );
-        },
-      ),
+
+                  // Submit Button
+                  _buildSubmitButton(context, primaryTextColor, screenSize),
+                ],
+              );
+            },
+          ),
         );
       },
     );
@@ -508,7 +737,9 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     Color secondaryTextColor,
     ScreenSize screenSize,
   ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(context);
+    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
+      context,
+    );
     return Container(
       padding: EdgeInsets.fromLTRB(
         horizontalPadding,
@@ -566,9 +797,13 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     );
   }
 
-  Widget _buildPhotoUpload(Color primaryTextColor, Color secondaryTextColor, Color borderColor) {
+  Widget _buildPhotoUpload(
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color borderColor,
+  ) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -579,9 +814,15 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
             width: double.infinity,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              border: Border.all(color: borderColor, width: 2.0, style: BorderStyle.solid),
+              border: Border.all(
+                color: borderColor,
+                width: 2.0,
+                style: BorderStyle.solid,
+              ),
               borderRadius: BorderRadius.circular(16.0),
-              color: isDarkMode ? kBackgroundColorDark.withValues(alpha: 0.5) : Colors.white,
+              color: isDarkMode
+                  ? kBackgroundColorDark.withValues(alpha: 0.5)
+                  : Colors.white,
             ),
             child: _selectedImages.isEmpty
                 ? Column(
@@ -676,9 +917,13 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     );
   }
 
-  Widget _buildSubmitButton(BuildContext context, Color primaryTextColor, ScreenSize screenSize) {
+  Widget _buildSubmitButton(
+    BuildContext context,
+    Color primaryTextColor,
+    ScreenSize screenSize,
+  ) {
     final isLoading = context.watch<ServiceBloc>().state is ServiceLoading;
-    
+
     return Container(
       padding: EdgeInsets.all(
         ResponsiveBreakpoints.responsiveHorizontalPadding(context),
@@ -720,7 +965,9 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                         height: 20,
                         child: CircularProgressIndicator(
                           strokeWidth: 2,
-                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            Colors.white,
+                          ),
                         ),
                       )
                     : Text(
@@ -739,4 +986,3 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     );
   }
 }
-

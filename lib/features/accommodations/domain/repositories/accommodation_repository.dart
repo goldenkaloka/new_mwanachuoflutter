@@ -44,6 +44,7 @@ abstract class AccommodationRepository {
     required int bedrooms,
     required int bathrooms,
     Map<String, dynamic>? metadata,
+    bool isGlobal = false,
   });
 
   Future<Either<Failure, AccommodationEntity>> updateAccommodation({
@@ -63,9 +64,9 @@ abstract class AccommodationRepository {
     int? bathrooms,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    bool? isGlobal,
   });
 
   Future<Either<Failure, void>> deleteAccommodation(String accommodationId);
   Future<Either<Failure, void>> incrementViewCount(String accommodationId);
 }
-

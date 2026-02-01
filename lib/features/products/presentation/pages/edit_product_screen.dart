@@ -57,10 +57,7 @@ class _EditProductViewState extends State<_EditProductView> {
     'Other',
   ];
 
-  final List<String> _conditions = [
-    'New',
-    'Used',
-  ];
+  final List<String> _conditions = ['New', 'Used'];
 
   @override
   void initState() {
@@ -97,7 +94,9 @@ class _EditProductViewState extends State<_EditProductView> {
 
     try {
       final remainingSlots = 5 - (_existingImages.length + _newImages.length);
-      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+      final isDesktop =
+          !kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
 
       if (isDesktop) {
         final result = await FilePicker.platform.pickFiles(
@@ -133,7 +132,9 @@ class _EditProductViewState extends State<_EditProductView> {
             pickerTheme: ThemeData(
               brightness: isDarkMode ? Brightness.dark : Brightness.light,
               primaryColor: kPrimaryColor,
-              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              scaffoldBackgroundColor: isDarkMode
+                  ? kBackgroundColorDark
+                  : Colors.white,
             ),
           ),
         );
@@ -315,14 +316,21 @@ class _EditProductViewState extends State<_EditProductView> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                items: _categories
-                                    .map(
-                                      (category) => DropdownMenuItem(
-                                        value: category,
-                                        child: Text(category),
-                                      ),
-                                    )
-                                    .toList(),
+                                items:
+                                    (_categories.contains(_selectedCategory)
+                                            ? _categories
+                                            : [
+                                                ..._categories,
+                                                if (_selectedCategory != null)
+                                                  _selectedCategory!,
+                                              ])
+                                        .map(
+                                          (category) => DropdownMenuItem(
+                                            value: category,
+                                            child: Text(category),
+                                          ),
+                                        )
+                                        .toList(),
                                 onChanged: (value) {
                                   setState(() {
                                     _selectedCategory = value;
@@ -346,14 +354,21 @@ class _EditProductViewState extends State<_EditProductView> {
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                 ),
-                                items: _conditions
-                                    .map(
-                                      (condition) => DropdownMenuItem(
-                                        value: condition,
-                                        child: Text(condition),
-                                      ),
-                                    )
-                                    .toList(),
+                                items:
+                                    (_conditions.contains(_selectedCondition)
+                                            ? _conditions
+                                            : [
+                                                ..._conditions,
+                                                if (_selectedCondition != null)
+                                                  _selectedCondition!,
+                                              ])
+                                        .map(
+                                          (condition) => DropdownMenuItem(
+                                            value: condition,
+                                            child: Text(condition),
+                                          ),
+                                        )
+                                        .toList(),
                                 onChanged: (value) {
                                   setState(() {
                                     _selectedCondition = value;
@@ -449,7 +464,7 @@ class _EditProductViewState extends State<_EditProductView> {
                             style: TextStyle(color: secondaryTextColor),
                           ),
                           value: _isActive,
-                          thumbColor: WidgetStateProperty.all( kPrimaryColor),
+                          thumbColor: WidgetStateProperty.all(kPrimaryColor),
                           onChanged: (value) {
                             setState(() {
                               _isActive = value;
@@ -617,4 +632,3 @@ class _EditProductViewState extends State<_EditProductView> {
     );
   }
 }
-

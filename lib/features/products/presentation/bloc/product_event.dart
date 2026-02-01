@@ -32,14 +32,14 @@ class LoadProductsEvent extends ProductEvent {
 
   @override
   List<Object?> get props => [
-        category,
-        universityId,
-        sellerId,
-        isFeatured,
-        limit,
-        offset,
-        filter,
-      ];
+    category,
+    universityId,
+    sellerId,
+    isFeatured,
+    limit,
+    offset,
+    filter,
+  ];
 }
 
 /// Apply filter event
@@ -89,6 +89,8 @@ class CreateProductEvent extends ProductEvent {
   final List<File> images;
   final String location;
   final Map<String, dynamic>? metadata;
+  final double? oldPrice;
+  final bool isGlobal;
 
   const CreateProductEvent({
     required this.title,
@@ -99,19 +101,23 @@ class CreateProductEvent extends ProductEvent {
     required this.images,
     required this.location,
     this.metadata,
+    this.oldPrice,
+    this.isGlobal = false,
   });
 
   @override
   List<Object?> get props => [
-        title,
-        description,
-        price,
-        category,
-        condition,
-        images,
-        location,
-        metadata,
-      ];
+    title,
+    description,
+    price,
+    category,
+    condition,
+    images,
+    location,
+    metadata,
+    oldPrice,
+    isGlobal,
+  ];
 }
 
 /// Update product event
@@ -127,6 +133,8 @@ class UpdateProductEvent extends ProductEvent {
   final String? location;
   final bool? isActive;
   final Map<String, dynamic>? metadata;
+  final double? oldPrice;
+  final bool? isGlobal;
 
   const UpdateProductEvent({
     required this.productId,
@@ -140,22 +148,26 @@ class UpdateProductEvent extends ProductEvent {
     this.location,
     this.isActive,
     this.metadata,
+    this.oldPrice,
+    this.isGlobal,
   });
 
   @override
   List<Object?> get props => [
-        productId,
-        title,
-        description,
-        price,
-        category,
-        condition,
-        newImages,
-        existingImages,
-        location,
-        isActive,
-        metadata,
-      ];
+    productId,
+    title,
+    description,
+    price,
+    category,
+    condition,
+    newImages,
+    existingImages,
+    location,
+    isActive,
+    metadata,
+    oldPrice,
+    isGlobal,
+  ];
 }
 
 /// Delete product event
@@ -195,6 +207,11 @@ class LoadMoreProductsEvent extends ProductEvent {
   });
 
   @override
-  List<Object?> get props => [offset, category, universityId, isFeatured, filter];
+  List<Object?> get props => [
+    offset,
+    category,
+    universityId,
+    isFeatured,
+    filter,
+  ];
 }
-

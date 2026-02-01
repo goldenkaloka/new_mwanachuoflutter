@@ -45,6 +45,7 @@ class CreateAccommodation
       bedrooms: params.bedrooms,
       bathrooms: params.bathrooms,
       metadata: params.metadata,
+      isGlobal: params.isGlobal,
     );
   }
 }
@@ -63,6 +64,7 @@ class CreateAccommodationParams extends Equatable {
   final int bedrooms;
   final int bathrooms;
   final Map<String, dynamic>? metadata;
+  final bool isGlobal;
 
   const CreateAccommodationParams({
     required this.name,
@@ -78,6 +80,7 @@ class CreateAccommodationParams extends Equatable {
     required this.bedrooms,
     required this.bathrooms,
     this.metadata,
+    this.isGlobal = false,
   });
 
   @override
@@ -95,5 +98,6 @@ class CreateAccommodationParams extends Equatable {
     bedrooms,
     bathrooms,
     metadata,
+    isGlobal,
   ];
 }

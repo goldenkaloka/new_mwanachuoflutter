@@ -571,9 +571,9 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
         );
       },
       backgroundColor: const Color(0xFF0d9488),
-      extendedIconLabelSpacing: 12,
-      extendedPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      elevation: 8,
+      extendedIconLabelSpacing: 16,
+      extendedPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      elevation: 12,
       icon: const Icon(Icons.upload_file, color: Colors.white, size: 24),
       label: const Text(
         'Upload Note',

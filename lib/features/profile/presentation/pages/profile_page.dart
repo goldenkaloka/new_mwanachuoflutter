@@ -12,7 +12,8 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_bloc.dart';
-import 'package:mwanachuo/features/profile/presentation/bloc/profile_event.dart';
+import 'package:mwanachuo/features/profile/presentation/bloc/profile_event.dart'
+    as profile_event;
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_state.dart'
     as profile_state;
 import 'package:mwanachuo/features/profile/domain/entities/user_profile_entity.dart';
@@ -46,7 +47,7 @@ class _ProfilePageState extends State<ProfilePage> {
           // Only reload if not already loading and we have a loaded state
           if (bloc.state is! profile_state.ProfileLoading &&
               bloc.state is profile_state.ProfileLoaded) {
-            bloc.add(LoadMyProfileEvent());
+            bloc.add(profile_event.LoadMyProfileEvent());
           }
         }
       }
@@ -60,7 +61,8 @@ class _ProfilePageState extends State<ProfilePage> {
     final secondaryTextColor = isDarkMode ? Colors.grey[400]! : kTextSecondary;
 
     return BlocProvider(
-      create: (context) => sl<ProfileBloc>()..add(LoadMyProfileEvent()),
+      create: (context) =>
+          sl<ProfileBloc>()..add(profile_event.LoadMyProfileEvent()),
       child: BlocListener<AuthBloc, AuthState>(
         listener: (context, state) {
           if (state is Unauthenticated) {
@@ -76,7 +78,7 @@ class _ProfilePageState extends State<ProfilePage> {
             debugPrint(
               '🔄 User authenticated, reloading profile for user: ${state.user.id}',
             );
-            context.read<ProfileBloc>().add(LoadMyProfileEvent());
+            context.read<ProfileBloc>().add(profile_event.LoadMyProfileEvent());
           } else if (state is AuthError) {
             ScaffoldMessenger.of(
               context,
@@ -92,7 +94,9 @@ class _ProfilePageState extends State<ProfilePage> {
               );
               // Refresh AuthBloc to update user data (including avatar) in homepage
               context.read<AuthBloc>().add(const CheckAuthStatusEvent());
-              context.read<ProfileBloc>().add(LoadMyProfileEvent());
+              context.read<ProfileBloc>().add(
+                profile_event.LoadMyProfileEvent(),
+              );
             }
           },
           child: BlocBuilder<ProfileBloc, profile_state.ProfileState>(
@@ -130,7 +134,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         ElevatedButton(
                           onPressed: () {
                             context.read<ProfileBloc>().add(
-                              LoadMyProfileEvent(),
+                              profile_event.LoadMyProfileEvent(),
                             );
                           },
                           style: ElevatedButton.styleFrom(
@@ -504,21 +508,15 @@ class _ProfilePageState extends State<ProfilePage> {
       ]);
     }
 
-    // Show "Seller Requests" for admin only
-    if (profile.role.toString().contains('admin')) {
-      menuItems.add(
-        _MenuItem(
-          icon: Icons.verified_user,
-          title: 'Seller Requests',
-          onTap: () {
-            Navigator.pushNamed(context, '/seller-requests');
-          },
-        ),
-      );
-    }
-
     // Common menu items for all users
     menuItems.addAll([
+      _MenuItem(
+        icon: Icons.school_outlined,
+        title: 'Update Academic Info',
+        onTap: () {
+          _showUpdateAcademicInfoDialog(context, profile);
+        },
+      ),
       _MenuItem(
         icon: Icons.settings,
         title: 'Account Settings',
@@ -819,6 +817,136 @@ class _ProfilePageState extends State<ProfilePage> {
               },
             ),
           ],
+        );
+      },
+    );
+  }
+
+  void _showUpdateAcademicInfoDialog(BuildContext context, dynamic profile) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+        final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
+
+        int selectedYear = profile.yearOfStudy ?? 1;
+        int selectedSemester = profile.currentSemester ?? 1;
+
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16.0),
+              ),
+              title: Text(
+                'Academic Info',
+                style: GoogleFonts.plusJakartaSans(
+                  color: primaryTextColor,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Year of Study',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int>(
+                    value: selectedYear,
+                    dropdownColor: isDarkMode
+                        ? kBackgroundColorDark
+                        : Colors.white,
+                    style: GoogleFonts.plusJakartaSans(color: primaryTextColor),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                    ),
+                    items: List.generate(7, (index) => index + 1)
+                        .map(
+                          (year) => DropdownMenuItem(
+                            value: year,
+                            child: Text('Year $year'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) setState(() => selectedYear = value);
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                  const Text(
+                    'Semester',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 8),
+                  DropdownButtonFormField<int>(
+                    value: selectedSemester,
+                    dropdownColor: isDarkMode
+                        ? kBackgroundColorDark
+                        : Colors.white,
+                    style: GoogleFonts.plusJakartaSans(color: primaryTextColor),
+                    decoration: InputDecoration(
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                      ),
+                    ),
+                    items: [1, 2]
+                        .map(
+                          (sem) => DropdownMenuItem(
+                            value: sem,
+                            child: Text('Semester $sem'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() => selectedSemester = value);
+                      }
+                    },
+                  ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: Text(
+                    'Cancel',
+                    style: GoogleFonts.plusJakartaSans(color: primaryTextColor),
+                  ),
+                ),
+                ElevatedButton(
+                  onPressed: () {
+                    context.read<ProfileBloc>().add(
+                      profile_event.UpdateProfileEvent(
+                        yearOfStudy: selectedYear,
+                        currentSemester: selectedSemester,
+                      ),
+                    );
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                    foregroundColor: kBackgroundColorDark,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(20.0),
+                    ),
+                  ),
+                  child: const Text('Save'),
+                ),
+              ],
+            );
+          },
         );
       },
     );

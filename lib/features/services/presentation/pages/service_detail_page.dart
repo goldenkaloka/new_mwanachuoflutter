@@ -302,8 +302,10 @@ class _ServiceDetailView extends StatelessWidget {
                   'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
               actionButtonText: 'Contact Provider',
               onActionTap: () {
+                final itemUrl =
+                    'https://www.mwanachuoshop.com/services/${service.id}';
                 final message =
-                    'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}. Je tunaweza kuongea zaidi?';
+                    'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?';
                 WhatsAppContactHelper.contactSeller(
                   context: context,
                   phoneNumber: service.contactPhone,
@@ -592,8 +594,10 @@ class _ServiceDetailView extends StatelessWidget {
           IconButton(
             onPressed: () {
               // Dispatch event - navigation will be handled by parent BlocListener
+              final itemUrl =
+                  'https://www.mwanachuoshop.com/services/${service.id}';
               final message =
-                  'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}. Je tunaweza kuongea zaidi?';
+                  'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?';
               WhatsAppContactHelper.contactSeller(
                 context: context,
                 phoneNumber: service.contactPhone,

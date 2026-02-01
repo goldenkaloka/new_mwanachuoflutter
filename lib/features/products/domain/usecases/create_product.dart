@@ -44,6 +44,8 @@ class CreateProduct implements UseCase<ProductEntity, CreateProductParams> {
       images: params.images,
       location: params.location.trim(),
       metadata: params.metadata,
+      oldPrice: params.oldPrice,
+      isGlobal: params.isGlobal,
     );
   }
 }
@@ -57,6 +59,8 @@ class CreateProductParams extends Equatable {
   final List<File> images;
   final String location;
   final Map<String, dynamic>? metadata;
+  final double? oldPrice;
+  final bool isGlobal;
 
   const CreateProductParams({
     required this.title,
@@ -67,6 +71,8 @@ class CreateProductParams extends Equatable {
     required this.images,
     required this.location,
     this.metadata,
+    this.oldPrice,
+    this.isGlobal = false,
   });
 
   @override
@@ -79,5 +85,7 @@ class CreateProductParams extends Equatable {
     images,
     location,
     metadata,
+    oldPrice,
+    isGlobal,
   ];
 }

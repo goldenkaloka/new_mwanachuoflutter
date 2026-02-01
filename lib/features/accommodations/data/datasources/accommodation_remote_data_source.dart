@@ -22,7 +22,10 @@ abstract class AccommodationRemoteDataSource {
     bool sortAscending = true,
   });
   Future<AccommodationModel> getAccommodationById(String accommodationId);
-  Future<List<AccommodationModel>> getMyAccommodations({int? limit, int? offset});
+  Future<List<AccommodationModel>> getMyAccommodations({
+    int? limit,
+    int? offset,
+  });
   Future<AccommodationModel> createAccommodation({
     required String name,
     required String description,
@@ -37,6 +40,7 @@ abstract class AccommodationRemoteDataSource {
     required int bedrooms,
     required int bathrooms,
     Map<String, dynamic>? metadata,
+    bool isGlobal = false,
   });
   Future<AccommodationModel> updateAccommodation({
     required String accommodationId,
@@ -54,12 +58,14 @@ abstract class AccommodationRemoteDataSource {
     int? bathrooms,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    bool? isGlobal,
   });
   Future<void> deleteAccommodation(String accommodationId);
   Future<void> incrementViewCount(String accommodationId);
 }
 
-class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource {
+class AccommodationRemoteDataSourceImpl
+    implements AccommodationRemoteDataSource {
   final SupabaseClient supabaseClient;
 
   AccommodationRemoteDataSourceImpl({required this.supabaseClient});
@@ -87,10 +93,18 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
           .select('*, users!inner(full_name, avatar_url)')
           .eq('is_active', true);
 
-      if (roomType != null) queryBuilder = queryBuilder.eq('room_type', roomType);
-      if (universityId != null) queryBuilder = queryBuilder.eq('university_id', universityId);
+      if (roomType != null) {
+        queryBuilder = queryBuilder.eq('room_type', roomType);
+      }
+      if (universityId != null) {
+        queryBuilder = queryBuilder.or(
+          'university_ids.cs.{"$universityId"},university_ids.eq.{}',
+        );
+      }
       if (ownerId != null) queryBuilder = queryBuilder.eq('owner_id', ownerId);
-      if (isFeatured == true) queryBuilder = queryBuilder.eq('is_featured', true);
+      if (isFeatured == true) {
+        queryBuilder = queryBuilder.eq('is_featured', true);
+      }
 
       // Text search
       if (searchQuery != null && searchQuery.isNotEmpty) {
@@ -144,11 +158,13 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 
       return (response as List)
-          .map((json) => AccommodationModel.fromJson({
-                ...json,
-                'owner_name': json['users']['full_name'],
-                'owner_avatar': json['users']['avatar_url'],
-              }))
+          .map(
+            (json) => AccommodationModel.fromJson({
+              ...json,
+              'owner_name': json['users']['full_name'],
+              'owner_avatar': json['users']['avatar_url'],
+            }),
+          )
           .toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
@@ -158,7 +174,9 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
   }
 
   @override
-  Future<AccommodationModel> getAccommodationById(String accommodationId) async {
+  Future<AccommodationModel> getAccommodationById(
+    String accommodationId,
+  ) async {
     try {
       final response = await supabaseClient
           .from(DatabaseConstants.accommodationsTable)
@@ -179,7 +197,10 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
   }
 
   @override
-  Future<List<AccommodationModel>> getMyAccommodations({int? limit, int? offset}) async {
+  Future<List<AccommodationModel>> getMyAccommodations({
+    int? limit,
+    int? offset,
+  }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
       if (currentUser == null) throw ServerException('User not authenticated');
@@ -193,11 +214,13 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
           .range(offset ?? 0, (offset ?? 0) + (limit ?? 20) - 1);
 
       return (response as List)
-          .map((json) => AccommodationModel.fromJson({
-                ...json,
-                'owner_name': json['users']['full_name'],
-                'owner_avatar': json['users']['avatar_url'],
-              }))
+          .map(
+            (json) => AccommodationModel.fromJson({
+              ...json,
+              'owner_name': json['users']['full_name'],
+              'owner_avatar': json['users']['avatar_url'],
+            }),
+          )
           .toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
@@ -221,15 +244,18 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
     required int bedrooms,
     required int bathrooms,
     Map<String, dynamic>? metadata,
+    bool isGlobal = false,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
       if (currentUser == null) throw ServerException('User not authenticated');
 
-      debugPrint('💾 Creating accommodation with multi-university transaction...');
+      debugPrint(
+        '💾 Creating accommodation with multi-university transaction...',
+      );
       debugPrint('👤 Owner ID: ${currentUser.id}');
       debugPrint('📝 Name: $name');
-      
+
       // Use transaction function to create accommodation with all user's universities
       // This will also send notifications to users with matching universities
       final result = await supabaseClient.rpc(
@@ -249,6 +275,7 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
           'p_bedrooms': bedrooms,
           'p_bathrooms': bathrooms,
           'p_metadata': metadata,
+          'p_is_global': isGlobal,
         },
       );
 
@@ -292,12 +319,15 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
     int? bathrooms,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    bool? isGlobal,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
       if (currentUser == null) throw ServerException('User not authenticated');
 
-      final updateData = <String, dynamic>{'updated_at': DateTime.now().toIso8601String()};
+      final updateData = <String, dynamic>{
+        'updated_at': DateTime.now().toIso8601String(),
+      };
 
       if (name != null) updateData['name'] = name;
       if (description != null) updateData['description'] = description;
@@ -312,6 +342,13 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
       if (bedrooms != null) updateData['bedrooms'] = bedrooms;
       if (bathrooms != null) updateData['bathrooms'] = bathrooms;
       if (isActive != null) updateData['is_active'] = isActive;
+      if (isGlobal != null) {
+        if (isGlobal) {
+          updateData['university_ids'] = [];
+        } else {
+          updateData['university_ids'] = [];
+        }
+      }
       if (metadata != null) updateData['metadata'] = metadata;
 
       final response = await supabaseClient
@@ -355,9 +392,10 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
   @override
   Future<void> incrementViewCount(String accommodationId) async {
     try {
-      await supabaseClient.rpc('increment_accommodation_views', params: {
-        'accommodation_id': accommodationId,
-      });
+      await supabaseClient.rpc(
+        'increment_accommodation_views',
+        params: {'accommodation_id': accommodationId},
+      );
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
@@ -365,4 +403,3 @@ class AccommodationRemoteDataSourceImpl implements AccommodationRemoteDataSource
     }
   }
 }
-

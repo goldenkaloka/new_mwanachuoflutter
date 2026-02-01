@@ -13,6 +13,10 @@ class PromotionModel extends PromotionEntity {
     super.targetUrl,
     super.terms,
     required super.createdAt,
+    super.type,
+    super.videoUrl,
+    super.priority,
+    super.buttonText,
   });
 
   factory PromotionModel.fromJson(Map<String, dynamic> json) {
@@ -30,6 +34,10 @@ class PromotionModel extends PromotionEntity {
           ? List<String>.from(json['terms'] as List)
           : null,
       createdAt: DateTime.parse(json['created_at'] as String),
+      type: json['type'] as String? ?? 'banner',
+      videoUrl: json['video_url'] as String?,
+      priority: (json['priority'] as num?)?.toInt() ?? 0,
+      buttonText: json['button_text'] as String? ?? 'Shop Now',
     );
   }
 
@@ -46,7 +54,10 @@ class PromotionModel extends PromotionEntity {
       'target_url': targetUrl,
       'terms': terms,
       'created_at': createdAt.toIso8601String(),
+      'type': type,
+      'video_url': videoUrl,
+      'priority': priority,
+      'button_text': buttonText,
     };
   }
 }
-

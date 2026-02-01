@@ -23,6 +23,7 @@ class ProductEntity extends Equatable {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final Map<String, dynamic>? metadata;
+  final double? oldPrice;
 
   const ProductEntity({
     required this.id,
@@ -46,7 +47,15 @@ class ProductEntity extends Equatable {
     required this.createdAt,
     this.updatedAt,
     this.metadata,
+    this.oldPrice,
   });
+
+  int? get discountPercentage {
+    if (oldPrice != null && oldPrice! > price) {
+      return (((oldPrice! - price) / oldPrice!) * 100).round();
+    }
+    return null;
+  }
 
   @override
   List<Object?> get props => [

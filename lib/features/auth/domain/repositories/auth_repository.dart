@@ -59,4 +59,7 @@ abstract class AuthRepository {
 
   /// Reset password for email
   Future<Either<Failure, void>> resetPassword(String email);
+
+  /// Consume a free listing
+  Future<Either<Failure, void>> consumeFreeListing(String userId);
 }

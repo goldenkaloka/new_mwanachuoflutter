@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:path/path.dart' as path;
 import 'package:wechat_assets_picker/wechat_assets_picker.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
@@ -60,9 +61,14 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   final _subtitleController = TextEditingController();
   final _descriptionController = TextEditingController();
   final _termsController = TextEditingController();
+  final _targetUrlController = TextEditingController();
+  final _buttonTextController = TextEditingController();
+  final _priorityController = TextEditingController(text: '0');
   DateTime? _startDate;
   DateTime? _endDate;
   File? _selectedImage;
+  File? _selectedVideo;
+  String _selectedType = 'banner';
 
   @override
   void dispose() {
@@ -70,6 +76,9 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     _subtitleController.dispose();
     _descriptionController.dispose();
     _termsController.dispose();
+    _targetUrlController.dispose();
+    _buttonTextController.dispose();
+    _priorityController.dispose();
     super.dispose();
   }
 
@@ -108,7 +117,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           if (Navigator.canPop(context)) {
             Navigator.of(context).pop();
           }
-          
+
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
@@ -119,219 +128,316 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
               duration: const Duration(seconds: 4),
             ),
           );
-        } else if (state is PromotionsLoaded) {
-          // Check if we just created a promotion (by checking if loading dialog is open)
-          // This is a simple heuristic - if we're on this screen and promotions loaded,
-          // it's likely after a creation
-          final navigator = Navigator.of(context);
-          if (navigator.canPop()) {
-            // Close loading dialog
-            navigator.pop();
-            
-            // Show success message and pop screen
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text(
-                  'Promotion created successfully!',
-                  style: GoogleFonts.plusJakartaSans(),
-                ),
-                backgroundColor: Colors.green,
-                duration: const Duration(seconds: 2),
-              ),
-            );
-            
-            // Pop the create screen
-            if (navigator.canPop()) {
-              navigator.pop();
-            }
+        } else if (state is PromotionCreated) {
+          // Close loading dialog
+          if (Navigator.canPop(context)) {
+            Navigator.of(context).pop();
           }
+
+          // Show success message and pop screen
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'Promotion created successfully!',
+                style: GoogleFonts.plusJakartaSans(),
+              ),
+              backgroundColor: Colors.green,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+
+          // Pop the create screen
+          Navigator.of(context).pop();
         }
       },
       builder: (context, state) {
         return Scaffold(
-      backgroundColor: isDarkMode
-          ? kBackgroundColorDark
-          : kBackgroundColorLight,
-      body: ResponsiveBuilder(
-        builder: (context, screenSize) {
-          return Column(
-            children: [
-              // Top App Bar
-              _buildTopAppBar(
-                context,
-                primaryTextColor,
-                secondaryTextColor,
-                screenSize,
-              ),
+          backgroundColor: isDarkMode
+              ? kBackgroundColorDark
+              : kBackgroundColorLight,
+          body: ResponsiveBuilder(
+            builder: (context, screenSize) {
+              return Column(
+                children: [
+                  // Top App Bar
+                  _buildTopAppBar(
+                    context,
+                    primaryTextColor,
+                    secondaryTextColor,
+                    screenSize,
+                  ),
 
-              // Form
-              Expanded(
-                child: SingleChildScrollView(
-                  child: ResponsiveContainer(
-                    child: Padding(
-                      padding: EdgeInsets.all(
-                        ResponsiveBreakpoints.responsiveHorizontalPadding(
-                          context,
-                        ),
-                      ),
-                      child: Form(
-                        key: _formKey,
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            SizedBox(
-                              height: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 24.0,
-                                medium: 32.0,
-                                expanded: 40.0,
-                              ),
+                  // Form
+                  Expanded(
+                    child: SingleChildScrollView(
+                      child: ResponsiveContainer(
+                        child: Padding(
+                          padding: EdgeInsets.all(
+                            ResponsiveBreakpoints.responsiveHorizontalPadding(
+                              context,
                             ),
-
-                            // Photo Upload
-                            _buildPhotoUpload(
-                              primaryTextColor,
-                              secondaryTextColor,
-                              borderColor,
-                            ),
-
-                            const SizedBox(height: 24.0),
-
-                            // Title
-                            TextFormField(
-                              controller: _titleController,
-                              decoration: InputDecoration(
-                                labelText: 'Promotion Title',
-                                hintText: 'e.g., Back to School Sale',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                              validator: (value) {
-                                if (value == null || value.isEmpty) {
-                                  return 'Please enter a title';
-                                }
-                                return null;
-                              },
-                            ),
-
-                            const SizedBox(height: 20.0),
-
-                            // Subtitle
-                            TextFormField(
-                              controller: _subtitleController,
-                              decoration: InputDecoration(
-                                labelText: 'Subtitle',
-                                hintText:
-                                    'e.g., Up to 50% off on selected items',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20.0),
-
-                            // Description
-                            TextFormField(
-                              controller: _descriptionController,
-                              maxLines: 4,
-                              decoration: InputDecoration(
-                                labelText: 'Description',
-                                hintText: 'Describe your promotion...',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20.0),
-
-                            // Terms & Conditions
-                            TextFormField(
-                              controller: _termsController,
-                              maxLines: 5,
-                              decoration: InputDecoration(
-                                labelText: 'Terms & Conditions (one per line)',
-                                hintText:
-                                    'Enter each term on a new line...\ne.g.,\nValid until stock lasts\nCannot be combined with other offers',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                                enabledBorder: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12.0),
-                                  borderSide: BorderSide(color: borderColor),
-                                ),
-                              ),
-                            ),
-
-                            const SizedBox(height: 20.0),
-
-                            // Date Range
-                            Row(
+                          ),
+                          child: Form(
+                            key: _formKey,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Expanded(
-                                  child: _buildDateField(
-                                    context,
-                                    'Start Date',
-                                    _startDate,
-                                    () => _selectDate(context, true),
+                                const SizedBox(height: 24.0),
+
+                                // Promotion Type Toggle
+                                _buildTypeSelector(
+                                  primaryTextColor,
+                                  borderColor,
+                                ),
+
+                                const SizedBox(height: 24.0),
+
+                                // Media Upload (Image or Video)
+                                if (_selectedType == 'banner')
+                                  _buildMediaUpload(
+                                    label: 'Upload Promotion Banner',
+                                    info: 'Tap to select an image',
+                                    icon: Icons.add_photo_alternate,
+                                    selectedFile: _selectedImage,
+                                    onPick: _pickImage,
+                                    onRemove: () =>
+                                        setState(() => _selectedImage = null),
+                                    primaryTextColor: primaryTextColor,
+                                    secondaryTextColor: secondaryTextColor,
+                                    borderColor: borderColor,
+                                  )
+                                else
+                                  _buildMediaUpload(
+                                    label: 'Upload Promotion Video',
+                                    info: 'Maximum 45 seconds',
+                                    icon: Icons.videocam,
+                                    selectedFile: _selectedVideo,
+                                    onPick: _pickVideo,
+                                    onRemove: () =>
+                                        setState(() => _selectedVideo = null),
+                                    primaryTextColor: primaryTextColor,
+                                    secondaryTextColor: secondaryTextColor,
+                                    borderColor: borderColor,
+                                  ),
+
+                                const SizedBox(height: 24.0),
+
+                                // Title
+                                TextFormField(
+                                  controller: _titleController,
+                                  decoration: _buildInputDecoration(
+                                    'Promotion Title',
+                                    'e.g., Back to School Sale',
+                                    borderColor,
+                                  ),
+                                  validator: (value) {
+                                    if (value == null || value.isEmpty) {
+                                      return 'Please enter a title';
+                                    }
+                                    return null;
+                                  },
+                                ),
+
+                                const SizedBox(height: 20.0),
+
+                                // Subtitle
+                                TextFormField(
+                                  controller: _subtitleController,
+                                  decoration: _buildInputDecoration(
+                                    'Subtitle',
+                                    'e.g., Up to 50% off on selected items',
                                     borderColor,
                                   ),
                                 ),
-                                const SizedBox(width: 16.0),
-                                Expanded(
-                                  child: _buildDateField(
-                                    context,
-                                    'End Date',
-                                    _endDate,
-                                    () => _selectDate(context, false),
+
+                                const SizedBox(height: 20.0),
+
+                                // Description
+                                TextFormField(
+                                  controller: _descriptionController,
+                                  maxLines: 4,
+                                  decoration: _buildInputDecoration(
+                                    'Description',
+                                    'Describe your promotion...',
                                     borderColor,
                                   ),
                                 ),
+
+                                const SizedBox(height: 20.0),
+
+                                // Terms & Conditions
+                                TextFormField(
+                                  controller: _termsController,
+                                  maxLines: 5,
+                                  decoration: _buildInputDecoration(
+                                    'Terms & Conditions (one per line)',
+                                    'Enter each term on a new line...',
+                                    borderColor,
+                                  ),
+                                ),
+
+                                const SizedBox(height: 20.0),
+
+                                // Link & Button Text
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextFormField(
+                                        controller: _targetUrlController,
+                                        decoration: _buildInputDecoration(
+                                          'Target URL',
+                                          'e.g., /all-products',
+                                          borderColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      flex: 1,
+                                      child: TextFormField(
+                                        controller: _buttonTextController,
+                                        decoration: _buildInputDecoration(
+                                          'Button Text',
+                                          'e.g., Shop Now',
+                                          borderColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 20.0),
+
+                                // Priority and Dates
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: TextFormField(
+                                        controller: _priorityController,
+                                        keyboardType: TextInputType.number,
+                                        decoration: _buildInputDecoration(
+                                          'Priority',
+                                          '0-100',
+                                          borderColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: _buildDateField(
+                                        context,
+                                        'Start Date',
+                                        _startDate,
+                                        () => _selectDate(context, true),
+                                        borderColor,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: _buildDateField(
+                                        context,
+                                        'End Date',
+                                        _endDate,
+                                        () => _selectDate(context, false),
+                                        borderColor,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+
+                                const SizedBox(height: 100.0),
                               ],
                             ),
-
-                            SizedBox(
-                              height: ResponsiveBreakpoints.responsiveValue(
-                                context,
-                                compact: 120.0,
-                                medium: 100.0,
-                                expanded: 80.0,
-                              ),
-                            ),
-                          ],
+                          ),
                         ),
                       ),
                     ),
                   ),
-                ),
-              ),
 
-              // Submit Button
-              _buildSubmitButton(context, primaryTextColor, screenSize),
-            ],
-          );
-        },
-      ),
+                  // Submit Button
+                  _buildSubmitButton(context, primaryTextColor, screenSize),
+                ],
+              );
+            },
+          ),
         );
       },
+    );
+  }
+
+  InputDecoration _buildInputDecoration(
+    String label,
+    String hint,
+    Color borderColor,
+  ) {
+    return InputDecoration(
+      labelText: label,
+      hintText: hint,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: borderColor),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12.0),
+        borderSide: BorderSide(color: borderColor),
+      ),
+    );
+  }
+
+  Widget _buildTypeSelector(Color primaryTextColor, Color borderColor) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Theme.of(context).brightness == Brightness.dark
+            ? Colors.grey[900]
+            : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: borderColor),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildTypeOption('banner', 'Banner Image', Icons.image),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _buildTypeOption('video', 'Short Video', Icons.videocam),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTypeOption(String type, String label, IconData icon) {
+    bool isSelected = _selectedType == type;
+    return InkWell(
+      onTap: () => setState(() => _selectedType = type),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: isSelected ? kPrimaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              icon,
+              size: 20,
+              color: isSelected ? Colors.white : Colors.grey,
+            ),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: GoogleFonts.plusJakartaSans(
+                color: isSelected ? Colors.white : Colors.grey,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -403,26 +509,26 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
 
   Future<void> _pickImage() async {
     try {
-      // Check if running on desktop (Windows, macOS, Linux)
-      final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
-      
+      final isDesktop =
+          !kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
       if (isDesktop) {
-        // Use file_picker for desktop platforms
         final result = await FilePicker.platform.pickFiles(
           type: FileType.image,
           allowMultiple: false,
           dialogTitle: 'Select promotion banner image',
         );
-        
+
         if (result != null && result.files.single.path != null) {
+          if (!mounted) return;
           setState(() {
             _selectedImage = File(result.files.single.path!);
           });
         }
       } else {
-        // Use WeChat Assets Picker for mobile platforms
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-        
+
         final List<AssetEntity>? result = await AssetPicker.pickAssets(
           context,
           pickerConfig: AssetPickerConfig(
@@ -432,9 +538,13 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
             pickerTheme: ThemeData(
               brightness: isDarkMode ? Brightness.dark : Brightness.light,
               primaryColor: kPrimaryColor,
-              scaffoldBackgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+              scaffoldBackgroundColor: isDarkMode
+                  ? kBackgroundColorDark
+                  : Colors.white,
               appBarTheme: AppBarTheme(
-                backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+                backgroundColor: isDarkMode
+                    ? kBackgroundColorDark
+                    : Colors.white,
                 foregroundColor: isDarkMode ? Colors.white : Colors.black,
                 elevation: 0,
                 iconTheme: IconThemeData(
@@ -446,16 +556,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                 brightness: isDarkMode ? Brightness.dark : Brightness.light,
               ),
             ),
-            gridCount: 4,
-            pageSize: 80,
-            pathNameBuilder: (path) {
-              if (path.name == 'Recent') return 'Camera Roll';
-              if (path.name == 'Screenshots') return 'Screenshots';
-              return path.name;
-            },
           ),
         );
 
+        if (!mounted) return;
         if (result != null && result.isNotEmpty) {
           final File? file = await result.first.file;
           if (file != null && mounted) {
@@ -469,10 +573,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(
-              'Failed to pick image: $e',
-              style: GoogleFonts.plusJakartaSans(),
-            ),
+            content: Text('Failed to pick image: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -480,13 +581,80 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     }
   }
 
-  Widget _buildPhotoUpload(
-    Color primaryTextColor,
-    Color secondaryTextColor,
-    Color borderColor,
-  ) {
+  Future<void> _pickVideo() async {
+    try {
+      final isDesktop =
+          !kIsWeb &&
+          (Platform.isWindows || Platform.isMacOS || Platform.isLinux);
+
+      if (isDesktop) {
+        final result = await FilePicker.platform.pickFiles(
+          type: FileType.video,
+          allowMultiple: false,
+          dialogTitle: 'Select promotion video (Max 45s)',
+        );
+
+        if (result != null && result.files.single.path != null) {
+          if (!mounted) return;
+          setState(() {
+            _selectedVideo = File(result.files.single.path!);
+          });
+        }
+      } else {
+        final List<AssetEntity>? result = await AssetPicker.pickAssets(
+          context,
+          pickerConfig: const AssetPickerConfig(
+            maxAssets: 1,
+            requestType: RequestType.video,
+            textDelegate: EnglishAssetPickerTextDelegate(),
+          ),
+        );
+
+        if (!mounted) return;
+
+        if (result != null && result.isNotEmpty) {
+          if (result.first.duration > 45) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Video must be 45 seconds or less'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+            return;
+          }
+          final File? file = await result.first.file;
+          if (file != null && mounted) {
+            setState(() {
+              _selectedVideo = file;
+            });
+          }
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to pick video: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Widget _buildMediaUpload({
+    required String label,
+    required String info,
+    required IconData icon,
+    required File? selectedFile,
+    required VoidCallback onPick,
+    required VoidCallback onRemove,
+    required Color primaryTextColor,
+    required Color secondaryTextColor,
+    required Color borderColor,
+  }) {
     return InkWell(
-      onTap: _pickImage,
+      onTap: onPick,
       borderRadius: BorderRadius.circular(16.0),
       child: Container(
         height: 200,
@@ -498,16 +666,36 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
           ),
           borderRadius: BorderRadius.circular(16.0),
         ),
-        child: _selectedImage != null
+        child: selectedFile != null
             ? ClipRRect(
                 borderRadius: BorderRadius.circular(14.0),
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    Image.file(
-                      _selectedImage!,
-                      fit: BoxFit.cover,
-                    ),
+                    if (_selectedType == 'banner')
+                      Image.file(selectedFile, fit: BoxFit.cover)
+                    else
+                      Container(
+                        color: Colors.black,
+                        child: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.video_file,
+                                color: Colors.white,
+                                size: 48,
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                path.basename(selectedFile.path),
+                                style: const TextStyle(color: Colors.white),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     Positioned(
                       top: 8,
                       right: 8,
@@ -518,11 +706,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                         ),
                         child: IconButton(
                           icon: const Icon(Icons.close, color: Colors.white),
-                          onPressed: () {
-                            setState(() {
-                              _selectedImage = null;
-                            });
-                          },
+                          onPressed: onRemove,
                         ),
                       ),
                     ),
@@ -533,14 +717,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Icon(
-                      Icons.add_photo_alternate,
-                      size: 48.0,
-                      color: secondaryTextColor,
-                    ),
+                    Icon(icon, size: 48.0, color: secondaryTextColor),
                     const SizedBox(height: 12.0),
                     Text(
-                      'Upload Promotion Banner',
+                      label,
                       style: GoogleFonts.plusJakartaSans(
                         color: primaryTextColor,
                         fontSize: 16.0,
@@ -549,7 +729,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     ),
                     const SizedBox(height: 4.0),
                     Text(
-                      'Tap to select an image',
+                      info,
                       style: GoogleFonts.plusJakartaSans(
                         color: secondaryTextColor,
                         fontSize: 14.0,
@@ -582,13 +762,12 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
             borderRadius: BorderRadius.circular(12.0),
             borderSide: BorderSide(color: borderColor),
           ),
-          suffixIcon: const Icon(Icons.calendar_today),
         ),
         child: Text(
           date != null
               ? '${date.day}/${date.month}/${date.year}'
               : 'Select date',
-          style: GoogleFonts.plusJakartaSans(fontSize: 16.0),
+          style: GoogleFonts.plusJakartaSans(fontSize: 14.0),
         ),
       ),
     );
@@ -621,17 +800,36 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
             constraints: const BoxConstraints(maxWidth: 600.0),
             child: SizedBox(
               width: double.infinity,
-              height: 48.0, // M3 standard button height
+              height: 48.0,
               child: ElevatedButton(
                 onPressed: () async {
                   if (_formKey.currentState!.validate()) {
                     if (_startDate == null || _endDate == null) {
                       ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(
+                        const SnackBar(
                           content: Text(
                             'Please select both start and end dates',
-                            style: GoogleFonts.plusJakartaSans(),
                           ),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (_selectedType == 'banner' && _selectedImage == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please upload a banner image'),
+                          backgroundColor: Colors.orange,
+                        ),
+                      );
+                      return;
+                    }
+
+                    if (_selectedType == 'video' && _selectedVideo == null) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Please upload a promotion video'),
                           backgroundColor: Colors.orange,
                         ),
                       );
@@ -658,7 +856,6 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                     );
 
                     // Create promotion
-                    // Note: Loading dialog will be closed by BlocListener
                     await context.read<PromotionCubit>().createNewPromotion(
                       title: _titleController.text.trim(),
                       subtitle: _subtitleController.text.trim(),
@@ -666,30 +863,30 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                       startDate: _startDate!,
                       endDate: _endDate!,
                       image: _selectedImage,
+                      video: _selectedVideo,
+                      type: _selectedType,
+                      priority: int.tryParse(_priorityController.text) ?? 0,
+                      buttonText: _buttonTextController.text.trim().isNotEmpty
+                          ? _buttonTextController.text.trim()
+                          : 'Shop Now',
+                      targetUrl: _targetUrlController.text.trim(),
                       terms: terms,
                     );
-                    
-                    // Note: Don't pop the screen here - let BlocListener handle it on success
                   }
                 },
                 style: ElevatedButton.styleFrom(
                   backgroundColor: kPrimaryColor,
                   foregroundColor: kBackgroundColorDark,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24.0), // M3 standard
+                    borderRadius: BorderRadius.circular(24.0),
                   ),
-                  elevation: 2.0, // M3 standard elevation
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0,
-                  ), // M3 standard
-                  minimumSize: const Size(64, 40), // M3 minimum touch target
                 ),
                 child: Text(
                   'Create Promotion',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16.0, // M3 standard button text size
-                    fontWeight: FontWeight.w600, // M3 medium weight
-                    letterSpacing: 0.1, // M3 standard tracking
+                    fontSize: 16.0,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.1,
                   ),
                 ),
               ),

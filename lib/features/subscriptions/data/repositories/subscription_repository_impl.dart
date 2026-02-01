@@ -159,4 +159,30 @@ class SubscriptionRepositoryImpl implements SubscriptionRepository {
       return Left(ServerFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, String>> initiateSubscriptionPayment({
+    required double amount,
+    required String phone,
+    required String planId,
+    required String sellerId,
+  }) async {
+    if (!await networkInfo.isConnected) {
+      return const Left(NetworkFailure('No internet connection'));
+    }
+
+    try {
+      final orderId = await remoteDataSource.initiateSubscriptionPayment(
+        amount: amount,
+        phone: phone,
+        planId: planId,
+        sellerId: sellerId,
+      );
+      return Right(orderId);
+    } on ServerException catch (e) {
+      return Left(ServerFailure(e.message));
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

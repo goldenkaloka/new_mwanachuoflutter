@@ -15,7 +15,7 @@ const wait = (promise: Promise<any>) => EdgeRuntime.waitUntil(promise);
 async function extractWithGemini(fileBlob: Blob, filename: string, genAI: any): Promise<string> {
   console.log(`[EXTRACT] OCR Start: ${filename}`);
   // gemini-flash-latest proven to work with available quota
-  const model = genAI.getGenerativeModel({ model: "gemini-flash-latest" });
+  const model = genAI.getGenerativeModel({ model: "models/gemini-3-flash-preview" });
   const arrayBuffer = await fileBlob.arrayBuffer();
   const base64Data = Buffer.from(arrayBuffer).toString('base64');
 
@@ -47,7 +47,7 @@ async function processDocument(documentId: string, supabase: any, genAI: any) {
 
     await supabase.from('document_chunks').delete().eq('document_id', documentId);
 
-    const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004"});
+    const embeddingModel = genAI.getGenerativeModel({ model: "models/text-embedding-004"});
     for (let i = 0; i < output.length; i += 10) {
       const batch = output.slice(i, i + 10);
       const records = await Promise.all(batch.map(async (chunk) => {
@@ -74,19 +74,17 @@ serve(async (req) => {
   
   try {
     const supabase = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
-    const genAI = new GoogleGenerativeAI(Deno.env.get('GEMINI_API_KEY')!);
+    const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
+    console.log(`[DEBUG] Using GEMINI_API_KEY starting with: ${geminiKey?.substring(0, 6)}...`);
+    const genAI = new GoogleGenerativeAI(geminiKey);
 
     const body = await req.json().catch(() => ({}));
     const documentId = body.document_id || body.id || body.record?.id;
 
     if (documentId) {
       console.log(`[HTTP] Triggering background for: ${documentId}`);
-      // Clear error_message and set status to processing
-      await supabase.from('document_processing_queue')
-        .update({ status: 'processing', updated_at: new Date().toISOString(), error_message: null })
-        .eq('document_id', documentId);
-        
-      wait(processDocument(documentId, supabase, genAI));
+      // Start processing in the background (wait is for Deno Edge runtime to not kill the process)
+      EdgeRuntime.waitUntil(processDocument(documentId, supabase, genAI));
       return new Response(JSON.stringify({ success: true, message: "Processing started in background" }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
     }
     return new Response(JSON.stringify({ error: "Missing ID" }), { status: 400 });

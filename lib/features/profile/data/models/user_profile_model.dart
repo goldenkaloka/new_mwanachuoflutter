@@ -20,6 +20,8 @@ class UserProfileModel extends UserProfileEntity {
     super.accommodationCount,
     super.averageRating,
     super.totalReviews,
+    super.yearOfStudy,
+    super.currentSemester,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,8 @@ class UserProfileModel extends UserProfileEntity {
       accommodationCount: json['accommodation_count'] as int? ?? 0,
       averageRating: (json['average_rating'] as num?)?.toDouble(),
       totalReviews: json['total_reviews'] as int? ?? 0,
+      yearOfStudy: json['year_of_study'] as int?,
+      currentSemester: json['current_semester'] as int?,
     );
   }
 
@@ -68,6 +72,8 @@ class UserProfileModel extends UserProfileEntity {
       'accommodation_count': accommodationCount,
       'average_rating': averageRating,
       'total_reviews': totalReviews,
+      'year_of_study': yearOfStudy,
+      'current_semester': currentSemester,
     };
   }
 }

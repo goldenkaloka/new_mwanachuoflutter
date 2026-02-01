@@ -327,11 +327,13 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                 price: 'TZS ${product.price.toStringAsFixed(2)}',
                 actionButtonText: 'Contact Seller',
                 onActionTap: () {
+                  final itemUrl =
+                      'https://www.mwanachuoshop.com/products/${product.id}';
                   WhatsAppContactHelper.contactSeller(
                     context: context,
                     phoneNumber: product.sellerPhone,
                     message:
-                        'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop kwa bei ya ${product.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi?',
+                        'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop kwa bei ya ${product.price.toStringAsFixed(0)}/=.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?',
                   );
                 },
               ),

@@ -39,6 +39,7 @@ abstract class AuthRemoteDataSource {
 
   Stream<UserModel?> watchAuthState();
   Future<void> resetPassword(String email);
+  Future<void> consumeFreeListing(String userId);
 }
 
 class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
@@ -320,6 +321,35 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       throw AuthenticationException(e.message);
     } catch (e) {
       throw ServerException(e.toString());
+    }
+  }
+
+  @override
+  Future<void> consumeFreeListing(String userId) async {
+    try {
+      await supabase.rpc(
+        'decrement_free_listings',
+        params: {'p_user_id': userId},
+      );
+    } catch (e) {
+      // Fallback to manual update if RPC doesn't exist (e.g. migration failed)
+      try {
+        final userData = await supabase
+            .from('users')
+            .select('free_listings_count')
+            .eq('id', userId)
+            .single();
+
+        final currentCount = userData['free_listings_count'] as int? ?? 0;
+        if (currentCount > 0) {
+          await supabase
+              .from('users')
+              .update({'free_listings_count': currentCount - 1})
+              .eq('id', userId);
+        }
+      } catch (innerE) {
+        throw ServerException(innerE.toString());
+      }
     }
   }
 }

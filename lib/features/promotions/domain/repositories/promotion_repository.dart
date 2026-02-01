@@ -13,8 +13,11 @@ abstract class PromotionRepository {
     required DateTime startDate,
     required DateTime endDate,
     File? image,
+    File? video,
     String? targetUrl,
     List<String>? terms,
+    String type = 'banner',
+    int priority = 0,
+    String buttonText = 'Shop Now',
   });
 }
-

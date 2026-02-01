@@ -6,6 +6,15 @@ import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/core/services/presence_service.dart';
 import 'package:http/http.dart' as http;
 
+// Wallet
+import 'package:mwanachuo/features/wallet/data/datasources/wallet_remote_data_source.dart';
+import 'package:mwanachuo/features/wallet/data/repositories/wallet_repository_impl.dart';
+import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.dart';
+import 'package:mwanachuo/features/wallet/domain/usecases/get_wallet.dart';
+import 'package:mwanachuo/features/wallet/domain/usecases/get_wallet_transactions.dart';
+import 'package:mwanachuo/features/wallet/domain/usecases/initiate_top_up.dart';
+import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
+
 // Auth
 import 'package:mwanachuo/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:mwanachuo/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -102,6 +111,7 @@ import 'package:mwanachuo/features/subscriptions/domain/usecases/create_subscrip
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_payment_history.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_seller_subscription.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/get_subscription_plans.dart';
+import 'package:mwanachuo/features/subscriptions/domain/usecases/initiate_subscription_payment.dart';
 import 'package:mwanachuo/features/subscriptions/domain/usecases/update_subscription.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
 import 'package:mwanachuo/features/products/data/datasources/product_local_data_source.dart';
@@ -173,7 +183,7 @@ import 'package:mwanachuo/features/copilot/domain/usecases/semantic_search_notes
 import 'package:mwanachuo/features/copilot/domain/usecases/upload_note.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/copilot_bloc.dart';
 
-// Mwanachuomind (Legacy - Removed)
+// Copilot Feature (Modern)
 
 final sl = GetIt.instance;
 
@@ -219,6 +229,7 @@ Future<void> initializeDependencies() async {
   _initProfileFeature();
   _initDashboardFeature();
   _initPromotionsFeature();
+  _initWalletFeature();
   // _initMwanachuomindFeature(); // Removed
   await _initCopilotFeature();
 
@@ -530,6 +541,7 @@ void _initSubscriptionsFeature() {
   sl.registerLazySingleton(() => CancelSubscription(sl()));
   sl.registerLazySingleton(() => UpdateSubscription(sl()));
   sl.registerLazySingleton(() => GetPaymentHistory(sl()));
+  sl.registerLazySingleton(() => InitiateSubscriptionPayment(sl()));
 
   // Repository
   sl.registerLazySingleton<SubscriptionRepository>(
@@ -551,6 +563,7 @@ void _initSubscriptionsFeature() {
       cancelSubscription: sl(),
       updateSubscription: sl(),
       getPaymentHistory: sl(),
+      initiateSubscriptionPayment: sl(),
     ),
   );
 }
@@ -828,6 +841,36 @@ Future<void> _initCopilotFeature() async {
       downloadNoteForOffline: sl(),
       semanticSearchNotes: sl(),
       repository: sl(),
+    ),
+  );
+}
+
+// ============================================
+// WALLET FEATURE (NEW)
+// ============================================
+
+void _initWalletFeature() {
+  // Use Cases
+  sl.registerLazySingleton(() => GetWallet(sl()));
+  sl.registerLazySingleton(() => GetWalletTransactions(sl()));
+  sl.registerLazySingleton(() => InitiateTopUp(sl()));
+
+  // Repository
+  sl.registerLazySingleton<WalletRepository>(
+    () => WalletRepositoryImpl(remoteDataSource: sl(), networkInfo: sl()),
+  );
+
+  // Data Sources
+  sl.registerLazySingleton<WalletRemoteDataSource>(
+    () => WalletRemoteDataSourceImpl(supabaseClient: sl()),
+  );
+
+  // BLoC
+  sl.registerFactory(
+    () => WalletBloc(
+      getWallet: sl(),
+      getWalletTransactions: sl(),
+      initiateTopUp: sl(),
     ),
   );
 }

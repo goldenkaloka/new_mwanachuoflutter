@@ -20,6 +20,8 @@ class UserProfileEntity extends Equatable {
   final int accommodationCount;
   final double? averageRating;
   final int totalReviews;
+  final int? yearOfStudy;
+  final int? currentSemester;
 
   const UserProfileEntity({
     required this.id,
@@ -39,27 +41,30 @@ class UserProfileEntity extends Equatable {
     this.accommodationCount = 0,
     this.averageRating,
     this.totalReviews = 0,
+    this.yearOfStudy,
+    this.currentSemester,
   });
 
   @override
   List<Object?> get props => [
-        id,
-        fullName,
-        email,
-        phoneNumber,
-        avatarUrl,
-        role,
-        universityId,
-        universityName,
-        bio,
-        location,
-        createdAt,
-        updatedAt,
-        productCount,
-        serviceCount,
-        accommodationCount,
-        averageRating,
-        totalReviews,
-      ];
+    id,
+    fullName,
+    email,
+    phoneNumber,
+    avatarUrl,
+    role,
+    universityId,
+    universityName,
+    bio,
+    location,
+    createdAt,
+    updatedAt,
+    productCount,
+    serviceCount,
+    accommodationCount,
+    averageRating,
+    totalReviews,
+    yearOfStudy,
+    currentSemester,
+  ];
 }
-

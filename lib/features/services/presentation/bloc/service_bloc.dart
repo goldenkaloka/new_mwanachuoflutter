@@ -157,6 +157,7 @@ class ServiceBloc extends Bloc<ServiceEvent, ServiceState> {
         contactEmail: event.contactEmail,
         availability: event.availability,
         metadata: event.metadata,
+        isGlobal: event.isGlobal,
       ),
     );
 

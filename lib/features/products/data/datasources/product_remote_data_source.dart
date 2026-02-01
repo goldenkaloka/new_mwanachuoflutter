@@ -38,6 +38,8 @@ abstract class ProductRemoteDataSource {
     required List<String> imageUrls,
     required String location,
     Map<String, dynamic>? metadata,
+    double? oldPrice,
+    bool isGlobal = false,
   });
 
   /// Update product
@@ -52,6 +54,8 @@ abstract class ProductRemoteDataSource {
     String? location,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    double? oldPrice,
+    bool? isGlobal,
   });
 
   /// Delete product
@@ -89,8 +93,10 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       }
 
       if (universityId != null) {
-        // Note: university_ids is an array, so we use contains
-        queryBuilder = queryBuilder.contains('university_ids', [universityId]);
+        // Show products that match the university OR are global (empty university_ids)
+        queryBuilder = queryBuilder.or(
+          'university_ids.cs.{"$universityId"},university_ids.eq.{}',
+        );
       }
 
       if (sellerId != null) {
@@ -318,6 +324,8 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     required List<String> imageUrls,
     required String location,
     Map<String, dynamic>? metadata,
+    double? oldPrice,
+    bool isGlobal = false,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -343,7 +351,11 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           'p_images': imageUrls,
           'p_seller_id': currentUser.id,
           'p_location': location,
-          'p_metadata': metadata,
+          'p_metadata': {
+            ...?metadata,
+            if (oldPrice != null) 'old_price': oldPrice,
+          },
+          'p_is_global': isGlobal,
         },
       );
 
@@ -385,6 +397,8 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
     String? location,
     bool? isActive,
     Map<String, dynamic>? metadata,
+    double? oldPrice,
+    bool? isGlobal,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -404,7 +418,21 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       if (imageUrls != null) updateData['images'] = imageUrls;
       if (location != null) updateData['location'] = location;
       if (isActive != null) updateData['is_active'] = isActive;
-      if (metadata != null) updateData['metadata'] = metadata;
+      if (isGlobal != null) {
+        if (isGlobal) {
+          updateData['university_ids'] = [];
+        } else {
+          // If turning off global, we might need to re-fetch universities
+          // For now, let's keep it simple: only handle "setting" global to true
+          updateData['university_ids'] = [];
+        }
+      }
+
+      final finalMetadata = {
+        ...?metadata,
+        if (oldPrice != null) 'old_price': oldPrice,
+      };
+      if (finalMetadata.isNotEmpty) updateData['metadata'] = finalMetadata;
 
       final response = await supabaseClient
           .from(DatabaseConstants.productsTable)

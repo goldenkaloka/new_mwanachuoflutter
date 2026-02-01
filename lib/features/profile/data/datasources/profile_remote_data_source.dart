@@ -14,6 +14,8 @@ abstract class ProfileRemoteDataSource {
     String? location,
     String? avatarUrl,
     String? primaryUniversityId,
+    int? yearOfStudy,
+    int? currentSemester,
   });
 }
 
@@ -99,6 +101,8 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
     String? location,
     String? avatarUrl,
     String? primaryUniversityId,
+    int? yearOfStudy,
+    int? currentSemester,
   }) async {
     try {
       final currentUser = supabaseClient.auth.currentUser;
@@ -115,6 +119,10 @@ class ProfileRemoteDataSourceImpl implements ProfileRemoteDataSource {
       if (avatarUrl != null) updateData['avatar_url'] = avatarUrl;
       if (primaryUniversityId != null) {
         updateData['primary_university_id'] = primaryUniversityId;
+      }
+      if (yearOfStudy != null) updateData['year_of_study'] = yearOfStudy;
+      if (currentSemester != null) {
+        updateData['current_semester'] = currentSemester;
       }
 
       await supabaseClient

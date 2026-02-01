@@ -22,6 +22,8 @@ class UpdateProfile implements UseCase<UserProfileEntity, UpdateProfileParams> {
       location: params.location,
       avatarImage: params.avatarImage,
       primaryUniversityId: params.primaryUniversityId,
+      yearOfStudy: params.yearOfStudy,
+      currentSemester: params.currentSemester,
     );
   }
 }
@@ -33,6 +35,8 @@ class UpdateProfileParams extends Equatable {
   final String? location;
   final File? avatarImage;
   final String? primaryUniversityId;
+  final int? yearOfStudy;
+  final int? currentSemester;
 
   const UpdateProfileParams({
     this.fullName,
@@ -41,6 +45,8 @@ class UpdateProfileParams extends Equatable {
     this.location,
     this.avatarImage,
     this.primaryUniversityId,
+    this.yearOfStudy,
+    this.currentSemester,
   });
 
   @override
@@ -51,5 +57,7 @@ class UpdateProfileParams extends Equatable {
     location,
     avatarImage,
     primaryUniversityId,
+    yearOfStudy,
+    currentSemester,
   ];
 }
