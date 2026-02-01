@@ -39,8 +39,8 @@ abstract class CopilotRepository {
   /// Query note with RAG (streaming)
   Stream<String> queryNoteWithRag({
     required String question,
-    required String noteId,
     required String courseId,
+    String? noteId,
     List<Map<String, dynamic>>? history,
   });
 

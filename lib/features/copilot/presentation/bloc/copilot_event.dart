@@ -37,12 +37,12 @@ class UploadNote extends CopilotEvent {
 // Query with RAG
 class QueryWithRag extends CopilotEvent {
   final String question;
-  final String noteId;
+  final String? noteId;
   final String courseId;
 
   const QueryWithRag({
     required this.question,
-    required this.noteId,
+    this.noteId,
     required this.courseId,
   });
 

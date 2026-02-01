@@ -40,8 +40,8 @@ abstract class CopilotRemoteDataSource {
   /// Query with RAG (streaming)
   Stream<String> queryWithRag({
     required String question,
-    required String noteId,
     required String courseId,
+    String? noteId,
     List<Map<String, dynamic>>? history,
   });
 
@@ -229,8 +229,8 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
   @override
   Stream<String> queryWithRag({
     required String question,
-    required String noteId,
     required String courseId,
+    String? noteId,
     List<Map<String, dynamic>>? history,
   }) async* {
     try {
@@ -239,6 +239,7 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
         body: {
           'message': question,
           'note_id': noteId,
+          'course_id': courseId,
           'history': history ?? [],
         },
       );

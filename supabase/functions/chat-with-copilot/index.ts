@@ -24,10 +24,10 @@ serve(async (req) => {
     const genAI = new GoogleGenerativeAI(geminiKey);
     
     // Get Request Body
-    const { message, note_id, history } = await req.json();
+    const { message, note_id, course_id, history } = await req.json();
 
-    if (!message || !note_id) {
-        return new Response(JSON.stringify({ error: "Missing message or note_id" }), { status: 400, headers: corsHeaders });
+    if (!message || (!note_id && !course_id)) {
+        return new Response(JSON.stringify({ error: "Missing message or (note_id/course_id)" }), { status: 400, headers: corsHeaders });
     }
 
     // 1. Generate Embedding for the User's Question
@@ -35,13 +35,34 @@ serve(async (req) => {
     const embeddingResult = await embeddingModel.embedContent(message);
     const embedding = embeddingResult.embedding.values;
 
-    // 2. Search for Relevant Chunks (RAG)
-    console.log(`[RAG] Searching chunks for note_id: ${note_id}`);
+    // 2. Identify Scope (Specific Note vs Course Wide)
+    let validNoteIds: Set<string> | null = null;
+    let rpcFilter = {};
+
+    if (note_id) {
+        console.log(`[RAG] Scoped to single note: ${note_id}`);
+        rpcFilter = { note_id: note_id };
+    } else if (course_id) {
+        console.log(`[RAG] Scoped to course: ${course_id}`);
+        // Fetch all note IDs for this course to filter results later
+        const { data: notes } = await supabase.from('course_notes').select('id').eq('course_id', course_id);
+        if (notes) {
+            validNoteIds = new Set(notes.map((n: any) => n.id));
+        }
+        // We pass empty filter to RPC to search all, then filter in code (inefficient but works without SQL changes)
+        // Ideally: Update match_note_chunks to accept list of note_ids
+        rpcFilter = {}; 
+    }
+
+    // 3. Search for Relevant Chunks (RAG)
+    // Request more chunks if course-wide to increase chance of hitting relevant course content
+    const matchCount = course_id && !note_id ? 20 : 5; 
+
     const { data: chunks, error: searchError } = await supabase.rpc('match_note_chunks', {
         query_embedding: embedding,
-        match_threshold: 0.1, // Adjusted for new model sensitivity
-        match_count: 5,
-        filter: { note_id: note_id }
+        match_threshold: 0.1,
+        match_count: matchCount,
+        filter: rpcFilter 
     });
 
     if (searchError) {
@@ -49,20 +70,26 @@ serve(async (req) => {
         throw searchError;
     }
     
-    console.log(`[RAG] Found ${chunks?.length || 0} chunks`);
+    // 4. Filter Chunks (if course-wide)
+    let finalChunks = chunks || [];
+    if (validNoteIds) {
+        finalChunks = finalChunks.filter((c: any) => validNoteIds!.has(c.note_id));
+        // Trim back to top 5 after filtering
+        finalChunks = finalChunks.slice(0, 5);
+    }
 
-    if (searchError) throw searchError;
+    console.log(`[RAG] Found ${finalChunks.length} relevant chunks`);
 
-    // 3. Construct Context
-    const contextText = chunks?.map((c: any) => c.content).join("\n\n") || "";
+    // 5. Construct Context
+    const contextText = finalChunks.map((c: any) => c.content).join("\n\n") || "";
     
-    // 4. Generate Answer with Gemini
+    // 6. Generate Answer with Gemini
     const chatModel = genAI.getGenerativeModel({ model: "models/gemini-3-flash-preview" });
     
     const prompt = `
     You are an AI study assistant "MwanachuoCopilot". 
     Answer the user's question based ONLY on the following context derived from their course notes.
-    If the answer is not in the context, say "I couldn't find the answer in this note."
+    If the answer is not in the context, say "I couldn't find the answer in that context."
     
     Context:
     ${contextText}

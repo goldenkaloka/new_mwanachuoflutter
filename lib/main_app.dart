@@ -46,6 +46,7 @@ import 'package:mwanachuo/features/copilot/presentation/pages/copilot_wrapper_pa
 import 'package:mwanachuo/features/copilot/presentation/pages/copilot_library_page.dart';
 import 'package:mwanachuo/features/copilot/presentation/pages/copilot_document_viewer_page.dart';
 import 'package:mwanachuo/features/copilot/presentation/pages/copilot_upload_page.dart';
+import 'package:mwanachuo/features/copilot/presentation/pages/copilot_chat_page.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/copilot_bloc.dart';
 import 'package:mwanachuo/features/shared/notifications/presentation/pages/notification_settings_screen.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/pages/subscription_plans_page.dart';
@@ -383,6 +384,15 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             return BlocProvider(
               create: (context) => sl<CopilotBloc>(),
               child: CopilotUploadPage(courseId: args['courseId']),
+            );
+          },
+          '/copilot-chat': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return CopilotChatPage(
+              courseId: args['courseId'],
+              initialQuery: args['initialQuery'],
             );
           },
         },

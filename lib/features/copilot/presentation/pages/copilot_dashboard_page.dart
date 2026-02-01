@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
 class CopilotDashboardPage extends StatefulWidget {
   final String courseId;
@@ -18,6 +20,53 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
   void initState() {
     super.initState();
     context.read<CopilotBloc>().add(LoadCourseNotes(courseId: widget.courseId));
+  }
+
+  Future<void> _scanText() async {
+    final picker = ImagePicker();
+    // specific fix for Windows: ImageSource.camera might fail if no delegate.
+    // Fallback to gallery (file picker) on Desktop.
+    final source =
+        (Theme.of(context).platform == TargetPlatform.windows ||
+            Theme.of(context).platform == TargetPlatform.linux ||
+            Theme.of(context).platform == TargetPlatform.macOS)
+        ? ImageSource.gallery
+        : ImageSource.camera;
+
+    try {
+      final image = await picker.pickImage(source: source);
+      if (image == null) return;
+
+      final inputImage = InputImage.fromFilePath(image.path);
+      final textRecognizer = TextRecognizer();
+      final recognizedText = await textRecognizer.processImage(inputImage);
+      final text = recognizedText.text;
+
+      await textRecognizer.close();
+
+      if (text.isNotEmpty) {
+        if (!mounted) return;
+        setState(() {
+          _searchController.text = text;
+        });
+        // Optionally execute search immediately
+        _navigateToChat(text);
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error scanning text: $e')));
+    }
+  }
+
+  void _navigateToChat(String query) {
+    if (query.isEmpty) return;
+    Navigator.pushNamed(
+      context,
+      '/copilot-chat',
+      arguments: {'courseId': widget.courseId, 'initialQuery': query},
+    );
   }
 
   @override
@@ -150,17 +199,37 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                   Icons.psychology_outlined,
                   color: Color(0xFF0d9488),
                 ),
-                suffixIcon: Container(
-                  margin: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0d9488),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Icon(
-                    Icons.arrow_forward,
-                    color: Colors.white,
-                    size: 20,
-                  ),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      icon: const Icon(Icons.camera_alt_outlined),
+                      color: const Color(0xFF0d9488),
+                      onPressed: _scanText,
+                    ),
+                    Container(
+                      margin: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0d9488),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: InkWell(
+                        onTap: () {
+                          if (_searchController.text.isNotEmpty) {
+                            _navigateToChat(_searchController.text);
+                          }
+                        },
+                        child: const Padding(
+                          padding: EdgeInsets.all(4.0),
+                          child: Icon(
+                            Icons.arrow_forward,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
                 border: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(
@@ -169,14 +238,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                 ),
               ),
               onSubmitted: (query) {
-                Navigator.pushNamed(
-                  context,
-                  '/copilot-library',
-                  arguments: {
-                    'courseId': widget.courseId,
-                    'initialSearchQuery': query,
-                  },
-                );
+                _navigateToChat(query);
               },
             ),
           ),
@@ -572,8 +634,9 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
       },
       backgroundColor: const Color(0xFF0d9488),
       extendedIconLabelSpacing: 16,
-      extendedPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+      extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
       elevation: 12,
+      shape: const StadiumBorder(),
       icon: const Icon(Icons.upload_file, color: Colors.white, size: 24),
       label: const Text(
         'Upload Note',

@@ -7,8 +7,8 @@ class QueryNoteWithRag {
 
   Stream<String> call({
     required String question,
-    required String noteId,
     required String courseId,
+    String? noteId,
     List<Map<String, dynamic>>? history,
   }) {
     return repository.queryNoteWithRag(
