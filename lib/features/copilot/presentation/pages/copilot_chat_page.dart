@@ -20,6 +20,14 @@ class _CopilotChatPageState extends State<CopilotChatPage> {
   final _user = const types.User(id: 'user-id');
   final _copilot = const types.User(id: 'copilot-id', firstName: 'Copilot');
   String? _currentAiMessageId;
+  final TextEditingController _textController = TextEditingController();
+  bool _isAttachmentOpen = false;
+
+  @override
+  void dispose() {
+    _textController.dispose();
+    super.dispose();
+  }
 
   @override
   void initState() {
@@ -43,6 +51,7 @@ class _CopilotChatPageState extends State<CopilotChatPage> {
     );
 
     _addMessage(textMessage);
+    _textController.clear();
 
     // Provide immediate "Thinking..." feedback or prepare empty AI message
     _currentAiMessageId = const Uuid().v4();
@@ -84,13 +93,124 @@ class _CopilotChatPageState extends State<CopilotChatPage> {
     }
   }
 
+  Widget _buildCustomInput() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+      color: Colors.transparent,
+      child: SafeArea(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 5,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: TextField(
+                  controller: _textController,
+                  textCapitalization: TextCapitalization.sentences,
+                  minLines: 1,
+                  maxLines: 5,
+                  decoration: InputDecoration(
+                    hintText: 'Message',
+                    hintStyle: TextStyle(color: Colors.grey[400]),
+                    border: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    errorBorder: InputBorder.none,
+                    disabledBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 10,
+                    ),
+                    prefixIcon: IconButton(
+                      icon: const Icon(Icons.sentiment_satisfied_alt_outlined),
+                      color: Colors.grey[600],
+                      onPressed: () {},
+                    ),
+                    suffixIcon: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        IconButton(
+                          icon: const Icon(Icons.attach_file),
+                          color: Colors.grey[600],
+                          onPressed: () {
+                            setState(() {
+                              _isAttachmentOpen = !_isAttachmentOpen;
+                            });
+                          },
+                        ),
+                        if (_textController.text.isEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.camera_alt_outlined),
+                            color: Colors.grey[600],
+                            onPressed: () {},
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Container(
+              decoration: const BoxDecoration(
+                color: Color(0xFF0d9488),
+                shape: BoxShape.circle,
+              ),
+              child: IconButton(
+                icon: const Icon(Icons.send, color: Colors.white),
+                onPressed: () {
+                  _handleSendPressed(
+                    types.PartialText(text: _textController.text),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFE5E5E5), // WhatsApp-like Light Grey BG
       appBar: AppBar(
-        title: const Text('Copilot Chat'),
+        title: Row(
+          children: [
+            const CircleAvatar(
+              backgroundColor: Colors.white24,
+              child: Icon(Icons.auto_awesome, color: Colors.white, size: 20),
+            ),
+            const SizedBox(width: 10),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Copilot AI', style: TextStyle(fontSize: 18)),
+                Text(
+                  'Online',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.white.withOpacity(0.8),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
         backgroundColor: const Color(0xFF0d9488),
         foregroundColor: Colors.white,
+        elevation: 1,
       ),
       body: BlocConsumer<CopilotBloc, CopilotState>(
         listener: (context, state) {
@@ -109,9 +229,24 @@ class _CopilotChatPageState extends State<CopilotChatPage> {
             messages: _messages,
             onSendPressed: _handleSendPressed,
             user: _user,
+            customBottomWidget: _buildCustomInput(),
             theme: const DefaultChatTheme(
-              primaryColor: Color(0xFF0d9488),
-              secondaryColor: Color(0xFFeef2ff),
+              primaryColor: Color(0xFFE7FFDB), // WhatsApp Sent Bubble Green
+              secondaryColor: Colors.white, // WhatsApp Received Bubble White
+              backgroundColor: Color(0xFFE5DDD5), // WhatsApp BG
+              sentMessageBodyTextStyle: TextStyle(
+                color: Colors.black87,
+                fontSize: 16,
+              ),
+              receivedMessageBodyTextStyle: TextStyle(
+                color: Colors.black87,
+                fontSize: 16,
+              ),
+              dateDividerTextStyle: TextStyle(
+                color: Colors.black54,
+                fontSize: 12,
+                fontWeight: FontWeight.bold,
+              ),
             ),
           );
         },

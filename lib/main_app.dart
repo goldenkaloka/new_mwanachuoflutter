@@ -390,9 +390,12 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             final args =
                 ModalRoute.of(context)!.settings.arguments
                     as Map<String, dynamic>;
-            return CopilotChatPage(
-              courseId: args['courseId'],
-              initialQuery: args['initialQuery'],
+            return BlocProvider(
+              create: (context) => sl<CopilotBloc>(),
+              child: CopilotChatPage(
+                courseId: args['courseId'],
+                initialQuery: args['initialQuery'],
+              ),
             );
           },
         },
