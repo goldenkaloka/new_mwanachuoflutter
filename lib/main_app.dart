@@ -242,6 +242,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
                 BlocProvider(create: (context) => sl<ServiceBloc>()),
                 BlocProvider(create: (context) => sl<AccommodationBloc>()),
                 BlocProvider(create: (context) => sl<PromotionCubit>()),
+                BlocProvider(create: (context) => sl<ProfileBloc>()),
               ],
               child: const HomePage(),
             ),

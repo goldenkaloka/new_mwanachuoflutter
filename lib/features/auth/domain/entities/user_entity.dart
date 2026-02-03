@@ -33,7 +33,6 @@ class UserEntity extends Equatable {
     this.businessName,
     this.tinNumber,
     this.businessCategory,
-    this.registrationNumber,
     this.programName,
     this.userType,
   });
@@ -41,7 +40,6 @@ class UserEntity extends Equatable {
   final String? businessName;
   final String? tinNumber;
   final String? businessCategory;
-  final String? registrationNumber;
   final String? programName;
   final String? userType;
 
@@ -67,7 +65,6 @@ class UserEntity extends Equatable {
     businessName,
     tinNumber,
     businessCategory,
-    registrationNumber,
     programName,
     userType,
     freeListingsCount,

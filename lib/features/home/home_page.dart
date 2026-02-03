@@ -204,18 +204,26 @@ class _HomePageState extends State<HomePage> {
   }
 
   Future<void> _loadSelectedUniversity() async {
-    final university = await UniversityService.getSelectedUniversity();
-    await UniversityService.getSelectedUniversityLogo();
-    if (mounted) {
-      setState(() {
-        _universityName = university ?? 'campus';
-        // University selection stored in shared preferences
-      });
-    }
-
-    // Load data after university is loaded
-    if (mounted) {
-      _loadDataForUniversity(university);
+    // We now rely on AuthBloc to provide the university ID
+    // This method is kept for compatibility if needed during initial load,
+    // but the primary source is now the authenticated user.
+    // If we have a user, we use their university.
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      if (mounted) {
+        // Fetch university name if possible, or just use 'Campus'
+        // For now, we'll use the ID or a default
+        setState(() {
+          _universityName =
+              'Campus'; // Or fetch actual name if we have a service for it
+        });
+        _loadDataForUniversity(authState.user.universityId);
+      }
+    } else {
+      // Fallback or wait for auth
+      if (mounted) {
+        _loadDataForUniversity(null);
+      }
     }
   }
 
@@ -794,36 +802,6 @@ class _HomePageState extends State<HomePage> {
                 ),
               ),
             ],
-          ),
-          // University Selection Display
-          GestureDetector(
-            onTap: () => Navigator.pushNamed(context, '/university-selection'),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.white10,
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white24),
-              ),
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.location_on,
-                    color: Colors.white70,
-                    size: 14,
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _universityName.split(' ').first,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
           // Notification Icon
           IconButton(
@@ -1411,27 +1389,16 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _buildExpandableFAB(BuildContext context, bool isDarkMode) {
-    return FloatingActionButton.extended(
+    return FloatingActionButton(
       onPressed: () {
         _showPostOptions(context, isDarkMode);
       },
       backgroundColor: isDarkMode ? kPrimaryColor : const Color(0xFF078829),
-      extendedIconLabelSpacing: 16,
-      extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
       elevation: 12,
-      shape: const StadiumBorder(),
-      icon: const Icon(
+      child: const Icon(
         Icons.add_circle_outline_rounded,
         color: Colors.white,
-        size: 24,
-      ),
-      label: Text(
-        'Post Listing',
-        style: GoogleFonts.plusJakartaSans(
-          color: Colors.white,
-          fontWeight: FontWeight.bold,
-          letterSpacing: 0.5,
-        ),
+        size: 28,
       ),
     );
   }

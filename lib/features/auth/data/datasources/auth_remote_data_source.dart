@@ -13,7 +13,6 @@ abstract class AuthRemoteDataSource {
     String? businessName,
     String? tinNumber,
     String? businessCategory,
-    String? registrationNumber,
     String? programName,
     String? userType,
     String? universityId,
@@ -67,7 +66,28 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           .from('users')
           .select()
           .eq('id', response.user!.id)
-          .single();
+          .maybeSingle();
+
+      if (userData == null) {
+        // Profile missing, try to create it from metadata
+        final metadata = response.user!.userMetadata ?? {};
+        final insertData = {
+          'id': response.user!.id,
+          'email': response.user!.email,
+          'full_name': metadata['full_name'] ?? metadata['name'] ?? 'User',
+          'phone_number': metadata['phone_number'] ?? metadata['phone'],
+          'user_type': metadata['user_type'] ?? 'student',
+          'role': 'buyer',
+          'updated_at': DateTime.now().toIso8601String(),
+        };
+
+        final createdData = await supabase
+            .from('users')
+            .insert(insertData)
+            .select()
+            .single();
+        return UserModel.fromJson(createdData);
+      }
 
       return UserModel.fromJson(userData);
     } on AuthException catch (e) {
@@ -86,7 +106,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? businessName,
     String? tinNumber,
     String? businessCategory,
-    String? registrationNumber,
     String? programName,
     String? userType,
     String? universityId,
@@ -105,9 +124,6 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       if (tinNumber != null) data['tin_number'] = tinNumber;
       if (businessCategory != null) {
         data['business_category'] = businessCategory;
-      }
-      if (registrationNumber != null) {
-        data['registration_number'] = registrationNumber;
       }
       if (programName != null) data['program_name'] = programName;
       if (universityId != null) data['primary_university_id'] = universityId;
@@ -282,7 +298,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
           .from('users')
           .select('registration_completed')
           .eq('id', userId)
-          .single();
+          .maybeSingle();
+
+      if (userData == null) return false;
 
       return userData['registration_completed'] as bool? ?? false;
     } catch (e) {
@@ -304,7 +322,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             .from('users')
             .select()
             .eq('id', user.id)
-            .single();
+            .maybeSingle();
+
+        if (userData == null) return null;
 
         return UserModel.fromJson(userData);
       } catch (e) {

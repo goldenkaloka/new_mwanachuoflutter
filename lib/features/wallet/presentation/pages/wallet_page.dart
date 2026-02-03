@@ -347,7 +347,7 @@ class _WalletPageState extends State<WalletPage>
                   Navigator.pop(dialogContext);
                 }
               },
-              child: const Text('Pay with ZenoPay'),
+              child: const Text('Pay Now'),
             ),
           ],
         ),

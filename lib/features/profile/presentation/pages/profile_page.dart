@@ -825,126 +825,184 @@ class _ProfilePageState extends State<ProfilePage> {
   void _showUpdateAcademicInfoDialog(BuildContext context, dynamic profile) {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (BuildContext dialogContext) {
         final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         final primaryTextColor = isDarkMode ? Colors.white : kTextPrimary;
 
         int selectedYear = profile.yearOfStudy ?? 1;
         int selectedSemester = profile.currentSemester ?? 1;
 
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              backgroundColor: isDarkMode ? kBackgroundColorDark : Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
-              ),
-              title: Text(
-                'Academic Info',
-                style: GoogleFonts.plusJakartaSans(
-                  color: primaryTextColor,
-                  fontWeight: FontWeight.bold,
+        return BlocConsumer<ProfileBloc, profile_state.ProfileState>(
+          listener: (context, state) {
+            if (state is profile_state.ProfileLoaded) {
+              // Success - close dialog and show success message
+              Navigator.pop(dialogContext);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('Academic info updated successfully!'),
+                  backgroundColor: Colors.green,
                 ),
-              ),
-              content: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    'Year of Study',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+              );
+            } else if (state is profile_state.ProfileError) {
+              // Error - show error message but keep dialog open
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Failed to update: ${state.message}'),
+                  backgroundColor: Colors.red,
+                ),
+              );
+            }
+          },
+          builder: (context, state) {
+            final isLoading = state is profile_state.ProfileLoading;
+
+            return StatefulBuilder(
+              builder: (context, setState) {
+                return AlertDialog(
+                  backgroundColor: isDarkMode
+                      ? kBackgroundColorDark
+                      : Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16.0),
                   ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<int>(
-                    value: selectedYear,
-                    dropdownColor: isDarkMode
-                        ? kBackgroundColorDark
-                        : Colors.white,
-                    style: GoogleFonts.plusJakartaSans(color: primaryTextColor),
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                      ),
+                  title: Text(
+                    'Academic Info',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: primaryTextColor,
+                      fontWeight: FontWeight.bold,
                     ),
-                    items: List.generate(7, (index) => index + 1)
-                        .map(
-                          (year) => DropdownMenuItem(
-                            value: year,
-                            child: Text('Year $year'),
+                  ),
+                  content: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Year of Study',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int>(
+                        value: selectedYear,
+                        dropdownColor: isDarkMode
+                            ? kBackgroundColorDark
+                            : Colors.white,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: primaryTextColor,
+                        ),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) setState(() => selectedYear = value);
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  const Text(
-                    'Semester',
-                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 8),
-                  DropdownButtonFormField<int>(
-                    value: selectedSemester,
-                    dropdownColor: isDarkMode
-                        ? kBackgroundColorDark
-                        : Colors.white,
-                    style: GoogleFonts.plusJakartaSans(color: primaryTextColor),
-                    decoration: InputDecoration(
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                      ),
-                    ),
-                    items: [1, 2]
-                        .map(
-                          (sem) => DropdownMenuItem(
-                            value: sem,
-                            child: Text('Semester $sem'),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
                           ),
-                        )
-                        .toList(),
-                    onChanged: (value) {
-                      if (value != null) {
-                        setState(() => selectedSemester = value);
-                      }
-                    },
-                  ),
-                ],
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.pop(context),
-                  child: Text(
-                    'Cancel',
-                    style: GoogleFonts.plusJakartaSans(color: primaryTextColor),
-                  ),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    context.read<ProfileBloc>().add(
-                      profile_event.UpdateProfileEvent(
-                        yearOfStudy: selectedYear,
-                        currentSemester: selectedSemester,
+                        ),
+                        items: List.generate(7, (index) => index + 1)
+                            .map(
+                              (year) => DropdownMenuItem(
+                                value: year,
+                                child: Text('Year $year'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: isLoading
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  setState(() => selectedYear = value);
+                                }
+                              },
                       ),
-                    );
-                    Navigator.pop(context);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: kPrimaryColor,
-                    foregroundColor: kBackgroundColorDark,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20.0),
-                    ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Semester',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<int>(
+                        value: selectedSemester,
+                        dropdownColor: isDarkMode
+                            ? kBackgroundColorDark
+                            : Colors.white,
+                        style: GoogleFonts.plusJakartaSans(
+                          color: primaryTextColor,
+                        ),
+                        decoration: InputDecoration(
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                          ),
+                        ),
+                        items: [1, 2]
+                            .map(
+                              (sem) => DropdownMenuItem(
+                                value: sem,
+                                child: Text('Semester $sem'),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: isLoading
+                            ? null
+                            : (value) {
+                                if (value != null) {
+                                  setState(() => selectedSemester = value);
+                                }
+                              },
+                      ),
+                    ],
                   ),
-                  child: const Text('Save'),
-                ),
-              ],
+                  actions: [
+                    TextButton(
+                      onPressed: isLoading
+                          ? null
+                          : () => Navigator.pop(dialogContext),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: primaryTextColor,
+                        ),
+                      ),
+                    ),
+                    ElevatedButton(
+                      onPressed: isLoading
+                          ? null
+                          : () {
+                              context.read<ProfileBloc>().add(
+                                profile_event.UpdateProfileEvent(
+                                  yearOfStudy: selectedYear,
+                                  currentSemester: selectedSemester,
+                                ),
+                              );
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimaryColor,
+                        foregroundColor: kBackgroundColorDark,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20.0),
+                        ),
+                      ),
+                      child: isLoading
+                          ? const SizedBox(
+                              height: 16,
+                              width: 16,
+                              child: CircularProgressIndicator(
+                                color: Colors.white,
+                                strokeWidth: 2,
+                              ),
+                            )
+                          : const Text('Save'),
+                    ),
+                  ],
+                );
+              },
             );
           },
         );

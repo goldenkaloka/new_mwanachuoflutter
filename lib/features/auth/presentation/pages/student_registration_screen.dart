@@ -24,8 +24,6 @@ class _StudentRegistrationScreenState extends State<StudentRegistrationScreen> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _firstNameController = TextEditingController();
   final TextEditingController _lastNameController = TextEditingController();
-  final TextEditingController _registrationNumberController =
-      TextEditingController();
   final TextEditingController _programNameController = TextEditingController();
 
   final TextEditingController _emailController = TextEditingController();
@@ -120,7 +118,6 @@ class _StudentRegistrationScreenState extends State<StudentRegistrationScreen> {
   void dispose() {
     _firstNameController.dispose();
     _lastNameController.dispose();
-    _registrationNumberController.dispose();
     _programNameController.dispose();
     _emailController.dispose();
     _phoneController.dispose();
@@ -145,7 +142,6 @@ class _StudentRegistrationScreenState extends State<StudentRegistrationScreen> {
         name:
             '${_firstNameController.text.trim()} ${_lastNameController.text.trim()}',
         phone: _phoneController.text.trim(),
-        registrationNumber: _registrationNumberController.text.trim(),
         programName: _programNameController.text.trim(),
         userType: 'student',
         universityId: _selectedUniversityId,
@@ -242,16 +238,6 @@ class _StudentRegistrationScreenState extends State<StudentRegistrationScreen> {
                                 ),
                               ),
                             ],
-                          ),
-                          const SizedBox(height: 16),
-
-                          // Registration Number
-                          AuthTextField(
-                            controller: _registrationNumberController,
-                            label: 'Registration Number',
-                            hintText: 'Enter your registration number',
-                            prefixIcon: Icons.badge_outlined,
-                            isDarkMode: isDarkMode,
                           ),
                           const SizedBox(height: 16),
 

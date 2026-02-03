@@ -25,7 +25,6 @@ class SignUpEvent extends AuthEvent {
   final String? businessName;
   final String? tinNumber;
   final String? businessCategory;
-  final String? registrationNumber;
   final String? programName;
   final String? userType;
   final String? universityId;
@@ -41,7 +40,6 @@ class SignUpEvent extends AuthEvent {
     this.businessName,
     this.tinNumber,
     this.businessCategory,
-    this.registrationNumber,
     this.programName,
     this.userType,
     this.universityId,
@@ -59,7 +57,6 @@ class SignUpEvent extends AuthEvent {
     businessName,
     tinNumber,
     businessCategory,
-    registrationNumber,
     programName,
     userType,
     universityId,

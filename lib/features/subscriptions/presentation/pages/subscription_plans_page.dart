@@ -201,9 +201,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                                     borderRadius: BorderRadius.circular(30),
                                   ),
                                 ),
-                                child: const Text(
-                                  'Pay with ZenoPay (Mobile Money)',
-                                ),
+                                child: const Text('Subscribe'),
                               ),
                             ),
                           ],

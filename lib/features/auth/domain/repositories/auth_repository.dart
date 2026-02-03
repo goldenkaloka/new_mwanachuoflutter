@@ -18,7 +18,6 @@ abstract class AuthRepository {
     String? businessName,
     String? tinNumber,
     String? businessCategory,
-    String? registrationNumber,
     String? programName,
     String? userType,
     String? universityId,

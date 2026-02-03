@@ -427,7 +427,7 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
               content: Text(
-                'Insufficient wallet balance. Please top up via ZenoPay.',
+                'Insufficient wallet balance. Please top up your wallet.',
               ),
               backgroundColor: Colors.red,
             ),

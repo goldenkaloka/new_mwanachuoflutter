@@ -64,7 +64,6 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         businessName: event.businessName,
         tinNumber: event.tinNumber,
         businessCategory: event.businessCategory,
-        registrationNumber: event.registrationNumber,
         programName: event.programName,
         userType: event.userType,
         universityId: event.universityId,

@@ -67,7 +67,10 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
       context,
       '/copilot-chat',
       arguments: {'courseId': widget.courseId, 'initialQuery': query},
-    );
+    ).then((_) {
+      // Clear search text when returning from chat
+      _searchController.clear();
+    });
   }
 
   @override

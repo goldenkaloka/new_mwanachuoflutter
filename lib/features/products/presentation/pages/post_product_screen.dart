@@ -222,7 +222,7 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
 
       deductResult.fold(
         (failure) {
-          _showError('Insufficient wallet balance. Please top up via ZenoPay.');
+          _showError('Insufficient wallet balance. Please top up your wallet.');
         },
         (_) {
           _dispatchCreateProduct(price, oldPrice);

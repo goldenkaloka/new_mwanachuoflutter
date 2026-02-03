@@ -20,7 +20,6 @@ class SignUp implements UseCase<UserEntity, SignUpParams> {
       businessName: params.businessName,
       tinNumber: params.tinNumber,
       businessCategory: params.businessCategory,
-      registrationNumber: params.registrationNumber,
       programName: params.programName,
       userType: params.userType,
       universityId: params.universityId,
@@ -39,7 +38,6 @@ class SignUpParams extends Equatable {
   final String? businessName;
   final String? tinNumber;
   final String? businessCategory;
-  final String? registrationNumber;
   final String? programName;
   final String? userType;
   final String? universityId;
@@ -55,7 +53,6 @@ class SignUpParams extends Equatable {
     this.businessName,
     this.tinNumber,
     this.businessCategory,
-    this.registrationNumber,
     this.programName,
     this.userType,
     this.universityId,
@@ -73,7 +70,6 @@ class SignUpParams extends Equatable {
     businessName,
     tinNumber,
     businessCategory,
-    registrationNumber,
     programName,
     userType,
     universityId,
