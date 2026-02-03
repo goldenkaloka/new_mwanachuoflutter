@@ -72,6 +72,8 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
 
       // Registration is always complete now, go to home
       debugPrint('✅ Registration complete, going to home');
+      // Restore Authenticated state so the rest of the app can access user data
+      context.read<AuthBloc>().add(const CheckAuthStatusEvent());
       Navigator.of(context).pushReplacementNamed('/home');
     } else if (state is AuthError) {
       if (_hasNavigated) return;

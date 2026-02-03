@@ -220,7 +220,10 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
-      providers: [BlocProvider(create: (context) => sl<AuthBloc>())],
+      providers: [
+        BlocProvider(create: (context) => sl<AuthBloc>()),
+        BlocProvider(create: (context) => sl<ProfileBloc>()),
+      ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
         title: 'Mwanachuoshop',
@@ -242,7 +245,6 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
                 BlocProvider(create: (context) => sl<ServiceBloc>()),
                 BlocProvider(create: (context) => sl<AccommodationBloc>()),
                 BlocProvider(create: (context) => sl<PromotionCubit>()),
-                BlocProvider(create: (context) => sl<ProfileBloc>()),
               ],
               child: const HomePage(),
             ),
@@ -293,6 +295,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           },
           '/account-settings': (context) => const AccountSettingsScreen(),
           '/edit-profile': (context) => const EditProfileScreen(),
+          '/become-seller': (context) => const SubscriptionPlansPage(),
           '/my-listings': (context) => MultiBlocProvider(
             providers: [
               BlocProvider(create: (context) => sl<ProductBloc>()),
@@ -349,10 +352,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           ),
           '/copilot': (context) => PersistentBottomNavWrapper(
             initialIndex: 2,
-            child: BlocProvider(
-              create: (context) => sl<ProfileBloc>(),
-              child: const CopilotWrapperPage(),
-            ),
+            child: const CopilotWrapperPage(),
           ),
           '/copilot-library': (context) {
             final args =

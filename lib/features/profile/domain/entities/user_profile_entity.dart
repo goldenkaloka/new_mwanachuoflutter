@@ -22,6 +22,9 @@ class UserProfileEntity extends Equatable {
   final int totalReviews;
   final int? yearOfStudy;
   final int? currentSemester;
+  final String? userType; // 'student' or 'business'
+  final String? businessName;
+  final String? businessCategory;
 
   const UserProfileEntity({
     required this.id,
@@ -43,6 +46,9 @@ class UserProfileEntity extends Equatable {
     this.totalReviews = 0,
     this.yearOfStudy,
     this.currentSemester,
+    this.userType,
+    this.businessName,
+    this.businessCategory,
   });
 
   @override
@@ -66,5 +72,8 @@ class UserProfileEntity extends Equatable {
     totalReviews,
     yearOfStudy,
     currentSemester,
+    userType,
+    businessName,
+    businessCategory,
   ];
 }

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-
+import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 
 /// Wrapper widget that provides persistent bottom navigation bar across main pages
@@ -46,12 +48,18 @@ class _PersistentBottomNavWrapperState
     });
   }
 
+  bool _isBusinessUser(BuildContext context) {
+    final state = context.read<AuthBloc>().state;
+    return state is Authenticated && state.user.userType == 'business';
+  }
+
   void _updateSelectedIndexFromRoute() {
     if (!mounted) return;
     final route = ModalRoute.of(context);
     if (route == null) return;
 
     final routeName = route.settings.name;
+    final isBusiness = _isBusinessUser(context);
 
     int? newIndex;
     if (routeName == '/home') {
@@ -59,11 +67,12 @@ class _PersistentBottomNavWrapperState
     } else if (routeName == '/listings' || routeName == '/browse-listings') {
       newIndex = 1;
     } else if (routeName == '/copilot') {
-      newIndex = 2;
+      // If business user somehow gets here, we might map it to something else or just keep it
+      newIndex = isBusiness ? null : 2;
     } else if (routeName == '/dashboard') {
-      newIndex = 3;
+      newIndex = isBusiness ? 2 : 3;
     } else if (routeName == '/profile') {
-      newIndex = 4;
+      newIndex = isBusiness ? 3 : 4;
     }
 
     if (newIndex != null && newIndex != _selectedIndex) {
@@ -80,14 +89,24 @@ class _PersistentBottomNavWrapperState
       _selectedIndex = index;
     });
 
+    final isBusiness = _isBusinessUser(context);
+
     if (index == 0) {
       Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
     } else if (index == 1) {
       Navigator.pushNamed(context, '/listings', arguments: null);
     } else if (index == 2) {
-      Navigator.pushNamed(context, '/copilot');
+      if (isBusiness) {
+        Navigator.pushNamed(context, '/dashboard');
+      } else {
+        Navigator.pushNamed(context, '/copilot');
+      }
     } else if (index == 3) {
-      Navigator.pushNamed(context, '/dashboard');
+      if (isBusiness) {
+        Navigator.pushNamed(context, '/profile');
+      } else {
+        Navigator.pushNamed(context, '/dashboard');
+      }
     } else if (index == 4) {
       Navigator.pushNamed(context, '/profile');
     }
@@ -110,6 +129,11 @@ class _PersistentBottomNavWrapperState
     }
 
     const activeColor = Color(0xFF078829);
+
+    // Watch AuthBloc to rebuild nav items when user role changes
+    final authState = context.watch<AuthBloc>().state;
+    final isBusiness =
+        authState is Authenticated && authState.user.userType == 'business';
 
     return Scaffold(
       body: widget.child,
@@ -135,7 +159,7 @@ class _PersistentBottomNavWrapperState
             shape: const CircularNotchedRectangle(),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: _buildNavItems(isDarkMode, activeColor),
+              children: _buildNavItems(isDarkMode, activeColor, isBusiness),
             ),
           ),
         ),
@@ -143,7 +167,11 @@ class _PersistentBottomNavWrapperState
     );
   }
 
-  List<Widget> _buildNavItems(bool isDarkMode, Color activeColor) {
+  List<Widget> _buildNavItems(
+    bool isDarkMode,
+    Color activeColor,
+    bool isBusiness,
+  ) {
     Widget buildNavItem({
       required int index,
       required IconData icon,
@@ -151,6 +179,13 @@ class _PersistentBottomNavWrapperState
       required String label,
       bool showBadge = false,
     }) {
+      // Current index logic:
+      // Index in loop vs _selectedIndex
+      //
+      // If isBusiness:
+      // Loop indices: 0 (Home), 1 (Listings), 2 (Dashboard), 3 (Profile)
+      // _selectedIndex should match one of these.
+
       final isActive = _selectedIndex == index;
 
       return Expanded(
@@ -171,7 +206,6 @@ class _PersistentBottomNavWrapperState
                     activeColor: activeColor,
                     isDarkMode: isDarkMode,
                     showBadge: showBadge,
-                    isSpecial: index == 2,
                   ),
                   const SizedBox(height: 2),
                   Text(
@@ -192,7 +226,7 @@ class _PersistentBottomNavWrapperState
       );
     }
 
-    return [
+    final items = [
       buildNavItem(
         index: 0,
         icon: Icons.home_outlined,
@@ -205,25 +239,46 @@ class _PersistentBottomNavWrapperState
         activeIcon: Icons.view_list_rounded,
         label: 'Listings',
       ),
+    ];
+
+    if (!isBusiness) {
+      items.add(
+        buildNavItem(
+          index: 2,
+          icon: Icons.auto_awesome_outlined,
+          activeIcon: Icons.auto_awesome,
+          label: 'Copilot',
+        ),
+      );
+    }
+
+    // Dashboard
+    // If not business, Dashboard is index 3.
+    // If business, Dashboard is index 2.
+    // However, the `buildNavItem` checks `required int index` against `_selectedIndex`.
+    // My _onItemTapped sets _selectedIndex to 0, 1, 2, 3...
+    // So if isBusiness, dashboard is at index 2.
+    int dashboardIndex = isBusiness ? 2 : 3;
+    items.add(
       buildNavItem(
-        index: 2,
-        icon: Icons.auto_awesome_outlined,
-        activeIcon: Icons.auto_awesome,
-        label: 'Copilot',
-      ),
-      buildNavItem(
-        index: 3,
+        index: dashboardIndex,
         icon: Icons.dashboard_outlined,
         activeIcon: Icons.dashboard_rounded,
         label: 'Dashboard',
       ),
+    );
+
+    int profileIndex = isBusiness ? 3 : 4;
+    items.add(
       buildNavItem(
-        index: 4,
+        index: profileIndex,
         icon: Icons.person_outline_rounded,
         activeIcon: Icons.person_rounded,
         label: 'Profile',
       ),
-    ];
+    );
+
+    return items;
   }
 
   Widget _buildIcon({
@@ -233,7 +288,6 @@ class _PersistentBottomNavWrapperState
     required Color activeColor,
     required bool isDarkMode,
     bool showBadge = false,
-    bool isSpecial = false,
   }) {
     final iconWidget = AnimatedContainer(
       duration: const Duration(milliseconds: 200),

@@ -22,6 +22,9 @@ class UserProfileModel extends UserProfileEntity {
     super.totalReviews,
     super.yearOfStudy,
     super.currentSemester,
+    super.userType,
+    super.businessName,
+    super.businessCategory,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -50,6 +53,9 @@ class UserProfileModel extends UserProfileEntity {
       totalReviews: json['total_reviews'] as int? ?? 0,
       yearOfStudy: json['year_of_study'] as int?,
       currentSemester: json['current_semester'] as int?,
+      userType: json['user_type'] as String?,
+      businessName: json['business_name'] as String?,
+      businessCategory: json['business_category'] as String?,
     );
   }
 
@@ -74,6 +80,9 @@ class UserProfileModel extends UserProfileEntity {
       'total_reviews': totalReviews,
       'year_of_study': yearOfStudy,
       'current_semester': currentSemester,
+      'user_type': userType,
+      'business_name': businessName,
+      'business_category': businessCategory,
     };
   }
 }

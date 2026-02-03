@@ -50,7 +50,7 @@ class _HomePageState extends State<HomePage> {
   String _userName = 'User';
   final TextEditingController _searchController = TextEditingController();
   int _unreadNotificationCount = 0;
-  bool _hasRedirected = false;
+
   bool _hasReloadedInDidChangeDependencies = false;
 
   // Dynamic Search variables
@@ -259,23 +259,7 @@ class _HomePageState extends State<HomePage> {
             },
             listener: (context, state) {
               if (state is Authenticated) {
-                // Safety check: if user doesn't have universities, redirect (only once)
-                if (state.user.universityId == null && !_hasRedirected) {
-                  _hasRedirected = true;
-                  debugPrint(
-                    '❌ CRITICAL: User on homepage without universities!',
-                  );
-                  debugPrint('🔄 Redirecting to university selection...');
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    if (mounted) {
-                      Navigator.pushReplacementNamed(
-                        context,
-                        '/signup-university-selection',
-                      );
-                    }
-                  });
-                  return; // Don't update user data if redirecting
-                }
+                // Safety check removed as per user request
 
                 // Only update if data actually changed to prevent rebuilds
                 if (_userName != state.user.name ||

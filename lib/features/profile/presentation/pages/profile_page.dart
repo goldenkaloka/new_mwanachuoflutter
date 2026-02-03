@@ -415,7 +415,11 @@ class _ProfilePageState extends State<ProfilePage> {
           ),
           // Name
           Text(
-            profile.fullName,
+            (profile.userType == 'business' &&
+                    profile.businessName != null &&
+                    profile.businessName!.isNotEmpty)
+                ? profile.businessName!
+                : profile.fullName,
             style: GoogleFonts.plusJakartaSans(
               color: primaryTextColor,
               fontSize: ResponsiveBreakpoints.responsiveValue(
@@ -429,6 +433,24 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             textAlign: TextAlign.center,
           ),
+          if (profile.userType == 'business' &&
+              profile.businessCategory != null) ...[
+            const SizedBox(height: 4),
+            Text(
+              profile.businessCategory!,
+              style: GoogleFonts.plusJakartaSans(
+                color: kPrimaryColor,
+                fontSize: ResponsiveBreakpoints.responsiveValue(
+                  context,
+                  compact: 14.0,
+                  medium: 16.0,
+                  expanded: 18.0,
+                ),
+                fontWeight: FontWeight.w600,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ],
           SizedBox(
             height: ResponsiveBreakpoints.responsiveValue(
               context,
@@ -467,18 +489,7 @@ class _ProfilePageState extends State<ProfilePage> {
   ) {
     final menuItems = <_MenuItem>[];
 
-    // Show "Become a Seller" for buyers only
-    if (profile.role.toString().contains('buyer')) {
-      menuItems.add(
-        _MenuItem(
-          icon: Icons.storefront,
-          title: 'Become a Seller',
-          onTap: () {
-            Navigator.pushNamed(context, '/become-seller');
-          },
-        ),
-      );
-    }
+    // "Become a Seller" removed as per user request
 
     // Show "My Listings", "Dashboard", and "Subscription" for sellers only
     if (profile.role.toString().contains('seller') ||
@@ -509,14 +520,41 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     // Common menu items for all users
+    // Only show Academic Info for Students (default if null)
+    // Common menu items for all users
+    // Only show Academic Info for Students (default if null, but assume business if business fields present)
+    // Check userType AND businessName to be robust against missing userType
+    final isBusiness =
+        profile.userType == 'business' ||
+        (profile.businessName != null && profile.businessName!.isNotEmpty);
+
+    if (!isBusiness) {
+      menuItems.add(
+        _MenuItem(
+          icon: Icons.school_outlined,
+          title: 'Update Academic Info',
+          onTap: () {
+            _showUpdateAcademicInfoDialog(context, profile);
+          },
+        ),
+      );
+    }
+
+    // Add Wallet for Business Users
+    if (profile.userType == 'business') {
+      menuItems.add(
+        _MenuItem(
+          icon: Icons.account_balance_wallet_outlined,
+          title: 'Wallet',
+          onTap: () {
+            // Navigate to wallet page (placeholder for now, or dashboard)
+            Navigator.pushNamed(context, '/wallet');
+          },
+        ),
+      );
+    }
+
     menuItems.addAll([
-      _MenuItem(
-        icon: Icons.school_outlined,
-        title: 'Update Academic Info',
-        onTap: () {
-          _showUpdateAcademicInfoDialog(context, profile);
-        },
-      ),
       _MenuItem(
         icon: Icons.settings,
         title: 'Account Settings',

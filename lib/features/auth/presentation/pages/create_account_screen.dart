@@ -70,11 +70,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
       listener: (context, state) {
         if (state is Authenticated) {
           // Navigate to university selection after successful registration
-          Navigator.pushNamedAndRemoveUntil(
-            context,
-            '/signup-university-selection',
-            (route) => false,
-          );
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (route) => false);
         } else if (state is AuthError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
