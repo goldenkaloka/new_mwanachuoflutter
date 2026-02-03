@@ -395,6 +395,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               child: CopilotChatPage(
                 courseId: args['courseId'],
                 initialQuery: args['initialQuery'],
+                noteId: args['noteId'],
               ),
             );
           },

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
+import 'package:mwanachuo/features/copilot/domain/entities/note_entity.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 
@@ -87,19 +88,16 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
 
             // Scrollable Content
             Expanded(
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 24),
-                    _buildDownloadedSection(),
-                    const SizedBox(height: 32),
-                    _buildUnitMaterialsSection(),
-                    const SizedBox(height: 32),
-                    _buildRecentlyProcessed(),
-                    const SizedBox(height: 100),
-                  ],
-                ),
+              child: CustomScrollView(
+                slivers: [
+                  const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                  SliverToBoxAdapter(child: _buildDownloadedSection()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                  SliverToBoxAdapter(child: _buildUnitMaterialsSection()),
+                  const SliverToBoxAdapter(child: SizedBox(height: 32)),
+                  _buildRecentlyProcessedSliver(),
+                  const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                ],
               ),
             ),
           ],
@@ -293,7 +291,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                   scrollDirection: Axis.horizontal,
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   itemCount: state.downloadedNotes.length,
-                  separatorBuilder: (_, __) => const SizedBox(width: 12),
+                  separatorBuilder: (_, _) => const SizedBox(width: 12),
                   itemBuilder: (context, index) {
                     final note = state.downloadedNotes[index];
                     return _buildOfflineNoteCard(note);
@@ -308,7 +306,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
     );
   }
 
-  Widget _buildOfflineNoteCard(note) {
+  Widget _buildOfflineNoteCard(NoteEntity note) {
     return InkWell(
       onTap: () {
         Navigator.pushNamed(
@@ -485,46 +483,44 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
     );
   }
 
-  Widget _buildRecentlyProcessed() {
+  Widget _buildRecentlyProcessedSliver() {
     return BlocBuilder<CopilotBloc, CopilotState>(
       builder: (context, state) {
+        List<NoteEntity> recentNotes = [];
         if (state is CopilotNotesLoaded) {
-          final recentNotes = state.notes.take(3).toList();
+          recentNotes = state.notes;
+        }
 
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
+        if (recentNotes.isNotEmpty) {
+          return SliverPadding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                const SizedBox(height: 16),
+                Text(
                   'Recently Processed by AI',
                   style: Theme.of(
                     context,
                   ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 16),
-              ListView.separated(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: recentNotes.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  final note = recentNotes[index];
-                  return _buildNoteCard(note);
-                },
-              ),
-            ],
+                const SizedBox(height: 16),
+                ...recentNotes.map(
+                  (note) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: _buildNoteCard(note),
+                  ),
+                ),
+              ]),
+            ),
           );
         }
 
-        return const SizedBox.shrink();
+        return const SliverToBoxAdapter(child: SizedBox.shrink());
       },
     );
   }
 
-  Widget _buildNoteCard(note) {
+  Widget _buildNoteCard(NoteEntity note) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(

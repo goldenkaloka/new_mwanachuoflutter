@@ -55,6 +55,7 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
       event.courseId,
     );
 
+    if (isClosed) return;
     result.fold((failure) => emit(CopilotError(message: failure.message)), (
       notes,
     ) {
@@ -80,8 +81,10 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
       file: file,
       noteId: event.noteId,
       courseId: event.courseId,
+      title: event.title,
     );
 
+    if (isClosed) return;
     result.fold((failure) => emit(CopilotError(message: failure.message)), (
       analysisResult,
     ) {
@@ -143,6 +146,11 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
           ? await repository.getLocalFilePath(event.noteId)
           : null;
 
+      if (isClosed) return;
+
+      // Increment view count in background
+      repository.incrementViewCount(event.noteId);
+
       noteResult.fold(
         (failure) => emit(CopilotError(message: failure.message)),
         (note) {
@@ -175,10 +183,14 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
 
     final result = await downloadNoteForOffline(event.noteId);
 
-    result.fold(
-      (failure) => emit(CopilotError(message: failure.message)),
-      (filePath) => emit(CopilotDownloadSuccess(filePath: filePath)),
-    );
+    if (isClosed) return;
+    result.fold((failure) => emit(CopilotError(message: failure.message)), (
+      filePath,
+    ) {
+      // Increment download count in background
+      repository.incrementDownloadCount(event.noteId);
+      emit(CopilotDownloadSuccess(filePath: filePath));
+    });
   }
 
   Future<void> _onSearchNotes(
@@ -192,6 +204,7 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
       courseId: event.courseId,
     );
 
+    if (isClosed) return;
     result.fold(
       (failure) => emit(CopilotError(message: failure.message)),
       (results) =>

@@ -26,6 +26,8 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
     super.dispose();
   }
 
+  static const int _maxFileSizeBytes = 15 * 1024 * 1024; // 15MB
+
   Future<void> _pickFile() async {
     final result = await FilePicker.platform.pickFiles(
       type: FileType.custom,
@@ -43,9 +45,24 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
     );
 
     if (result != null) {
+      final file = result.files.single;
+      if (file.size > _maxFileSizeBytes) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text(
+                'File too large. Please select a file under 15MB for faster processing.',
+              ),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+        return;
+      }
+
       setState(() {
-        _selectedFile = File(result.files.single.path!);
-        _titleController.text = result.files.single.name.replaceAll(
+        _selectedFile = File(file.path!);
+        _titleController.text = file.name.replaceAll(
           RegExp(r'\.(pdf|docx|doc|pptx|ppt|jpg|jpeg|png|webp)$'),
           '',
         );
@@ -62,6 +79,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
         filePath: _selectedFile!.path,
         noteId: noteId,
         courseId: widget.courseId,
+        title: _titleController.text.trim(),
       ),
     );
   }
@@ -149,7 +167,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'PDF, Word, PPT or Images supported',
+                    'PDF, Word, PPT or Images (Max 15MB)',
                     style: Theme.of(
                       context,
                     ).textTheme.bodySmall?.copyWith(color: Colors.grey[600]),

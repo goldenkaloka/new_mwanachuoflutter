@@ -51,6 +51,7 @@ class SearchCubit extends Cubit<SearchState> {
       ),
     );
 
+    if (isClosed) return;
     result.fold((failure) => emit(SearchError(message: failure.message)), (
       results,
     ) {
@@ -89,6 +90,7 @@ class SearchCubit extends Cubit<SearchState> {
       ),
     );
 
+    if (isClosed) return;
     result.fold((failure) => emit(SearchError(message: failure.message)), (
       results,
     ) {
@@ -117,6 +119,7 @@ class SearchCubit extends Cubit<SearchState> {
       GetSearchSuggestionsParams(query: query, limit: limit),
     );
 
+    if (isClosed) return;
     result.fold(
       (failure) => emit(SearchError(message: failure.message)),
       (suggestions) => emit(SuggestionsLoaded(suggestions: suggestions)),
@@ -129,6 +132,7 @@ class SearchCubit extends Cubit<SearchState> {
       GetRecentSearchesParams(limit: limit),
     );
 
+    if (isClosed) return;
     result.fold(
       (failure) => emit(SearchError(message: failure.message)),
       (searches) => emit(RecentSearchesLoaded(searches: searches)),
@@ -141,6 +145,7 @@ class SearchCubit extends Cubit<SearchState> {
       GetPopularSearchesParams(limit: limit),
     );
 
+    if (isClosed) return;
     result.fold(
       (failure) => emit(SearchError(message: failure.message)),
       (searches) => emit(PopularSearchesLoaded(searches: searches)),
@@ -158,6 +163,7 @@ class SearchCubit extends Cubit<SearchState> {
   Future<void> clearHistory() async {
     final result = await clearSearchHistory(NoParams());
 
+    if (isClosed) return;
     result.fold(
       (failure) => emit(SearchError(message: failure.message)),
       (_) => emit(SearchHistoryCleared()),

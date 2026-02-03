@@ -252,4 +252,24 @@ class CopilotRepositoryImpl implements CopilotRepository {
       return Left(CacheFailure(e.toString()));
     }
   }
+
+  @override
+  Future<Either<Failure, void>> incrementViewCount(String noteId) async {
+    try {
+      await remoteDataSource.incrementViewCount(noteId);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> incrementDownloadCount(String noteId) async {
+    try {
+      await remoteDataSource.incrementDownloadCount(noteId);
+      return const Right(null);
+    } catch (e) {
+      return Left(ServerFailure(e.toString()));
+    }
+  }
 }

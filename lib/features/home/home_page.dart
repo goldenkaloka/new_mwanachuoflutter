@@ -485,13 +485,13 @@ class _HomePageState extends State<HomePage> {
                   child: _buildPromotionsSection(ScreenSize.expanded),
                 ),
 
-                // Sticky Chips (Categories) - Pinned at top when scrolling
+                // Sticky Chips (Exploring Category Chips) - Pinned at top when scrolling
                 SliverPersistentHeader(
                   pinned: true,
                   delegate: _StickyChipsDelegate(
-                    child: _buildChipsRow(ScreenSize.expanded),
-                    minHeight: 56.0,
-                    maxHeight: 56.0,
+                    child: _buildCompactChipsRow(ScreenSize.expanded),
+                    minHeight: 100.0,
+                    maxHeight: 100.0,
                   ),
                 ),
 
@@ -1169,7 +1169,7 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildChipsRow(ScreenSize screenSize) {
+  Widget _buildCompactChipsRow(ScreenSize screenSize) {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
@@ -1221,79 +1221,63 @@ class _HomePageState extends State<HomePage> {
 
     return Container(
       color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
-      padding: const EdgeInsets.symmetric(vertical: 16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-            child: Text(
-              'Explore Marketplace',
-              style: GoogleFonts.plusJakartaSans(
-                color: isDarkMode ? Colors.white : Colors.black87,
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          const SizedBox(height: 12),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-            child: Row(
-              children: discoveryCategories.map((category) {
-                final String label = category['label'];
-                final IconData icon = category['icon'];
-                final Color color = category['color'];
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+        child: Row(
+          children: discoveryCategories.map((category) {
+            final String label = category['label'];
+            final IconData icon = category['icon'];
+            final Color color = category['color'];
 
-                return GestureDetector(
-                  onTap: () {
-                    if (label == 'Products') {
-                      Navigator.pushNamed(context, '/all-products');
-                    } else if (label == 'Hostels') {
-                      Navigator.pushNamed(context, '/student-housing');
-                    } else {
-                      Navigator.pushNamed(context, '/search', arguments: label);
-                    }
-                  },
-                  child: Container(
-                    width: 76,
-                    margin: const EdgeInsets.only(right: 16.0),
-                    child: Column(
-                      children: [
-                        Container(
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            color: color.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(
-                              color: color.withValues(alpha: 0.2),
-                              width: 1.5,
-                            ),
-                          ),
-                          child: Icon(icon, color: color, size: 28),
+            return GestureDetector(
+              onTap: () {
+                if (label == 'Products') {
+                  Navigator.pushNamed(context, '/all-products');
+                } else if (label == 'Hostels') {
+                  Navigator.pushNamed(context, '/student-housing');
+                } else {
+                  Navigator.pushNamed(context, '/search', arguments: label);
+                }
+              },
+              child: Container(
+                width: 76,
+                margin: const EdgeInsets.only(right: 16.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 48,
+                      height: 48,
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: color.withValues(alpha: 0.2),
+                          width: 1.5,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          label,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: isDarkMode ? Colors.white70 : Colors.black54,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                          ),
-                          textAlign: TextAlign.center,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ],
+                      ),
+                      child: Icon(icon, color: color, size: 24),
                     ),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-        ],
+                    const SizedBox(height: 6),
+                    Text(
+                      label,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: isDarkMode ? Colors.white70 : Colors.black54,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ),
     );
   }
@@ -2818,6 +2802,7 @@ class _StickyChipsDelegate extends SliverPersistentHeaderDelegate {
   ) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Container(
+      height: maxHeight,
       decoration: BoxDecoration(
         color: isDarkMode ? kBackgroundColorDark : kBackgroundColorLight,
         border: Border(

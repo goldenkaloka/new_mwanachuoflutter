@@ -10,6 +10,22 @@ const corsHeaders = {
 // @ts-ignore
 const wait = (promise: Promise<any>) => EdgeRuntime.waitUntil(promise);
 
+function getMimeType(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase();
+  switch (ext) {
+    case 'pdf': return 'application/pdf';
+    case 'pptx': return 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+    case 'ppt': return 'application/vnd.ms-powerpoint';
+    case 'docx': return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    case 'doc': return 'application/msword';
+    case 'png': return 'image/png';
+    case 'jpg':
+    case 'jpeg': return 'image/jpeg';
+    case 'webp': return 'image/webp';
+    default: return 'application/octet-stream';
+  }
+}
+
 async function processNote(noteId: string, filePath: string, bucketId: string, supabase: any, genAI: any) {
     try {
         console.log(`[BG] Start: ${noteId}`);
@@ -28,46 +44,76 @@ async function processNote(noteId: string, filePath: string, bucketId: string, s
         }
         const base64Data = btoa(binary);
         
-        // Use models/gemini-3-flash-preview (full path often required by SDK)
-        const model = genAI.getGenerativeModel({ model: "models/gemini-3-flash-preview" });
+        // Use Gemini 1.5 Flash 002 (Proven stable GA model)
+        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
+
+        const mimeType = getMimeType(filePath);
+        console.log(`[BG] Analysis model: gemini-1.5-flash-002, Mime: ${mimeType}`);
 
         const prompt = `Analyze this document. Return JSON: {concepts:[], flashcards:[], tags:[], summary:""}`;
         const result = await model.generateContent([
           prompt,
-          { inlineData: { data: base64Data, mimeType: "application/pdf" } },
+          { inlineData: { data: base64Data, mimeType } },
         ]);
 
-        const analysis = JSON.parse(result.response.text().replace(/```json/g, '').replace(/```/g, '').trim());
+        const resText = result.response.text();
+        console.log(`[BG] Raw response received. Length: ${resText.length}`);
+        const analysis = JSON.parse(resText.replace(/```json/g, '').replace(/```/g, '').trim());
 
         await supabase.from('course_notes').update({
             study_readiness_score: 100,
             description: 'Processing: Saving metadata...'
         }).eq('id', noteId);
 
-        // ... Batched inserts for concepts, flashcards, tags ...
+        // ... Batched inserts ...
         if (analysis.concepts?.length > 0) await supabase.from('note_concepts').insert(analysis.concepts.map((c: any) => ({ note_id: noteId, concept_text: c.term, context: c.definition, page_number: c.page || 1, concept_type: 'key_term' })));
         if (analysis.flashcards?.length > 0) await supabase.from('note_flashcards').insert(analysis.flashcards.map((f: any) => ({ note_id: noteId, question: f.question, answer: f.answer, difficulty: f.difficulty || 'medium' })));
         
         await supabase.from('course_notes').update({ description: 'Processing: RAG Indexing...' }).eq('id', noteId);
 
+        console.log(`[BG] Extracting text...`);
         const extractionResult = await model.generateContent([
-           "Extract plain text.",
-           { inlineData: { data: base64Data, mimeType: "application/pdf" } },
+           "Extract plain text from this document for search indexing. Perform full OCR if it's an image-based PDF or document. Output only the text.",
+           { inlineData: { data: base64Data, mimeType } },
         ]);
         const fullText = extractionResult.response.text();
+        // Use a more robust splitter or regex
         const chunks = fullText.match(/[\s\S]{1,1000}/g) || [];
-        const embeddingModel = genAI.getGenerativeModel({ model: "text-embedding-004" });
+        // Using stable GA embedding model
+        const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
 
-        for (let i = 0; i < chunks.length; i++) {
-            const embedResult = await embeddingModel.embedContent(chunks[i]);
-            await supabase.from('note_chunks').insert({
-                note_id: noteId,
-                content: chunks[i],
-                chunk_index: i,
-                embedding: embedResult.embedding.values
-            });
+        console.log(`[BG] Indexing ${chunks.length} chunks for ${noteId}`);
+        
+        // Batch the embedding and insertion for better performance
+        const batchSize = 5; 
+        for (let i = 0; i < chunks.length; i += batchSize) {
+            const batch = chunks.slice(i, i + batchSize);
+            const records = await Promise.all(batch.map(async (chunk, index) => {
+                try {
+                    const embedResult = await embeddingModel.embedContent(chunk);
+                    return {
+                        note_id: noteId,
+                        content: chunk,
+                        chunk_index: i + index,
+                        embedding: embedResult.embedding.values
+                    };
+                } catch (e) {
+                    console.error(`[BG] Chunk embedding failed: ${i + index}`, e);
+                    return null;
+                }
+            }));
+
+            const validRecords = records.filter(r => r !== null);
+            if (validRecords.length > 0) {
+                const { error: insertError } = await supabase.from('note_chunks').insert(validRecords);
+                if (insertError) console.error(`[BG] Chunk insert error:`, insertError);
+            }
         }
-        await supabase.from('course_notes').update({ description: analysis.summary }).eq('id', noteId);
+        
+        await supabase.from('course_notes').update({ 
+            description: analysis.summary || 'Study material processed successfully.',
+            study_readiness_score: 100
+        }).eq('id', noteId);
         console.log(`[BG] Done: ${noteId}`);
     } catch (error) {
         console.error(`[BG] Error: ${noteId}`, error);

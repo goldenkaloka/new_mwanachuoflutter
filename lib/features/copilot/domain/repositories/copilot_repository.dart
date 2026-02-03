@@ -65,4 +65,10 @@ abstract class CopilotRepository {
 
   /// Delete downloaded note
   Future<Either<Failure, void>> deleteDownloadedNote(String noteId);
+
+  /// Increment view count
+  Future<Either<Failure, void>> incrementViewCount(String noteId);
+
+  /// Increment download count
+  Future<Either<Failure, void>> incrementDownloadCount(String noteId);
 }

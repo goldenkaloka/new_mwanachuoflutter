@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
+import 'package:mwanachuo/features/copilot/domain/entities/note_entity.dart';
 
 class CopilotLibraryPage extends StatefulWidget {
   final String courseId;
@@ -175,11 +176,11 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
     );
   }
 
-  Widget _buildNotesList(List notes) {
+  Widget _buildNotesList(List<NoteEntity> notes) {
     return ListView.separated(
       padding: const EdgeInsets.all(16),
       itemCount: notes.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 12),
+      separatorBuilder: (_, _) => const SizedBox(height: 12),
       itemBuilder: (context, index) {
         final note = notes[index];
         return _buildNoteCard(note);
@@ -187,7 +188,7 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
     );
   }
 
-  Widget _buildNoteCard(note) {
+  Widget _buildNoteCard(NoteEntity note) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

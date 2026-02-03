@@ -283,7 +283,6 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
         ),
       );
     }
-
     // 2. PDF Viewer
     if (isPdf) {
       if (localPath != null && File(localPath).existsSync()) {
@@ -292,7 +291,15 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
       return SfPdfViewer.network(state.note.fileUrl);
     }
 
-    // 3. Other Types (Word, PPT, etc.)
+    // 3. Office Documents (Word, PPT, etc.)
+    if (mimeType.contains('word') ||
+        mimeType.contains('powerpoint') ||
+        mimeType.contains('presentation') ||
+        mimeType.contains('officedocument')) {
+      return _buildOfficeViewer(state.note.fileUrl, state.note.fileType);
+    }
+
+    // 4. Other Types (Fall-back)
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -321,6 +328,55 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildOfficeViewer(String fileUrl, String mimeType) {
+    final String gViewUrl =
+        'https://docs.google.com/viewer?url=${Uri.encodeComponent(fileUrl)}&embedded=true';
+
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            _getFileIcon(mimeType),
+            size: 84,
+            color: const Color(0xFF0d9488),
+          ),
+          const SizedBox(height: 24),
+          const Text(
+            'Open this file for viewing',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            mimeType.split('/').last.toUpperCase(),
+            style: TextStyle(color: Colors.grey[500]),
+          ),
+          const SizedBox(height: 32),
+          ElevatedButton.icon(
+            onPressed: () => _launchURL(gViewUrl),
+            icon: const Icon(Icons.chrome_reader_mode),
+            label: const Text('Open in Document Viewer'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF0d9488),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextButton.icon(
+            onPressed: () => _launchURL(fileUrl),
+            icon: const Icon(Icons.download),
+            label: const Text('Download Original File'),
+            style: TextButton.styleFrom(foregroundColor: Colors.grey[700]),
           ),
         ],
       ),

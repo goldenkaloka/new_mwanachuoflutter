@@ -54,9 +54,8 @@ class ProductModel extends ProductEntity {
           : null,
       metadata: json['metadata'] as Map<String, dynamic>?,
       oldPrice:
-          (json['metadata'] as Map<String, dynamic>?)?['old_price'] != null
-          ? (json['metadata']['old_price'] as num).toDouble()
-          : null,
+          ((json['metadata'] as Map<String, dynamic>?)?['old_price'] as num?)
+              ?.toDouble(),
     );
   }
 

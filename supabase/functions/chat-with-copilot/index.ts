@@ -16,103 +16,92 @@ serve(async (req) => {
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
-    console.log(`[DEBUG] Using GEMINI_API_KEY starting with: ${geminiKey?.substring(0, 6)}...`);
 
-    if (!geminiKey) throw new Error("Missing GEMINI_API_KEY");
+    const body = await req.json();
+    const { message, course_id, note_id } = body;
+    
+    console.log(`[Chat] Query: ${message}, Note: ${note_id}, Course: ${course_id}`);
+
+    if (!message || (!course_id && !note_id)) {
+      return new Response(
+        JSON.stringify({ error: "Missing required fields" }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
 
     const supabase = createClient(supabaseUrl, supabaseKey);
     const genAI = new GoogleGenerativeAI(geminiKey);
-    
-    // Get Request Body
-    const { message, note_id, course_id, history } = await req.json();
 
-    if (!message || (!note_id && !course_id)) {
-        return new Response(JSON.stringify({ error: "Missing message or (note_id/course_id)" }), { status: 400, headers: corsHeaders });
-    }
-
-    // 1. Generate Embedding for the User's Question
-    const embeddingModel = genAI.getGenerativeModel({ model: "models/text-embedding-004" });
+    // 1. Generate embedding with Gemini (using stable gemini-embedding-001)
+    const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
     const embeddingResult = await embeddingModel.embedContent(message);
     const embedding = embeddingResult.embedding.values;
 
-    // 2. Identify Scope (Specific Note vs Course Wide)
-    let validNoteIds: Set<string> | null = null;
-    let rpcFilter = {};
-
-    if (note_id) {
-        console.log(`[RAG] Scoped to single note: ${note_id}`);
-        rpcFilter = { note_id: note_id };
-    } else if (course_id) {
-        console.log(`[RAG] Scoped to course: ${course_id}`);
-        // Fetch all note IDs for this course to filter results later
-        const { data: notes } = await supabase.from('course_notes').select('id').eq('course_id', course_id);
-        if (notes) {
-            validNoteIds = new Set(notes.map((n: any) => n.id));
-        }
-        // We pass empty filter to RPC to search all, then filter in code (inefficient but works without SQL changes)
-        // Ideally: Update match_note_chunks to accept list of note_ids
-        rpcFilter = {}; 
-    }
-
-    // 3. Search for Relevant Chunks (RAG)
-    // Request more chunks if course-wide to increase chance of hitting relevant course content
-    const matchCount = course_id && !note_id ? 20 : 5; 
-
-    const { data: chunks, error: searchError } = await supabase.rpc('match_note_chunks', {
-        query_embedding: embedding,
-        match_threshold: 0.1,
-        match_count: matchCount,
-        filter: rpcFilter 
+    // 2. Search database - Handle empty strings as null for UUIDs
+    const { data: chunks, error: searchError } = await supabase.rpc('match_course_content', {
+      p_course_id: course_id || null,
+      query_embedding: embedding,
+      match_threshold: 0,
+      match_count: 5,
+      p_filter_id: (note_id && note_id.trim() !== '') ? note_id : null
     });
 
     if (searchError) {
-        console.error("Search Error:", searchError);
-        throw searchError;
-    }
-    
-    // 4. Filter Chunks (if course-wide)
-    let finalChunks = chunks || [];
-    if (validNoteIds) {
-        finalChunks = finalChunks.filter((c: any) => validNoteIds!.has(c.note_id));
-        // Trim back to top 5 after filtering
-        finalChunks = finalChunks.slice(0, 5);
+      console.error("[Chat] Search Error:", searchError);
+      throw new Error(`Database search failed: ${searchError.message}`);
     }
 
-    console.log(`[RAG] Found ${finalChunks.length} relevant chunks`);
+    // 3. Build context
+    const contextText = (chunks || [])
+      .map((c: any) => `Source: ${c.source_title}\n${c.content}`)
+      .join("\n\n---\n\n") || "No context found.";
 
-    // 5. Construct Context
-    const contextText = finalChunks.map((c: any) => c.content).join("\n\n") || "";
-    
-    // 6. Generate Answer with Gemini
-    const chatModel = genAI.getGenerativeModel({ model: "models/gemini-3-flash-preview" });
-    
-    const prompt = `
-    You are an AI study assistant "MwanachuoCopilot". 
-    Answer the user's question based ONLY on the following context derived from their course notes.
-    If the answer is not in the context, say "I couldn't find the answer in that context."
-    
-    Context:
-    ${contextText}
-    
-    History:
-    ${JSON.stringify(history || [])}
-    
-    User Question: ${message}
-    `;
-
-    const result = await chatModel.generateContent(prompt);
-    const response = result.response.text();
-
-    return new Response(JSON.stringify({ answer: response }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 200,
+    // 4. Generate response with Stable Model (GA)
+    const chatModel = genAI.getGenerativeModel({ 
+      model: "gemini-1.5-flash-002",
+      generationConfig: { temperature: 1.0 }
     });
 
-  } catch (error) {
-    console.error(error);
-    return new Response(JSON.stringify({ error: error.message }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 500,
+    const prompt = `You are MwanachuoCopilot.\n\nContext:\n${contextText}\n\nQuestion: ${message}\n\nAnswer based on the context above:`;
+
+    const result = await chatModel.generateContentStream(prompt);
+
+    // 5. Stream response
+    const stream = new ReadableStream({
+      async start(controller) {
+        const encoder = new TextEncoder();
+        try {
+          for await (const chunk of result.stream) {
+            const text = chunk.text();
+            if (text) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ answer: text })}\n\n`));
+            }
+          }
+          controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
+          controller.close();
+        } catch (e: any) {
+          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: e.message })}\n\n`));
+          controller.error(e);
+        }
+      },
     });
+
+    return new Response(stream, {
+      headers: {
+        ...corsHeaders,
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+      },
+    });
+
+  } catch (error: any) {
+    return new Response(
+      JSON.stringify({ error: error.message || String(error) }),
+      {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      }
+    );
   }
 });

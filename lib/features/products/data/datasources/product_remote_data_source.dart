@@ -351,10 +351,8 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           'p_images': imageUrls,
           'p_seller_id': currentUser.id,
           'p_location': location,
-          'p_metadata': {
-            ...?metadata,
-            if (oldPrice != null) 'old_price': oldPrice,
-          },
+          'p_metadata': {...?metadata, 'old_price': oldPrice}
+            ..removeWhere((_, value) => value == null),
           'p_is_global': isGlobal,
         },
       );
@@ -419,19 +417,13 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       if (location != null) updateData['location'] = location;
       if (isActive != null) updateData['is_active'] = isActive;
       if (isGlobal != null) {
-        if (isGlobal) {
-          updateData['university_ids'] = [];
-        } else {
-          // If turning off global, we might need to re-fetch universities
-          // For now, let's keep it simple: only handle "setting" global to true
-          updateData['university_ids'] = [];
-        }
+        // When updating global status, we always reset university_ids
+        // For now, turning global OFF also resets it (needs enhancement later)
+        updateData['university_ids'] = [];
       }
 
-      final finalMetadata = {
-        ...?metadata,
-        if (oldPrice != null) 'old_price': oldPrice,
-      };
+      final finalMetadata = {...?metadata, 'old_price': oldPrice}
+        ..removeWhere((_, value) => value == null);
       if (finalMetadata.isNotEmpty) updateData['metadata'] = finalMetadata;
 
       final response = await supabaseClient

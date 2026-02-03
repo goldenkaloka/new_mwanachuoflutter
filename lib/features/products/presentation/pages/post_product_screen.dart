@@ -350,26 +350,30 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
               if (path.name == 'Screenshots') return 'Screenshots';
               return path.name;
             },
-            specialItemPosition: SpecialItemPosition.prepend,
-            specialItemBuilder: (context, path, length) {
-              // Add camera button at the top (optional)
-              return GestureDetector(
-                onTap: () async {
-                  Navigator.of(context).pop();
-                  // You can add camera functionality here if needed
-                },
-                child: Container(
-                  color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
-                  child: Center(
-                    child: Icon(
-                      Icons.camera_alt,
-                      color: isDarkMode ? Colors.white : Colors.black54,
-                      size: 32,
+            specialItems: [
+              SpecialItem(
+                position: SpecialItemPosition.prepend,
+                builder: (context, path, length) {
+                  // Add camera button at the top (optional)
+                  return GestureDetector(
+                    onTap: () async {
+                      Navigator.of(context).pop();
+                      // You can add camera functionality here if needed
+                    },
+                    child: Container(
+                      color: isDarkMode ? Colors.grey[800] : Colors.grey[200],
+                      child: Center(
+                        child: Icon(
+                          Icons.camera_alt,
+                          color: isDarkMode ? Colors.white : Colors.black54,
+                          size: 32,
+                        ),
+                      ),
                     ),
-                  ),
-                ),
-              );
-            },
+                  );
+                },
+              ),
+            ],
           ),
         );
 

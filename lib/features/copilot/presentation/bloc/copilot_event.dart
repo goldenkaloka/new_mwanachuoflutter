@@ -24,14 +24,17 @@ class UploadNote extends CopilotEvent {
   final String noteId;
   final String courseId;
 
+  final String? title;
+
   const UploadNote({
     required this.filePath,
     required this.noteId,
     required this.courseId,
+    this.title,
   });
 
   @override
-  List<Object?> get props => [filePath, noteId, courseId];
+  List<Object?> get props => [filePath, noteId, courseId, title];
 }
 
 // Query with RAG
