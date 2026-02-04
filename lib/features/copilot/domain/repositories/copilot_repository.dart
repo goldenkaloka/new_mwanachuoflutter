@@ -14,12 +14,16 @@ abstract class CopilotRepository {
     required String noteId,
     required String courseId,
     String? title,
+    int? year,
+    int? semester,
   });
 
   /// Get all notes for a course
   Future<Either<Failure, List<NoteEntity>>> getCourseNotes({
     required String courseId,
     String? filterBy, // 'official', 'my_notes', 'shared'
+    int? year,
+    int? semester,
   });
 
   /// Get note by ID with concepts and tags

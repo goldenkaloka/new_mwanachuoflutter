@@ -11,11 +11,18 @@ abstract class CopilotEvent extends Equatable {
 class LoadCourseNotes extends CopilotEvent {
   final String courseId;
   final String? filterBy; // 'official', 'my_notes', 'shared'
+  final int? year;
+  final int? semester;
 
-  const LoadCourseNotes({required this.courseId, this.filterBy});
+  const LoadCourseNotes({
+    required this.courseId,
+    this.filterBy,
+    this.year,
+    this.semester,
+  });
 
   @override
-  List<Object?> get props => [courseId, filterBy];
+  List<Object?> get props => [courseId, filterBy, year, semester];
 }
 
 // Upload note
@@ -23,18 +30,28 @@ class UploadNote extends CopilotEvent {
   final String filePath;
   final String noteId;
   final String courseId;
-
   final String? title;
+  final int? year;
+  final int? semester;
 
   const UploadNote({
     required this.filePath,
     required this.noteId,
     required this.courseId,
     this.title,
+    this.year,
+    this.semester,
   });
 
   @override
-  List<Object?> get props => [filePath, noteId, courseId, title];
+  List<Object?> get props => [
+    filePath,
+    noteId,
+    courseId,
+    title,
+    year,
+    semester,
+  ];
 }
 
 // Query with RAG

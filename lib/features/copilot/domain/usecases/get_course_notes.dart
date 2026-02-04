@@ -11,10 +11,14 @@ class GetCourseNotes {
   Future<Either<Failure, List<NoteEntity>>> call({
     required String courseId,
     String? filterBy,
+    int? year,
+    int? semester,
   }) async {
     return await repository.getCourseNotes(
       courseId: courseId,
       filterBy: filterBy,
+      year: year,
+      semester: semester,
     );
   }
 }

@@ -18,13 +18,14 @@ serve(async (req) => {
     const geminiKey = Deno.env.get('GEMINI_API_KEY')!;
 
     const body = await req.json();
-    const { message, course_id, note_id } = body;
+    const { message, query, course_id, note_id, history, mode, limit } = body;
+    const userQuery = message || query;
     
-    console.log(`[Chat] Query: ${message}, Note: ${note_id}, Course: ${course_id}`);
+    console.log(`[Chat] Mode: ${mode || 'chat'}, Query: ${userQuery}, Note: ${note_id}, Course: ${course_id}`);
 
-    if (!message || (!course_id && !note_id)) {
+    if (!userQuery) {
       return new Response(
-        JSON.stringify({ error: "Missing required fields" }),
+        JSON.stringify({ error: "Missing query/message" }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -32,41 +33,80 @@ serve(async (req) => {
     const supabase = createClient(supabaseUrl, supabaseKey);
     const genAI = new GoogleGenerativeAI(geminiKey);
 
-    // 1. Generate embedding with Gemini (using stable gemini-embedding-001)
-    const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
-    const embeddingResult = await embeddingModel.embedContent(message);
+    // 1. Generate embedding with models/text-embedding-004
+    console.log(`[Chat] Step 1: Generating embedding for: "${userQuery.substring(0, 20)}..."`);
+    const embeddingModel = genAI.getGenerativeModel({ model: "models/text-embedding-004" });
+    const embeddingResult = await embeddingModel.embedContent(userQuery);
     const embedding = embeddingResult.embedding.values;
+    console.log(`[Chat] Step 2: Embedding ready. Length: ${embedding.length}`);
 
-    // 2. Search database - Handle empty strings as null for UUIDs
-    const { data: chunks, error: searchError } = await supabase.rpc('match_course_content', {
-      p_course_id: course_id || null,
-      query_embedding: embedding,
-      match_threshold: 0,
-      match_count: 5,
-      p_filter_id: (note_id && note_id.trim() !== '') ? note_id : null
-    });
+    // Helper to ensure valid UUIDs or null
+    const toUuid = (id: any) => (id && typeof id === 'string' && id.length === 36) ? id : null;
 
-    if (searchError) {
-      console.error("[Chat] Search Error:", searchError);
-      throw new Error(`Database search failed: ${searchError.message}`);
+    // 2. Handle SEARCH mode (Return raw notes/documents)
+    if (mode === 'search') {
+      console.log("[Chat] Step 3: Search Mode");
+      const { data: searchResults, error: searchError } = await supabase.rpc('search_notes', {
+        p_query_embedding: embedding,
+        p_course_id: toUuid(course_id),
+        p_match_count: limit || 10,
+        p_match_threshold: 0.2
+      });
+      
+      if (searchError) {
+        console.error("[Chat] Search Error:", searchError);
+        throw searchError;
+      }
+      
+      return new Response(JSON.stringify(searchResults || []), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
     }
 
-    // 3. Build context
-    const contextText = (chunks || [])
-      .map((c: any) => `Source: ${c.source_title}\n${c.content}`)
-      .join("\n\n---\n\n") || "No context found.";
-
-    // 4. Generate response with Stable Model (GA)
-    const chatModel = genAI.getGenerativeModel({ 
-      model: "gemini-1.5-flash-002",
-      generationConfig: { temperature: 1.0 }
+    // 3. Proceed with CHAT mode (Existing logic)
+    console.log("[Chat] Step 3: Context Retrieval");
+    const { data: chunks, error: contextError } = await supabase.rpc('match_course_content', {
+      p_course_id: toUuid(course_id),
+      query_embedding: embedding,
+      match_threshold: 0.2,
+      match_count: 5,
+      p_filter_id: toUuid(note_id)
     });
 
-    const prompt = `You are MwanachuoCopilot.\n\nContext:\n${contextText}\n\nQuestion: ${message}\n\nAnswer based on the context above:`;
+    if (contextError) {
+      console.error("[Chat] Context Search Error:", contextError);
+      throw new Error(`Database search failed: ${contextError.message}`);
+    }
 
-    const result = await chatModel.generateContentStream(prompt);
+    // 4. Build context
+    const contextText = (chunks || [])
+      .map((c: any) => `Source: [${c.source_type}] ${c.source_title}\n${c.content}`)
+      .join("\n\n---\n\n") || "No specific context found in the course materials.";
 
-    // 5. Stream response
+    // 5. Generate response with Gemini 3 Flash Preview (Latest Dec 2025)
+    console.log("[Chat] Step 4: LLM Generation");
+    const chatModel = genAI.getGenerativeModel({ 
+      model: "models/gemini-3-flash-preview",
+      generationConfig: { temperature: 0.7, topP: 0.95, topK: 40, maxOutputTokens: 2048 }
+    });
+
+    const systemPrompt = `You are MwanachuoCopilot, a professional AI study assistant for the Mwanachuo platform.
+Your goal is to help students understand their course materials (notes and documents).
+
+Context from Course Materials:
+${contextText}
+
+Conversation History:
+${JSON.stringify(history || [])}
+
+Question: ${userQuery}
+
+Assistant:`;
+
+    const result = await chatModel.generateContentStream(systemPrompt);
+
+    // 6. Stream response
+    console.log("[Chat] Step 5: Streaming start");
     const stream = new ReadableStream({
       async start(controller) {
         const encoder = new TextEncoder();
@@ -80,6 +120,7 @@ serve(async (req) => {
           controller.enqueue(encoder.encode(`data: [DONE]\n\n`));
           controller.close();
         } catch (e: any) {
+          console.error("[Stream Error]", e);
           controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: e.message })}\n\n`));
           controller.error(e);
         }
@@ -96,8 +137,16 @@ serve(async (req) => {
     });
 
   } catch (error: any) {
+    console.error("[Chat 500 Detail]", {
+      message: error.message,
+      stack: error.stack,
+      cause: error.cause
+    });
     return new Response(
-      JSON.stringify({ error: error.message || String(error) }),
+      JSON.stringify({ 
+        error: error.message || String(error),
+        details: error.stack
+      }),
       {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -105,3 +154,4 @@ serve(async (req) => {
     );
   }
 });
+

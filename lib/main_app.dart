@@ -223,6 +223,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
       providers: [
         BlocProvider(create: (context) => sl<AuthBloc>()),
         BlocProvider(create: (context) => sl<ProfileBloc>()),
+        BlocProvider(create: (context) => sl<PromotionCubit>()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
@@ -244,7 +245,6 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
                 BlocProvider(create: (context) => sl<ProductBloc>()),
                 BlocProvider(create: (context) => sl<ServiceBloc>()),
                 BlocProvider(create: (context) => sl<AccommodationBloc>()),
-                BlocProvider(create: (context) => sl<PromotionCubit>()),
               ],
               child: const HomePage(),
             ),

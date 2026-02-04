@@ -872,7 +872,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
         return BlocConsumer<ProfileBloc, profile_state.ProfileState>(
           listener: (context, state) {
-            if (state is profile_state.ProfileLoaded) {
+            if (state is profile_state.ProfileUpdated) {
               // Success - close dialog and show success message
               Navigator.pop(dialogContext);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -1013,7 +1013,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       onPressed: isLoading
                           ? null
                           : () {
-                              context.read<ProfileBloc>().add(
+                              dialogContext.read<ProfileBloc>().add(
                                 profile_event.UpdateProfileEvent(
                                   yearOfStudy: selectedYear,
                                   currentSemester: selectedSemester,

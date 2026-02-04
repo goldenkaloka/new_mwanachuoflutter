@@ -49,6 +49,8 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
     final result = await getCourseNotes(
       courseId: event.courseId,
       filterBy: event.filterBy,
+      year: event.year,
+      semester: event.semester,
     );
 
     final downloadedResult = await repository.getDownloadedNotes(
@@ -82,6 +84,8 @@ class CopilotBloc extends Bloc<CopilotEvent, CopilotState> {
       noteId: event.noteId,
       courseId: event.courseId,
       title: event.title,
+      year: event.year,
+      semester: event.semester,
     );
 
     if (isClosed) return;

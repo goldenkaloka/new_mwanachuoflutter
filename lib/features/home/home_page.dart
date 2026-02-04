@@ -2,13 +2,13 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:carousel_slider/carousel_slider.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/services/university_service.dart';
 import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 import 'package:cached_network_image/cached_network_image.dart';
+import 'package:mwanachuo/features/promotions/presentation/widgets/promotion_carousel.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
@@ -23,8 +23,6 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
-import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
-import 'package:mwanachuo/features/promotions/presentation/widgets/promotion_video_player.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
@@ -46,7 +44,6 @@ class _HomePageState extends State<HomePage> {
   String? _userAvatarUrl;
   bool _dataLoaded = false;
   int _selectedIndex = 0;
-  int _currentPromotionPage = 0;
   String _userName = 'User';
   final TextEditingController _searchController = TextEditingController();
   int _unreadNotificationCount = 0;
@@ -726,7 +723,7 @@ class _HomePageState extends State<HomePage> {
             ),
 
             // 3. Promotions Carousel
-            _buildPromotionsSectionExtended(screenSize),
+            const PromotionCarousel(),
           ],
         ),
       ),
@@ -848,21 +845,6 @@ class _HomePageState extends State<HomePage> {
           ),
         ),
       ),
-    );
-  }
-
-  // Specialized Promotions Section with optimized contrast
-  Widget _buildPromotionsSectionExtended(ScreenSize screenSize) {
-    return BlocBuilder<PromotionCubit, PromotionState>(
-      builder: (context, state) {
-        if (state is PromotionsLoaded && state.promotions.isNotEmpty) {
-          return Padding(
-            padding: const EdgeInsets.only(bottom: 24.0),
-            child: _buildPromotionsCarousel(state.promotions, screenSize),
-          );
-        }
-        return const SizedBox(height: 16);
-      },
     );
   }
 
@@ -1591,82 +1573,87 @@ class _HomePageState extends State<HomePage> {
 
     final displayOldPrice = oldPrice ?? product.price * 1.25;
 
-    return Container(
-      width: 160,
-      margin: const EdgeInsets.only(right: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Stack(
-            children: [
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: NetworkImageWithFallback(
-                  imageUrl: product.images.isNotEmpty
-                      ? product.images.first
-                      : 'https://via.placeholder.com/160',
-                  width: 160,
-                  height: 160,
-                  fit: BoxFit.cover,
+    return GestureDetector(
+      onTap: () {
+        Navigator.pushNamed(context, '/product-details', arguments: product.id);
+      },
+      child: Container(
+        width: 160,
+        margin: const EdgeInsets.only(right: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: NetworkImageWithFallback(
+                    imageUrl: product.images.isNotEmpty
+                        ? product.images.first
+                        : 'https://via.placeholder.com/160',
+                    width: 160,
+                    height: 160,
+                    fit: BoxFit.cover,
+                  ),
                 ),
-              ),
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.redAccent,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Text(
-                    discount,
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.bold,
+                Positioned(
+                  top: 8,
+                  left: 8,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      discount,
+                      style: GoogleFonts.plusJakartaSans(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            product.title,
-            style: GoogleFonts.plusJakartaSans(
-              color: primaryTextColor,
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
+              ],
             ),
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-          ),
-          Row(
-            children: [
-              Text(
-                'TZS ${product.price.toStringAsFixed(0)}',
-                style: GoogleFonts.plusJakartaSans(
-                  color: kPrimaryColor,
-                  fontSize: 14,
-                  fontWeight: FontWeight.bold,
-                ),
+            const SizedBox(height: 8),
+            Text(
+              product.title,
+              style: GoogleFonts.plusJakartaSans(
+                color: primaryTextColor,
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
               ),
-              const SizedBox(width: 4),
-              Text(
-                displayOldPrice.toStringAsFixed(0),
-                style: GoogleFonts.plusJakartaSans(
-                  color: secondaryTextColor,
-                  fontSize: 11,
-                  decoration: TextDecoration.lineThrough,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+            Row(
+              children: [
+                Text(
+                  'TZS ${product.price.toStringAsFixed(0)}',
+                  style: GoogleFonts.plusJakartaSans(
+                    color: kPrimaryColor,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-            ],
-          ),
-        ],
+                const SizedBox(width: 4),
+                Text(
+                  displayOldPrice.toStringAsFixed(0),
+                  style: GoogleFonts.plusJakartaSans(
+                    color: secondaryTextColor,
+                    fontSize: 11,
+                    decoration: TextDecoration.lineThrough,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1785,7 +1772,7 @@ class _HomePageState extends State<HomePage> {
             return _buildEmptyState('No promotions available');
           }
 
-          return _buildPromotionsCarousel(state.promotions, screenSize);
+          return const PromotionCarousel();
         }
 
         return const SizedBox.shrink();
@@ -1937,7 +1924,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  // Actual data rendering methods
   // Gradient definitions for promotion cards
   final List<LinearGradient> _promotionGradients = [
     // Light Blue
@@ -1966,234 +1952,7 @@ class _HomePageState extends State<HomePage> {
     ),
   ];
 
-  Widget _buildPromotionsCarousel(
-    List<PromotionEntity> promotions,
-    ScreenSize screenSize,
-  ) {
-    return Column(
-      children: [
-        CarouselSlider.builder(
-          itemCount: promotions.length,
-          itemBuilder: (context, index, realIndex) {
-            return Container(
-              padding: EdgeInsets.symmetric(horizontal: 2.0),
-              child: _buildPromotionCard(
-                promotions[index],
-                screenSize,
-                index: index, // Pass index for gradient selection
-                isActive: index == _currentPromotionPage,
-              ),
-            );
-          },
-          options: CarouselOptions(
-            height: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 160.0,
-              medium: 180.0,
-              expanded: 220.0,
-            ),
-            autoPlay: true,
-            autoPlayInterval: const Duration(seconds: 5),
-            autoPlayAnimationDuration: const Duration(milliseconds: 800),
-            autoPlayCurve: Curves.fastOutSlowIn,
-            enlargeCenterPage: true, // Enable to highlight the active card
-            scrollDirection: Axis.horizontal,
-            viewportFraction: 0.8, // Adjust to show upcoming card
-            onPageChanged: (index, reason) {
-              setState(() {
-                _currentPromotionPage = index;
-              });
-            },
-          ),
-        ),
-        SizedBox(
-          height: 20,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(promotions.length, (index) {
-              return Container(
-                width: 8.0,
-                height: 8.0,
-                margin: const EdgeInsets.symmetric(horizontal: 4.0),
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: _currentPromotionPage == index
-                      ? _promotionGradients[index % _promotionGradients.length]
-                            .colors
-                            .first
-                      : Colors.grey[700]!, // Solid neutral "without color"
-                ),
-              );
-            }),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPromotionCard(
-    PromotionEntity promotion,
-    ScreenSize screenSize, {
-    required int index, // Changed to required
-    bool isActive = false,
-  }) {
-    final cardWidth = ResponsiveBreakpoints.responsiveValue(
-      context,
-      compact: 400.0,
-      medium: 480.0,
-      expanded: 580.0,
-    );
-    final cardHeight = ResponsiveBreakpoints.responsiveValue(
-      context,
-      compact: 140.0,
-      medium: 160.0,
-      expanded: 200.0,
-    );
-
-    // Select gradient based on index
-    final colorIndex = index % _promotionGradients.length;
-    final gradient = _promotionGradients[colorIndex];
-
-    // Select high-contrast text color based on index
-    Color textColor;
-    switch (colorIndex) {
-      case 0: // Blue
-        textColor = Colors.amberAccent; // Bright Yellow on Blue
-        break;
-      case 1: // Pink
-        textColor = Colors.white; // White on Pink
-        break;
-      case 2: // Purple
-        textColor = Colors.lightGreenAccent; // Neon Green on Purple
-        break;
-      case 3: // Teal
-        textColor = Colors.yellowAccent; // Yellow on Teal
-        break;
-      default:
-        textColor = Colors.white;
-    }
-
-    return GestureDetector(
-      onTap: () => Navigator.pushNamed(
-        context,
-        '/promotion-details',
-        arguments: promotion.id,
-      ),
-      child: Container(
-        width: cardWidth,
-        height: cardHeight,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(8.0),
-          gradient: gradient, // Apply gradient
-        ),
-        child: Stack(
-          fit: StackFit.expand, // Make stack expand to fill container
-          children: [
-            if (promotion.type == 'video' && promotion.videoUrl != null)
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  child: PromotionVideoPlayer(
-                    videoUrl: promotion.videoUrl!,
-                    isPlaying: isActive,
-                  ),
-                ),
-              )
-            else if (promotion.imageUrl != null)
-              Positioned.fill(
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(8.0),
-                  child: NetworkImageWithFallback(
-                    imageUrl: promotion.imageUrl!,
-                    fit: BoxFit.cover,
-                  ),
-                ),
-              ),
-
-            // Deep Gradient Overlay (Hides top of image, reveals bottom)
-            Positioned.fill(
-              child: Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(8.0),
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      gradient.colors.first, // Solid deep color at top
-                      gradient.colors.first.withValues(
-                        alpha: 0.0,
-                      ), // Transparent at bottom
-                    ],
-                    stops: const [0.4, 1.0], // Fade starting at 40% down
-                  ),
-                ),
-              ),
-            ),
-
-            // Text Container
-            Container(
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8.0),
-                // Removed black gradient overlay for cleaner look
-              ),
-              padding: EdgeInsets.all(
-                ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 16.0,
-                  medium: 20.0,
-                  expanded: 24.0,
-                ),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.end,
-                children: [
-                  _AnimatedPromotionText(
-                    key: ValueKey(
-                      'promo_${promotion.id}_title_$_currentPromotionPage',
-                    ),
-                    text: promotion.title,
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 18.0,
-                      medium: 20.0,
-                      expanded: 24.0,
-                    ),
-                    fontWeight: FontWeight.bold,
-                    maxLines: 2,
-                    shouldAnimate: isActive,
-                    textColor: textColor,
-                  ),
-                  if (promotion.subtitle.isNotEmpty) ...[
-                    const SizedBox(height: 4),
-                    _AnimatedPromotionText(
-                      key: ValueKey(
-                        'promo_${promotion.id}_subtitle_$_currentPromotionPage',
-                      ),
-                      text: promotion.subtitle,
-                      fontSize: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 14.0,
-                        medium: 16.0,
-                        expanded: 18.0,
-                      ),
-                      fontWeight: FontWeight.normal,
-                      maxLines: 1,
-                      delay: const Duration(milliseconds: 300),
-                      shouldAnimate: isActive,
-                      textColor: textColor.withValues(
-                        alpha: 0.8,
-                      ), // Slightly lighter for subtitle
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+  final int _currentPromotionPage = 0;
 
   Widget _buildProductsGrid(
     List<ProductEntity> products,
@@ -2788,200 +2547,7 @@ class _StickyChipsDelegate extends SliverPersistentHeaderDelegate {
   }
 }
 
-// Animated text widget for promotion banners (Nickelodeon-style letter by letter)
-class _AnimatedPromotionText extends StatefulWidget {
-  final String text;
-  final double fontSize;
-  final FontWeight fontWeight;
-  final int maxLines;
-  final Duration delay;
-  final bool shouldAnimate;
-  final Color? textColor; // Added custom text color
-
-  const _AnimatedPromotionText({
-    super.key,
-    required this.text,
-    required this.fontSize,
-    required this.fontWeight,
-    required this.maxLines,
-    this.delay = Duration.zero,
-    this.shouldAnimate = true,
-    this.textColor,
-  });
-
-  @override
-  State<_AnimatedPromotionText> createState() => _AnimatedPromotionTextState();
-}
-
-class _AnimatedPromotionTextState extends State<_AnimatedPromotionText>
-    with TickerProviderStateMixin {
-  late List<AnimationController> _controllers;
-  late List<Animation<double>> _scaleAnimations;
-  late List<Animation<double>> _rotationAnimations;
-  late List<Animation<Offset>> _slideAnimations;
-
-  @override
-  void initState() {
-    super.initState();
-    _initializeAnimations();
-    if (widget.shouldAnimate) {
-      _startAnimations();
-    }
-  }
-
-  @override
-  void didUpdateWidget(_AnimatedPromotionText oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // If text changed or shouldAnimate changed from false to true, restart animations
-    if (oldWidget.text != widget.text) {
-      // Dispose old controllers
-      for (var controller in _controllers) {
-        controller.dispose();
-      }
-      _initializeAnimations();
-      if (widget.shouldAnimate) {
-        _startAnimations();
-      }
-    } else if (!oldWidget.shouldAnimate && widget.shouldAnimate) {
-      // Reset and restart animations when card becomes active
-      for (var controller in _controllers) {
-        controller.reset();
-      }
-      _startAnimations();
-    }
-  }
-
-  void _initializeAnimations() {
-    final letters = widget.text.split('');
-
-    _controllers = List.generate(
-      letters.length,
-      (index) => AnimationController(
-        duration: const Duration(milliseconds: 600),
-        vsync: this,
-      ),
-    );
-
-    _scaleAnimations = _controllers.map((controller) {
-      return TweenSequence<double>([
-        TweenSequenceItem(
-          tween: Tween<double>(
-            begin: 0.0,
-            end: 1.3,
-          ).chain(CurveTween(curve: Curves.easeOutBack)),
-          weight: 40,
-        ),
-        TweenSequenceItem(
-          tween: Tween<double>(
-            begin: 1.3,
-            end: 0.95,
-          ).chain(CurveTween(curve: Curves.easeInOut)),
-          weight: 30,
-        ),
-        TweenSequenceItem(
-          tween: Tween<double>(
-            begin: 0.95,
-            end: 1.0,
-          ).chain(CurveTween(curve: Curves.easeOut)),
-          weight: 30,
-        ),
-      ]).animate(controller);
-    }).toList();
-
-    _rotationAnimations = _controllers.asMap().entries.map((entry) {
-      final controller = entry.value;
-      final index = entry.key;
-      // Alternate rotation direction for playfulness
-      final rotationDirection = index % 2 == 0 ? 1.0 : -1.0;
-      return Tween<double>(
-        begin: 0.25 * rotationDirection,
-        end: 0.0,
-      ).animate(CurvedAnimation(parent: controller, curve: Curves.elasticOut));
-    }).toList();
-
-    _slideAnimations = _controllers.map((controller) {
-      return Tween<Offset>(
-        begin: const Offset(0, -1.2),
-        end: Offset.zero,
-      ).animate(CurvedAnimation(parent: controller, curve: Curves.easeOutBack));
-    }).toList();
-  }
-
-  void _startAnimations() {
-    // Start animations with staggered delay (letter by letter)
-    for (int i = 0; i < _controllers.length; i++) {
-      Future.delayed(
-        widget.delay + Duration(milliseconds: i * 40), // 40ms per letter
-        () {
-          if (mounted && widget.shouldAnimate) {
-            _controllers[i].forward();
-          }
-        },
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    for (var controller in _controllers) {
-      controller.dispose();
-    }
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final letters = widget.text.split('');
-
-    return Wrap(
-      alignment: WrapAlignment.start,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: List.generate(letters.length, (index) {
-        final letter = letters[index];
-        final isSpace = letter == ' ';
-
-        if (isSpace) {
-          return SizedBox(width: widget.fontSize * 0.25);
-        }
-
-        return AnimatedBuilder(
-          animation: _controllers[index],
-          builder: (context, child) {
-            return Transform.translate(
-              offset: Offset(
-                _slideAnimations[index].value.dx,
-                _slideAnimations[index].value.dy * widget.fontSize * 0.5,
-              ),
-              child: Transform.scale(
-                scale: _scaleAnimations[index].value,
-                child: Transform.rotate(
-                  angle: _rotationAnimations[index].value,
-                  child: Text(
-                    letter,
-                    style: TextStyle(
-                      color:
-                          widget.textColor ??
-                          (widget.fontWeight == FontWeight.bold
-                              ? const Color(
-                                  0xFF1565C0,
-                                ) // Default Blue 800 for Title
-                              : Theme.of(context).brightness == Brightness.dark
-                              ? Colors.grey[400]
-                              : Colors.grey[700]), // Default Grey for Subtitle
-                      fontSize: widget.fontSize,
-                      fontWeight: widget.fontWeight,
-                      height: 1.2,
-                    ),
-                  ),
-                ),
-              ),
-            );
-          },
-        );
-      }),
-    );
-  }
-}
+// Animated card entry widget for staggered animations
 
 // Animated card entry widget for staggered animations
 class _AnimatedCardEntry extends StatefulWidget {

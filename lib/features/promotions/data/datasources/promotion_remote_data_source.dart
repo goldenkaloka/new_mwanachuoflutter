@@ -19,6 +19,8 @@ abstract class PromotionRemoteDataSource {
     String? videoUrl,
     int priority = 0,
     String buttonText = 'Shop Now',
+    String? userId,
+    String? externalLink,
   });
 }
 
@@ -34,10 +36,11 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
 
       final response = await supabaseClient
           .from(DatabaseConstants.promotionsTable)
-          .select()
+          .select('*, users(full_name, phone_number)')
           .eq('is_active', true)
           .lte('start_date', now)
           .gte('end_date', now)
+          .order('priority', ascending: false)
           .order('created_at', ascending: false);
 
       return (response as List)
@@ -55,7 +58,7 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
     try {
       final response = await supabaseClient
           .from(DatabaseConstants.promotionsTable)
-          .select()
+          .select('*, users(full_name, phone_number)')
           .eq('id', promotionId)
           .single();
 
@@ -81,6 +84,8 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
     String? videoUrl,
     int priority = 0,
     String buttonText = 'Shop Now',
+    String? userId,
+    String? externalLink,
   }) async {
     try {
       final response = await supabaseClient
@@ -98,9 +103,11 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
             'video_url': videoUrl,
             'priority': priority,
             'button_text': buttonText,
+            'user_id': userId,
+            'external_link': externalLink,
             'created_at': DateTime.now().toIso8601String(),
           })
-          .select()
+          .select('*, users(full_name, phone_number)')
           .single();
 
       return PromotionModel.fromJson(response);

@@ -72,9 +72,13 @@ class NetworkImageWithFallback extends StatelessWidget {
         width: width,
         height: height,
         fit: fit ?? BoxFit.cover,
-        // Memory cache configuration
-        memCacheWidth: maxWidth ?? safeToInt(width),
-        memCacheHeight: maxHeight ?? safeToInt(height),
+        // Memory cache configuration - use higher resolution for better quality
+        memCacheWidth:
+            maxWidth ??
+            (safeToInt(width) != null ? (safeToInt(width)! * 2) : null),
+        memCacheHeight:
+            maxHeight ??
+            (safeToInt(height) != null ? (safeToInt(height)! * 2) : null),
         // Placeholder while loading
         placeholder: usePlaceholder
             ? (context, url) => ShimmerLoading(

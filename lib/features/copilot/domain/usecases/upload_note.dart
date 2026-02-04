@@ -13,12 +13,16 @@ class UploadNote {
     required String noteId,
     required String courseId,
     String? title,
+    int? year,
+    int? semester,
   }) async {
     return await repository.uploadAndAnalyze(
       file: file,
       noteId: noteId,
       courseId: courseId,
       title: title,
+      year: year,
+      semester: semester,
     );
   }
 }

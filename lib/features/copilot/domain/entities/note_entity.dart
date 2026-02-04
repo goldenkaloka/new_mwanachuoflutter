@@ -8,6 +8,7 @@ class NoteEntity {
   final int fileSize;
   final String fileType;
   final int? yearRelevance;
+  final int? semester;
   final double studyReadinessScore;
   final int downloadCount;
   final int viewCount;
@@ -26,6 +27,7 @@ class NoteEntity {
     required this.fileSize,
     required this.fileType,
     this.yearRelevance,
+    this.semester,
     required this.studyReadinessScore,
     required this.downloadCount,
     required this.viewCount,

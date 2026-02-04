@@ -16,6 +16,10 @@ class PromotionEntity extends Equatable {
   final String? videoUrl;
   final int priority;
   final String buttonText;
+  final String? userId;
+  final String? sellerName;
+  final String? sellerPhone;
+  final String? externalLink;
 
   const PromotionEntity({
     required this.id,
@@ -33,6 +37,10 @@ class PromotionEntity extends Equatable {
     this.videoUrl,
     this.priority = 0,
     this.buttonText = 'Shop Now',
+    this.userId,
+    this.sellerName,
+    this.sellerPhone,
+    this.externalLink,
   });
 
   bool get isValid {
@@ -57,5 +65,9 @@ class PromotionEntity extends Equatable {
     videoUrl,
     priority,
     buttonText,
+    userId,
+    sellerName,
+    sellerPhone,
+    externalLink,
   ];
 }

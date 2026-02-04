@@ -1611,78 +1611,72 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
             expanded: 8.0,
           ),
         ),
-        BlocBuilder<CategoryCubit, CategoryState>(
-          builder: (context, categoryState) {
-            List<String> conditions = ['Select condition'];
-            if (categoryState is CategoriesLoaded) {
-              final loadedConditions = categoryState.conditions
-                  .map((c) => c.name)
-                  .toList();
-              conditions.addAll(loadedConditions);
-
-              // Ensure selected condition is in the list
-              if (_selectedCondition != null &&
-                  !loadedConditions.contains(_selectedCondition) &&
-                  _selectedCondition != 'Select condition') {
-                conditions.add(_selectedCondition!);
-              }
-            } else if (_selectedCondition != null &&
-                _selectedCondition != 'Select condition') {
-              // If not loaded but we have a selection, add it to prevent crash
-              conditions.add(_selectedCondition!);
-            }
-
-            return DropdownButtonFormField<String>(
-              value: _selectedCondition,
-              decoration: InputDecoration(
-                filled: true,
-                fillColor: isDarkMode
-                    ? kBackgroundColorDark.withValues(alpha: 0.5)
-                    : Colors.white,
-                border: OutlineInputBorder(
-                  borderRadius: kBaseRadius,
-                  borderSide: BorderSide(
-                    color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: kBaseRadius,
-                  borderSide: BorderSide(
-                    color: isDarkMode ? Colors.grey[600]! : Colors.grey[300]!,
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: kBaseRadius,
-                  borderSide: BorderSide(color: kPrimaryColor, width: 2),
-                ),
-                contentPadding: EdgeInsets.symmetric(
-                  horizontal: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 16.0,
-                    medium: 20.0,
-                    expanded: 24.0,
-                  ),
-                  vertical: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 16.0,
-                    medium: 18.0,
-                    expanded: 20.0,
-                  ),
-                ),
+        DropdownButtonFormField<String>(
+          value: _selectedCondition,
+          decoration: InputDecoration(
+            filled: true,
+            fillColor: isDarkMode
+                ? kBackgroundColorDark.withValues(alpha: 0.5)
+                : Colors.white,
+            border: OutlineInputBorder(
+              borderRadius: kBaseRadius,
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey[800]! : Colors.grey[200]!,
               ),
-              dropdownColor: isDarkMode ? kBackgroundColorDark : Colors.white,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 16.0,
-                  medium: 17.0,
-                  expanded: 18.0,
-                ),
-                color: primaryTextColor,
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: kBaseRadius,
+              borderSide: BorderSide(
+                color: isDarkMode ? Colors.grey[800]! : Colors.grey[200]!,
               ),
-              icon: Icon(Icons.expand_more, color: secondaryTextColor),
-              hint: Text(
-                'Select condition',
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: kBaseRadius,
+              borderSide: BorderSide(color: kPrimaryColor, width: 2),
+            ),
+            contentPadding: EdgeInsets.symmetric(
+              horizontal: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 20.0,
+                expanded: 24.0,
+              ),
+              vertical: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 18.0,
+                expanded: 20.0,
+              ),
+            ),
+          ),
+          dropdownColor: isDarkMode ? kBackgroundColorDark : Colors.white,
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: ResponsiveBreakpoints.responsiveValue(
+              context,
+              compact: 16.0,
+              medium: 17.0,
+              expanded: 18.0,
+            ),
+            color: primaryTextColor,
+          ),
+          icon: Icon(Icons.expand_more, color: secondaryTextColor),
+          hint: Text(
+            'Select condition',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 16.0,
+                medium: 17.0,
+                expanded: 18.0,
+              ),
+              color: secondaryTextColor,
+            ),
+          ),
+          items: ['Select condition', 'New', 'Used'].map((condition) {
+            return DropdownMenuItem<String>(
+              value: condition == 'Select condition' ? null : condition,
+              child: Text(
+                condition,
                 style: GoogleFonts.plusJakartaSans(
                   fontSize: ResponsiveBreakpoints.responsiveValue(
                     context,
@@ -1690,34 +1684,17 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
                     medium: 17.0,
                     expanded: 18.0,
                   ),
-                  color: secondaryTextColor,
+                  color: condition == 'Select condition'
+                      ? secondaryTextColor
+                      : primaryTextColor,
                 ),
               ),
-              items: conditions.map((condition) {
-                return DropdownMenuItem<String>(
-                  value: condition == 'Select condition' ? null : condition,
-                  child: Text(
-                    condition,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 16.0,
-                        medium: 17.0,
-                        expanded: 18.0,
-                      ),
-                      color: condition == 'Select condition'
-                          ? secondaryTextColor
-                          : primaryTextColor,
-                    ),
-                  ),
-                );
-              }).toList(),
-              onChanged: (value) {
-                setState(() {
-                  _selectedCondition = value;
-                });
-              },
             );
+          }).toList(),
+          onChanged: (value) {
+            setState(() {
+              _selectedCondition = value;
+            });
           },
         ),
       ],

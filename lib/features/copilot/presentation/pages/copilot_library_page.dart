@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
 import 'package:mwanachuo/features/copilot/domain/entities/note_entity.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 
 class CopilotLibraryPage extends StatefulWidget {
   final String courseId;
@@ -24,6 +26,15 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
   @override
   void initState() {
     super.initState();
+    final authState = context.read<AuthBloc>().state;
+    int? year;
+    int? semester;
+
+    if (authState is Authenticated) {
+      year = authState.user.yearOfStudy;
+      semester = authState.user.currentSemester;
+    }
+
     if (widget.initialSearchQuery != null) {
       context.read<CopilotBloc>().add(
         SearchNotes(
@@ -33,7 +44,11 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
       );
     } else {
       context.read<CopilotBloc>().add(
-        LoadCourseNotes(courseId: widget.courseId),
+        LoadCourseNotes(
+          courseId: widget.courseId,
+          year: year,
+          semester: semester,
+        ),
       );
     }
   }

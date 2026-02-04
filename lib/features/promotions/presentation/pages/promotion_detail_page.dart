@@ -11,6 +11,7 @@ import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
 import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
+import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PromotionDetailPage extends StatelessWidget {
@@ -541,6 +542,13 @@ class _PromotionDetailViewState extends State<_PromotionDetailView> {
     PromotionEntity promotion,
     ScreenSize screenSize,
   ) {
+    final hasWhatsApp =
+        promotion.sellerPhone != null && promotion.sellerPhone!.isNotEmpty;
+    final hasExternalLink =
+        promotion.externalLink != null && promotion.externalLink!.isNotEmpty;
+
+    if (!hasWhatsApp && !hasExternalLink) return const SizedBox.shrink();
+
     return Container(
       padding: EdgeInsets.all(
         ResponsiveBreakpoints.responsiveHorizontalPadding(context),
@@ -558,40 +566,71 @@ class _PromotionDetailViewState extends State<_PromotionDetailView> {
       ),
       child: SafeArea(
         top: false,
-        child: SizedBox(
-          width: double.infinity,
-          height: 56.0,
-          child: ElevatedButton(
-            onPressed: () async {
-              if (promotion.targetUrl != null &&
-                  promotion.targetUrl!.isNotEmpty) {
-                if (promotion.targetUrl!.startsWith('http')) {
-                  final uri = Uri.parse(promotion.targetUrl!);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri);
-                  }
-                } else {
-                  Navigator.pushNamed(context, promotion.targetUrl!);
-                }
-              } else {
-                Navigator.pushNamed(context, '/all-products');
-              }
-            },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: kPrimaryColor,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16.0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (hasWhatsApp)
+              SizedBox(
+                width: double.infinity,
+                height: 52.0,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    WhatsAppContactHelper.contactSeller(
+                      context: context,
+                      phoneNumber: promotion.sellerPhone!,
+                      message:
+                          'Hello, I am interested in your promotion: ${promotion.title}',
+                    );
+                  },
+                  icon: const Icon(Icons.call, size: 20),
+                  label: Text(
+                    'Call on WhatsApp',
+                    style: GoogleFonts.inter(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
               ),
-            ),
-            child: Text(
-              promotion.buttonText,
-              style: GoogleFonts.inter(
-                fontSize: 16.0,
-                fontWeight: FontWeight.w600,
+            if (hasWhatsApp && hasExternalLink) const SizedBox(height: 12),
+            if (hasExternalLink)
+              SizedBox(
+                width: double.infinity,
+                height: 52.0,
+                child: ElevatedButton.icon(
+                  onPressed: () async {
+                    final uri = Uri.parse(promotion.externalLink!);
+                    if (await canLaunchUrl(uri)) {
+                      await launchUrl(uri);
+                    }
+                  },
+                  icon: const Icon(Icons.link, size: 20),
+                  label: Text(
+                    promotion.buttonText.isNotEmpty
+                        ? promotion.buttonText
+                        : 'Visit Link',
+                    style: GoogleFonts.inter(
+                      fontSize: 16.0,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12.0),
+                    ),
+                  ),
+                ),
               ),
-            ),
-          ),
+          ],
         ),
       ),
     );

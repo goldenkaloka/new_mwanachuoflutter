@@ -44,13 +44,18 @@ async function processNote(noteId: string, filePath: string, bucketId: string, s
         }
         const base64Data = btoa(binary);
         
-        // Use Gemini 1.5 Flash 002 (Proven stable GA model)
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash-002" });
+        // Use Gemini 3 Flash Preview (Latest and high-performance)
+        const model = genAI.getGenerativeModel({ model: "models/gemini-3-flash-preview" });
 
         const mimeType = getMimeType(filePath);
-        console.log(`[BG] Analysis model: gemini-1.5-flash-002, Mime: ${mimeType}`);
+        console.log(`[BG] Analysis model: gemini-3-flash-preview, Mime: ${mimeType}`);
 
-        const prompt = `Analyze this document. Return JSON: {concepts:[], flashcards:[], tags:[], summary:""}`;
+        const prompt = `Analyze this document. Return JSON: {concepts:[], flashcards:[], tags:[], summary:""}
+        - concepts: array of {term, definition, page}
+        - flashcards: array of {question, answer, difficulty}
+        - tags: array of strings
+        - summary: concise summary string`;
+        
         const result = await model.generateContent([
           prompt,
           { inlineData: { data: base64Data, mimeType } },
@@ -58,34 +63,54 @@ async function processNote(noteId: string, filePath: string, bucketId: string, s
 
         const resText = result.response.text();
         console.log(`[BG] Raw response received. Length: ${resText.length}`);
-        const analysis = JSON.parse(resText.replace(/```json/g, '').replace(/```/g, '').trim());
+        
+        // Sanitize JSON response from markdown blocks
+        const jsonMatch = resText.match(/\{[\s\S]*\}/);
+        const analysis = JSON.parse(jsonMatch ? jsonMatch[0] : resText);
 
         await supabase.from('course_notes').update({
             study_readiness_score: 100,
             description: 'Processing: Saving metadata...'
         }).eq('id', noteId);
 
-        // ... Batched inserts ...
-        if (analysis.concepts?.length > 0) await supabase.from('note_concepts').insert(analysis.concepts.map((c: any) => ({ note_id: noteId, concept_text: c.term, context: c.definition, page_number: c.page || 1, concept_type: 'key_term' })));
-        if (analysis.flashcards?.length > 0) await supabase.from('note_flashcards').insert(analysis.flashcards.map((f: any) => ({ note_id: noteId, question: f.question, answer: f.answer, difficulty: f.difficulty || 'medium' })));
+        // Batched inserts for concepts and flashcards
+        if (analysis.concepts?.length > 0) {
+          await supabase.from('note_concepts').insert(analysis.concepts.map((c: any) => ({ 
+            note_id: noteId, 
+            concept_text: c.term || c.concept, 
+            context: c.definition || c.context, 
+            page_number: c.page || 1, 
+            concept_type: 'key_term' 
+          })));
+        }
+        
+        if (analysis.flashcards?.length > 0) {
+          await supabase.from('note_flashcards').insert(analysis.flashcards.map((f: any) => ({ 
+            note_id: noteId, 
+            question: f.question, 
+            answer: f.answer, 
+            difficulty: f.difficulty || 'medium' 
+          })));
+        }
         
         await supabase.from('course_notes').update({ description: 'Processing: RAG Indexing...' }).eq('id', noteId);
 
-        console.log(`[BG] Extracting text...`);
+        console.log(`[BG] Extracting text for indexing...`);
         const extractionResult = await model.generateContent([
-           "Extract plain text from this document for search indexing. Perform full OCR if it's an image-based PDF or document. Output only the text.",
+           "Extract plain text from this document for search indexing. Perform full OCR if it's an image-based PDF or document. Output only the transcribed text.",
            { inlineData: { data: base64Data, mimeType } },
         ]);
         const fullText = extractionResult.response.text();
-        // Use a more robust splitter or regex
+        
+        // Chunking
         const chunks = fullText.match(/[\s\S]{1,1000}/g) || [];
-        // Using stable GA embedding model
-        const embeddingModel = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
+        
+        // Using models/embedding-001
+        const embeddingModel = genAI.getGenerativeModel({ model: "models/embedding-001" });
 
         console.log(`[BG] Indexing ${chunks.length} chunks for ${noteId}`);
         
-        // Batch the embedding and insertion for better performance
-        const batchSize = 5; 
+        const batchSize = 10; 
         for (let i = 0; i < chunks.length; i += batchSize) {
             const batch = chunks.slice(i, i + batchSize);
             const records = await Promise.all(batch.map(async (chunk, index) => {
@@ -95,7 +120,8 @@ async function processNote(noteId: string, filePath: string, bucketId: string, s
                         note_id: noteId,
                         content: chunk,
                         chunk_index: i + index,
-                        embedding: embedResult.embedding.values
+                        embedding: embedResult.embedding.values,
+                        metadata: { length: chunk.length, processed_at: new Date().toISOString() }
                     };
                 } catch (e) {
                     console.error(`[BG] Chunk embedding failed: ${i + index}`, e);
@@ -112,14 +138,17 @@ async function processNote(noteId: string, filePath: string, bucketId: string, s
         
         await supabase.from('course_notes').update({ 
             description: analysis.summary || 'Study material processed successfully.',
-            study_readiness_score: 100
+            study_readiness_score: 100,
+            updated_at: new Date().toISOString()
         }).eq('id', noteId);
+        
         console.log(`[BG] Done: ${noteId}`);
-    } catch (error) {
+    } catch (error: any) {
         console.error(`[BG] Error: ${noteId}`, error);
-        await supabase.from('course_notes').update({ description: `Error: ${error.message}` }).eq('id', noteId);
+        await supabase.from('course_notes').update({ description: `Error during processing: ${error.message}` }).eq('id', noteId);
     }
 }
+
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });

@@ -68,6 +68,8 @@ class PromotionRepositoryImpl implements PromotionRepository {
     String type = 'banner',
     int priority = 0,
     String buttonText = 'Shop Now',
+    String? userId,
+    String? externalLink,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -114,6 +116,8 @@ class PromotionRepositoryImpl implements PromotionRepository {
         videoUrl: videoUrl,
         priority: priority,
         buttonText: buttonText,
+        userId: userId,
+        externalLink: externalLink,
       );
 
       return Right(promotion);

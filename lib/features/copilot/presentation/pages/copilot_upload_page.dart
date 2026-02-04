@@ -4,6 +4,8 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 
 class CopilotUploadPage extends StatefulWidget {
   final String courseId;
@@ -74,12 +76,23 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
     if (_selectedFile == null) return;
 
     final noteId = const Uuid().v4();
+    final authState = context.read<AuthBloc>().state;
+    int? year;
+    int? semester;
+
+    if (authState is Authenticated) {
+      year = authState.user.yearOfStudy;
+      semester = authState.user.currentSemester;
+    }
+
     context.read<CopilotBloc>().add(
       UploadNote(
         filePath: _selectedFile!.path,
         noteId: noteId,
         courseId: widget.courseId,
         title: _titleController.text.trim(),
+        year: year,
+        semester: semester,
       ),
     );
   }

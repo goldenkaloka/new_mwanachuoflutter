@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
 import 'package:mwanachuo/features/copilot/domain/entities/note_entity.dart';
+import 'package:mwanachuo/features/promotions/presentation/widgets/single_random_promotion.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 
 class CopilotDashboardPage extends StatefulWidget {
   final String courseId;
@@ -20,7 +23,22 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
   @override
   void initState() {
     super.initState();
-    context.read<CopilotBloc>().add(LoadCourseNotes(courseId: widget.courseId));
+    final authState = context.read<AuthBloc>().state;
+    int? year;
+    int? semester;
+
+    if (authState is Authenticated) {
+      year = authState.user.yearOfStudy;
+      semester = authState.user.currentSemester;
+    }
+
+    context.read<CopilotBloc>().add(
+      LoadCourseNotes(
+        courseId: widget.courseId,
+        year: year,
+        semester: semester,
+      ),
+    );
   }
 
   Future<void> _scanText() async {
@@ -93,6 +111,8 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
             Expanded(
               child: CustomScrollView(
                 slivers: [
+                  const SliverToBoxAdapter(child: SizedBox(height: 16)),
+                  const SliverToBoxAdapter(child: SingleRandomPromotion()),
                   const SliverToBoxAdapter(child: SizedBox(height: 24)),
                   SliverToBoxAdapter(child: _buildDownloadedSection()),
                   const SliverToBoxAdapter(child: SizedBox(height: 32)),

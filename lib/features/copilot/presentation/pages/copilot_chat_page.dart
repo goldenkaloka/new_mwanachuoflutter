@@ -4,6 +4,7 @@ import 'package:flutter_chat_core/flutter_chat_core.dart';
 import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
 import 'package:uuid/uuid.dart';
+import 'package:mwanachuo/features/promotions/presentation/widgets/single_random_promotion.dart';
 
 class CopilotChatPage extends StatefulWidget {
   final String courseId;
@@ -146,41 +147,50 @@ class _CopilotChatPageState extends State<CopilotChatPage> {
           }
         },
         builder: (context, state) {
-          return Chat(
-            chatController: _chatController,
-            currentUserId: _user.id,
-            resolveUser: _resolveUser,
-            onMessageSend: (text) {
-              _handleSendPressed(text);
-            },
-            theme: ChatTheme(
-              colors: ChatColors.light().copyWith(
-                primary: const Color(0xFFE7FFDB), // WhatsApp Sent Bubble Green
-                surfaceContainer:
-                    Colors.white, // WhatsApp Received Bubble White
-                surface: const Color(0xFFE5DDD5), // WhatsApp BG
-                onSurface: Colors.black87,
-                onPrimary: Colors.black87,
+          return Column(
+            children: [
+              const SingleRandomPromotion(),
+              Expanded(
+                child: Chat(
+                  chatController: _chatController,
+                  currentUserId: _user.id,
+                  resolveUser: _resolveUser,
+                  onMessageSend: (text) {
+                    _handleSendPressed(text);
+                  },
+                  theme: ChatTheme(
+                    colors: ChatColors.light().copyWith(
+                      primary: const Color(
+                        0xFFE7FFDB,
+                      ), // WhatsApp Sent Bubble Green
+                      surfaceContainer:
+                          Colors.white, // WhatsApp Received Bubble White
+                      surface: const Color(0xFFE5DDD5), // WhatsApp BG
+                      onSurface: Colors.black87,
+                      onPrimary: Colors.black87,
+                    ),
+                    typography: ChatTypography.standard().copyWith(
+                      bodyLarge: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      bodyMedium: const TextStyle(
+                        color: Colors.black87,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w400,
+                      ),
+                      labelSmall: TextStyle(
+                        color: Colors.black54.withValues(alpha: 0.6),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
+                    shape: const BorderRadius.all(Radius.circular(12)),
+                  ),
+                ),
               ),
-              typography: ChatTypography.standard().copyWith(
-                bodyLarge: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                ),
-                bodyMedium: const TextStyle(
-                  color: Colors.black87,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                ),
-                labelSmall: TextStyle(
-                  color: Colors.black54.withValues(alpha: 0.6),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
-              shape: const BorderRadius.all(Radius.circular(12)),
-            ),
+            ],
           );
         },
       ),

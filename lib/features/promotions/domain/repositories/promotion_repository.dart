@@ -19,5 +19,7 @@ abstract class PromotionRepository {
     String type = 'banner',
     int priority = 0,
     String buttonText = 'Shop Now',
+    String? userId,
+    String? externalLink,
   });
 }

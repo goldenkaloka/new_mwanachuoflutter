@@ -55,6 +55,8 @@ class PromotionCubit extends Cubit<PromotionState> {
     String type = 'banner',
     int priority = 0,
     String buttonText = 'Shop Now',
+    String? userId,
+    String? externalLink,
   }) async {
     if (isClosed) return;
 
@@ -74,6 +76,8 @@ class PromotionCubit extends Cubit<PromotionState> {
         type: type,
         priority: priority,
         buttonText: buttonText,
+        userId: userId,
+        externalLink: externalLink,
       ),
     );
 

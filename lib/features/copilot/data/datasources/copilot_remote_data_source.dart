@@ -20,12 +20,16 @@ abstract class CopilotRemoteDataSource {
     required String noteId,
     required String courseId,
     String? title,
+    int? year,
+    int? semester,
   });
 
   /// Get notes for a course from Supabase
   Future<List<NoteModel>> getCourseNotes({
     required String courseId,
     String? filterBy,
+    int? year,
+    int? semester,
   });
 
   /// Get note by ID
@@ -77,6 +81,8 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
     required String noteId,
     required String courseId,
     String? title,
+    int? year,
+    int? semester,
   }) async {
     try {
       final userId = supabase.auth.currentUser?.id;
@@ -113,7 +119,8 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
         'file_size': await file.length(),
         'file_type': lookupMimeType(file.path) ?? 'application/pdf',
         'is_official': false,
-        'year_relevance': 1, // Default, should be passed or updated later
+        'year_relevance': year ?? 1,
+        'semester': semester ?? 1,
         'study_readiness_score': 0, // Pending analysis
       };
 
@@ -134,12 +141,22 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
   Future<List<NoteModel>> getCourseNotes({
     required String courseId,
     String? filterBy,
+    int? year,
+    int? semester,
   }) async {
     try {
       PostgrestFilterBuilder query = supabase
           .from('course_notes')
           .select('*, users:uploaded_by(full_name)')
           .eq('course_id', courseId);
+
+      // Apply year/semester filter if provided
+      if (year != null) {
+        query = query.eq('year_relevance', year);
+      }
+      if (semester != null) {
+        query = query.eq('semester', semester);
+      }
 
       // Apply filter
       if (filterBy == 'official') {
@@ -312,8 +329,13 @@ class CopilotRemoteDataSourceImpl implements CopilotRemoteDataSource {
       // We'll keep using the function but ensure it's pointing to the optimized SQL.
 
       final response = await supabase.functions.invoke(
-        'chat-rpc', // Using the newer/faster chat-rpc if available or semantic-search
-        body: {'query': query, 'course_id': courseId, 'limit': limit ?? 5},
+        'chat-with-copilot',
+        body: {
+          'query': query,
+          'course_id': courseId,
+          'limit': limit ?? 5,
+          'mode': 'search',
+        },
       );
 
       if (response.status != 200) {

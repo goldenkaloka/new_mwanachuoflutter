@@ -24,36 +24,6 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   @override
   void initState() {
     super.initState();
-    _checkAdminAccess();
-  }
-
-  void _checkAdminAccess() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (!mounted) return;
-
-      final authState = context.read<AuthBloc>().state;
-      if (authState is Authenticated) {
-        final userRole = authState.user.role.value;
-
-        if (userRole != 'admin') {
-          debugPrint(
-            '❌ Non-admin user attempting to create promotion - redirecting',
-          );
-          Navigator.of(context).pop();
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(
-              content: Text(
-                'Only administrators can create promotions',
-                style: GoogleFonts.plusJakartaSans(),
-              ),
-              backgroundColor: Colors.orange,
-              duration: const Duration(seconds: 3),
-            ),
-          );
-        }
-      }
-    });
   }
 
   final _formKey = GlobalKey<FormState>();
@@ -62,6 +32,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   final _descriptionController = TextEditingController();
   final _termsController = TextEditingController();
   final _targetUrlController = TextEditingController();
+  final _externalLinkController = TextEditingController();
   final _buttonTextController = TextEditingController();
   final _priorityController = TextEditingController(text: '0');
   DateTime? _startDate;
@@ -77,6 +48,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     _descriptionController.dispose();
     _termsController.dispose();
     _targetUrlController.dispose();
+    _externalLinkController.dispose();
     _buttonTextController.dispose();
     _priorityController.dispose();
     super.dispose();
@@ -286,8 +258,20 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                       child: TextFormField(
                                         controller: _targetUrlController,
                                         decoration: _buildInputDecoration(
-                                          'Target URL',
+                                          'Internal Target (Optional)',
                                           'e.g., /all-products',
+                                          borderColor,
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      flex: 2,
+                                      child: TextFormField(
+                                        controller: _externalLinkController,
+                                        decoration: _buildInputDecoration(
+                                          'External Link (Optional)',
+                                          'https://...',
                                           borderColor,
                                         ),
                                       ),
@@ -299,7 +283,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                         controller: _buttonTextController,
                                         decoration: _buildInputDecoration(
                                           'Button Text',
-                                          'e.g., Shop Now',
+                                          'e.g., Visit',
                                           borderColor,
                                         ),
                                       ),
@@ -855,6 +839,13 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                       ),
                     );
 
+                    // Get current user ID
+                    final authState = context.read<AuthBloc>().state;
+                    String? userId;
+                    if (authState is Authenticated) {
+                      userId = authState.user.id;
+                    }
+
                     // Create promotion
                     await context.read<PromotionCubit>().createNewPromotion(
                       title: _titleController.text.trim(),
@@ -868,8 +859,10 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                       priority: int.tryParse(_priorityController.text) ?? 0,
                       buttonText: _buttonTextController.text.trim().isNotEmpty
                           ? _buttonTextController.text.trim()
-                          : 'Shop Now',
+                          : 'Visit',
                       targetUrl: _targetUrlController.text.trim(),
+                      externalLink: _externalLinkController.text.trim(),
+                      userId: userId,
                       terms: terms,
                     );
                   }

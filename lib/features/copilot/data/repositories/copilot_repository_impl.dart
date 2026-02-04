@@ -26,6 +26,8 @@ class CopilotRepositoryImpl implements CopilotRepository {
     required String noteId,
     required String courseId,
     String? title,
+    int? year,
+    int? semester,
   }) async {
     try {
       final result = await remoteDataSource.uploadAndAnalyze(
@@ -33,6 +35,8 @@ class CopilotRepositoryImpl implements CopilotRepository {
         noteId: noteId,
         courseId: courseId,
         title: title,
+        year: year,
+        semester: semester,
       );
       return Right(result);
     } catch (e) {
@@ -44,11 +48,15 @@ class CopilotRepositoryImpl implements CopilotRepository {
   Future<Either<Failure, List<NoteEntity>>> getCourseNotes({
     required String courseId,
     String? filterBy,
+    int? year,
+    int? semester,
   }) async {
     try {
       final notes = await remoteDataSource.getCourseNotes(
         courseId: courseId,
         filterBy: filterBy,
+        year: year,
+        semester: semester,
       );
 
       // Cache notes locally
