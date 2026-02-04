@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'dart:io' show Platform;
 import 'package:flutter_native_splash/flutter_native_splash.dart';
@@ -10,6 +11,18 @@ import 'package:hive_flutter/hive_flutter.dart';
 void main() {
   // Preserve native splash screen until Flutter is ready to draw its first frame
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  // Set global system UI style
+  SystemChrome.setSystemUIOverlayStyle(
+    const SystemUiOverlayStyle(
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
+      statusBarBrightness: Brightness.light,
+      systemNavigationBarColor: Colors.white,
+      systemNavigationBarIconBrightness: Brightness.dark,
+    ),
+  );
+
   FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
 
   // Suppress mouse_tracker.dart debug assertions on Windows

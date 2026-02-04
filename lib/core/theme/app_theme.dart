@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/constants/typography_constants.dart';
@@ -238,6 +239,11 @@ ThemeData lightTheme() {
       elevation: kElevationNone,
       surfaceTintColor: Colors.transparent,
       centerTitle: false,
+      systemOverlayStyle: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.dark,
+        statusBarBrightness: Brightness.light,
+      ),
       titleTextStyle: GoogleFonts.plusJakartaSans(
         fontSize: AppTypography.fontSize4xl,
         fontWeight: AppTypography.semiBold,
