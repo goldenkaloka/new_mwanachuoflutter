@@ -740,7 +740,13 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
         }
 
         final duration = _endDate!.difference(_startDate!).inDays + 1;
-        final totalCost = duration * DatabaseConstants.promotionPricePerDay;
+        final authState = context.read<AuthBloc>().state;
+        final isAdmin =
+            authState is Authenticated && authState.user.role.value == 'admin';
+
+        final totalCost = isAdmin
+            ? 0.0
+            : duration * DatabaseConstants.promotionPricePerDay;
         double? currentBalance;
 
         if (state is WalletLoaded) {
@@ -777,9 +783,11 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
               const SizedBox(height: 8.0),
               _buildSummaryRow(
                 'Price per day',
-                currencyFormatter.format(
-                  DatabaseConstants.promotionPricePerDay,
-                ),
+                isAdmin
+                    ? 'Free (Admin)'
+                    : currencyFormatter.format(
+                        DatabaseConstants.promotionPricePerDay,
+                      ),
                 primaryTextColor,
               ),
               const Divider(height: 24.0),
@@ -789,7 +797,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                 primaryTextColor,
                 isTotal: true,
               ),
-              if (currentBalance != null) ...[
+              if (!isAdmin && currentBalance != null) ...[
                 const SizedBox(height: 16.0),
                 _buildSummaryRow(
                   'Your Balance',
@@ -888,89 +896,119 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                   width: double.infinity,
                   height: 48.0,
                   child: ElevatedButton(
-                    onPressed: !hasSufficientBalance
-                        ? null
-                        : () async {
-                            if (_formKey.currentState!.validate()) {
-                              if (_selectedImage == null &&
-                                  _selectedVideo == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Please select an image or video',
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
+                    onPressed: () async {
+                      final authState = context.read<AuthBloc>().state;
+                      final isAdmin =
+                          authState is Authenticated &&
+                          authState.user.role.value == 'admin';
 
-                              if (_startDate == null || _endDate == null) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text(
-                                      'Please select both start and end dates',
-                                    ),
-                                  ),
-                                );
-                                return;
-                              }
+                      if (!hasSufficientBalance && !isAdmin) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text(
+                              'Insufficient balance to create promotion',
+                            ),
+                            backgroundColor: Colors.red,
+                          ),
+                        );
+                        return;
+                      }
 
-                              final authState = context.read<AuthBloc>().state;
-                              String? userId;
-                              if (authState is Authenticated) {
-                                userId = authState.user.id;
-                              }
+                      if (_formKey.currentState!.validate()) {
+                        if (_selectedImage == null && _selectedVideo == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Please select an image or video'),
+                            ),
+                          );
+                          return;
+                        }
 
-                              // Show loading indicator
-                              showDialog(
-                                context: context,
-                                barrierDismissible: false,
-                                builder: (context) => const Center(
-                                  child: CircularProgressIndicator(
-                                    color: kPrimaryColor,
-                                  ),
-                                ),
-                              );
+                        if (_startDate == null || _endDate == null) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text(
+                                'Please select both start and end dates',
+                              ),
+                            ),
+                          );
+                          return;
+                        }
 
-                              await context
-                                  .read<PromotionCubit>()
-                                  .createNewPromotion(
-                                    title: _titleController.text.trim(),
-                                    subtitle: _subtitleController.text.trim(),
-                                    description: _descriptionController.text
-                                        .trim(),
-                                    startDate: _startDate!,
-                                    endDate: _endDate!,
-                                    image: _selectedImage,
-                                    video: _selectedVideo,
-                                    type: _selectedType,
-                                    priority:
-                                        int.tryParse(
-                                          _priorityController.text,
-                                        ) ??
-                                        0,
-                                    buttonText:
-                                        _buttonTextController.text
-                                            .trim()
-                                            .isNotEmpty
-                                        ? _buttonTextController.text.trim()
-                                        : 'Visit',
-                                    targetUrl: _targetUrlController.text.trim(),
-                                    externalLink: _externalLinkController.text
-                                        .trim(),
-                                    userId: userId,
-                                    terms:
-                                        _termsController.text.trim().isNotEmpty
-                                        ? _termsController.text
-                                              .trim()
-                                              .split('\n')
-                                              .map((e) => e.trim())
-                                              .where((e) => e.isNotEmpty)
-                                              .toList()
-                                        : null,
-                                  );
-                            }
-                          },
+                        String? userId;
+                        if (authState is Authenticated) {
+                          userId = authState.user.id;
+                        }
+
+                        // Show confirmation
+                        final confirm = await showDialog<bool>(
+                          context: context,
+                          builder: (context) => AlertDialog(
+                            title: const Text('Confirm Promotion'),
+                            content: Text(
+                              isAdmin
+                                  ? 'Admins can create promotions for free.'
+                                  : 'A fee of ${NumberFormat.currency(symbol: 'TZS ', decimalDigits: 0).format(totalCost)} will be deducted from your wallet.',
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(context, false),
+                                child: const Text('Cancel'),
+                              ),
+                              ElevatedButton(
+                                onPressed: () => Navigator.pop(context, true),
+                                child: const Text('Confirm & Create'),
+                              ),
+                            ],
+                          ),
+                        );
+
+                        if (confirm != true) return;
+
+                        // Show loading indicator
+                        if (!mounted) return;
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false,
+                          builder: (context) => const Center(
+                            child: CircularProgressIndicator(
+                              color: kPrimaryColor,
+                            ),
+                          ),
+                        );
+
+                        await context.read<PromotionCubit>().createNewPromotion(
+                          title: _titleController.text.trim(),
+                          subtitle: _subtitleController.text.trim(),
+                          description: _descriptionController.text.trim(),
+                          startDate: _startDate!,
+                          endDate: _endDate!,
+                          image: _selectedImage,
+                          video: _selectedVideo,
+                          type: _selectedType,
+                          priority: int.tryParse(_priorityController.text) ?? 0,
+                          buttonText:
+                              _buttonTextController.text.trim().isNotEmpty
+                              ? _buttonTextController.text.trim()
+                              : 'Visit',
+                          targetUrl: _targetUrlController.text.trim(),
+                          externalLink: _externalLinkController.text.trim(),
+                          userId: userId,
+                          terms: _termsController.text.trim().isNotEmpty
+                              ? _termsController.text
+                                    .trim()
+                                    .split('\n')
+                                    .map((e) => e.trim())
+                                    .where((e) => e.isNotEmpty)
+                                    .toList()
+                              : null,
+                        );
+
+                        if (mounted && Navigator.canPop(context)) {
+                          Navigator.pop(context); // Close loading indicator
+                        }
+                      }
+                    },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: kPrimaryColor,
                       foregroundColor: Colors.white,

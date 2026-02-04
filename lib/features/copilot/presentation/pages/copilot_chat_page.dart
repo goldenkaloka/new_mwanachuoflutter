@@ -150,7 +150,6 @@ class _CopilotChatPageState extends State<CopilotChatPage> {
         builder: (context, state) {
           return Column(
             children: [
-              const SingleRandomPromotion(),
               Expanded(
                 child: Chat(
                   chatController: _chatController,

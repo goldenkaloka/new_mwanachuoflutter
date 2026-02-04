@@ -224,10 +224,9 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
       debugPrint('👤 Provider ID: ${currentUser.id}');
       debugPrint('📝 Title: $title');
 
-      // Use transaction function to create service with all user's universities
-      // This will also send notifications to users with matching universities
+      // Use atomic RPC for service creation with wallet logic
       final result = await supabaseClient.rpc(
-        'create_service_with_universities',
+        'create_service_atomic',
         params: {
           'p_title': title,
           'p_description': description,
@@ -240,8 +239,8 @@ class ServiceRemoteDataSourceImpl implements ServiceRemoteDataSource {
           'p_contact_phone': contactPhone,
           'p_contact_email': contactEmail,
           'p_availability': availability,
-          'p_metadata': metadata,
           'p_is_global': isGlobal,
+          'p_metadata': metadata,
         },
       );
 

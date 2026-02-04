@@ -88,27 +88,25 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
     String? externalLink,
   }) async {
     try {
-      final response = await supabaseClient
-          .from(DatabaseConstants.promotionsTable)
-          .insert({
-            'title': title,
-            'subtitle': subtitle,
-            'description': description,
-            'start_date': startDate.toIso8601String(),
-            'end_date': endDate.toIso8601String(),
-            'image_url': imageUrl,
-            'target_url': targetUrl,
-            'terms': terms,
-            'type': type,
-            'video_url': videoUrl,
-            'priority': priority,
-            'button_text': buttonText,
-            'user_id': userId,
-            'external_link': externalLink,
-            'created_at': DateTime.now().toIso8601String(),
-          })
-          .select('*, users(full_name, phone_number)')
-          .single();
+      final response = await supabaseClient.rpc(
+        'create_promotion_atomic',
+        params: {
+          'p_title': title,
+          'p_subtitle': subtitle,
+          'p_description': description,
+          'p_start_date': startDate.toIso8601String(),
+          'p_end_date': endDate.toIso8601String(),
+          'p_image_url': imageUrl,
+          'p_target_url': targetUrl,
+          'p_terms': terms ?? [],
+          'p_type': type,
+          'p_video_url': videoUrl,
+          'p_priority': priority,
+          'p_button_text': buttonText,
+          'p_user_id': userId,
+          'p_external_link': externalLink,
+        },
+      );
 
       return PromotionModel.fromJson(response);
     } on PostgrestException catch (e) {

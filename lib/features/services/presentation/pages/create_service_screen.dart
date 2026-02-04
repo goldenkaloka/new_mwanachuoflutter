@@ -14,10 +14,6 @@ import 'package:mwanachuo/features/services/presentation/bloc/service_event.dart
 import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_cubit.dart';
 import 'package:mwanachuo/features/shared/categories/presentation/cubit/category_state.dart';
-import 'package:mwanachuo/core/di/injection_container.dart';
-import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.dart';
-import 'package:mwanachuo/features/subscriptions/domain/usecases/get_seller_subscription.dart';
-import 'package:mwanachuo/features/auth/domain/repositories/auth_repository.dart';
 
 class CreateServiceScreen extends StatefulWidget {
   const CreateServiceScreen({super.key});
@@ -254,7 +250,7 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       return;
     }
 
-    // Check auth and subscription status
+    // Check auth
     final authState = context.read<AuthBloc>().state;
     if (authState is! Authenticated) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -266,97 +262,31 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       return;
     }
 
-    // Show loading while checking subscription
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (_) => const Center(child: CircularProgressIndicator()),
-    );
-
-    final getSubscription = sl<GetSellerSubscription>();
-    final result = await getSubscription(authState.user.id);
-
-    // Close loading
-    if (mounted) Navigator.pop(context);
-
-    bool isSubscriber = false;
-    result.fold(
-      (l) => isSubscriber = false,
-      (s) => isSubscriber = s != null && s.isActive,
-    );
-
-    // Check if user has free listings (Student Offer)
-    final int freeListings = authState.user.freeListingsCount;
-
-    if (isSubscriber || freeListings > 0) {
-      if (freeListings > 0 && !isSubscriber) {
-        // Show free listing confirmation
-        if (!mounted) return;
-        final confirmFree = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Use Free Listing?'),
-            content: Text(
-              'You have $freeListings free listings remaining as a student. Would you like to use one for this service?',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context, false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.pop(context, true),
-                child: const Text('Use Free Listing'),
-              ),
-            ],
-          ),
-        );
-
-        if (confirmFree == true) {
-          // Show loading
-          if (!mounted) return;
-          showDialog(
-            context: context,
-            barrierDismissible: false,
-            builder: (_) => const Center(child: CircularProgressIndicator()),
-          );
-
-          final authRepo = sl<AuthRepository>();
-          final result = await authRepo.consumeFreeListing(authState.user.id);
-
-          if (!mounted) return;
-          Navigator.pop(context); // Close loading
-
-          result.fold(
-            (failure) => ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                content: Text(
-                  'Failed to consume free listing. Please try again.',
-                ),
-              ),
-            ),
-            (_) => _dispatchCreateService(price),
-          );
-          return;
-        }
-      } else {
-        // Business subscriber - post directly
-        _dispatchCreateService(price);
-        return;
-      }
-    }
-
-    // Default: 0.5% Fee Logic
+    // Prepare confirmation message
     final fee = price * 0.005;
-    if (!mounted) return;
+    final int freeListings = authState.user.freeListingsCount;
+    final isStudent = authState.user.userType == 'student';
+    final isAdmin = authState.user.role.value == 'admin';
+
+    String message = '';
+    if (isAdmin) {
+      message = 'Admins can post services for free.';
+    } else if (isStudent && freeListings > 0) {
+      message =
+          'You have $freeListings free listings remaining. This post will be free.';
+    } else if (isStudent) {
+      message =
+          'A 0.5% listing fee of ${fee.toStringAsFixed(0)} TZS will be deducted from your wallet.';
+    } else {
+      message =
+          'A 0.5% listing fee of ${fee.toStringAsFixed(0)} TZS will be deducted from your wallet.';
+    }
 
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Confirm Listing Fee'),
-        content: Text(
-          'You are on a standard plan. A 0.5% listing fee of ${fee.toStringAsFixed(0)} TZS will be deducted from your wallet.\n\nSubscribe to Business Plan for unlimited listings.',
-        ),
+        title: const Text('Confirm Service Listing'),
+        content: Text(message),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -364,45 +294,14 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Pay & Post'),
+            child: const Text('Confirm & Post'),
           ),
         ],
       ),
     );
 
     if (confirm == true) {
-      // Show loading for payment
-      if (!mounted) return;
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const Center(child: CircularProgressIndicator()),
-      );
-
-      final walletRepo = sl<WalletRepository>();
-      final deductResult = await walletRepo.deductBalance(
-        amount: fee,
-        description: 'Service Listing Fee: ${_titleController.text.trim()}',
-      );
-
-      if (!mounted) return;
-      Navigator.pop(context); // Close payment loading
-
-      deductResult.fold(
-        (failure) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text(
-                'Insufficient wallet balance. Please top up your wallet.',
-              ),
-              backgroundColor: Colors.red,
-            ),
-          );
-        },
-        (_) {
-          _dispatchCreateService(price);
-        },
-      );
+      _dispatchCreateService(price);
     }
   }
 
