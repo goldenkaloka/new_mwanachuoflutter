@@ -966,7 +966,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                         if (confirm != true) return;
 
                         // Show loading indicator
-                        if (!mounted) return;
+                        if (!context.mounted) return;
                         showDialog(
                           context: context,
                           barrierDismissible: false,
@@ -977,6 +977,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                           ),
                         );
 
+                        if (!context.mounted) return;
                         await context.read<PromotionCubit>().createNewPromotion(
                           title: _titleController.text.trim(),
                           subtitle: _subtitleController.text.trim(),
@@ -1004,7 +1005,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                               : null,
                         );
 
-                        if (mounted && Navigator.canPop(context)) {
+                        if (context.mounted && Navigator.canPop(context)) {
                           Navigator.pop(context); // Close loading indicator
                         }
                       }
