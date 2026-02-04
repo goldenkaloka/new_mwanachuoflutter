@@ -304,68 +304,71 @@ class _EditProfileViewState extends State<_EditProfileView> {
     final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
       context,
     );
-    return Container(
-      padding: EdgeInsets.fromLTRB(
-        horizontalPadding,
-        screenSize == ScreenSize.expanded ? 24.0 : 48.0,
-        horizontalPadding,
-        ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 8.0,
-          medium: 12.0,
-          expanded: 16.0,
-        ),
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-      ),
-      child: Row(
-        children: [
-          SizedBox(
-            width: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 48.0,
-              medium: 52.0,
-              expanded: 56.0,
-            ),
-            height: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 48.0,
-              medium: 52.0,
-              expanded: 56.0,
-            ),
-            child: IconButton(
-              icon: Icon(Icons.arrow_back, color: primaryTextColor),
-              onPressed: () => Navigator.pop(context),
-              padding: EdgeInsets.zero,
-            ),
+    return SafeArea(
+      bottom: false,
+      child: Container(
+        padding: EdgeInsets.fromLTRB(
+          horizontalPadding,
+          screenSize == ScreenSize.expanded ? 16.0 : 8.0,
+          horizontalPadding,
+          ResponsiveBreakpoints.responsiveValue(
+            context,
+            compact: 8.0,
+            medium: 12.0,
+            expanded: 16.0,
           ),
-          Expanded(
-            child: Text(
-              'Edit Profile',
-              textAlign: TextAlign.center,
-              style: GoogleFonts.plusJakartaSans(
-                color: primaryTextColor,
-                fontSize: ResponsiveBreakpoints.responsiveValue(
-                  context,
-                  compact: 18.0,
-                  medium: 20.0,
-                  expanded: 22.0,
-                ),
-                fontWeight: FontWeight.bold,
-                letterSpacing: -0.015,
+        ),
+        decoration: BoxDecoration(
+          color: Theme.of(context).scaffoldBackgroundColor,
+        ),
+        child: Row(
+          children: [
+            SizedBox(
+              width: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 48.0,
+                medium: 52.0,
+                expanded: 56.0,
+              ),
+              height: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 48.0,
+                medium: 52.0,
+                expanded: 56.0,
+              ),
+              child: IconButton(
+                icon: Icon(Icons.arrow_back, color: primaryTextColor),
+                onPressed: () => Navigator.pop(context),
+                padding: EdgeInsets.zero,
               ),
             ),
-          ),
-          SizedBox(
-            width: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 48.0,
-              medium: 52.0,
-              expanded: 56.0,
+            Expanded(
+              child: Text(
+                'Edit Profile',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.plusJakartaSans(
+                  color: primaryTextColor,
+                  fontSize: ResponsiveBreakpoints.responsiveValue(
+                    context,
+                    compact: 18.0,
+                    medium: 20.0,
+                    expanded: 22.0,
+                  ),
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.015,
+                ),
+              ),
             ),
-          ),
-        ],
+            SizedBox(
+              width: ResponsiveBreakpoints.responsiveValue(
+                context,
+                compact: 48.0,
+                medium: 52.0,
+                expanded: 56.0,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

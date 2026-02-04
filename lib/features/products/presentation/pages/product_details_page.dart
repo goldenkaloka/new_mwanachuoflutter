@@ -521,53 +521,56 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-        child: Container(
-          color: isDarkMode
-              ? kBackgroundColorDark.withValues(alpha: 0.8)
-              : kBackgroundColorLight.withValues(alpha: 0.8),
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            screenSize == ScreenSize.expanded ? 24.0 : 48.0,
-            horizontalPadding,
-            8.0,
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // Back Button
-              _buildAppBarButton(
-                icon: Icons.arrow_back,
-                isDarkMode: isDarkMode,
-                primaryTextColor: primaryTextColor,
-                screenSize: screenSize,
-              ),
-              const Spacer(),
-              // Action Buttons
-              Row(
-                children: [
-                  _buildAppBarButton(
-                    icon: Icons.favorite_border,
-                    isDarkMode: isDarkMode,
-                    primaryTextColor: primaryTextColor,
-                    screenSize: screenSize,
-                  ),
-                  SizedBox(
-                    width: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 12.0,
-                      medium: 16.0,
-                      expanded: 20.0,
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            color: isDarkMode
+                ? kBackgroundColorDark.withValues(alpha: 0.8)
+                : kBackgroundColorLight.withValues(alpha: 0.8),
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              screenSize == ScreenSize.expanded ? 16.0 : 8.0,
+              horizontalPadding,
+              8.0,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Back Button
+                _buildAppBarButton(
+                  icon: Icons.arrow_back,
+                  isDarkMode: isDarkMode,
+                  primaryTextColor: primaryTextColor,
+                  screenSize: screenSize,
+                ),
+                const Spacer(),
+                // Action Buttons
+                Row(
+                  children: [
+                    _buildAppBarButton(
+                      icon: Icons.favorite_border,
+                      isDarkMode: isDarkMode,
+                      primaryTextColor: primaryTextColor,
+                      screenSize: screenSize,
                     ),
-                  ),
-                  _buildAppBarButton(
-                    icon: Icons.share,
-                    isDarkMode: isDarkMode,
-                    primaryTextColor: primaryTextColor,
-                    screenSize: screenSize,
-                  ),
-                ],
-              ),
-            ],
+                    SizedBox(
+                      width: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 12.0,
+                        medium: 16.0,
+                        expanded: 20.0,
+                      ),
+                    ),
+                    _buildAppBarButton(
+                      icon: Icons.share,
+                      isDarkMode: isDarkMode,
+                      primaryTextColor: primaryTextColor,
+                      screenSize: screenSize,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

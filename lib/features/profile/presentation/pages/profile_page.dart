@@ -267,64 +267,67 @@ class _ProfilePageState extends State<ProfilePage> {
     return ClipRect(
       child: BackdropFilter(
         filter: ImageFilter.blur(sigmaX: 5.0, sigmaY: 5.0),
-        child: Container(
-          padding: EdgeInsets.fromLTRB(
-            horizontalPadding,
-            screenSize == ScreenSize.expanded ? 24.0 : 48.0,
-            horizontalPadding,
-            8.0,
-          ),
-          decoration: BoxDecoration(
-            color: Theme.of(
-              context,
-            ).scaffoldBackgroundColor.withValues(alpha: 0.8),
-            border: Border(
-              bottom: BorderSide(
-                color: kPrimaryColor.withValues(alpha: 0.2),
-                width: 1.0,
+        child: SafeArea(
+          bottom: false,
+          child: Container(
+            padding: EdgeInsets.fromLTRB(
+              horizontalPadding,
+              screenSize == ScreenSize.expanded ? 16.0 : 8.0,
+              horizontalPadding,
+              8.0,
+            ),
+            decoration: BoxDecoration(
+              color: Theme.of(
+                context,
+              ).scaffoldBackgroundColor.withValues(alpha: 0.8),
+              border: Border(
+                bottom: BorderSide(
+                  color: kPrimaryColor.withValues(alpha: 0.2),
+                  width: 1.0,
+                ),
               ),
             ),
-          ),
-          child: Row(
-            children: [
-              // Back Button
-              SizedBox(
-                width: 48,
-                height: 48,
-                child: IconButton(
-                  icon: Icon(Icons.arrow_back, color: primaryTextColor),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-              // Title
-              Expanded(
-                child: Text(
-                  'Profile',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
-                    color: primaryTextColor,
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 18.0,
-                      medium: 20.0,
-                      expanded: 22.0,
-                    ),
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.015,
+            child: Row(
+              children: [
+                // Back Button
+                SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: IconButton(
+                    icon: Icon(Icons.arrow_back, color: primaryTextColor),
+                    onPressed: () => Navigator.pop(context),
                   ),
                 ),
-              ),
-              // More Options Button
-              SizedBox(
-                width: 48,
-                child: IconButton(
-                  icon: Icon(Icons.more_vert, color: primaryTextColor),
-                  onPressed: () {
-                    // Handle more options
-                  },
+                // Title
+                Expanded(
+                  child: Text(
+                    'Profile',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.plusJakartaSans(
+                      color: primaryTextColor,
+                      fontSize: ResponsiveBreakpoints.responsiveValue(
+                        context,
+                        compact: 18.0,
+                        medium: 20.0,
+                        expanded: 22.0,
+                      ),
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.015,
+                    ),
+                  ),
                 ),
-              ),
-            ],
+                // More Options Button
+                SizedBox(
+                  width: 48,
+                  child: IconButton(
+                    icon: Icon(Icons.more_vert, color: primaryTextColor),
+                    onPressed: () {
+                      // Handle more options
+                    },
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
