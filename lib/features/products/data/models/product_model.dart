@@ -25,6 +25,7 @@ class ProductModel extends ProductEntity {
     super.updatedAt,
     super.metadata,
     super.oldPrice,
+    super.expiresAt,
   });
 
   /// Create a ProductModel from JSON
@@ -56,6 +57,9 @@ class ProductModel extends ProductEntity {
       oldPrice:
           ((json['metadata'] as Map<String, dynamic>?)?['old_price'] as num?)
               ?.toDouble(),
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'] as String)
+          : null,
     );
   }
 
@@ -82,6 +86,7 @@ class ProductModel extends ProductEntity {
       'review_count': reviewCount,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      'expires_at': expiresAt?.toIso8601String(),
       'metadata': {...?metadata, if (oldPrice != null) 'old_price': oldPrice},
     };
   }

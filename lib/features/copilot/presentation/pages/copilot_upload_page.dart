@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
@@ -145,10 +146,10 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
             child: Container(
               padding: const EdgeInsets.all(32),
               decoration: BoxDecoration(
-                color: const Color(0xFFccfbf1).withValues(alpha: 0.2),
+                color: kPrimaryColor.withValues(alpha: 0.05),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
-                  color: const Color(0xFF0d9488),
+                  color: kPrimaryColor,
                   width: 2,
                   style: BorderStyle.solid,
                 ),
@@ -158,13 +159,13 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0d9488).withValues(alpha: 0.1),
+                      color: kPrimaryColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.cloud_upload,
                       size: 48,
-                      color: Color(0xFF0d9488),
+                      color: kPrimaryColor,
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -174,7 +175,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
                         : _selectedFile!.path.split('/').last,
                     style: Theme.of(context).textTheme.titleMedium?.copyWith(
                       fontWeight: FontWeight.bold,
-                      color: const Color(0xFF0d9488),
+                      color: kPrimaryColor,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -228,7 +229,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [Color(0xFF0d9488), Color(0xFF2dd4bf)],
+                colors: [kPrimaryColor, kPrimaryColorLight],
               ),
               borderRadius: BorderRadius.circular(12),
             ),
@@ -265,7 +266,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
                 ? _uploadFile
                 : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0d9488),
+              backgroundColor: kPrimaryColor,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(vertical: 16),
               shape: RoundedRectangleBorder(
@@ -287,7 +288,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const CircularProgressIndicator(color: Color(0xFF0d9488)),
+          const CircularProgressIndicator(color: kPrimaryColor),
           const SizedBox(height: 24),
           Text(
             'Uploading & Analyzing...',
@@ -307,16 +308,12 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
             width: 200,
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFFccfbf1).withValues(alpha: 0.3),
+              color: kPrimaryColor.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Column(
               children: [
-                const Icon(
-                  Icons.psychology,
-                  color: Color(0xFF0d9488),
-                  size: 32,
-                ),
+                const Icon(Icons.psychology, color: kPrimaryColor, size: 32),
                 const SizedBox(height: 12),
                 Text(
                   'Extracting concepts...',
@@ -342,12 +339,12 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
             Container(
               padding: const EdgeInsets.all(24),
               decoration: BoxDecoration(
-                color: const Color(0xFF0d9488).withValues(alpha: 0.1),
+                color: kPrimaryColor.withValues(alpha: 0.1),
                 shape: BoxShape.circle,
               ),
               child: const Icon(
                 Icons.check_circle,
-                color: Color(0xFF0d9488),
+                color: kPrimaryColor,
                 size: 64,
               ),
             ),
@@ -393,7 +390,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
             ElevatedButton(
               onPressed: () => Navigator.pop(context),
               style: ElevatedButton.styleFrom(
-                backgroundColor: const Color(0xFF0d9488),
+                backgroundColor: kPrimaryColor,
                 foregroundColor: Colors.white,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 32,
@@ -413,7 +410,7 @@ class _CopilotUploadPageState extends State<CopilotUploadPage> {
       padding: const EdgeInsets.symmetric(vertical: 8),
       child: Row(
         children: [
-          Icon(icon, color: const Color(0xFF0d9488), size: 20),
+          Icon(icon, color: kPrimaryColor, size: 20),
           const SizedBox(width: 12),
           Expanded(
             child: Text(

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 // ========================================
 // PRIMARY COLORS
 // ========================================
-const Color kPrimaryColor = Color(0xFF078829); // Main brand green (matching accommodation card price)
-const Color kPrimaryColorDark = Color(0xFF6BD89F); // Darker shade
-const Color kPrimaryColorLight = Color(0xFFB6FCDA); // Lighter shade
+const Color kPrimaryColor = Color(0xFF0D9488); // Main brand teal
+const Color kPrimaryColorDark = Color(0xFF0F766E); // Darker teal
+const Color kPrimaryColorLight = Color(0xFF2DD4BF); // Lighter teal
 
 // ========================================
 // BACKGROUND COLORS
@@ -24,7 +24,9 @@ const Color kTextTertiary = Color(0xFF64748B); // Tertiary text (light mode)
 const Color kTextDisabled = Color(0xFF94A3B8); // Disabled text (light mode)
 
 const Color kTextPrimaryDark = Color(0xFFFFFFFF); // Primary text (dark mode)
-const Color kTextSecondaryDark = Color(0xFFCBD5E1); // Secondary text (dark mode)
+const Color kTextSecondaryDark = Color(
+  0xFFCBD5E1,
+); // Secondary text (dark mode)
 const Color kTextTertiaryDark = Color(0xFF94A3B8); // Tertiary text (dark mode)
 
 // ========================================
@@ -125,11 +127,11 @@ final List<BoxShadow> kShadowXl = [
 // ========================================
 // SPACING (4pt Grid System)
 // ========================================
-const double kSpacingXs = 4.0;   // Tiny gaps (icon-text spacing)
-const double kSpacingSm = 8.0;   // Small gaps (line spacing, chip gaps)
-const double kSpacingMd = 12.0;  // Medium gaps (card content padding)
-const double kSpacingLg = 16.0;  // Default gaps (section padding)
-const double kSpacingXl = 20.0;  // Large gaps (between sections)
+const double kSpacingXs = 4.0; // Tiny gaps (icon-text spacing)
+const double kSpacingSm = 8.0; // Small gaps (line spacing, chip gaps)
+const double kSpacingMd = 12.0; // Medium gaps (card content padding)
+const double kSpacingLg = 16.0; // Default gaps (section padding)
+const double kSpacingXl = 20.0; // Large gaps (between sections)
 const double kSpacing2xl = 24.0; // XL gaps (major sections)
 const double kSpacing3xl = 32.0; // 2XL gaps (screen padding desktop)
 const double kSpacing4xl = 40.0; // 3XL gaps (large separations)
@@ -160,11 +162,11 @@ final kBaseRadius = kBaseRadiusLg; // Default 16px radius
 // ========================================
 // ICON SIZES
 // ========================================
-const double kIconSizeXs = 12.0;  // Tiny icons (badges, inline indicators)
-const double kIconSizeSm = 16.0;  // Small icons (inline with text)
-const double kIconSizeMd = 20.0;  // Medium icons (buttons, list items)
-const double kIconSizeLg = 24.0;  // Large icons (FAB, AppBar, primary actions)
-const double kIconSizeXl = 32.0;  // XL icons (larger touch targets)
+const double kIconSizeXs = 12.0; // Tiny icons (badges, inline indicators)
+const double kIconSizeSm = 16.0; // Small icons (inline with text)
+const double kIconSizeMd = 20.0; // Medium icons (buttons, list items)
+const double kIconSizeLg = 24.0; // Large icons (FAB, AppBar, primary actions)
+const double kIconSizeXl = 32.0; // XL icons (larger touch targets)
 const double kIconSize2xl = 48.0; // 2XL icons (empty states, features)
 const double kIconSize3xl = 64.0; // 3XL icons (hero sections, errors)
 

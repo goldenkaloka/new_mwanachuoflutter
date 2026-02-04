@@ -356,7 +356,7 @@ class _HomePageState extends State<HomePage> {
                             _buildSectionHeader(
                               'Featured Products',
                               Icons.shopping_bag,
-                              const Color(0xFF00897B), // Deep Teal
+                              kPrimaryColor, // Standardized Teal
                               primaryTextColor,
                               screenSize,
                               route: '/all-products',
@@ -371,7 +371,7 @@ class _HomePageState extends State<HomePage> {
                             _buildSectionHeader(
                               'Accommodations',
                               Icons.home,
-                              const Color(0xFF00897B),
+                              kPrimaryColor,
                               primaryTextColor,
                               screenSize,
                               route: '/student-housing',
@@ -493,7 +493,7 @@ class _HomePageState extends State<HomePage> {
                         _buildSectionHeader(
                           'Products',
                           Icons.shopping_bag,
-                          const Color(0xFF00897B), // Deep Teal
+                          kPrimaryColor, // Standardized Teal
                           primaryTextColor,
                           ScreenSize.expanded,
                           route: '/all-products',
@@ -508,7 +508,7 @@ class _HomePageState extends State<HomePage> {
                         _buildSectionHeader(
                           'Accommodations',
                           Icons.home,
-                          const Color(0xFF00897B), // Deep Teal (Standardized)
+                          kPrimaryColor, // Standardized Teal
                           primaryTextColor,
                           ScreenSize.expanded,
                           route: '/student-housing',
@@ -634,7 +634,7 @@ class _HomePageState extends State<HomePage> {
         color: isSelected
             ? (Theme.of(context).brightness == Brightness.dark
                   ? kPrimaryColor.withValues(alpha: 0.2)
-                  : const Color(0xFF078829).withValues(alpha: 0.2))
+                  : kPrimaryColor.withValues(alpha: 0.2))
             : Colors.transparent,
         child: Row(
           children: [
@@ -643,7 +643,7 @@ class _HomePageState extends State<HomePage> {
               color: isSelected
                   ? (Theme.of(context).brightness == Brightness.dark
                         ? kPrimaryColor
-                        : const Color(0xFF078829))
+                        : kPrimaryColor)
                   : color,
             ),
             const SizedBox(width: 16),
@@ -653,7 +653,7 @@ class _HomePageState extends State<HomePage> {
                 color: isSelected
                     ? (Theme.of(context).brightness == Brightness.dark
                           ? kPrimaryColor
-                          : const Color(0xFF078829))
+                          : kPrimaryColor)
                     : color,
                 fontSize: 16,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,

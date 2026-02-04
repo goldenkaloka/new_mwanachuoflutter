@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
 import 'package:mwanachuo/features/copilot/domain/entities/note_entity.dart';
@@ -136,9 +137,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor.withValues(alpha: 0.7),
         border: Border(
-          bottom: BorderSide(
-            color: const Color(0xFF0d9488).withValues(alpha: 0.1),
-          ),
+          bottom: BorderSide(color: kPrimaryColor.withValues(alpha: 0.1)),
         ),
       ),
       child: Column(
@@ -152,12 +151,12 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   border: Border.all(
-                    color: const Color(0xFF0d9488).withValues(alpha: 0.2),
+                    color: kPrimaryColor.withValues(alpha: 0.2),
                     width: 2,
                   ),
                   color: Theme.of(context).cardColor,
                 ),
-                child: const Icon(Icons.person, color: Color(0xFF0d9488)),
+                child: const Icon(Icons.person, color: kPrimaryColor),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -169,7 +168,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                       style: TextStyle(
                         fontSize: 10,
                         fontWeight: FontWeight.bold,
-                        color: const Color(0xFF14b8a6),
+                        color: kPrimaryColor,
                         letterSpacing: 1.2,
                       ),
                     ),
@@ -186,7 +185,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
               IconButton(
                 onPressed: () {},
                 icon: const Icon(Icons.notifications_outlined),
-                color: const Color(0xFF0d9488),
+                color: kPrimaryColor,
               ),
             ],
           ),
@@ -197,12 +196,10 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
             decoration: BoxDecoration(
               color: Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: const Color(0xFF0d9488).withValues(alpha: 0.2),
-              ),
+              border: Border.all(color: kPrimaryColor.withValues(alpha: 0.2)),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF14b8a6).withValues(alpha: 0.1),
+                  color: kPrimaryColor.withValues(alpha: 0.1),
                   blurRadius: 8,
                   offset: const Offset(0, 2),
                 ),
@@ -213,25 +210,25 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
               decoration: InputDecoration(
                 hintText: 'Ask your AI Tutor about anything...',
                 hintStyle: TextStyle(
-                  color: const Color(0xFF0d9488).withValues(alpha: 0.5),
+                  color: kPrimaryColor.withValues(alpha: 0.5),
                   fontSize: 14,
                 ),
                 prefixIcon: const Icon(
                   Icons.psychology_outlined,
-                  color: Color(0xFF0d9488),
+                  color: kPrimaryColor,
                 ),
                 suffixIcon: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     IconButton(
                       icon: const Icon(Icons.camera_alt_outlined),
-                      color: const Color(0xFF0d9488),
+                      color: kPrimaryColor,
                       onPressed: _scanText,
                     ),
                     Container(
                       margin: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF0d9488),
+                        color: kPrimaryColor,
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: GestureDetector(
@@ -285,7 +282,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                   children: [
                     const Icon(
                       Icons.offline_pin_outlined,
-                      color: Color(0xFF0d9488),
+                      color: kPrimaryColor,
                       size: 20,
                     ),
                     const SizedBox(width: 8),
@@ -344,12 +341,10 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
         decoration: BoxDecoration(
           color: Theme.of(context).cardColor,
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: const Color(0xFF0d9488).withValues(alpha: 0.2),
-          ),
+          border: Border.all(color: kPrimaryColor.withValues(alpha: 0.2)),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0d9488).withValues(alpha: 0.05),
+              color: kPrimaryColor.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4),
             ),
@@ -361,12 +356,12 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: const Color(0xFFccfbf1),
+                color: kPrimaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: const Icon(
                 Icons.file_download_done,
-                color: Color(0xFF0f766e),
+                color: kPrimaryColorDark,
                 size: 20,
               ),
             ),
@@ -416,7 +411,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                       },
                       child: const Text(
                         'View All',
-                        style: TextStyle(color: Color(0xFF0d9488)),
+                        style: TextStyle(color: kPrimaryColor),
                       ),
                     ),
                   ],
@@ -428,14 +423,14 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                   decoration: BoxDecoration(
                     gradient: LinearGradient(
                       colors: [
-                        const Color(0xFF0d9488),
-                        const Color(0xFF0d9488).withValues(alpha: 0.8),
+                        kPrimaryColor,
+                        kPrimaryColor.withValues(alpha: 0.8),
                       ],
                     ),
                     borderRadius: BorderRadius.circular(20),
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF0d9488).withValues(alpha: 0.3),
+                        color: kPrimaryColor.withValues(alpha: 0.3),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -474,7 +469,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.white,
-                                foregroundColor: const Color(0xFF0d9488),
+                                foregroundColor: kPrimaryColor,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -549,9 +544,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
       decoration: BoxDecoration(
         color: Theme.of(context).cardColor,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: const Color(0xFF0d9488).withValues(alpha: 0.1),
-        ),
+        border: Border.all(color: kPrimaryColor.withValues(alpha: 0.1)),
         boxShadow: [
           BoxShadow(
             color: Colors.black.withValues(alpha: 0.02),
@@ -567,12 +560,10 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
             height: 48,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: const Color(0xFF0d9488).withValues(alpha: 0.2),
-              ),
-              color: const Color(0xFFccfbf1),
+              border: Border.all(color: kPrimaryColor.withValues(alpha: 0.2)),
+              color: kPrimaryColor.withValues(alpha: 0.1),
             ),
-            child: const Icon(Icons.description, color: Color(0xFF0f766e)),
+            child: const Icon(Icons.description, color: kPrimaryColorDark),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -607,7 +598,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
                     Text(
                       _getTimeAgo(note.createdAt),
                       style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: const Color(0xFF14b8a6).withValues(alpha: 0.7),
+                        color: kPrimaryColor.withValues(alpha: 0.7),
                         fontSize: 10,
                       ),
                     ),
@@ -639,7 +630,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
           IconButton(
             onPressed: () {},
             icon: const Icon(Icons.auto_awesome),
-            color: const Color(0xFF0d9488),
+            color: kPrimaryColor,
           ),
         ],
       ),
@@ -655,7 +646,7 @@ class _CopilotDashboardPageState extends State<CopilotDashboardPage> {
           arguments: {'courseId': widget.courseId},
         );
       },
-      backgroundColor: const Color(0xFF0d9488),
+      backgroundColor: kPrimaryColor,
       extendedIconLabelSpacing: 16,
       extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
       elevation: 12,

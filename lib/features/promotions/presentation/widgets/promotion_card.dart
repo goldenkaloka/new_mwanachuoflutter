@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
 import 'package:mwanachuo/features/promotions/presentation/widgets/animated_promotion_text.dart';
@@ -44,7 +45,7 @@ class PromotionCard extends StatelessWidget {
     LinearGradient(
       begin: Alignment.topLeft,
       end: Alignment.bottomRight,
-      colors: [Colors.teal.shade900, Colors.teal.shade100],
+      colors: [kPrimaryColorDark, kPrimaryColorLight],
     ),
   ];
 

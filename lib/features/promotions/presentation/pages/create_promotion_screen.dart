@@ -12,6 +12,9 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
+import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
+import 'package:mwanachuo/core/constants/database_constants.dart';
+import 'package:intl/intl.dart';
 
 class CreatePromotionScreen extends StatefulWidget {
   const CreatePromotionScreen({super.key});
@@ -85,7 +88,6 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     return BlocConsumer<PromotionCubit, PromotionState>(
       listener: (context, state) {
         if (state is PromotionError) {
-          // Close loading dialog if open
           if (Navigator.canPop(context)) {
             Navigator.of(context).pop();
           }
@@ -101,24 +103,21 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
             ),
           );
         } else if (state is PromotionCreated) {
-          // Close loading dialog
           if (Navigator.canPop(context)) {
             Navigator.of(context).pop();
           }
 
-          // Show success message and pop screen
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
                 'Promotion created successfully!',
                 style: GoogleFonts.plusJakartaSans(),
               ),
-              backgroundColor: Colors.green,
+              backgroundColor: kPrimaryColor,
               duration: const Duration(seconds: 2),
             ),
           );
 
-          // Pop the create screen
           Navigator.of(context).pop();
         }
       },
@@ -131,15 +130,12 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
             builder: (context, screenSize) {
               return Column(
                 children: [
-                  // Top App Bar
                   _buildTopAppBar(
                     context,
                     primaryTextColor,
                     secondaryTextColor,
                     screenSize,
                   ),
-
-                  // Form
                   Expanded(
                     child: SingleChildScrollView(
                       child: ResponsiveContainer(
@@ -155,16 +151,11 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
                                 const SizedBox(height: 24.0),
-
-                                // Promotion Type Toggle
                                 _buildTypeSelector(
                                   primaryTextColor,
                                   borderColor,
                                 ),
-
                                 const SizedBox(height: 24.0),
-
-                                // Media Upload (Image or Video)
                                 if (_selectedType == 'banner')
                                   _buildMediaUpload(
                                     label: 'Upload Promotion Banner',
@@ -191,10 +182,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                     secondaryTextColor: secondaryTextColor,
                                     borderColor: borderColor,
                                   ),
-
                                 const SizedBox(height: 24.0),
-
-                                // Title
                                 TextFormField(
                                   controller: _titleController,
                                   decoration: _buildInputDecoration(
@@ -209,10 +197,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                     return null;
                                   },
                                 ),
-
                                 const SizedBox(height: 20.0),
-
-                                // Subtitle
                                 TextFormField(
                                   controller: _subtitleController,
                                   decoration: _buildInputDecoration(
@@ -221,10 +206,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                     borderColor,
                                   ),
                                 ),
-
                                 const SizedBox(height: 20.0),
-
-                                // Description
                                 TextFormField(
                                   controller: _descriptionController,
                                   maxLines: 4,
@@ -234,10 +216,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                     borderColor,
                                   ),
                                 ),
-
                                 const SizedBox(height: 20.0),
-
-                                // Terms & Conditions
                                 TextFormField(
                                   controller: _termsController,
                                   maxLines: 5,
@@ -247,10 +226,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                     borderColor,
                                   ),
                                 ),
-
                                 const SizedBox(height: 20.0),
-
-                                // Link & Button Text
                                 Row(
                                   children: [
                                     Expanded(
@@ -290,10 +266,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                     ),
                                   ],
                                 ),
-
                                 const SizedBox(height: 20.0),
-
-                                // Priority and Dates
                                 Row(
                                   children: [
                                     Expanded(
@@ -329,7 +302,11 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                     ),
                                   ],
                                 ),
-
+                                const SizedBox(height: 32.0),
+                                _buildSummarySection(
+                                  primaryTextColor,
+                                  screenSize,
+                                ),
                                 const SizedBox(height: 100.0),
                               ],
                             ),
@@ -338,8 +315,6 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                       ),
                     ),
                   ),
-
-                  // Submit Button
                   _buildSubmitButton(context, primaryTextColor, screenSize),
                 ],
               );
@@ -757,136 +732,285 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     );
   }
 
+  Widget _buildSummarySection(Color primaryTextColor, ScreenSize screenSize) {
+    return BlocBuilder<WalletBloc, WalletState>(
+      builder: (context, state) {
+        if (_startDate == null || _endDate == null) {
+          return const SizedBox.shrink();
+        }
+
+        final duration = _endDate!.difference(_startDate!).inDays + 1;
+        final totalCost = duration * DatabaseConstants.promotionPricePerDay;
+        double? currentBalance;
+
+        if (state is WalletLoaded) {
+          currentBalance = state.wallet.balance;
+        }
+
+        final currencyFormatter = NumberFormat.currency(
+          symbol: 'TZS ',
+          decimalDigits: 0,
+        );
+
+        return Container(
+          padding: const EdgeInsets.all(16.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(12.0),
+            border: Border.all(
+              color: Theme.of(context).dividerColor.withAlpha(51),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Promotion Summary',
+                style: TextStyle(
+                  color: primaryTextColor,
+                  fontSize: 16.0,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 16.0),
+              _buildSummaryRow('Duration', '$duration days', primaryTextColor),
+              const SizedBox(height: 8.0),
+              _buildSummaryRow(
+                'Price per day',
+                currencyFormatter.format(
+                  DatabaseConstants.promotionPricePerDay,
+                ),
+                primaryTextColor,
+              ),
+              const Divider(height: 24.0),
+              _buildSummaryRow(
+                'Total Cost',
+                currencyFormatter.format(totalCost),
+                primaryTextColor,
+                isTotal: true,
+              ),
+              if (currentBalance != null) ...[
+                const SizedBox(height: 16.0),
+                _buildSummaryRow(
+                  'Your Balance',
+                  currencyFormatter.format(currentBalance),
+                  currentBalance < totalCost ? Colors.red : Colors.green,
+                ),
+                if (currentBalance < totalCost)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8.0),
+                    child: Text(
+                      'Insufficient balance. Please top up your wallet.',
+                      style: TextStyle(
+                        color: Colors.red[700],
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSummaryRow(
+    String label,
+    String value,
+    Color textColor, {
+    bool isTotal = false,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: textColor.withAlpha(178),
+            fontSize: isTotal ? 16.0 : 14.0,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
+        Text(
+          value,
+          style: TextStyle(
+            color: textColor,
+            fontSize: isTotal ? 16.0 : 14.0,
+            fontWeight: isTotal ? FontWeight.bold : FontWeight.w600,
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildSubmitButton(
     BuildContext context,
     Color primaryTextColor,
     ScreenSize screenSize,
   ) {
-    return Container(
-      padding: EdgeInsets.all(
-        ResponsiveBreakpoints.responsiveHorizontalPadding(context),
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).scaffoldBackgroundColor,
-        border: Border(
-          top: BorderSide(
-            color: Theme.of(context).brightness == Brightness.dark
-                ? Colors.grey[800]!
-                : Colors.grey[200]!,
-            width: 1.0,
+    return BlocBuilder<WalletBloc, WalletState>(
+      builder: (context, walletState) {
+        final duration = (_startDate != null && _endDate != null)
+            ? _endDate!.difference(_startDate!).inDays + 1
+            : 0;
+        final totalCost =
+            (duration > 0 ? duration : 0) *
+            DatabaseConstants.promotionPricePerDay;
+        bool hasSufficientBalance = true;
+
+        if (walletState is WalletLoaded) {
+          hasSufficientBalance = walletState.wallet.balance >= totalCost;
+        }
+
+        return Container(
+          padding: EdgeInsets.all(
+            ResponsiveBreakpoints.responsiveHorizontalPadding(context),
           ),
-        ),
-      ),
-      child: SafeArea(
-        top: false,
-        child: Center(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 600.0),
-            child: SizedBox(
-              width: double.infinity,
-              height: 48.0,
-              child: ElevatedButton(
-                onPressed: () async {
-                  if (_formKey.currentState!.validate()) {
-                    if (_startDate == null || _endDate == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Please select both start and end dates',
-                          ),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                      return;
-                    }
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            border: Border(
+              top: BorderSide(
+                color: Theme.of(context).brightness == Brightness.dark
+                    ? Colors.grey[800]!
+                    : Colors.grey[200]!,
+                width: 1.0,
+              ),
+            ),
+          ),
+          child: SafeArea(
+            top: false,
+            child: Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 600.0),
+                child: SizedBox(
+                  width: double.infinity,
+                  height: 48.0,
+                  child: ElevatedButton(
+                    onPressed: !hasSufficientBalance
+                        ? null
+                        : () async {
+                            if (_formKey.currentState!.validate()) {
+                              if (_selectedImage == null &&
+                                  _selectedVideo == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please select an image or video',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
 
-                    if (_selectedType == 'banner' && _selectedImage == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please upload a banner image'),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                      return;
-                    }
+                              if (_startDate == null || _endDate == null) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text(
+                                      'Please select both start and end dates',
+                                    ),
+                                  ),
+                                );
+                                return;
+                              }
 
-                    if (_selectedType == 'video' && _selectedVideo == null) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Please upload a promotion video'),
-                          backgroundColor: Colors.orange,
-                        ),
-                      );
-                      return;
-                    }
+                              final authState = context.read<AuthBloc>().state;
+                              String? userId;
+                              if (authState is Authenticated) {
+                                userId = authState.user.id;
+                              }
 
-                    // Parse terms from text (split by newlines, filter empty)
-                    final termsText = _termsController.text.trim();
-                    final terms = termsText.isNotEmpty
-                        ? termsText
-                              .split('\n')
-                              .map((t) => t.trim())
-                              .where((t) => t.isNotEmpty)
-                              .toList()
-                        : null;
+                              // Show loading indicator
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (context) => const Center(
+                                  child: CircularProgressIndicator(
+                                    color: kPrimaryColor,
+                                  ),
+                                ),
+                              );
 
-                    // Show loading indicator
-                    showDialog(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (context) => const Center(
-                        child: CircularProgressIndicator(color: kPrimaryColor),
+                              await context
+                                  .read<PromotionCubit>()
+                                  .createNewPromotion(
+                                    title: _titleController.text.trim(),
+                                    subtitle: _subtitleController.text.trim(),
+                                    description: _descriptionController.text
+                                        .trim(),
+                                    startDate: _startDate!,
+                                    endDate: _endDate!,
+                                    image: _selectedImage,
+                                    video: _selectedVideo,
+                                    type: _selectedType,
+                                    priority:
+                                        int.tryParse(
+                                          _priorityController.text,
+                                        ) ??
+                                        0,
+                                    buttonText:
+                                        _buttonTextController.text
+                                            .trim()
+                                            .isNotEmpty
+                                        ? _buttonTextController.text.trim()
+                                        : 'Visit',
+                                    targetUrl: _targetUrlController.text.trim(),
+                                    externalLink: _externalLinkController.text
+                                        .trim(),
+                                    userId: userId,
+                                    terms:
+                                        _termsController.text.trim().isNotEmpty
+                                        ? _termsController.text
+                                              .trim()
+                                              .split('\n')
+                                              .map((e) => e.trim())
+                                              .where((e) => e.isNotEmpty)
+                                              .toList()
+                                        : null,
+                                  );
+                            }
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryColor,
+                      foregroundColor: Colors.white,
+                      disabledBackgroundColor: Colors.grey[400],
+                      disabledForegroundColor: Colors.white70,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(24.0),
                       ),
-                    );
-
-                    // Get current user ID
-                    final authState = context.read<AuthBloc>().state;
-                    String? userId;
-                    if (authState is Authenticated) {
-                      userId = authState.user.id;
-                    }
-
-                    // Create promotion
-                    await context.read<PromotionCubit>().createNewPromotion(
-                      title: _titleController.text.trim(),
-                      subtitle: _subtitleController.text.trim(),
-                      description: _descriptionController.text.trim(),
-                      startDate: _startDate!,
-                      endDate: _endDate!,
-                      image: _selectedImage,
-                      video: _selectedVideo,
-                      type: _selectedType,
-                      priority: int.tryParse(_priorityController.text) ?? 0,
-                      buttonText: _buttonTextController.text.trim().isNotEmpty
-                          ? _buttonTextController.text.trim()
-                          : 'Visit',
-                      targetUrl: _targetUrlController.text.trim(),
-                      externalLink: _externalLinkController.text.trim(),
-                      userId: userId,
-                      terms: terms,
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  foregroundColor: kBackgroundColorDark,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(24.0),
-                  ),
-                ),
-                child: Text(
-                  'Create Promotion',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16.0,
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.1,
+                      elevation: 0,
+                    ),
+                    child: BlocBuilder<PromotionCubit, PromotionState>(
+                      builder: (context, state) {
+                        if (state is PromotionsLoading) {
+                          return const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          );
+                        }
+                        return const Text(
+                          'Create Promotion',
+                          style: TextStyle(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      },
+                    ),
                   ),
                 ),
               ),
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

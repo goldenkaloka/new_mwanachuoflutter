@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 
 /// Modern rounded text field for authentication pages
 /// Matches the design from the reference UI with Deep Teal accent
@@ -51,7 +52,7 @@ class AuthTextField extends StatelessWidget {
             ),
             prefixIcon: Icon(
               prefixIcon,
-              color: const Color(0xFF00897B), // Deep Teal
+              color: kPrimaryColor, // Standardized Teal
               size: 20,
             ),
             suffixIcon: isPassword
@@ -75,7 +76,7 @@ class AuthTextField extends StatelessWidget {
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(30),
               borderSide: const BorderSide(
-                color: Color(0xFF00897B), // Deep Teal
+                color: kPrimaryColor, // Standardized Teal
                 width: 1.5,
               ),
             ),

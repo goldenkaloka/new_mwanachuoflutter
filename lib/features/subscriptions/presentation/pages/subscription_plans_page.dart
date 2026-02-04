@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
@@ -45,7 +46,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                     content: Text(
                       'Payment Initiated! Please check your phone to approve.',
                     ),
-                    backgroundColor: Colors.blue,
+                    backgroundColor: kPrimaryColor,
                     duration: Duration(seconds: 5),
                   ),
                 );
@@ -68,7 +69,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Subscription active!'),
-                    backgroundColor: Colors.green,
+                    backgroundColor: kPrimaryColor,
                   ),
                 );
                 Navigator.of(context).pop();
@@ -144,7 +145,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                             const ListTile(
                               leading: Icon(
                                 Icons.check_circle,
-                                color: Colors.green,
+                                color: kPrimaryColor,
                               ),
                               title: Text('Unlimited Listings'),
                               dense: true,
@@ -153,7 +154,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                             const ListTile(
                               leading: Icon(
                                 Icons.check_circle,
-                                color: Colors.green,
+                                color: kPrimaryColor,
                               ),
                               title: Text('Priority Support'),
                               dense: true,
@@ -162,7 +163,7 @@ class _SubscriptionPlansPageState extends State<SubscriptionPlansPage> {
                             const ListTile(
                               leading: Icon(
                                 Icons.check_circle,
-                                color: Colors.green,
+                                color: kPrimaryColor,
                               ),
                               title: Text('Analytics Dashboard'),
                               dense: true,

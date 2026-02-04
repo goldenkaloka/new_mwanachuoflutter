@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
 // import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_state.dart'; // Removed
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:intl/intl.dart';
 
 class WalletPage extends StatefulWidget {
@@ -125,14 +126,17 @@ class _WalletPageState extends State<WalletPage>
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF008080), Color(0xFF004D4D)], // Teal gradient
+          colors: [
+            kPrimaryColor,
+            kPrimaryColorDark,
+          ], // Standardized Teal gradient
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.teal.withValues(alpha: 0.3),
+            color: kPrimaryColor.withValues(alpha: 0.3),
             blurRadius: 10,
             offset: const Offset(0, 5),
           ),
@@ -160,7 +164,7 @@ class _WalletPageState extends State<WalletPage>
             label: const Text('Top Up'),
             style: ElevatedButton.styleFrom(
               backgroundColor: Colors.white,
-              foregroundColor: Colors.teal,
+              foregroundColor: kPrimaryColor,
               padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(30),
@@ -211,11 +215,11 @@ class _WalletPageState extends State<WalletPage>
           child: ListTile(
             leading: CircleAvatar(
               backgroundColor: isCredit
-                  ? Colors.green.withValues(alpha: 0.1)
+                  ? kPrimaryColor.withValues(alpha: 0.1)
                   : Colors.red.withValues(alpha: 0.1),
               child: Icon(
                 isCredit ? Icons.arrow_downward : Icons.arrow_upward,
-                color: isCredit ? Colors.green : Colors.red,
+                color: isCredit ? kPrimaryColor : Colors.red,
               ),
             ),
             title: Text(
@@ -231,7 +235,7 @@ class _WalletPageState extends State<WalletPage>
             trailing: Text(
               '${isCredit ? '+' : ''}${amountFormat.format(transaction.amount)}',
               style: TextStyle(
-                color: isCredit ? Colors.green : Colors.red,
+                color: isCredit ? kPrimaryColor : Colors.red,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
               ),

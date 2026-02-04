@@ -8,16 +8,19 @@ import 'package:mwanachuo/features/promotions/data/datasources/promotion_remote_
 import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
 import 'package:mwanachuo/features/promotions/domain/repositories/promotion_repository.dart';
 import 'package:mwanachuo/features/shared/media/domain/usecases/upload_image.dart';
+import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.dart';
 
 class PromotionRepositoryImpl implements PromotionRepository {
   final PromotionRemoteDataSource remoteDataSource;
   final NetworkInfo networkInfo;
   final UploadImage uploadImage;
+  final WalletRepository walletRepository;
 
   PromotionRepositoryImpl({
     required this.remoteDataSource,
     required this.networkInfo,
     required this.uploadImage,
+    required this.walletRepository,
   });
 
   @override
@@ -76,6 +79,23 @@ class PromotionRepositoryImpl implements PromotionRepository {
     }
 
     try {
+      // Calculate cost
+      final duration = endDate.difference(startDate).inDays + 1;
+      final totalCost = duration * DatabaseConstants.promotionPricePerDay;
+
+      // Deduct balance first
+      if (userId != null) {
+        final deductionResult = await walletRepository.deductBalance(
+          amount: totalCost,
+          description: 'Promotion: $title ($duration days)',
+        );
+
+        final failure = deductionResult.fold((f) => f, (_) => null);
+        if (failure != null) {
+          return Left(failure);
+        }
+      }
+
       String? imageUrl;
       String? videoUrl;
 
@@ -83,11 +103,19 @@ class PromotionRepositoryImpl implements PromotionRepository {
         final uploadResult = await uploadImage(
           UploadImageParams(
             imageFile: image,
-            bucket: DatabaseConstants.promotionImagesBucket,
+            bucket: DatabaseConstants.promotionBucket,
             folder: 'promotions',
           ),
         );
 
+        if (uploadResult.isLeft()) {
+          return Left(
+            uploadResult.fold(
+              (failure) => failure,
+              (media) => ServerFailure(''),
+            ),
+          );
+        }
         imageUrl = uploadResult.fold((failure) => null, (media) => media.url);
       }
 
@@ -95,11 +123,19 @@ class PromotionRepositoryImpl implements PromotionRepository {
         final uploadResult = await uploadImage(
           UploadImageParams(
             imageFile: video,
-            bucket: 'promotion_videos',
+            bucket: DatabaseConstants.promotionBucket,
             folder: 'promotions',
           ),
         );
 
+        if (uploadResult.isLeft()) {
+          return Left(
+            uploadResult.fold(
+              (failure) => failure,
+              (media) => ServerFailure(''),
+            ),
+          );
+        }
         videoUrl = uploadResult.fold((failure) => null, (media) => media.url);
       }
 

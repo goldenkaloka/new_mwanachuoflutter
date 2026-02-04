@@ -2,6 +2,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/services/push_notification_service.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/registration_type_screen.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
@@ -159,7 +160,7 @@ class _LoginPageState extends State<LoginPage> {
                                           _rememberMe = value ?? false;
                                         });
                                       },
-                                      activeColor: const Color(0xFF00897B),
+                                      activeColor: kPrimaryColor,
                                       side: BorderSide(
                                         color: isDarkMode
                                             ? Colors.grey[600]!
@@ -203,17 +204,14 @@ class _LoginPageState extends State<LoginPage> {
                                   ? null
                                   : _handleLogin,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(
-                                  0xFF00897B,
-                                ), // Deep Teal
+                                backgroundColor: kPrimaryColor,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(30),
                                 ),
                                 elevation: 0,
-                                disabledBackgroundColor: const Color(
-                                  0xFF00897B,
-                                ).withValues(alpha: 0.5),
+                                disabledBackgroundColor: kPrimaryColor
+                                    .withValues(alpha: 0.5),
                               ),
                               child: authState is AuthLoading
                                   ? const SizedBox(
@@ -309,9 +307,7 @@ class _LoginPageState extends State<LoginPage> {
                                   TextSpan(
                                     text: 'Sign up',
                                     style: GoogleFonts.plusJakartaSans(
-                                      color: const Color(
-                                        0xFF00897B,
-                                      ), // Deep Teal
+                                      color: kPrimaryColor,
                                       fontWeight: FontWeight.bold,
                                     ),
                                     recognizer: TapGestureRecognizer()

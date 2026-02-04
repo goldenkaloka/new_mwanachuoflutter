@@ -793,6 +793,7 @@ void _initPromotionsFeature() {
       remoteDataSource: sl(),
       networkInfo: sl(),
       uploadImage: sl(),
+      walletRepository: sl(),
     ),
   );
 

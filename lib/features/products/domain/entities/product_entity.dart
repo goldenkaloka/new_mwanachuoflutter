@@ -25,6 +25,8 @@ class ProductEntity extends Equatable {
   final Map<String, dynamic>? metadata;
   final double? oldPrice;
 
+  final DateTime? expiresAt;
+
   const ProductEntity({
     required this.id,
     required this.title,
@@ -48,6 +50,7 @@ class ProductEntity extends Equatable {
     this.updatedAt,
     this.metadata,
     this.oldPrice,
+    this.expiresAt,
   });
 
   int? get discountPercentage {
@@ -79,5 +82,6 @@ class ProductEntity extends Equatable {
     createdAt,
     updatedAt,
     metadata,
+    expiresAt,
   ];
 }

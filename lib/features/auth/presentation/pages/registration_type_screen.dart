@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/business_registration_screen.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/student_registration_screen.dart';
@@ -56,7 +57,7 @@ class RegistrationTypeScreen extends StatelessWidget {
                         description:
                             'Connect with students, buy & sell products, find accommodation, and more.',
                         icon: Icons.school_outlined,
-                        color: const Color(0xFF00897B),
+                        color: kPrimaryColor,
                         onTap: () {
                           Navigator.push(
                             context,

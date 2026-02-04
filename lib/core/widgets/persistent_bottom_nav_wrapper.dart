@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 
 /// Wrapper widget that provides persistent bottom navigation bar across main pages
@@ -128,7 +129,7 @@ class _PersistentBottomNavWrapperState
       return widget.child;
     }
 
-    const activeColor = Color(0xFF078829);
+    final activeColor = kPrimaryColor;
 
     // Watch AuthBloc to rebuild nav items when user role changes
     final authState = context.watch<AuthBloc>().state;

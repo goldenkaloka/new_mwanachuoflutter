@@ -30,6 +30,7 @@ import 'package:mwanachuo/features/shared/categories/presentation/cubit/category
 import 'package:mwanachuo/features/shared/notifications/presentation/pages/notifications_page.dart';
 import 'package:mwanachuo/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:mwanachuo/features/wallet/presentation/pages/wallet_page.dart';
+import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
 // ... (Logic to skip other imports if using replace_file_content for import replacement is complex, I will just do exact match replace for import line and separate for route)
 
 // Wait, I can use multi_replace for main_app.dart or just replace_file_content if usage and import are close? No they are far.
@@ -224,6 +225,9 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         BlocProvider(create: (context) => sl<AuthBloc>()),
         BlocProvider(create: (context) => sl<ProfileBloc>()),
         BlocProvider(create: (context) => sl<PromotionCubit>()),
+        BlocProvider(
+          create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
+        ),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,

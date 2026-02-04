@@ -5,6 +5,7 @@ import 'package:flutter_chat_ui/flutter_chat_ui.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
 import 'package:uuid/uuid.dart';
 import 'package:mwanachuo/features/promotions/presentation/widgets/single_random_promotion.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 
 class CopilotChatPage extends StatefulWidget {
   final String courseId;
@@ -130,7 +131,7 @@ class _CopilotChatPageState extends State<CopilotChatPage> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF0d9488),
+        backgroundColor: kPrimaryColor,
         foregroundColor: Colors.white,
         elevation: 1,
       ),

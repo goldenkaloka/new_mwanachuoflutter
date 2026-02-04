@@ -259,7 +259,7 @@ class AccommodationRemoteDataSourceImpl
       // Use transaction function to create accommodation with all user's universities
       // This will also send notifications to users with matching universities
       final result = await supabaseClient.rpc(
-        'create_accommodation_with_universities',
+        'create_accommodation_atomic',
         params: {
           'p_name': name,
           'p_description': description,
@@ -274,12 +274,14 @@ class AccommodationRemoteDataSourceImpl
           'p_amenities': amenities,
           'p_bedrooms': bedrooms,
           'p_bathrooms': bathrooms,
-          'p_metadata': metadata,
+          'p_university_ids': [], // Handled by backend if needed
           'p_is_global': isGlobal,
+          'p_metadata': metadata,
         },
       );
 
-      final accommodationId = result as String;
+      final dynamic responseData = result;
+      final accommodationId = responseData['id'] as String;
       debugPrint('✅ Accommodation created with ID: $accommodationId');
       debugPrint('📢 Notifications sent to users with matching universities');
 

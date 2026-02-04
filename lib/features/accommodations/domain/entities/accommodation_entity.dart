@@ -27,6 +27,8 @@ class AccommodationEntity extends Equatable {
   final DateTime? updatedAt;
   final Map<String, dynamic>? metadata;
 
+  final DateTime? expiresAt;
+
   const AccommodationEntity({
     required this.id,
     required this.name,
@@ -53,35 +55,36 @@ class AccommodationEntity extends Equatable {
     required this.createdAt,
     this.updatedAt,
     this.metadata,
+    this.expiresAt,
   });
 
   @override
   List<Object?> get props => [
-        id,
-        name,
-        description,
-        price,
-        priceType,
-        roomType,
-        images,
-        ownerId,
-        ownerName,
-        ownerAvatar,
-        universityIds,
-        location,
-        contactPhone,
-        contactEmail,
-        amenities,
-        bedrooms,
-        bathrooms,
-        isActive,
-        isFeatured,
-        viewCount,
-        rating,
-        reviewCount,
-        createdAt,
-        updatedAt,
-        metadata,
-      ];
+    id,
+    name,
+    description,
+    price,
+    priceType,
+    roomType,
+    images,
+    ownerId,
+    ownerName,
+    ownerAvatar,
+    universityIds,
+    location,
+    contactPhone,
+    contactEmail,
+    amenities,
+    bedrooms,
+    bathrooms,
+    isActive,
+    isFeatured,
+    viewCount,
+    rating,
+    reviewCount,
+    createdAt,
+    updatedAt,
+    metadata,
+    expiresAt,
+  ];
 }
-

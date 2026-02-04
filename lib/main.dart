@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'dart:io' show Platform;
@@ -117,12 +118,12 @@ class _MwanachuoAppWrapperState extends State<MwanachuoAppWrapper> {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                CircularProgressIndicator(color: Color(0xFF008080)),
+                CircularProgressIndicator(color: kPrimaryColor),
                 SizedBox(height: 24),
                 Text(
                   'Starting Mwanachuo...',
                   style: TextStyle(
-                    color: Color(0xFF008080),
+                    color: kPrimaryColor,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

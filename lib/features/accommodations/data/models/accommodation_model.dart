@@ -27,6 +27,7 @@ class AccommodationModel extends AccommodationEntity {
     required super.createdAt,
     super.updatedAt,
     super.metadata,
+    super.expiresAt,
   });
 
   factory AccommodationModel.fromJson(Map<String, dynamic> json) {
@@ -56,6 +57,9 @@ class AccommodationModel extends AccommodationEntity {
       createdAt: DateTime.parse(json['created_at'] as String),
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
+          : null,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'] as String)
           : null,
       metadata: json['metadata'] as Map<String, dynamic>?,
     );
@@ -87,6 +91,7 @@ class AccommodationModel extends AccommodationEntity {
       'review_count': reviewCount,
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
+      'expires_at': expiresAt?.toIso8601String(),
       'metadata': metadata,
     };
   }

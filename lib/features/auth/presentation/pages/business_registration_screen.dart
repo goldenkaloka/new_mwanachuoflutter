@@ -212,7 +212,7 @@ class _BusinessRegistrationScreenState
                               labelText: 'Business Category',
                               prefixIcon: const Icon(
                                 Icons.category_outlined,
-                                color: Color(0xFF00897B),
+                                color: kPrimaryColor,
                               ),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
@@ -351,7 +351,7 @@ class _BusinessRegistrationScreenState
                                       TextSpan(
                                         text: 'Privacy Policy',
                                         style: const TextStyle(
-                                          color: Color(0xFF00897B),
+                                          color: kPrimaryColor,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         recognizer: TapGestureRecognizer()
@@ -374,7 +374,7 @@ class _BusinessRegistrationScreenState
                                   ? null
                                   : _handleSignup,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00897B),
+                                backgroundColor: kPrimaryColor,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),

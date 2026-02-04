@@ -387,7 +387,7 @@ class ServiceCard extends StatelessWidget {
                           price,
                           style: Theme.of(context).textTheme.titleSmall
                               ?.copyWith(
-                                color: const Color(0xFF078829),
+                                color: kPrimaryColor,
                                 fontWeight: FontWeight.w800,
                                 fontSize: 15,
                               ),
@@ -567,7 +567,7 @@ class AccommodationCard extends StatelessWidget {
                         price,
                         style: Theme.of(context).textTheme.titleMedium
                             ?.copyWith(
-                              color: const Color(0xFF078829),
+                              color: kPrimaryColor,
                               fontWeight: FontWeight.w800,
                               fontSize: 15,
                             ),

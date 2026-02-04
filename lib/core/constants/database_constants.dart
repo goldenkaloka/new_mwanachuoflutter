@@ -23,5 +23,8 @@ class DatabaseConstants {
   static const String serviceImagesBucket = 'services';
   static const String accommodationImagesBucket = 'accommodations';
   static const String profileImagesBucket = 'avatars';
-  static const String promotionImagesBucket = 'promotions';
+  static const String promotionBucket = 'promotions';
+
+  // Pricing
+  static const double promotionPricePerDay = 500.0;
 }

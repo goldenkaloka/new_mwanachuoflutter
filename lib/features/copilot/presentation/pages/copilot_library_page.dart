@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
 import 'package:mwanachuo/features/copilot/domain/entities/note_entity.dart';
@@ -132,7 +133,7 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
             arguments: {'courseId': widget.courseId},
           );
         },
-        backgroundColor: const Color(0xFF0d9488),
+        backgroundColor: kPrimaryColor,
         extendedIconLabelSpacing: 16,
         extendedPadding: const EdgeInsets.symmetric(horizontal: 24),
         elevation: 12,
@@ -160,24 +161,24 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
             label: const Text('All Notes'),
             selected: _currentFilter == null,
             onSelected: (_) => _changeFilter(null),
-            selectedColor: const Color(0xFFccfbf1),
-            checkmarkColor: const Color(0xFF0d9488),
+            selectedColor: kPrimaryColor.withValues(alpha: 0.1),
+            checkmarkColor: kPrimaryColor,
           ),
           const SizedBox(width: 8),
           FilterChip(
             label: const Text('Official'),
             selected: _currentFilter == 'official',
             onSelected: (_) => _changeFilter('official'),
-            selectedColor: const Color(0xFFccfbf1),
-            checkmarkColor: const Color(0xFF0d9488),
+            selectedColor: kPrimaryColor.withValues(alpha: 0.1),
+            checkmarkColor: kPrimaryColor,
           ),
           const SizedBox(width: 8),
           FilterChip(
             label: const Text('My Notes'),
             selected: _currentFilter == 'my_notes',
             onSelected: (_) => _changeFilter('my_notes'),
-            selectedColor: const Color(0xFFccfbf1),
-            checkmarkColor: const Color(0xFF0d9488),
+            selectedColor: kPrimaryColor.withValues(alpha: 0.1),
+            checkmarkColor: kPrimaryColor,
           ),
         ],
       ),
@@ -256,7 +257,7 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
                               _getTimeAgo(note.createdAt),
                               style: Theme.of(context).textTheme.bodySmall
                                   ?.copyWith(
-                                    color: const Color(0xFF14b8a6),
+                                    color: kPrimaryColor.withValues(alpha: 0.7),
                                     fontSize: 10,
                                   ),
                             ),
@@ -281,7 +282,7 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
                         vertical: 4,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFccfbf1),
+                        color: kPrimaryColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                       ),
                       child: const Text(
@@ -289,7 +290,7 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
                         style: TextStyle(
                           fontSize: 10,
                           fontWeight: FontWeight.bold,
-                          color: Color(0xFF0f766e),
+                          color: kPrimaryColorDark,
                         ),
                       ),
                     ),
@@ -366,7 +367,7 @@ class _CopilotLibraryPageState extends State<CopilotLibraryPage> {
                     ),
                     decoration: BoxDecoration(
                       gradient: const LinearGradient(
-                        colors: [Color(0xFF0d9488), Color(0xFF2dd4bf)],
+                        colors: [kPrimaryColor, kPrimaryColorLight],
                       ),
                       borderRadius: BorderRadius.circular(6),
                     ),

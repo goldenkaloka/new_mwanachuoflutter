@@ -316,7 +316,7 @@ class _DashboardViewState extends State<_DashboardView> {
                                   content: Text(
                                     'Payment initiated! Check your phone for the prompt.',
                                   ),
-                                  backgroundColor: Colors.green,
+                                  backgroundColor: kPrimaryColor,
                                 ),
                               );
                             }
@@ -334,10 +334,10 @@ class _DashboardViewState extends State<_DashboardView> {
                                   margin: const EdgeInsets.only(bottom: 16),
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
+                                    gradient: LinearGradient(
                                       colors: [
-                                        Color(0xFF008080),
-                                        Color(0xFF004D4D),
+                                        kPrimaryColor,
+                                        kPrimaryColorDark,
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -420,10 +420,10 @@ class _DashboardViewState extends State<_DashboardView> {
                                   margin: const EdgeInsets.only(bottom: 16),
                                   padding: const EdgeInsets.all(20),
                                   decoration: BoxDecoration(
-                                    gradient: const LinearGradient(
+                                    gradient: LinearGradient(
                                       colors: [
-                                        Color(0xFF008080),
-                                        Color(0xFF004D4D),
+                                        kPrimaryColor,
+                                        kPrimaryColorDark,
                                       ],
                                       begin: Alignment.topLeft,
                                       end: Alignment.bottomRight,
@@ -431,7 +431,7 @@ class _DashboardViewState extends State<_DashboardView> {
                                     borderRadius: BorderRadius.circular(16),
                                     boxShadow: [
                                       BoxShadow(
-                                        color: Colors.teal.withValues(
+                                        color: kPrimaryColor.withValues(
                                           alpha: 0.3,
                                         ),
                                         blurRadius: 8,
@@ -481,7 +481,7 @@ class _DashboardViewState extends State<_DashboardView> {
                                             label: const Text('Top Up'),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor: Colors.white,
-                                              foregroundColor: Colors.teal,
+                                              foregroundColor: kPrimaryColor,
                                               padding:
                                                   const EdgeInsets.symmetric(
                                                     horizontal: 16,
@@ -691,9 +691,7 @@ class _DashboardViewState extends State<_DashboardView> {
                     ),
                     child: Icon(
                       activity['icon'] as IconData,
-                      color: isDarkMode
-                          ? kPrimaryColor
-                          : const Color(0xFF078829),
+                      color: isDarkMode ? kPrimaryColor : kPrimaryColor,
                       size: 20,
                     ),
                   ),

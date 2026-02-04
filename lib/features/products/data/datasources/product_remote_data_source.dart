@@ -341,7 +341,7 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
       // Use transaction function to create product with all user's universities
       // This will also send notifications to users with matching universities
       final result = await supabaseClient.rpc(
-        'create_product_with_universities',
+        'create_product_atomic',
         params: {
           'p_title': title,
           'p_description': description,
@@ -351,13 +351,16 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           'p_images': imageUrls,
           'p_seller_id': currentUser.id,
           'p_location': location,
+          'p_university_ids':
+              [], // Handled by backend if needed, but parameter is required
+          'p_is_global': isGlobal,
           'p_metadata': {...?metadata, 'old_price': oldPrice}
             ..removeWhere((_, value) => value == null),
-          'p_is_global': isGlobal,
         },
       );
 
-      final productId = result as String;
+      final dynamic responseData = result;
+      final productId = responseData['id'] as String;
       debugPrint('✅ Product created with ID: $productId');
       debugPrint('📢 Notifications sent to users with matching universities');
 

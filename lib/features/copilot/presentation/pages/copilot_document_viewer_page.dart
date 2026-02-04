@@ -2,6 +2,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/bloc.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:syncfusion_flutter_pdfviewer/pdfviewer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -232,7 +233,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
   Widget _buildConceptsBar(CopilotNoteDetailsLoaded state) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      color: const Color(0xFFccfbf1).withValues(alpha: 0.3),
+      color: kPrimaryColor.withValues(alpha: 0.1),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -324,7 +325,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
             icon: const Icon(Icons.open_in_new),
             label: const Text('Open with External App'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0d9488),
+              backgroundColor: kPrimaryColor,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             ),
@@ -342,11 +343,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Icon(
-            _getFileIcon(mimeType),
-            size: 84,
-            color: const Color(0xFF0d9488),
-          ),
+          Icon(_getFileIcon(mimeType), size: 84, color: kPrimaryColor),
           const SizedBox(height: 24),
           const Text(
             'Open this file for viewing',
@@ -363,7 +360,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
             icon: const Icon(Icons.chrome_reader_mode),
             label: const Text('Open in Document Viewer'),
             style: ElevatedButton.styleFrom(
-              backgroundColor: const Color(0xFF0d9488),
+              backgroundColor: kPrimaryColor,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
               shape: RoundedRectangleBorder(
@@ -406,11 +403,11 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             gradient: const LinearGradient(
-              colors: [Color(0xFF0d9488), Color(0xFF2dd4bf)],
+              colors: [kPrimaryColor, kPrimaryColorLight],
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF14b8a6).withValues(alpha: 0.2),
+                color: kPrimaryColor.withValues(alpha: 0.2),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -494,7 +491,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
                 onPressed: () => _submitQuestion(_questionController.text),
                 icon: const Icon(Icons.send),
                 style: IconButton.styleFrom(
-                  backgroundColor: const Color(0xFF0d9488),
+                  backgroundColor: kPrimaryColor,
                   foregroundColor: Colors.white,
                 ),
               ),
@@ -513,7 +510,7 @@ class _CopilotDocumentViewerPageState extends State<CopilotDocumentViewerPage> {
         constraints: const BoxConstraints(maxWidth: 280),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: msg.isUser ? const Color(0xFF0d9488) : const Color(0xFFf3f4f6),
+          color: msg.isUser ? kPrimaryColor : const Color(0xFFf3f4f6),
           borderRadius: BorderRadius.only(
             topLeft: const Radius.circular(12),
             topRight: const Radius.circular(12),

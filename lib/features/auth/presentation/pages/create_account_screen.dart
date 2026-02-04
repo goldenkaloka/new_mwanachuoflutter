@@ -242,7 +242,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                       TextSpan(
                                         text: 'Privacy Policy',
                                         style: const TextStyle(
-                                          color: Color(0xFF00897B),
+                                          color: kPrimaryColor,
                                           fontWeight: FontWeight.bold,
                                         ),
                                         recognizer: TapGestureRecognizer()
@@ -265,7 +265,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   ? null
                                   : _handleSignup,
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF00897B),
+                                backgroundColor: kPrimaryColor,
                                 foregroundColor: Colors.white,
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(16),
@@ -310,7 +310,7 @@ class _CreateAccountScreenState extends State<CreateAccountScreen> {
                                   TextSpan(
                                     text: 'Log In',
                                     style: const TextStyle(
-                                      color: Color(0xFF00897B),
+                                      color: kPrimaryColor,
                                       fontWeight: FontWeight.bold,
                                     ),
                                     recognizer: TapGestureRecognizer()
