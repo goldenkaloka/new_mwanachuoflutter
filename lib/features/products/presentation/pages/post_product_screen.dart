@@ -47,6 +47,32 @@ class _PostProductScreenState extends State<_PostProductScreenContent> {
   String? _selectedCategory;
   String? _selectedCondition;
   final List<File> _selectedImages = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAccess();
+  }
+
+  void _checkAccess() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+
+      final authState = context.read<AuthBloc>().state;
+      if (authState is Authenticated) {
+        if (authState.user.userType == 'student') {
+          Navigator.of(context).pop();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Students cannot post products.'),
+              backgroundColor: Colors.orange,
+            ),
+          );
+        }
+      }
+    });
+  }
+
   Future<void> _handlePostProduct() async {
     // Validate all required fields
     if (_titleController.text.trim().isEmpty) {

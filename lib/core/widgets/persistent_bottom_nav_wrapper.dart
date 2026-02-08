@@ -67,13 +67,14 @@ class _PersistentBottomNavWrapperState
       newIndex = 0;
     } else if (routeName == '/listings' || routeName == '/browse-listings') {
       newIndex = 1;
+    } else if (routeName == '/food-dashboard') {
+      newIndex = 2;
     } else if (routeName == '/copilot') {
-      // If business user somehow gets here, we might map it to something else or just keep it
-      newIndex = isBusiness ? null : 2;
+      newIndex = 3; // Copilot moved to 3
     } else if (routeName == '/dashboard') {
-      newIndex = isBusiness ? 2 : 3;
+      newIndex = isBusiness ? 4 : null;
     } else if (routeName == '/profile') {
-      newIndex = isBusiness ? 3 : 4;
+      newIndex = isBusiness ? 5 : 4;
     }
 
     if (newIndex != null && newIndex != _selectedIndex) {
@@ -97,19 +98,19 @@ class _PersistentBottomNavWrapperState
     } else if (index == 1) {
       Navigator.pushNamed(context, '/listings', arguments: null);
     } else if (index == 2) {
+      Navigator.pushNamed(context, '/food-dashboard');
+    } else if (index == 3) {
+      Navigator.pushNamed(context, '/copilot');
+    } else if (index == 4) {
       if (isBusiness) {
         Navigator.pushNamed(context, '/dashboard');
       } else {
-        Navigator.pushNamed(context, '/copilot');
+        Navigator.pushNamed(context, '/profile');
       }
-    } else if (index == 3) {
+    } else if (index == 5) {
       if (isBusiness) {
         Navigator.pushNamed(context, '/profile');
-      } else {
-        Navigator.pushNamed(context, '/dashboard');
       }
-    } else if (index == 4) {
-      Navigator.pushNamed(context, '/profile');
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -240,44 +241,47 @@ class _PersistentBottomNavWrapperState
         activeIcon: Icons.view_list_rounded,
         label: 'Listings',
       ),
+      buildNavItem(
+        index: 2,
+        icon: Icons.delivery_dining_outlined,
+        activeIcon: Icons.delivery_dining,
+        label: 'Delivery',
+      ),
+      buildNavItem(
+        index: 3,
+        icon: Icons.auto_awesome_outlined,
+        activeIcon: Icons.auto_awesome,
+        label: 'Copilot',
+      ),
     ];
 
-    if (!isBusiness) {
+    if (isBusiness) {
       items.add(
         buildNavItem(
-          index: 2,
-          icon: Icons.auto_awesome_outlined,
-          activeIcon: Icons.auto_awesome,
-          label: 'Copilot',
+          index: 4,
+          icon: Icons.dashboard_outlined,
+          activeIcon: Icons.dashboard_rounded,
+          label: 'Dashboard',
+        ),
+      );
+      items.add(
+        buildNavItem(
+          index: 5,
+          icon: Icons.person_outline_rounded,
+          activeIcon: Icons.person_rounded,
+          label: 'Profile',
+        ),
+      );
+    } else {
+      items.add(
+        buildNavItem(
+          index: 4,
+          icon: Icons.person_outline_rounded,
+          activeIcon: Icons.person_rounded,
+          label: 'Profile',
         ),
       );
     }
-
-    // Dashboard
-    // If not business, Dashboard is index 3.
-    // If business, Dashboard is index 2.
-    // However, the `buildNavItem` checks `required int index` against `_selectedIndex`.
-    // My _onItemTapped sets _selectedIndex to 0, 1, 2, 3...
-    // So if isBusiness, dashboard is at index 2.
-    int dashboardIndex = isBusiness ? 2 : 3;
-    items.add(
-      buildNavItem(
-        index: dashboardIndex,
-        icon: Icons.dashboard_outlined,
-        activeIcon: Icons.dashboard_rounded,
-        label: 'Dashboard',
-      ),
-    );
-
-    int profileIndex = isBusiness ? 3 : 4;
-    items.add(
-      buildNavItem(
-        index: profileIndex,
-        icon: Icons.person_outline_rounded,
-        activeIcon: Icons.person_rounded,
-        label: 'Profile',
-      ),
-    );
 
     return items;
   }

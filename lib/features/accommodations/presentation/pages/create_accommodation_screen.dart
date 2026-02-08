@@ -70,28 +70,24 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
         final userRole = authState.user.role.value;
+        final userType = authState.user.userType;
 
-        if (userRole == 'buyer') {
+        if (userRole == 'buyer' || userType == 'student') {
           debugPrint(
-            '❌ Buyer attempting to create accommodation - redirecting',
+            '❌ Restricted user attempting to create accommodation - redirecting',
           );
           Navigator.of(context).pop();
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'You need to become a seller to list accommodations',
+                userType == 'student'
+                    ? 'Students cannot list accommodations.'
+                    : 'You need to become a seller to list accommodations',
                 style: GoogleFonts.plusJakartaSans(),
               ),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'Request Access',
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.pushNamed(context, '/become-seller');
-                },
-              ),
             ),
           );
         }

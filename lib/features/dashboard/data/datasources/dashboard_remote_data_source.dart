@@ -41,10 +41,10 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
         // Query 4: Get last conversation time
         supabaseClient
             .from(DatabaseConstants.conversationsTable)
-            .select('last_message_time')
-            .or('user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}')
-            .not('last_message_time', 'is', null)
-            .order('last_message_time', ascending: false)
+            .select('last_message_at')
+            .contains('participants', [currentUser.id])
+            .not('last_message_at', 'is', null)
+            .order('last_message_at', ascending: false)
             .limit(1),
       ]);
 
@@ -65,9 +65,9 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
       // Get last message time
       DateTime? lastMessageTime;
       if (conversations.isNotEmpty &&
-          conversations[0]['last_message_time'] != null) {
+          conversations[0]['last_message_at'] != null) {
         lastMessageTime = DateTime.parse(
-          conversations[0]['last_message_time'],
+          conversations[0]['last_message_at'],
         ).toLocal();
       }
 

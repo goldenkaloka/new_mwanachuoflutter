@@ -62,6 +62,14 @@ class _AdminCourseListPageState extends State<AdminCourseListPage> {
     final secondaryTextColor = isDarkMode ? Colors.grey[400] : Colors.grey[600];
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          Navigator.pushNamed(context, '/admin-create-business-user');
+        },
+        label: const Text('Add Business'),
+        icon: const Icon(Icons.add_business),
+        backgroundColor: kPrimaryColor,
+      ),
       appBar: AppBar(
         title: Text(
           'Select Course',

@@ -183,6 +183,17 @@ import 'package:mwanachuo/features/copilot/domain/usecases/semantic_search_notes
 import 'package:mwanachuo/features/copilot/domain/usecases/upload_note.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/copilot_bloc.dart';
 
+import 'package:mwanachuo/features/messages/presentation/bloc/conversations_bloc.dart';
+import 'package:mwanachuo/features/messages/data/repositories/messages_repository_impl.dart';
+import 'package:mwanachuo/features/messages/domain/repositories/messages_repository.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart';
+import 'package:mwanachuo/features/orders/presentation/bloc/cart_bloc.dart';
+import 'package:mwanachuo/features/orders/presentation/bloc/orders_bloc.dart';
+import 'package:mwanachuo/features/orders/data/datasources/orders_remote_data_source.dart';
+import 'package:mwanachuo/features/orders/data/datasources/orders_remote_data_source_impl.dart';
+import 'package:mwanachuo/features/orders/data/repositories/orders_repository_impl.dart';
+import 'package:mwanachuo/features/orders/domain/repositories/orders_repository.dart';
+
 // Copilot Feature (Modern)
 
 final sl = GetIt.instance;
@@ -232,6 +243,8 @@ Future<void> initializeDependencies() async {
   _initWalletFeature();
   // _initMwanachuomindFeature(); // Removed
   await _initCopilotFeature();
+  _initMessagesFeature();
+  _initOrdersFeature();
 
   // ============================================================================
   // Features - Authentication
@@ -724,6 +737,33 @@ void _initAccommodationsFeature() {
 // ============================================
 // MESSAGES FEATURE (STANDALONE)
 // ============================================
+void _initMessagesFeature() {
+  // Repository
+  sl.registerLazySingleton<MessagesRepository>(() => MessagesRepositoryImpl());
+
+  // Blocs
+  sl.registerFactory(() => ConversationsBloc(sl()));
+  sl.registerFactory(() => ChatBloc(sl()));
+}
+
+// ============================================
+// ORDERS FEATURE (FOOD DELIVERY)
+// ============================================
+void _initOrdersFeature() {
+  // Data Sources
+  sl.registerLazySingleton<OrdersRemoteDataSource>(
+    () => OrdersRemoteDataSourceImpl(supabaseClient: sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<OrdersRepository>(
+    () => OrdersRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // Blocs/Cubits would go here (e.g. OrdersBloc, CartBloc)
+  sl.registerFactory(() => CartBloc());
+  sl.registerFactory(() => OrdersBloc(repository: sl()));
+}
 
 // ============================================
 // PROFILE FEATURE (STANDALONE)

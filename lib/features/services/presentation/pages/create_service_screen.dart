@@ -45,26 +45,24 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
       final authState = context.read<AuthBloc>().state;
       if (authState is Authenticated) {
         final userRole = authState.user.role.value;
+        final userType = authState.user.userType;
 
-        if (userRole == 'buyer') {
-          debugPrint('❌ Buyer attempting to create service - redirecting');
+        if (userRole == 'buyer' || userType == 'student') {
+          debugPrint(
+            '❌ Restricted user attempting to create service - redirecting',
+          );
           Navigator.of(context).pop();
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'You need to become a seller to offer services',
+                userType == 'student'
+                    ? 'Students cannot post services.'
+                    : 'You need to become a seller to offer services',
                 style: GoogleFonts.plusJakartaSans(),
               ),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'Request Access',
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.pushNamed(context, '/become-seller');
-                },
-              ),
             ),
           );
         }

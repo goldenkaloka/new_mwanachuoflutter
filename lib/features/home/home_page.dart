@@ -784,10 +784,26 @@ class _HomePageState extends State<HomePage> {
               ),
             ],
           ),
-          // Notification Icon
-          IconButton(
-            onPressed: () => Navigator.pushNamed(context, '/notifications'),
-            icon: const Icon(Icons.notifications_outlined, color: Colors.white),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Message Icon
+              IconButton(
+                onPressed: () => Navigator.pushNamed(context, '/conversations'),
+                icon: const Icon(
+                  Icons.chat_bubble_outline,
+                  color: Colors.white,
+                ),
+              ),
+              // Notification Icon
+              IconButton(
+                onPressed: () => Navigator.pushNamed(context, '/notifications'),
+                icon: const Icon(
+                  Icons.notifications_outlined,
+                  color: Colors.white,
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -1181,6 +1197,8 @@ class _HomePageState extends State<HomePage> {
                   Navigator.pushNamed(context, '/all-products');
                 } else if (label == 'Hostels') {
                   Navigator.pushNamed(context, '/student-housing');
+                } else if (label == 'Food') {
+                  Navigator.pushNamed(context, '/food-dashboard');
                 } else {
                   Navigator.pushNamed(context, '/search', arguments: label);
                 }
@@ -1354,7 +1372,12 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  Widget _buildExpandableFAB(BuildContext context, bool isDarkMode) {
+  Widget? _buildExpandableFAB(BuildContext context, bool isDarkMode) {
+    // Hide FAB for students - they can only view, not post
+    if (_userRole == 'student' || _userRole == 'buyer') {
+      return null;
+    }
+
     return FloatingActionButton(
       onPressed: () {
         _showPostOptions(context, isDarkMode);

@@ -55,20 +55,23 @@ class CategoryCubit extends Cubit<CategoryState> {
 
   /// Load both categories and conditions
   Future<void> loadAll() async {
+    if (isClosed) return;
     emit(CategoryLoading());
 
     final categoriesResult = await getProductCategories(NoParams());
     final conditionsResult = await getProductConditions(NoParams());
 
+    if (isClosed) return;
     categoriesResult.fold((failure) => emit(CategoryError(failure.message)), (
       categories,
     ) {
-      conditionsResult.fold(
-        (failure) => emit(CategoryError(failure.message)),
-        (conditions) => emit(
-          CategoriesLoaded(categories: categories, conditions: conditions),
-        ),
-      );
+      if (isClosed) return;
+      conditionsResult.fold((failure) => emit(CategoryError(failure.message)), (
+        conditions,
+      ) {
+        if (isClosed) return;
+        emit(CategoriesLoaded(categories: categories, conditions: conditions));
+      });
     });
   }
 

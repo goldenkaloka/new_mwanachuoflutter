@@ -16,7 +16,7 @@ import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
+// import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
 
 class ServiceDetailPage extends StatelessWidget {
   const ServiceDetailPage({super.key});
@@ -300,18 +300,42 @@ class _ServiceDetailView extends StatelessWidget {
             child: StickyActionBar(
               price:
                   'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
-              actionButtonText: 'Contact Provider',
+              actionButtonText: 'Message Provider',
               onActionTap: () {
-                final itemUrl =
-                    'https://www.mwanachuoshop.com/services/${service.id}';
-                final message =
-                    'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?';
-                WhatsAppContactHelper.contactSeller(
-                  context: context,
-                  phoneNumber: service.contactPhone,
-                  message: message,
+                Navigator.pushNamed(
+                  context,
+                  '/chat',
+                  arguments: {
+                    'conversationId': 'new',
+                    'otherUserId': service.providerId,
+                  },
                 );
               },
+              trailingActions: [
+                const SizedBox(width: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: kPrimaryColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.chat_bubble_outline,
+                      color: kPrimaryColor,
+                    ),
+                    onPressed: () {
+                      Navigator.pushNamed(
+                        context,
+                        '/chat',
+                        arguments: {
+                          'conversationId': 'new',
+                          'otherUserId': service.providerId,
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
             ),
           ),
       ],
@@ -590,21 +614,6 @@ class _ServiceDetailView extends StatelessWidget {
                   ),
               ],
             ),
-          ),
-          IconButton(
-            onPressed: () {
-              // Dispatch event - navigation will be handled by parent BlocListener
-              final itemUrl =
-                  'https://www.mwanachuoshop.com/services/${service.id}';
-              final message =
-                  'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?';
-              WhatsAppContactHelper.contactSeller(
-                context: context,
-                phoneNumber: service.contactPhone,
-                message: message,
-              );
-            },
-            icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
           ),
         ],
       ),

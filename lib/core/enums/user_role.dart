@@ -1,7 +1,8 @@
 enum UserRole {
   buyer('buyer'),
   seller('seller'),
-  admin('admin');
+  admin('admin'),
+  runner('runner');
 
   final String value;
   const UserRole(this.value);
@@ -13,4 +14,3 @@ enum UserRole {
     );
   }
 }
-

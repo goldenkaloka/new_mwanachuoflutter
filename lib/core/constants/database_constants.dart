@@ -17,6 +17,9 @@ class DatabaseConstants {
   static const String sellerSubscriptionsTable = 'seller_subscriptions';
   static const String subscriptionPaymentsTable = 'subscription_payments';
   static const String subscriptionUsageTable = 'subscription_usage';
+  static const String ordersTable = 'orders';
+  static const String orderItemsTable = 'order_items';
+  static const String campusSpotsTable = 'campus_spots';
 
   // Storage buckets
   static const String productImagesBucket = 'product-images';

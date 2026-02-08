@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:mwanachuo/core/enums/user_role.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
@@ -505,6 +506,14 @@ class _ProfilePageState extends State<ProfilePage> {
             Navigator.pushNamed(context, '/dashboard');
           },
         ),
+        if (profile.businessCategory == 'food')
+          _MenuItem(
+            icon: Icons.restaurant_menu,
+            title: 'Kitchen Orders',
+            onTap: () {
+              Navigator.pushNamed(context, '/vendor-orders');
+            },
+          ),
         _MenuItem(
           icon: Icons.sell,
           title: 'My Listings',
@@ -520,6 +529,18 @@ class _ProfilePageState extends State<ProfilePage> {
           },
         ),
       ]);
+
+      if (profile.role == UserRole.runner || profile.role == UserRole.admin) {
+        menuItems.add(
+          _MenuItem(
+            icon: Icons.delivery_dining,
+            title: 'Runner Dashboard',
+            onTap: () {
+              Navigator.pushNamed(context, '/runner-dashboard');
+            },
+          ),
+        );
+      }
     }
 
     // Common menu items for all users
@@ -558,6 +579,13 @@ class _ProfilePageState extends State<ProfilePage> {
     }
 
     menuItems.addAll([
+      _MenuItem(
+        icon: Icons.fastfood_outlined,
+        title: 'My Food Orders',
+        onTap: () {
+          Navigator.pushNamed(context, '/my-orders');
+        },
+      ),
       _MenuItem(
         icon: Icons.settings,
         title: 'Account Settings',

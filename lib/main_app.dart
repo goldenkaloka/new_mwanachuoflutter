@@ -10,6 +10,8 @@ import 'package:mwanachuo/features/auth/presentation/pages/auth_pages.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/initial_route_handler.dart';
 
 import 'package:mwanachuo/features/admin/presentation/pages/admin_course_list_page.dart';
+import 'package:mwanachuo/features/admin/presentation/pages/admin_create_business_user_page.dart';
+import 'package:mwanachuo/features/admin/presentation/pages/admin_runner_management_page.dart';
 import 'package:mwanachuo/features/home/home_page.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_bloc.dart';
@@ -60,6 +62,17 @@ import 'package:app_links/app_links.dart';
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:mwanachuo/features/messages/presentation/pages/conversations_page.dart';
+import 'package:mwanachuo/features/messages/presentation/pages/chat_page.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart';
+import 'package:mwanachuo/features/orders/presentation/bloc/cart_bloc.dart';
+import 'package:mwanachuo/features/orders/presentation/bloc/orders_bloc.dart';
+import 'package:mwanachuo/features/orders/presentation/pages/food_dashboard.dart';
+import 'package:mwanachuo/features/orders/presentation/pages/vendor_menu_page.dart';
+import 'package:mwanachuo/features/orders/presentation/pages/cart_page.dart';
+import 'package:mwanachuo/features/orders/presentation/pages/runner_dashboard.dart';
+import 'package:mwanachuo/features/orders/presentation/pages/user_orders_page.dart';
+import 'package:mwanachuo/features/orders/presentation/pages/vendor_orders_page.dart';
 
 class MwanachuoshopApp extends StatefulWidget {
   const MwanachuoshopApp({super.key});
@@ -228,6 +241,8 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         BlocProvider(
           create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
         ),
+        BlocProvider(create: (context) => sl<CartBloc>()),
+        BlocProvider(create: (_) => sl<OrdersBloc>()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
@@ -242,6 +257,9 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           '/onboarding': (context) => const OnboardingScreen(),
 
           '/admin-courses': (context) => const AdminCourseListPage(),
+          '/admin-create-business-user': (context) =>
+              const AdminCreateBusinessUserPage(),
+          '/admin-runners': (context) => const AdminRunnerManagementPage(),
           '/home': (context) => PersistentBottomNavWrapper(
             initialIndex: 0,
             child: MultiBlocProvider(
@@ -404,6 +422,45 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               ),
             );
           },
+          '/conversations': (context) => const ConversationsPage(),
+          '/chat': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            final conversationId = args['conversationId'];
+            final otherUserId = args['otherUserId'];
+            final otherUserName = args['otherUserName'];
+            final otherUserAvatar = args['otherUserAvatar'];
+
+            return BlocProvider(
+              create: (context) {
+                final bloc = sl<ChatBloc>();
+                if (conversationId == 'new' && otherUserId != null) {
+                  bloc.add(StartConversation([otherUserId]));
+                } else {
+                  bloc.add(LoadMessages(conversationId));
+                }
+                return bloc;
+              },
+              child: ChatPage(
+                conversationId: conversationId,
+                otherUserId: otherUserId,
+                otherUserName: otherUserName,
+                otherUserAvatar: otherUserAvatar,
+              ),
+            );
+          },
+          '/food-dashboard': (context) => const FoodDashboard(),
+          '/vendor-menu': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return VendorMenuPage(vendor: args);
+          },
+          '/cart': (context) => const CartPage(),
+          '/runner-dashboard': (context) => const RunnerDashboard(),
+          '/my-orders': (context) => const UserOrdersPage(),
+          '/vendor-orders': (context) => const VendorOrdersPage(),
         },
       ),
     );
