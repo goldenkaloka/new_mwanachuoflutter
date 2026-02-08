@@ -24,12 +24,8 @@ class CommentsAndRatingsSection extends StatefulWidget {
 }
 
 class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
-  final _commentController = TextEditingController();
-  double _userRating = 0;
-
   @override
   void dispose() {
-    _commentController.dispose();
     super.dispose();
   }
 
@@ -70,7 +66,6 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
   Widget build(BuildContext context) {
     final primaryTextColor = kTextPrimary;
     final secondaryTextColor = Colors.grey[600]!;
-    final borderColor = Colors.grey[200]!;
 
     return BlocConsumer<ReviewCubit, ReviewState>(
       listener: (context, state) {
@@ -78,10 +73,6 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Review submitted successfully!')),
           );
-          setState(() {
-            _commentController.clear();
-            _userRating = 0;
-          });
           // Reload reviews after submission
           context.read<ReviewCubit>().loadReviewsWithStats(
             itemId: widget.itemId,
@@ -102,48 +93,21 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
         }
       },
       builder: (context, state) {
+        final isDarkMode = Theme.of(context).brightness == Brightness.dark;
         return ResponsiveBuilder(
           builder: (context, screenSize) {
             return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Ratings Overview
-                _buildRatingsOverview(
-                  context,
-                  state,
-                  primaryTextColor,
-                  secondaryTextColor,
-                  borderColor,
-                  screenSize,
-                ),
+                _buildRatingsOverview(context, state, screenSize, isDarkMode),
 
-                SizedBox(
-                  height: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 24.0,
-                    medium: 28.0,
-                    expanded: 32.0,
-                  ),
-                ),
+                const SizedBox(height: 24),
 
-                // Add Review Section
-                _buildAddReviewSection(
-                  context,
-                  state,
-                  primaryTextColor,
-                  secondaryTextColor,
-                  borderColor,
-                  screenSize,
-                ),
+                // Filter Chips
+                _buildFilterChips(context, isDarkMode),
 
-                SizedBox(
-                  height: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 24.0,
-                    medium: 28.0,
-                    expanded: 32.0,
-                  ),
-                ),
+                const SizedBox(height: 16),
 
                 // Reviews List
                 _buildReviewsList(
@@ -151,8 +115,8 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                   state,
                   primaryTextColor,
                   secondaryTextColor,
-                  borderColor,
                   screenSize,
+                  isDarkMode,
                 ),
               ],
             );
@@ -162,13 +126,51 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
     );
   }
 
+  Widget _buildFilterChips(BuildContext context, bool isDarkMode) {
+    final chips = ['All', 'With Photos', '5 Stars', 'Verified'];
+    return SizedBox(
+      height: 40,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        itemCount: chips.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 8),
+        itemBuilder: (context, index) {
+          final isSelected = index == 0;
+          return Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? kPrimaryColor
+                  : kPrimaryColor.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(
+                color: isSelected
+                    ? kPrimaryColor
+                    : kPrimaryColor.withValues(alpha: 0.2),
+              ),
+            ),
+            alignment: Alignment.center,
+            child: Text(
+              chips[index],
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                color: isSelected
+                    ? Colors.white
+                    : (isDarkMode ? Colors.white : const Color(0xFF11221F)),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildRatingsOverview(
     BuildContext context,
     ReviewState state,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-    Color borderColor,
     ScreenSize screenSize,
+    bool isDarkMode,
   ) {
     // Extract stats from state
     final stats = state is ReviewsLoaded ? state.stats : null;
@@ -178,51 +180,47 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
         stats?.ratingDistribution ?? {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
 
     return Container(
-      padding: EdgeInsets.all(
-        ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 20.0,
-          medium: 24.0,
-          expanded: 28.0,
-        ),
-      ),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: borderColor),
+        color: isDarkMode ? kSurfaceColorDark : Colors.white,
+        borderRadius: BorderRadius.circular(24),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           // Average Rating
           Expanded(
             flex: 2,
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   averageRating.toStringAsFixed(1),
                   style: GoogleFonts.inter(
-                    color: primaryTextColor,
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 48.0,
-                      medium: 56.0,
-                      expanded: 64.0,
-                    ),
-                    fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : const Color(0xFF11221F),
+                    fontSize: 48,
+                    fontWeight: FontWeight.w900,
                   ),
                 ),
-                _buildStarRating(averageRating, 24.0),
-                const SizedBox(height: 8.0),
+                Row(
+                  children: List.generate(5, (index) {
+                    return Icon(
+                      index < averageRating.floor()
+                          ? Icons.star
+                          : Icons.star_border,
+                      color: kPrimaryColor,
+                      size: 20,
+                    );
+                  }),
+                ),
+                const SizedBox(height: 8),
                 Text(
-                  '$totalReviews ${totalReviews == 1 ? 'review' : 'reviews'}',
+                  '$totalReviews verified reviews',
                   style: GoogleFonts.inter(
-                    color: secondaryTextColor,
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 14.0,
-                      medium: 15.0,
-                      expanded: 16.0,
-                    ),
+                    color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                        .withValues(alpha: 0.5),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
               ],
@@ -246,32 +244,48 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                       Text(
                         '$rating',
                         style: GoogleFonts.inter(
-                          color: secondaryTextColor,
-                          fontSize: 14.0,
+                          color: isDarkMode
+                              ? Colors.white
+                              : const Color(0xFF11221F),
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 4.0),
-                      Icon(Icons.star, size: 14.0, color: Colors.amber[600]),
-                      const SizedBox(width: 8.0),
+                      const SizedBox(width: 8),
                       Expanded(
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(4.0),
-                          child: LinearProgressIndicator(
-                            value: percentage,
-                            backgroundColor: borderColor,
-                            valueColor: AlwaysStoppedAnimation<Color>(
-                              Colors.amber[600]!,
+                        child: Container(
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: kPrimaryColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: FractionallySizedBox(
+                            alignment: Alignment.centerLeft,
+                            widthFactor: percentage,
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: kPrimaryColor,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
                             ),
-                            minHeight: 6.0,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 8.0),
-                      Text(
-                        '$count',
-                        style: GoogleFonts.inter(
-                          color: secondaryTextColor,
-                          fontSize: 14.0,
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        width: 30,
+                        child: Text(
+                          '${(percentage * 100).toInt()}%',
+                          style: GoogleFonts.inter(
+                            color:
+                                (isDarkMode
+                                        ? Colors.white
+                                        : const Color(0xFF11221F))
+                                    .withValues(alpha: 0.5),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.right,
                         ),
                       ),
                     ],
@@ -285,167 +299,13 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
     );
   }
 
-  Widget _buildAddReviewSection(
-    BuildContext context,
-    ReviewState state,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-    Color borderColor,
-    ScreenSize screenSize,
-  ) {
-    final isSubmitting = state is ReviewSubmitting;
-
-    return Container(
-      padding: EdgeInsets.all(
-        ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 20.0,
-          medium: 24.0,
-          expanded: 28.0,
-        ),
-      ),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16.0),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Write a Review',
-            style: GoogleFonts.inter(
-              color: primaryTextColor,
-              fontSize: ResponsiveBreakpoints.responsiveValue(
-                context,
-                compact: 18.0,
-                medium: 20.0,
-                expanded: 22.0,
-              ),
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16.0),
-
-          // Star Rating Selector
-          Row(
-            children: [
-              Text(
-                'Your Rating:',
-                style: GoogleFonts.inter(
-                  color: secondaryTextColor,
-                  fontSize: 14.0,
-                ),
-              ),
-              const SizedBox(width: 12.0),
-              ...List.generate(5, (index) {
-                return GestureDetector(
-                  onTap: isSubmitting
-                      ? null
-                      : () {
-                          setState(() {
-                            _userRating = index + 1.0;
-                          });
-                        },
-                  child: Icon(
-                    index < _userRating ? Icons.star : Icons.star_border,
-                    color: Colors.amber[600],
-                    size: 32.0,
-                  ),
-                );
-              }),
-            ],
-          ),
-
-          const SizedBox(height: 16.0),
-
-          // Comment TextField
-          TextField(
-            controller: _commentController,
-            maxLines: 4,
-            enabled: !isSubmitting,
-            decoration: InputDecoration(
-              hintText: 'Share your experience...',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
-                borderSide: BorderSide(color: borderColor),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(12.0),
-                borderSide: BorderSide(color: borderColor),
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 16.0),
-
-          // Submit Button (Secondary style - outlined)
-          SizedBox(
-            width: double.infinity,
-            height: 44.0,
-            child: OutlinedButton(
-              onPressed: isSubmitting
-                  ? null
-                  : () {
-                      if (_userRating > 0 &&
-                          _commentController.text.trim().isNotEmpty) {
-                        // Submit review using ReviewCubit
-                        context.read<ReviewCubit>().submitNewReview(
-                          itemId: widget.itemId,
-                          itemType: _getReviewType(),
-                          rating: _userRating,
-                          comment: _commentController.text.trim(),
-                        );
-                      } else {
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                            content: Text(
-                              'Please provide a rating and comment',
-                            ),
-                          ),
-                        );
-                      }
-                    },
-              style: OutlinedButton.styleFrom(
-                foregroundColor: kPrimaryColor,
-                side: BorderSide(
-                  color: kPrimaryColor,
-                  width: 1.5,
-                ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12.0),
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16.0),
-              ),
-              child: isSubmitting
-                  ? SizedBox(
-                      height: 20,
-                      width: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2,
-                        valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
-                      ),
-                    )
-                  : Text(
-                      'Submit Review',
-                      style: GoogleFonts.inter(
-                        fontSize: 15.0,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildReviewsList(
     BuildContext context,
     ReviewState state,
     Color primaryTextColor,
     Color secondaryTextColor,
-    Color borderColor,
     ScreenSize screenSize,
+    bool isDarkMode,
   ) {
     // Extract reviews from state
     final reviews = state is ReviewsLoaded ? state.reviews : <ReviewEntity>[];
@@ -491,14 +351,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
           )
         else ...[
           ...reviews.map((review) {
-            return _buildReviewItem(
-              context,
-              review,
-              primaryTextColor,
-              secondaryTextColor,
-              borderColor,
-              screenSize,
-            );
+            return _buildReviewItem(context, review, screenSize, isDarkMode);
           }),
 
           // Load More Button
@@ -539,24 +392,16 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
   Widget _buildReviewItem(
     BuildContext context,
     ReviewEntity review,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-    Color borderColor,
     ScreenSize screenSize,
+    bool isDarkMode,
   ) {
     return Container(
       margin: const EdgeInsets.only(bottom: 16.0),
-      padding: EdgeInsets.all(
-        ResponsiveBreakpoints.responsiveValue(
-          context,
-          compact: 16.0,
-          medium: 20.0,
-          expanded: 24.0,
-        ),
-      ),
+      padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12.0),
-        border: Border.all(color: borderColor),
+        color: isDarkMode ? kSurfaceColorDark : Colors.white,
+        borderRadius: BorderRadius.circular(16.0),
+        border: Border.all(color: kPrimaryColor.withValues(alpha: 0.1)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -564,24 +409,18 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
           Row(
             children: [
               // User Avatar
-              CircleAvatar(
-                radius: 20.0,
-                backgroundColor: kPrimaryColor.withValues(alpha: 0.3),
-                backgroundImage:
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: kPrimaryColor.withValues(alpha: 0.2),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child:
                     review.userAvatar != null && review.userAvatar!.isNotEmpty
-                    ? NetworkImage(review.userAvatar!)
-                    : null,
-                child: review.userAvatar == null || review.userAvatar!.isEmpty
-                    ? Text(
-                        review.userName.isNotEmpty
-                            ? review.userName[0].toUpperCase()
-                            : '?',
-                        style: GoogleFonts.inter(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      )
-                    : null,
+                    ? Image.network(review.userAvatar!, fit: BoxFit.cover)
+                    : Icon(Icons.person, color: kPrimaryColor),
               ),
               const SizedBox(width: 12.0),
 
@@ -595,127 +434,113 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                         Text(
                           review.userName,
                           style: GoogleFonts.inter(
-                            color: primaryTextColor,
+                            color: isDarkMode
+                                ? Colors.white
+                                : const Color(0xFF11221F),
                             fontSize: 15.0,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                         if (review.isVerifiedPurchase) ...[
-                          const SizedBox(width: 8.0),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6.0,
-                              vertical: 2.0,
-                            ),
-                            decoration: BoxDecoration(
-                              color: kPrimaryColor.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(4.0),
-                            ),
-                            child: Text(
-                              'Verified',
-                              style: GoogleFonts.inter(
-                                color: kPrimaryColor,
-                                fontSize: 10.0,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
+                          const SizedBox(width: 4.0),
+                          Icon(Icons.verified, size: 14, color: kPrimaryColor),
                         ],
                       ],
                     ),
-                    const SizedBox(height: 2.0),
-                    Row(
-                      children: [
-                        Flexible(
-                          child: _buildStarRating(review.rating, 14.0),
-                        ),
-                        const SizedBox(width: 8.0),
-                        Flexible(
-                          child: Text(
-                            _formatDate(review.createdAt),
-                            style: GoogleFonts.inter(
-                              color: secondaryTextColor,
-                              fontSize: 13.0,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
+                    const SizedBox(height: 4.0),
+                    Text(
+                      _formatDate(review.createdAt),
+                      style: GoogleFonts.inter(
+                        color:
+                            (isDarkMode
+                                    ? Colors.white
+                                    : const Color(0xFF11221F))
+                                .withValues(alpha: 0.5),
+                        fontSize: 12.0,
+                      ),
                     ),
                   ],
                 ),
               ),
+
+              // Stars
+              Row(
+                children: List.generate(5, (index) {
+                  return Icon(
+                    index < review.rating.floor()
+                        ? Icons.star
+                        : Icons.star_border,
+                    color: kPrimaryColor,
+                    size: 16,
+                  );
+                }),
+              ),
             ],
           ),
 
-          const SizedBox(height: 12.0),
+          const SizedBox(height: 16.0),
 
           // Review Comment
           if (review.comment != null && review.comment!.isNotEmpty)
             Text(
               review.comment!,
               style: GoogleFonts.inter(
-                color: primaryTextColor,
+                color: isDarkMode ? Colors.white : const Color(0xFF11221F),
                 fontSize: 14.0,
-                height: 1.5,
+                height: 1.6,
               ),
             ),
 
-          const SizedBox(height: 12.0),
+          const SizedBox(height: 16.0),
 
-          // Helpful Button
-          TextButton.icon(
-            onPressed: () {
-              context.read<ReviewCubit>().markAsHelpful(review.id);
-            },
-            icon: Icon(
-              Icons.thumb_up_outlined,
-              size: 16.0,
-              color: secondaryTextColor,
-            ),
-            label: Text(
-              'Helpful${review.helpfulCount > 0 ? ' (${review.helpfulCount})' : ''}',
-              style: GoogleFonts.inter(
-                color: secondaryTextColor,
-                fontSize: 13.0,
+          // Bottom Bar
+          Divider(color: kPrimaryColor.withValues(alpha: 0.05)),
+          const SizedBox(height: 12),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              GestureDetector(
+                onTap: () {
+                  context.read<ReviewCubit>().markAsHelpful(review.id);
+                },
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.thumb_up_outlined,
+                      size: 20.0,
+                      color:
+                          (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                              .withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Helpful${review.helpfulCount > 0 ? ' (${review.helpfulCount})' : ''}',
+                      style: GoogleFonts.inter(
+                        color:
+                            (isDarkMode
+                                    ? Colors.white
+                                    : const Color(0xFF11221F))
+                                .withValues(alpha: 0.5),
+                        fontSize: 12.0,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            style: TextButton.styleFrom(
-              padding: EdgeInsets.zero,
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            ),
+              Text(
+                'Report',
+                style: GoogleFonts.inter(
+                  color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                      .withValues(alpha: 0.5),
+                  fontSize: 12.0,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildStarRating(double rating, double size) {
-    // Make icon size adaptive based on screen size
-    final adaptiveSize = ResponsiveBreakpoints.responsiveValue(
-      context,
-      compact: size * 0.85,
-      medium: size,
-      expanded: size,
-    );
-    
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: List.generate(5, (index) {
-        Widget icon;
-        if (index < rating.floor()) {
-          icon = Icon(Icons.star, size: adaptiveSize, color: Colors.amber[600]);
-        } else if (index < rating) {
-          icon = Icon(Icons.star_half, size: adaptiveSize, color: Colors.amber[600]);
-        } else {
-          icon = Icon(Icons.star_border, size: adaptiveSize, color: Colors.amber[600]);
-        }
-        return Padding(
-          padding: EdgeInsets.only(right: index < 4 ? 2.0 : 0),
-          child: icon,
-        );
-      }),
     );
   }
 }

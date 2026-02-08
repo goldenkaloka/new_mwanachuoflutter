@@ -3,15 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
-import 'package:mwanachuo/core/constants/typography_constants.dart';
 import 'package:mwanachuo/core/widgets/network_image_with_fallback.dart';
 import 'package:mwanachuo/core/widgets/comments_and_ratings_section.dart';
 import 'package:mwanachuo/core/widgets/empty_state.dart';
-import 'package:mwanachuo/core/widgets/sliver_image_carousel.dart';
-import 'package:mwanachuo/core/widgets/sliver_section.dart';
-import 'package:mwanachuo/core/widgets/sticky_action_bar.dart';
-import 'package:mwanachuo/core/widgets/responsive_container.dart';
-import 'package:mwanachuo/core/utils/responsive.dart' hide ResponsiveContainer;
+import 'package:mwanachuo/core/utils/responsive.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
@@ -79,6 +74,7 @@ class _ProductDetailsView extends StatefulWidget {
 class _ProductDetailsViewState extends State<_ProductDetailsView> {
   final PageController _pageController = PageController();
   int _currentPage = 0;
+  String _activeTab = 'Overview'; // 'Overview', 'Specs', 'Reviews'
 
   @override
   void initState() {
@@ -104,7 +100,6 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     final primaryTextColor = isDarkMode ? kTextPrimaryDark : kTextPrimary;
     final secondaryTextColor = isDarkMode ? kTextSecondaryDark : kTextSecondary;
     final cardBgColor = isDarkMode ? kSurfaceColorDark : kSurfaceColorLight;
-    final isExpanded = ResponsiveBreakpoints.isExpanded(context);
 
     return BlocBuilder<ProductBloc, ProductState>(
       builder: (context, state) {
@@ -115,7 +110,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const CircularProgressIndicator(color: kPrimaryColor),
-                  SizedBox(height: kSpacingLg),
+                  const SizedBox(height: 16),
                   Text(
                     'Loading product...',
                     style: Theme.of(context).textTheme.bodyMedium,
@@ -146,7 +141,6 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             primaryTextColor,
             secondaryTextColor,
             cardBgColor,
-            isExpanded,
           );
         }
 
@@ -169,34 +163,19 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     Color primaryTextColor,
     Color secondaryTextColor,
     Color cardBgColor,
-    bool isExpanded,
   ) {
-    return Scaffold(
-      body: ResponsiveBuilder(
-        builder: (context, screenSize) {
-          if (isExpanded) {
-            return _buildExpandedLayout(
-              context,
-              product,
-              isDarkMode,
-              primaryTextColor,
-              secondaryTextColor,
-              cardBgColor,
-            );
-          }
-
-          // Use sliver layout for compact/medium screens
-          return _buildSliverLayout(
-            context,
-            product,
-            isDarkMode,
-            primaryTextColor,
-            secondaryTextColor,
-            cardBgColor,
-            screenSize,
-          );
-        },
-      ),
+    return ResponsiveBuilder(
+      builder: (context, screenSize) {
+        return _buildSliverLayout(
+          context,
+          product,
+          isDarkMode,
+          primaryTextColor,
+          secondaryTextColor,
+          cardBgColor,
+          screenSize,
+        );
+      },
     );
   }
 
@@ -424,19 +403,19 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                           children: [
                             _buildTabItem(
                               'Overview',
-                              isActive: true,
+                              isActive: _activeTab == 'Overview',
                               isDarkMode: isDarkMode,
                             ),
                             const SizedBox(width: 32),
                             _buildTabItem(
                               'Specs',
-                              isActive: false,
+                              isActive: _activeTab == 'Specs',
                               isDarkMode: isDarkMode,
                             ),
                             const SizedBox(width: 32),
                             _buildTabItem(
                               'Reviews',
-                              isActive: false,
+                              isActive: _activeTab == 'Reviews',
                               isDarkMode: isDarkMode,
                             ),
                           ],
@@ -444,61 +423,14 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                         const Divider(height: 1),
                         const SizedBox(height: 24),
 
-                        // Description
-                        Text(
-                          product.description,
-                          style: GoogleFonts.inter(
-                            fontSize: 14,
-                            height: 1.6,
-                            color:
-                                (isDarkMode
-                                        ? Colors.white
-                                        : const Color(0xFF11221F))
-                                    .withValues(alpha: 0.7),
-                          ),
-                        ),
-
-                        const SizedBox(height: 32),
-                        // Specs Grid
-                        GridView.count(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          crossAxisCount: 2,
-                          childAspectRatio: 2.2,
-                          crossAxisSpacing: 16,
-                          mainAxisSpacing: 16,
-                          children: [
-                            _buildSpecCard(
-                              Icons.battery_charging_full,
-                              'Battery',
-                              '48 Hours',
-                              isDarkMode,
-                            ),
-                            _buildSpecCard(
-                              Icons.water_drop,
-                              'Waterproof',
-                              '50m depth',
-                              isDarkMode,
-                            ),
-                            _buildSpecCard(
-                              Icons.favorite,
-                              'Health',
-                              'HR Monitor',
-                              isDarkMode,
-                            ),
-                            _buildSpecCard(
-                              Icons.fitbit,
-                              'Sport',
-                              '80+ Modes',
-                              isDarkMode,
-                          ],
-                        ),
-
-                        const SizedBox(height: 32),
-                        // Reviews Section
-                        CommentsAndRatingsSection(
-                          itemId: product.id,
-                          itemType: 'product',
+                        // Tab Content Area
+                        _buildTabContent(
+                          product,
+                          isDarkMode,
+                          primaryTextColor,
+                          secondaryTextColor,
+                          cardBgColor,
+                          screenSize,
                         ),
 
                         const SizedBox(
@@ -519,8 +451,65 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             right: 0,
             child: _buildImmersiveBottomBar(context, product, isDarkMode),
           ),
+
+          // 4. Floating Action Button (Only for Reviews Tab)
+          if (_activeTab == 'Reviews')
+            Positioned(
+              bottom: 110, // Above the bottom bar
+              right: 24,
+              child: _buildReviewFAB(context, product, isDarkMode),
+            ),
         ],
       ),
+    );
+  }
+
+  Widget _buildReviewFAB(
+    BuildContext context,
+    ProductEntity product,
+    bool isDarkMode,
+  ) {
+    return GestureDetector(
+      onTap: () => _showReviewSheet(context, product),
+      child: Container(
+        height: 56,
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        decoration: BoxDecoration(
+          color: kPrimaryColor,
+          borderRadius: BorderRadius.circular(28),
+          boxShadow: [
+            BoxShadow(
+              color: kPrimaryColor.withValues(alpha: 0.3),
+              blurRadius: 20,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.rate_review, color: Colors.white),
+            const SizedBox(width: 12),
+            Text(
+              'Write a Review',
+              style: GoogleFonts.inter(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 16,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showReviewSheet(BuildContext context, ProductEntity product) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _ReviewSheet(product: product),
     );
   }
 
@@ -535,7 +524,8 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
           child: Container(
-            size: const Size.square(40),
+            width: 40,
+            height: 40,
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.9),
               shape: BoxShape.circle,
@@ -552,34 +542,119 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     required bool isActive,
     required bool isDarkMode,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.bottom(12),
-          child: Text(
-            label,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
-              color: isActive
-                  ? (isDarkMode ? Colors.white : const Color(0xFF11221F))
-                  : (isDarkMode ? Colors.white : const Color(0xFF11221F))
-                        .withValues(alpha: 0.4),
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _activeTab = label;
+        });
+      },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Text(
+              label,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
+                color: isActive
+                    ? (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                    : (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                          .withValues(alpha: 0.4),
+              ),
             ),
           ),
-        ),
-        if (isActive)
-          Container(
-            height: 4,
-            width: 40,
-            decoration: BoxDecoration(
-              color: kPrimaryColor,
-              borderRadius: BorderRadius.circular(2),
+          if (isActive)
+            Container(
+              height: 4,
+              width: 40,
+              decoration: BoxDecoration(
+                color: kPrimaryColor,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-      ],
+        ],
+      ),
     );
+  }
+
+  Widget _buildTabContent(
+    ProductEntity product,
+    bool isDarkMode,
+    Color primaryTextColor,
+    Color secondaryTextColor,
+    Color cardBgColor,
+    ScreenSize screenSize,
+  ) {
+    switch (_activeTab) {
+      case 'Overview':
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Specs Grid (Moved here if Overview should have it, or keep it above? Mockup shows tabs below specs or above?
+            // Re-evaluating based on mockup: Tabs are usually for distinct sections.
+            Text(
+              product.description,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                height: 1.6,
+                color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                    .withValues(alpha: 0.7),
+              ),
+            ),
+            const SizedBox(height: 32),
+            _buildSellerInfo(
+              product,
+              primaryTextColor,
+              secondaryTextColor,
+              cardBgColor,
+              screenSize,
+            ),
+          ],
+        );
+      case 'Specs':
+        return Column(
+          children: [
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              childAspectRatio: 2.2,
+              crossAxisSpacing: 16,
+              mainAxisSpacing: 16,
+              children: [
+                _buildSpecCard(
+                  Icons.battery_charging_full,
+                  'Battery',
+                  '48 Hours',
+                  isDarkMode,
+                ),
+                _buildSpecCard(
+                  Icons.water_drop,
+                  'Waterproof',
+                  '50m depth',
+                  isDarkMode,
+                ),
+                _buildSpecCard(
+                  Icons.favorite,
+                  'Health',
+                  'HR Monitor',
+                  isDarkMode,
+                ),
+                _buildSpecCard(Icons.fitbit, 'Sport', '80+ Modes', isDarkMode),
+              ],
+            ),
+          ],
+        );
+      case 'Reviews':
+        return CommentsAndRatingsSection(
+          itemId: product.id,
+          itemType: 'product',
+        );
+      default:
+        return const SizedBox.shrink();
+    }
   }
 
   Widget _buildSpecCard(
@@ -723,149 +798,6 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     );
   }
 
-
-  Widget _buildExpandedLayout(
-    BuildContext context,
-    ProductEntity product,
-    bool isDarkMode,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-    Color cardBgColor,
-  ) {
-    return ResponsiveContainer(
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Left Column - Images
-          Expanded(
-            flex: 1,
-            child: SingleChildScrollView(
-              child: Column(
-                children: [
-                  const SizedBox(height: 24),
-                  _buildImageCarousel(product, ScreenSize.expanded),
-                  _buildPageIndicators(
-                    product,
-                    isDarkMode,
-                    ScreenSize.expanded,
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(
-            width: ResponsiveBreakpoints.responsiveValue(
-              context,
-              compact: 0.0,
-              medium: 24.0,
-              expanded: 48.0,
-            ),
-          ),
-          // Right Column - Details
-          Expanded(
-            flex: 1,
-            child: SingleChildScrollView(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const SizedBox(height: 24),
-                  _buildTopAppBar(
-                    isDarkMode,
-                    primaryTextColor,
-                    ScreenSize.expanded,
-                  ),
-                  _buildProductInfo(
-                    product,
-                    primaryTextColor,
-                    ScreenSize.expanded,
-                  ),
-                  _buildSectionDivider(isDarkMode),
-                  _buildDescription(
-                    product,
-                    primaryTextColor,
-                    secondaryTextColor,
-                    ScreenSize.expanded,
-                  ),
-                  _buildSectionDivider(isDarkMode),
-                  _buildSellerInfo(
-                    product,
-                    primaryTextColor,
-                    secondaryTextColor,
-                    cardBgColor,
-                    ScreenSize.expanded,
-                  ),
-                  const SizedBox(height: 48),
-                  // Comments and Ratings Section
-                  CommentsAndRatingsSection(
-                    itemId: product.id,
-                    itemType: 'product',
-                  ),
-                  const SizedBox(height: 48),
-                  _buildCtaButton(product, isDarkMode),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // --- WIDGET BUILDERS ---
-
-  Widget _buildSectionDivider(bool isDarkMode) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
-      context,
-    );
-    return Padding(
-      padding: EdgeInsets.symmetric(
-        horizontal: horizontalPadding,
-        vertical: kSpacing2xl,
-      ),
-      child: Divider(
-        color: isDarkMode
-            ? Colors.white.withValues(alpha: 0.1)
-            : Colors.black.withValues(alpha: 0.1),
-      ),
-    );
-  }
-
-  Widget _buildDescription(
-    ProductEntity product,
-    Color primaryTextColor,
-    Color secondaryTextColor,
-    ScreenSize screenSize,
-  ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
-      context,
-    );
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Description',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-              color: primaryTextColor,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            product.description,
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: secondaryTextColor,
-              height: 1.5,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildSellerInfo(
     ProductEntity product,
     Color primaryTextColor,
@@ -873,99 +805,211 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
     Color cardBgColor,
     ScreenSize screenSize,
   ) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
-      context,
-    );
+    final textTheme = Theme.of(context).textTheme;
 
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: cardBgColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: primaryTextColor.withValues(alpha: 0.1)),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'Seller Information',
+          style: textTheme.titleLarge?.copyWith(
+            color: primaryTextColor,
+            fontWeight: FontWeight.bold,
+          ),
         ),
-        child: Row(
-          children: [
-            CircleAvatar(
-              radius: 24,
-              backgroundColor: kPrimaryColor.withValues(alpha: 0.1),
+        const SizedBox(height: 16),
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: cardBgColor,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: primaryTextColor.withValues(alpha: 0.1)),
+          ),
+          child: Row(
+            children: [
+              CircleAvatar(
+                radius: 24,
+                backgroundColor: kPrimaryColor.withValues(alpha: 0.1),
+                child: Icon(Icons.person, color: kPrimaryColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.sellerName,
+                      style: textTheme.titleMedium?.copyWith(
+                        color: primaryTextColor,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Trusted Seller • 4.9 Rating',
+                      style: textTheme.bodySmall?.copyWith(
+                        color: secondaryTextColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              OutlinedButton(
+                onPressed: () {
+                  // View seller profile
+                },
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: kPrimaryColor,
+                  side: const BorderSide(color: kPrimaryColor),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+                child: const Text('View'),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _ReviewSheet extends StatefulWidget {
+  final ProductEntity product;
+  const _ReviewSheet({required this.product});
+
+  @override
+  State<_ReviewSheet> createState() => _ReviewSheetState();
+}
+
+class _ReviewSheetState extends State<_ReviewSheet> {
+  final _commentController = TextEditingController();
+  double _userRating = 0;
+
+  @override
+  void dispose() {
+    _commentController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? kBackgroundColorDark : Colors.white,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      ),
+      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomPadding),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Center(
+            child: Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: (isDarkMode ? Colors.white : Colors.black).withValues(
+                  alpha: 0.1,
+                ),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          Text(
+            'Write a Review',
+            style: GoogleFonts.inter(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: isDarkMode ? Colors.white : const Color(0xFF11221F),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'How was your experience with this product?',
+            style: GoogleFonts.inter(
+              fontSize: 14,
+              color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                  .withValues(alpha: 0.6),
+            ),
+          ),
+          const SizedBox(height: 24),
+
+          // Star Selection
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(5, (index) {
+              return GestureDetector(
+                onTap: () => setState(() => _userRating = index + 1.0),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4),
+                  child: Icon(
+                    index < _userRating ? Icons.star : Icons.star_border,
+                    color: kPrimaryColor,
+                    size: 40,
+                  ),
+                ),
+              );
+            }),
+          ),
+
+          const SizedBox(height: 24),
+          TextField(
+            controller: _commentController,
+            maxLines: 5,
+            decoration: InputDecoration(
+              hintText: 'Describe your experience...',
+              hintStyle: GoogleFonts.inter(
+                color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                    .withValues(alpha: 0.4),
+              ),
+              filled: true,
+              fillColor: kPrimaryColor.withValues(alpha: 0.05),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+                borderSide: BorderSide.none,
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          SizedBox(
+            width: double.infinity,
+            height: 56,
+            child: ElevatedButton(
+              onPressed: _userRating == 0 || _commentController.text.isEmpty
+                  ? null
+                  : () {
+                      // Actually submit using Bloc/Cubit
+                      // For now we just close and show a snackbar
+                      Navigator.pop(context);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Thank you for your review!'),
+                        ),
+                      );
+                    },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                elevation: 0,
+              ),
               child: Text(
-                'S',
-                style: GoogleFonts.plusJakartaSans(
+                'Submit Review',
+                style: GoogleFonts.inter(
+                  fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  color: kPrimaryColor,
                 ),
               ),
             ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Seller Name', // Placeholder
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: primaryTextColor,
-                    ),
-                  ),
-                  Text(
-                    'Verified Seller',
-                    style: GoogleFonts.inter(
-                      fontSize: 12,
-                      color: secondaryTextColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCtaButton(ProductEntity product, bool isDarkMode) {
-    final horizontalPadding = ResponsiveBreakpoints.responsiveHorizontalPadding(
-      context,
-    );
-    return Padding(
-      padding: EdgeInsets.only(
-        left: horizontalPadding,
-        right: horizontalPadding,
-        bottom: 32,
-      ),
-      child: SizedBox(
-        width: double.infinity,
-        height: 56,
-        child: ElevatedButton(
-          onPressed: () {
-            Navigator.pushNamed(
-              context,
-              '/chat',
-              arguments: {
-                'conversationId': 'new',
-                'otherUserId': product.sellerId,
-              },
-            );
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: kPrimaryColor,
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 8,
-            shadowColor: kPrimaryColor.withValues(alpha: 0.4),
           ),
-          child: const Text(
-            'Message Seller',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-          ),
-        ),
+        ],
       ),
     );
   }
