@@ -49,6 +49,9 @@ class ProductRepositoryImpl implements ProductRepository {
     }
 
     try {
+      // Clear cache to ensure fresh data
+      await localDataSource.clearCache();
+
       final products = await remoteDataSource.getProducts(
         category: category,
         universityId: universityId,

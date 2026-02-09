@@ -25,6 +25,18 @@ class CommentsAndRatingsSection extends StatefulWidget {
 
 class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
   @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<ReviewCubit>().loadReviewsWithStats(
+        itemId: widget.itemId,
+        itemType: _getReviewType(),
+        limit: 10,
+      );
+    });
+  }
+
+  @override
   void dispose() {
     super.dispose();
   }
@@ -43,23 +55,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
   }
 
   String _formatDate(DateTime date) {
-    final now = DateTime.now();
-    final difference = now.difference(date);
-
-    if (difference.inDays == 0) {
-      if (difference.inHours == 0) {
-        return '${difference.inMinutes} minutes ago';
-      }
-      return '${difference.inHours} hours ago';
-    } else if (difference.inDays == 1) {
-      return 'Yesterday';
-    } else if (difference.inDays < 7) {
-      return '${difference.inDays} days ago';
-    } else if (difference.inDays < 30) {
-      return '${(difference.inDays / 7).floor()} weeks ago';
-    } else {
-      return DateFormat('MMM d, yyyy').format(date);
-    }
+    return DateFormat('MMM d, yyyy • h:mm a').format(date);
   }
 
   @override
@@ -152,7 +148,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
             alignment: Alignment.center,
             child: Text(
               chips[index],
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                 color: isSelected
@@ -172,12 +168,79 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
     ScreenSize screenSize,
     bool isDarkMode,
   ) {
-    // Extract stats from state
+    if (state is ReviewsLoading || state is ReviewInitial) {
+      return const Center(
+        child: Padding(
+          padding: EdgeInsets.all(24.0),
+          child: CircularProgressIndicator(color: kPrimaryColor),
+        ),
+      );
+    }
+
+    // Extract stats and reviews from state
     final stats = state is ReviewsLoaded ? state.stats : null;
-    final averageRating = stats?.averageRating ?? 0.0;
-    final totalReviews = stats?.totalReviews ?? 0;
-    final ratingDistribution =
+    final reviews = state is ReviewsLoaded ? state.reviews : <ReviewEntity>[];
+
+    double averageRating = stats?.averageRating ?? 0.0;
+    int totalReviews = stats?.totalReviews ?? 0;
+    Map<int, int> ratingDistribution =
         stats?.ratingDistribution ?? {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+
+    // If stats are missing or showing 0 but we have reviews, calculate locally for better UX
+    if (totalReviews == 0 && reviews.isNotEmpty) {
+      totalReviews = reviews.length;
+      double sum = 0;
+      final dist = {5: 0, 4: 0, 3: 0, 2: 0, 1: 0};
+      for (final r in reviews) {
+        final rInt = r.rating.toInt();
+        sum += r.rating;
+        if (dist.containsKey(rInt)) {
+          dist[rInt] = dist[rInt]! + 1;
+        }
+      }
+      averageRating = sum / totalReviews;
+      ratingDistribution = dist;
+    }
+
+    final effectiveTotalReviews = totalReviews;
+
+    if (effectiveTotalReviews == 0) {
+      return Container(
+        padding: const EdgeInsets.all(24),
+        width: double.infinity,
+        decoration: BoxDecoration(
+          color: isDarkMode ? kSurfaceColorDark : Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Column(
+          children: [
+            const Icon(
+              Icons.rate_review_outlined,
+              size: 48,
+              color: kPrimaryColor,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No reviews yet',
+              style: GoogleFonts.plusJakartaSans(
+                color: isDarkMode ? Colors.white : const Color(0xFF11221F),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Be the first to share your experience!',
+              style: GoogleFonts.plusJakartaSans(
+                color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                    .withValues(alpha: 0.5),
+                fontSize: 14,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -196,7 +259,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               children: [
                 Text(
                   averageRating.toStringAsFixed(1),
-                  style: GoogleFonts.inter(
+                  style: GoogleFonts.plusJakartaSans(
                     color: isDarkMode ? Colors.white : const Color(0xFF11221F),
                     fontSize: 48,
                     fontWeight: FontWeight.w900,
@@ -204,19 +267,32 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                 ),
                 Row(
                   children: List.generate(5, (index) {
-                    return Icon(
-                      index < averageRating.floor()
-                          ? Icons.star
-                          : Icons.star_border,
-                      color: kPrimaryColor,
-                      size: 20,
-                    );
+                    final starValue = index + 1;
+                    if (averageRating >= starValue) {
+                      return const Icon(
+                        Icons.star,
+                        color: kPrimaryColor,
+                        size: 20,
+                      );
+                    } else if (averageRating >= starValue - 0.5) {
+                      return const Icon(
+                        Icons.star_half,
+                        color: kPrimaryColor,
+                        size: 20,
+                      );
+                    } else {
+                      return const Icon(
+                        Icons.star_border,
+                        color: kPrimaryColor,
+                        size: 20,
+                      );
+                    }
                   }),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '$totalReviews verified reviews',
-                  style: GoogleFonts.inter(
+                  '$effectiveTotalReviews verified reviews',
+                  style: GoogleFonts.plusJakartaSans(
                     color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
                         .withValues(alpha: 0.5),
                     fontSize: 12,
@@ -233,9 +309,9 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
             child: Column(
               children: [5, 4, 3, 2, 1].map((rating) {
                 final count = ratingDistribution[rating] ?? 0;
-                final percentage = totalReviews == 0
+                final percentage = effectiveTotalReviews == 0
                     ? 0.0
-                    : count / totalReviews;
+                    : count / effectiveTotalReviews;
 
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 8.0),
@@ -243,7 +319,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                     children: [
                       Text(
                         '$rating',
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.plusJakartaSans(
                           color: isDarkMode
                               ? Colors.white
                               : const Color(0xFF11221F),
@@ -276,7 +352,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                         width: 30,
                         child: Text(
                           '${(percentage * 100).toInt()}%',
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.plusJakartaSans(
                             color:
                                 (isDarkMode
                                         ? Colors.white
@@ -317,7 +393,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
       children: [
         Text(
           'Customer Reviews',
-          style: GoogleFonts.inter(
+          style: GoogleFonts.plusJakartaSans(
             color: primaryTextColor,
             fontSize: ResponsiveBreakpoints.responsiveValue(
               context,
@@ -343,7 +419,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
             alignment: Alignment.center,
             child: Text(
               'No reviews yet. Be the first to review!',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 color: secondaryTextColor,
                 fontSize: 16.0,
               ),
@@ -379,7 +455,9 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                       ),
                       child: Text(
                         'Load More Reviews',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
                     ),
             ),
@@ -433,7 +511,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                       children: [
                         Text(
                           review.userName,
-                          style: GoogleFonts.inter(
+                          style: GoogleFonts.plusJakartaSans(
                             color: isDarkMode
                                 ? Colors.white
                                 : const Color(0xFF11221F),
@@ -450,7 +528,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                     const SizedBox(height: 4.0),
                     Text(
                       _formatDate(review.createdAt),
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         color:
                             (isDarkMode
                                     ? Colors.white
@@ -484,7 +562,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
           if (review.comment != null && review.comment!.isNotEmpty)
             Text(
               review.comment!,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 color: isDarkMode ? Colors.white : const Color(0xFF11221F),
                 fontSize: 14.0,
                 height: 1.6,
@@ -515,7 +593,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
                     const SizedBox(width: 8),
                     Text(
                       'Helpful${review.helpfulCount > 0 ? ' (${review.helpfulCount})' : ''}',
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         color:
                             (isDarkMode
                                     ? Colors.white
@@ -530,7 +608,7 @@ class _CommentsAndRatingsSectionState extends State<CommentsAndRatingsSection> {
               ),
               Text(
                 'Report',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
                       .withValues(alpha: 0.5),
                   fontSize: 12.0,

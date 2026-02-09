@@ -11,13 +11,27 @@ class ReviewStatsModel extends ReviewStatsEntity {
 
   /// Create a ReviewStatsModel from JSON
   factory ReviewStatsModel.fromJson(Map<String, dynamic> json) {
+    final distributionData =
+        json['rating_distribution'] as Map<String, dynamic>;
+    final distribution = <int, int>{};
+
+    distributionData.forEach((key, value) {
+      final rating = int.tryParse(key);
+      if (rating != null) {
+        distribution[rating] = (value as num).toInt();
+      }
+    });
+
+    // Ensure all ratings 1-5 exist in the map
+    for (int i = 1; i <= 5; i++) {
+      distribution.putIfAbsent(i, () => 0);
+    }
+
     return ReviewStatsModel(
       itemId: json['item_id'] as String,
       averageRating: (json['average_rating'] as num?)?.toDouble() ?? 0.0,
-      totalReviews: json['total_reviews'] as int,
-      ratingDistribution: Map<int, int>.from(
-        json['rating_distribution'] as Map<String, dynamic>,
-      ),
+      totalReviews: (json['total_reviews'] as num?)?.toInt() ?? 0,
+      ratingDistribution: distribution,
     );
   }
 

@@ -771,8 +771,8 @@ void _initOrdersFeature() {
   );
 
   // Blocs/Cubits would go here (e.g. OrdersBloc, CartBloc)
-  sl.registerFactory(() => CartBloc());
-  sl.registerFactory(() => OrdersBloc(repository: sl()));
+  sl.registerLazySingleton(() => CartBloc());
+  sl.registerLazySingleton(() => OrdersBloc(repository: sl()));
 }
 
 // ============================================
@@ -940,5 +940,7 @@ void _initProductCartFeature() {
   // BLoCs
   sl.registerLazySingleton(() => ProductCartBloc());
   sl.registerFactory(() => ProductOrdersBloc(repository: sl()));
-  sl.registerFactory(() => OffersBloc(repository: sl()));
+  sl.registerFactory(
+    () => OffersBloc(repository: sl(), messagesRepository: sl()),
+  );
 }

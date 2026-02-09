@@ -78,7 +78,7 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDataSource {
   }) async {
     try {
       final tableName = _getTableName(itemType);
-      
+
       var query = supabaseClient
           .from(tableName)
           .select('*, users!inner(full_name, avatar_url)')
@@ -96,11 +96,13 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDataSource {
       final response = await query;
 
       return (response as List)
-          .map((json) => ReviewModel.fromJson({
-                ...json,
-                'user_name': json['users']['full_name'],
-                'user_avatar': json['users']['avatar_url'],
-              }))
+          .map(
+            (json) => ReviewModel.fromJson({
+              ...json,
+              'user_name': json['users']['full_name'],
+              'user_avatar': json['users']['avatar_url'],
+            }),
+          )
           .toList();
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
@@ -115,17 +117,15 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDataSource {
     required ReviewType itemType,
   }) async {
     try {
-      final tableName = _getTableName(itemType);
-      
-      final response = await supabaseClient
-          .from(tableName)
-          .select('rating')
-          .eq('item_id', itemId);
-
-      return ReviewStatsModel.fromReviews(
-        itemId: itemId,
-        reviews: (response as List).cast<Map<String, dynamic>>(),
+      final response = await supabaseClient.rpc(
+        'get_review_stats',
+        params: {
+          'p_item_id': itemId,
+          'p_item_type': _reviewTypeToString(itemType),
+        },
       );
+
+      return ReviewStatsModel.fromJson(response as Map<String, dynamic>);
     } on PostgrestException catch (e) {
       throw ServerException(e.message);
     } catch (e) {
@@ -348,10 +348,10 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDataSource {
       for (final type in ReviewType.values) {
         final tableName = _getTableName(type);
         try {
-          await supabaseClient.rpc('increment_helpful_count', params: {
-            'review_id': reviewId,
-            'table_name': tableName,
-          });
+          await supabaseClient.rpc(
+            'increment_helpful_count',
+            params: {'review_id': reviewId, 'table_name': tableName},
+          );
           return;
         } catch (_) {
           continue;
@@ -426,4 +426,3 @@ class ReviewRemoteDataSourceImpl implements ReviewRemoteDataSource {
     }
   }
 }
-

@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/features/messages/domain/repositories/messages_repository.dart';
 import 'package:mwanachuo/features/products/domain/entities/product_offer.dart';
 import 'package:mwanachuo/features/products/domain/repositories/product_cart_repository.dart';
 
@@ -168,8 +169,10 @@ class OffersError extends OffersState {
 
 class OffersBloc extends Bloc<OffersEvent, OffersState> {
   final ProductCartRepository repository;
+  final MessagesRepository? messagesRepository; // For initiating chat if needed
 
-  OffersBloc({required this.repository}) : super(OffersInitial()) {
+  OffersBloc({required this.repository, this.messagesRepository})
+    : super(OffersInitial()) {
     on<CreateOffer>(_onCreateOffer);
     on<AcceptOffer>(_onAcceptOffer);
     on<DeclineOffer>(_onDeclineOffer);

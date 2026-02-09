@@ -750,39 +750,49 @@ class _HomePageState extends State<HomePage> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              // User Avatar with white border for contrast
-              Container(
-                padding: const EdgeInsets.all(2),
-                decoration: const BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: Colors.white24,
+          Expanded(
+            child: Row(
+              children: [
+                // User Avatar with white border for contrast
+                Container(
+                  padding: const EdgeInsets.all(2),
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white24,
+                  ),
+                  child: CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.white10,
+                    backgroundImage: _userAvatarUrl != null
+                        ? NetworkImage(_userAvatarUrl!)
+                        : null,
+                    child: _userAvatarUrl == null
+                        ? const Icon(
+                            Icons.person,
+                            color: Colors.white,
+                            size: 20,
+                          )
+                        : null,
+                  ),
                 ),
-                child: CircleAvatar(
-                  radius: 20,
-                  backgroundColor: Colors.white10,
-                  backgroundImage: _userAvatarUrl != null
-                      ? NetworkImage(_userAvatarUrl!)
-                      : null,
-                  child: _userAvatarUrl == null
-                      ? const Icon(Icons.person, color: Colors.white, size: 20)
-                      : null,
+                const SizedBox(width: 12),
+                // Personalized Greeting
+                Expanded(
+                  child: Text(
+                    _isLoadingUser
+                        ? '${_getGreeting()}!'
+                        : '${_getGreeting()}, ${_userName.split(' ').first}!',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                    maxLines: 1,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 12),
-              // Personalized Greeting
-              Text(
-                _isLoadingUser
-                    ? '${_getGreeting()}!'
-                    : '${_getGreeting()}, ${_userName.split(' ').first}!',
-                style: GoogleFonts.plusJakartaSans(
-                  color: Colors.white,
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
           Row(
             mainAxisSize: MainAxisSize.min,
@@ -961,20 +971,24 @@ class _HomePageState extends State<HomePage> {
                     ),
                   ),
                   // Enhanced User Greeting - personalized with username
-                  Text(
-                    _isLoadingUser
-                        ? '${_getGreeting()}!'
-                        : '${_getGreeting()}, ${_userName.split(' ').first}!',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: primaryTextColor,
-                      fontSize: ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 18.0,
-                        medium: 20.0,
-                        expanded: 22.0,
+                  Expanded(
+                    child: Text(
+                      _isLoadingUser
+                          ? '${_getGreeting()}!'
+                          : '${_getGreeting()}, ${_userName.split(' ').first}!',
+                      style: GoogleFonts.plusJakartaSans(
+                        color: primaryTextColor,
+                        fontSize: ResponsiveBreakpoints.responsiveValue(
+                          context,
+                          compact: 18.0,
+                          medium: 20.0,
+                          expanded: 22.0,
+                        ),
+                        fontWeight: FontWeight.bold,
+                        letterSpacing: -0.2,
                       ),
-                      fontWeight: FontWeight.bold,
-                      letterSpacing: -0.2,
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
                     ),
                   ),
                 ],

@@ -23,6 +23,7 @@ class _MakeOfferDialogState extends State<MakeOfferDialog> {
   final TextEditingController _amountController = TextEditingController();
   final TextEditingController _messageController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
+  bool _isSubmitting = false;
 
   final currencyFormatter = NumberFormat.currency(
     locale: 'en_TZ',
@@ -191,13 +192,27 @@ class _MakeOfferDialogState extends State<MakeOfferDialog> {
                   const SizedBox(width: 12),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: () {
-                        if (_formKey.currentState!.validate()) {
-                          final amount = double.parse(_amountController.text);
-                          widget.onSendOffer(amount, _messageController.text);
-                          Navigator.pop(context);
-                        }
-                      },
+                      onPressed: _isSubmitting
+                          ? null
+                          : () async {
+                              if (_formKey.currentState!.validate()) {
+                                setState(() => _isSubmitting = true);
+                                final amount = double.parse(
+                                  _amountController.text,
+                                );
+                                widget.onSendOffer(
+                                  amount,
+                                  _messageController.text,
+                                );
+                                // Brief delay to show loading state before navigation
+                                await Future.delayed(
+                                  const Duration(milliseconds: 300),
+                                );
+                                if (mounted) {
+                                  Navigator.of(context).pop();
+                                }
+                              }
+                            },
                       style: ElevatedButton.styleFrom(
                         backgroundColor: kPrimaryColor,
                         foregroundColor: Colors.white,
@@ -207,7 +222,18 @@ class _MakeOfferDialogState extends State<MakeOfferDialog> {
                         ),
                         elevation: 0,
                       ),
-                      child: const Text('Send Offer'),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                  Colors.white,
+                                ),
+                              ),
+                            )
+                          : const Text('Send Offer'),
                     ),
                   ),
                 ],

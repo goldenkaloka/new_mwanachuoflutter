@@ -15,6 +15,7 @@ import 'package:mwanachuo/features/admin/presentation/pages/admin_runner_managem
 import 'package:mwanachuo/features/home/home_page.dart';
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
+import 'package:mwanachuo/features/orders/presentation/bloc/cart_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_cart_bloc.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/offers_bloc.dart';
 import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart';
@@ -270,6 +271,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp>
           create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
         ),
         BlocProvider(create: (_) => sl<OrdersBloc>()),
+        BlocProvider(create: (_) => sl<CartBloc>()),
         BlocProvider(create: (_) => sl<ProductCartBloc>()),
         BlocProvider(create: (_) => sl<ProductOrdersBloc>()),
         BlocProvider(create: (_) => sl<OffersBloc>()),

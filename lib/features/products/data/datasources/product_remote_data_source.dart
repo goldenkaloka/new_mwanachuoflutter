@@ -94,9 +94,14 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
 
       if (universityId != null) {
         // Show products that match the university OR are global (empty university_ids)
+        // university_ids is UUID[] type, so empty arrays are represented as {}
+        debugPrint('🔍 Filtering products for university: $universityId');
         queryBuilder = queryBuilder.or(
           'university_ids.cs.{"$universityId"},university_ids.eq.{}',
         );
+      } else {
+        // No university filter - show all products
+        debugPrint('🌍 Loading all products (no university filter)');
       }
 
       if (sellerId != null) {

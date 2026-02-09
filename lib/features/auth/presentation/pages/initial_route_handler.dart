@@ -7,6 +7,8 @@ import 'package:mwanachuo/features/auth/presentation/bloc/auth_event.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/middleware/subscription_middleware.dart';
+import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/features/messages/domain/repositories/messages_repository.dart';
 
 /// Lightweight initial route handler that immediately checks auth
 /// and navigates without showing a splash screen
@@ -45,6 +47,9 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
       // Register device token for push notifications
       PushNotificationService().registerDeviceTokenForUser(state.user.id);
 
+      // Mark user as online
+      sl<MessagesRepository>().updateUserPresence(true);
+
       // Pre-check subscription status in background for seamless flow
       _preCheckSubscription(state.user.id);
 
@@ -74,6 +79,8 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
       debugPrint('✅ Registration complete, going to home');
       // Restore Authenticated state so the rest of the app can access user data
       context.read<AuthBloc>().add(const CheckAuthStatusEvent());
+      // Mark user as online
+      sl<MessagesRepository>().updateUserPresence(true);
       Navigator.of(context).pushReplacementNamed('/home');
     } else if (state is AuthError) {
       if (_hasNavigated) return;

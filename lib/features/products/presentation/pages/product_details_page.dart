@@ -320,7 +320,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                                 children: [
                                   Text(
                                     product.title,
-                                    style: GoogleFonts.inter(
+                                    style: GoogleFonts.plusJakartaSans(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
                                       color: isDarkMode
@@ -329,47 +329,51 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                                     ),
                                   ),
                                   const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.star,
-                                        color: kPrimaryColor,
-                                        size: 16,
-                                      ),
-                                      const Icon(
-                                        Icons.star,
-                                        color: kPrimaryColor,
-                                        size: 16,
-                                      ),
-                                      const Icon(
-                                        Icons.star,
-                                        color: kPrimaryColor,
-                                        size: 16,
-                                      ),
-                                      const Icon(
-                                        Icons.star,
-                                        color: kPrimaryColor,
-                                        size: 16,
-                                      ),
-                                      const Icon(
-                                        Icons.star_half,
-                                        color: kPrimaryColor,
-                                        size: 16,
-                                      ),
-                                      const SizedBox(width: 8),
-                                      Text(
-                                        '(${product.reviewCount ?? "1,248"} Reviews)',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w500,
-                                          color:
-                                              (isDarkMode
-                                                      ? Colors.white
-                                                      : const Color(0xFF11221F))
-                                                  .withValues(alpha: 0.6),
+                                  FittedBox(
+                                    fit: BoxFit.scaleDown,
+                                    child: Row(
+                                      children: [
+                                        ...List.generate(5, (index) {
+                                          final starValue = index + 1;
+                                          if ((product.rating ?? 0) >=
+                                              starValue) {
+                                            return const Icon(
+                                              Icons.star,
+                                              color: kPrimaryColor,
+                                              size: 16,
+                                            );
+                                          } else if ((product.rating ?? 0) >=
+                                              starValue - 0.5) {
+                                            return const Icon(
+                                              Icons.star_half,
+                                              color: kPrimaryColor,
+                                              size: 16,
+                                            );
+                                          } else {
+                                            return const Icon(
+                                              Icons.star_border,
+                                              color: kPrimaryColor,
+                                              size: 16,
+                                            );
+                                          }
+                                        }),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          '${product.rating?.toStringAsFixed(1) ?? "0.0"} (${product.reviewCount ?? 0} Reviews)',
+                                          style: GoogleFonts.plusJakartaSans(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w500,
+                                            color:
+                                                (isDarkMode
+                                                        ? Colors.white
+                                                        : const Color(
+                                                            0xFF11221F,
+                                                          ))
+                                                    .withValues(alpha: 0.6),
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ],
                               ),
@@ -379,7 +383,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                               children: [
                                 Text(
                                   'Tshs ${product.price.toStringAsFixed(0)}',
-                                  style: GoogleFonts.inter(
+                                  style: GoogleFonts.plusJakartaSans(
                                     fontSize: 24,
                                     fontWeight: FontWeight.bold,
                                     color: isDarkMode
@@ -407,12 +411,6 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                             _buildTabItem(
                               'Overview',
                               isActive: _activeTab == 'Overview',
-                              isDarkMode: isDarkMode,
-                            ),
-                            const SizedBox(width: 32),
-                            _buildTabItem(
-                              'Specs',
-                              isActive: _activeTab == 'Specs',
                               isDarkMode: isDarkMode,
                             ),
                             const SizedBox(width: 32),
@@ -495,7 +493,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             const SizedBox(width: 12),
             Text(
               'Write a Review',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 color: Colors.white,
                 fontWeight: FontWeight.bold,
                 fontSize: 16,
@@ -562,7 +560,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             padding: const EdgeInsets.only(bottom: 12),
             child: Text(
               label,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 fontWeight: isActive ? FontWeight.bold : FontWeight.w600,
                 color: isActive
@@ -603,7 +601,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             // Re-evaluating based on mockup: Tabs are usually for distinct sections.
             Text(
               product.description,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 height: 1.6,
                 color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
@@ -620,40 +618,6 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             ),
           ],
         );
-      case 'Specs':
-        return Column(
-          children: [
-            GridView.count(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              crossAxisCount: 2,
-              childAspectRatio: 2.2,
-              crossAxisSpacing: 16,
-              mainAxisSpacing: 16,
-              children: [
-                _buildSpecCard(
-                  Icons.battery_charging_full,
-                  'Battery',
-                  '48 Hours',
-                  isDarkMode,
-                ),
-                _buildSpecCard(
-                  Icons.water_drop,
-                  'Waterproof',
-                  '50m depth',
-                  isDarkMode,
-                ),
-                _buildSpecCard(
-                  Icons.favorite,
-                  'Health',
-                  'HR Monitor',
-                  isDarkMode,
-                ),
-                _buildSpecCard(Icons.fitbit, 'Sport', '80+ Modes', isDarkMode),
-              ],
-            ),
-          ],
-        );
       case 'Reviews':
         return CommentsAndRatingsSection(
           itemId: product.id,
@@ -662,60 +626,6 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
       default:
         return const SizedBox.shrink();
     }
-  }
-
-  Widget _buildSpecCard(
-    IconData icon,
-    String label,
-    String value,
-    bool isDarkMode,
-  ) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: kPrimaryColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: kPrimaryColor.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(icon, color: kPrimaryColor, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  label.toUpperCase(),
-                  style: GoogleFonts.inter(
-                    fontSize: 10,
-                    letterSpacing: 1.0,
-                    fontWeight: FontWeight.bold,
-                    color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
-                        .withValues(alpha: 0.5),
-                  ),
-                ),
-                Text(
-                  value,
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : const Color(0xFF11221F),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
   }
 
   Widget _buildImmersiveBottomBar(
@@ -792,7 +702,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                               ),
                               child: Text(
                                 '${cartState.totalItems}',
-                                style: GoogleFonts.inter(
+                                style: GoogleFonts.plusJakartaSans(
                                   color: Colors.white,
                                   fontSize: 10,
                                   fontWeight: FontWeight.bold,
@@ -883,7 +793,7 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                           SnackBar(
                             content: Text(
                               'Added to cart',
-                              style: GoogleFonts.inter(
+                              style: GoogleFonts.plusJakartaSans(
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -899,24 +809,27 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                           ),
                         );
                       },
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          const Icon(
-                            Icons.add_shopping_cart,
-                            color: Colors.white,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Add to Cart',
-                            style: GoogleFonts.inter(
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.add_shopping_cart,
                               color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                              size: 20,
                             ),
-                          ),
-                        ],
+                            const SizedBox(width: 8),
+                            Text(
+                              'Add to Cart',
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 16,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
@@ -1089,7 +1002,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
             const SizedBox(height: 24),
             Text(
               'Write a Review',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: isDarkMode ? Colors.white : const Color(0xFF11221F),
@@ -1098,7 +1011,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
             const SizedBox(height: 8),
             Text(
               'How was your experience with this product?',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: 14,
                 color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
                     .withValues(alpha: 0.6),
@@ -1130,7 +1043,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
               maxLines: 5,
               decoration: InputDecoration(
                 hintText: 'Describe your experience...',
-                hintStyle: GoogleFonts.inter(
+                hintStyle: GoogleFonts.plusJakartaSans(
                   color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
                       .withValues(alpha: 0.4),
                 ),
@@ -1181,7 +1094,7 @@ class _ReviewSheetState extends State<_ReviewSheet> {
                           )
                         : Text(
                             'Submit Review',
-                            style: GoogleFonts.inter(
+                            style: GoogleFonts.plusJakartaSans(
                               fontSize: 16,
                               fontWeight: FontWeight.bold,
                             ),

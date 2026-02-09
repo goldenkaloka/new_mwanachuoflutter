@@ -4,7 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart'
+    as chat;
 import 'package:mwanachuo/features/messages/presentation/bloc/presence_cubit.dart';
 import 'package:mwanachuo/features/messages/domain/entities/message.dart'
     as domain;
@@ -50,22 +51,66 @@ class ChatPage extends StatefulWidget {
 class _ChatPageState extends State<ChatPage> {
   final TextEditingController _messageController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
+  bool _isInitialActionsTriggered = false;
+  bool _productShared = false;
+  String? _activeConversationId;
+
+  final currencyFormatter = NumberFormat.currency(
+    locale: 'en_TZ',
+    symbol: 'TZS ',
+    decimalDigits: 0,
+  );
 
   @override
   void initState() {
     super.initState();
+    _activeConversationId = widget.conversationId;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _handleInitialActions();
+      _startInitialProcess();
     });
   }
 
-  void _handleInitialActions() {
-    if (widget.initialOffer != null && widget.product != null) {
+  void _startInitialProcess() {
+    if (_isInitialActionsTriggered) return;
+    _isInitialActionsTriggered = true;
+
+    if (_activeConversationId == 'new') {
+      context.read<chat.ChatBloc>().add(chat.StartChat(widget.otherUserId));
+    } else {
+      _shareProductIfNecessary(_activeConversationId!);
+    }
+  }
+
+  void _shareProductIfNecessary(String convId) {
+    if (_productShared || widget.product == null) return;
+    _productShared = true;
+
+    context.read<chat.ChatBloc>().add(
+      chat.SendMessage(
+        conversationId: convId,
+        otherUserId: widget.otherUserId,
+        content: "I'm interested in this product: ${widget.product!.title}",
+        type: domain.MessageType.productShare,
+        metadata: {
+          'type': 'product_share',
+          'product_id': widget.product!.id,
+          'product_title': widget.product!.title,
+          'product_price': widget.product!.price,
+          'product_image': widget.product!.images.isNotEmpty
+              ? widget.product!.images.first
+              : null,
+          'seller_id': widget.product!.sellerId,
+        },
+      ),
+    );
+
+    // If there's an offer, trigger it too (sequentially after share metadata is sent)
+    if (widget.initialOffer != null) {
       context.read<OffersBloc>().add(
         CreateOffer(
           productId: widget.product!.id,
           sellerId: widget.otherUserId,
-          conversationId: widget.conversationId,
+          conversationId: convId,
           offerAmount: widget.initialOffer!,
           originalPrice: widget.product!.price,
           message: widget.initialMessage?.isEmpty == true
@@ -73,27 +118,6 @@ class _ChatPageState extends State<ChatPage> {
               : widget.initialMessage,
         ),
       );
-    } else if (widget.product != null) {
-      // Just share the product
-      context.read<ChatBloc>().add(
-        SendMessage(
-          conversationId: widget.conversationId,
-          content: "I'm interested in this product: ${widget.product!.title}",
-          type: domain.MessageType.productShare,
-          metadata: {
-            'type': 'product_share',
-            'product_id': widget.product!.id,
-            'product_title': widget.product!.title,
-            'product_price': widget.product!.price,
-            'product_image': widget.product!.images.isNotEmpty
-                ? widget.product!.images.first
-                : null,
-            'seller_id': widget.product!.sellerId,
-          },
-        ),
-      );
-    } else if (widget.initialMessage != null) {
-      _messageController.text = widget.initialMessage!;
     }
   }
 
@@ -108,8 +132,12 @@ class _ChatPageState extends State<ChatPage> {
     final text = _messageController.text.trim();
     if (text.isEmpty) return;
 
-    context.read<ChatBloc>().add(
-      SendMessage(conversationId: widget.conversationId, content: text),
+    context.read<chat.ChatBloc>().add(
+      chat.SendMessage(
+        conversationId: _activeConversationId ?? widget.conversationId,
+        otherUserId: widget.otherUserId,
+        content: text,
+      ),
     );
     _messageController.clear();
   }
@@ -131,7 +159,7 @@ class _ChatPageState extends State<ChatPage> {
             CreateOffer(
               productId: productId,
               sellerId: sellerId,
-              conversationId: widget.conversationId,
+              conversationId: _activeConversationId ?? widget.conversationId,
               offerAmount: amount,
               originalPrice: originalPrice,
               message: offerMessage.isEmpty ? null : offerMessage,
@@ -178,7 +206,7 @@ class _ChatPageState extends State<ChatPage> {
               deliveryMethod: deliveryMethod,
               deliveryAddress: address,
               deliveryPhone: phone,
-              conversationId: widget.conversationId,
+              conversationId: _activeConversationId ?? widget.conversationId,
               offerId: metadata['offer_id'],
               agreedPrice: price,
             ),
@@ -193,153 +221,236 @@ class _ChatPageState extends State<ChatPage> {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (_) => sl<ChatBloc>()
-            ..add(LoadMessages(widget.conversationId))
-            ..add(MarkAsRead(widget.conversationId)),
+          create: (_) {
+            final bloc = sl<chat.ChatBloc>();
+            if (widget.conversationId != 'new') {
+              bloc.add(chat.LoadMessages(widget.conversationId));
+              bloc.add(chat.MarkAsRead(widget.conversationId));
+            }
+            return bloc;
+          },
         ),
         BlocProvider(
-          create: (_) =>
-              sl<PresenceCubit>()..subscribeToUserPresence(widget.otherUserId),
+          create: (_) {
+            final cubit = sl<PresenceCubit>();
+            if (widget.otherUserId != 'new') {
+              cubit.subscribeToUserPresence(widget.otherUserId);
+            }
+            return cubit;
+          },
         ),
         BlocProvider(create: (_) => sl<OffersBloc>()),
         BlocProvider(create: (_) => sl<ProductCartBloc>()),
         BlocProvider(create: (_) => sl<ProductOrdersBloc>()),
       ],
-      child: Scaffold(
-        backgroundColor: const Color(0xFFECE5DD),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF075E54),
-          foregroundColor: Colors.white,
-          title: Row(
-            children: [
-              CircleAvatar(
-                radius: 18,
-                backgroundColor: Colors.white24,
-                backgroundImage: widget.otherUserAvatar != null
-                    ? NetworkImage(widget.otherUserAvatar!)
-                    : null,
-                child: widget.otherUserAvatar == null
-                    ? const Icon(Icons.person, color: Colors.white)
-                    : null,
-              ),
-              const SizedBox(width: 10),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    widget.otherUserName,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  BlocBuilder<PresenceCubit, PresenceState>(
-                    builder: (context, state) {
-                      String status = 'Offline';
-                      if (state is PresenceLoaded) {
-                        if (state.user.isOnline) {
-                          status = 'Online';
-                        } else if (state.user.lastSeenAt != null) {
-                          status =
-                              'Last seen ${timeago.format(state.user.lastSeenAt!)}';
-                        }
-                      }
-                      return Text(
-                        status,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: Colors.white70,
-                        ),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ],
+      child: MultiBlocListener(
+        listeners: [
+          BlocListener<chat.ChatBloc, chat.ChatState>(
+            listener: (context, state) {
+              if (state is chat.ChatConversationInitiated) {
+                if (mounted) {
+                  setState(() => _activeConversationId = state.conversationId);
+                }
+                _shareProductIfNecessary(state.conversationId);
+              }
+            },
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.share),
-              onPressed: () {
-                // In a real app, this opens a product selector
-                // For demonstration, we'll send a mock product share
-                context.read<ChatBloc>().add(
-                  SendMessage(
-                    conversationId: widget.conversationId,
-                    content: 'Check out this product!',
-                    type: domain.MessageType.productShare,
+          BlocListener<OffersBloc, OffersState>(
+            listener: (context, state) {
+              if (state is OfferCreated) {
+                // Send the offer message to chat
+                context.read<chat.ChatBloc>().add(
+                  chat.SendMessage(
+                    conversationId: _activeConversationId!,
+                    otherUserId: widget.otherUserId,
+                    content:
+                        "I've sent an offer for ${currencyFormatter.format(state.offer.offerAmount)}",
+                    type: domain.MessageType.offer,
                     metadata: {
-                      'product_id': 'demo-prod-123',
-                      'product_title': 'MacBook Pro 2020',
-                      'product_price': 500000,
-                      'product_image': 'https://placehold.co/400',
-                      'seller_id': widget.otherUserId,
+                      'offer_id': state.offer.id,
+                      'product_id': state.offer.productId,
+                      'offer_amount': state.offer.offerAmount,
+                      'original_price': state.offer.originalPrice,
+                      'status': 'pending',
                     },
                   ),
                 );
-              },
-              tooltip: 'Share Product',
-            ),
-            IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
-          ],
-        ),
-        body: Column(
-          children: [
-            Expanded(
-              child: BlocBuilder<ChatBloc, ChatState>(
-                builder: (context, state) {
-                  if (state is ChatLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  } else if (state is ChatError) {
-                    return Center(child: Text('Error: ${state.message}'));
-                  } else if (state is ChatLoaded) {
-                    final messages = state.messages;
-                    return ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.all(16),
-                      itemCount: messages.length,
-                      itemBuilder: (context, index) {
-                        final message = messages[index];
-                        final authState = context.read<AuthBloc>().state;
-                        final currentUserId = authState is Authenticated
-                            ? authState.user.id
-                            : null;
-                        final isMe = message.senderId == currentUserId;
-
-                        // Auto-scroll to bottom on new messages
-                        WidgetsBinding.instance.addPostFrameCallback((_) {
-                          if (_scrollController.hasClients &&
-                              index == messages.length - 1) {
-                            _scrollController.animateTo(
-                              _scrollController.position.maxScrollExtent,
-                              duration: const Duration(milliseconds: 300),
-                              curve: Curves.easeOut,
-                            );
+              } else if (state is OfferAccepted) {
+                // Send "Deal Confirmed" message
+                context.read<chat.ChatBloc>().add(
+                  chat.SendMessage(
+                    conversationId: _activeConversationId!,
+                    otherUserId: widget.otherUserId,
+                    content: "I've accepted the offer. Deal confirmed!",
+                    type: domain.MessageType.dealConfirmed,
+                    metadata: {
+                      'offer_id': state.offer.id,
+                      'product_id': state.offer.productId,
+                      'product_title': widget.product?.title ?? 'Product',
+                      'product_price': state.offer.offerAmount,
+                      'seller_id': state.offer.sellerId,
+                    },
+                  ),
+                );
+              } else if (state is OfferDeclined) {
+                // Send "Offer Declined" message
+                context.read<chat.ChatBloc>().add(
+                  chat.SendMessage(
+                    conversationId: _activeConversationId!,
+                    otherUserId: widget.otherUserId,
+                    content: "I've declined the offer.",
+                    type: domain.MessageType.text, // Just text for decline
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+        child: Scaffold(
+          backgroundColor: const Color(0xFFECE5DD),
+          appBar: AppBar(
+            backgroundColor: const Color(0xFF075E54),
+            foregroundColor: Colors.white,
+            title: Row(
+              children: [
+                CircleAvatar(
+                  radius: 18,
+                  backgroundColor: Colors.white24,
+                  backgroundImage: widget.otherUserAvatar != null
+                      ? NetworkImage(widget.otherUserAvatar!)
+                      : null,
+                  child: widget.otherUserAvatar == null
+                      ? const Icon(Icons.person, color: Colors.white)
+                      : null,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        widget.otherUserName,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                        maxLines: 1,
+                      ),
+                      BlocBuilder<PresenceCubit, PresenceState>(
+                        builder: (context, state) {
+                          String status = 'Offline';
+                          if (state is PresenceLoaded) {
+                            if (state.user.isOnline) {
+                              status = 'Online';
+                            } else if (state.user.lastSeenAt != null) {
+                              status =
+                                  'Last seen ${timeago.format(state.user.lastSeenAt!)}';
+                            }
                           }
-                        });
-
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Align(
-                            alignment: isMe
-                                ? Alignment.centerRight
-                                : Alignment.centerLeft,
-                            child: _buildMessageContent(
-                              message,
-                              isMe,
-                              currentUserId,
+                          return Text(
+                            status,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 12,
+                              color: Colors.white70,
                             ),
-                          ),
-                        );
-                      },
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
+                            overflow: TextOverflow.ellipsis,
+                            maxLines: 1,
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            _buildInputArea(),
-          ],
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.share),
+                onPressed: () {
+                  // In a real app, this opens a product selector
+                  // For demonstration, we'll send a mock product share
+                  context.read<chat.ChatBloc>().add(
+                    chat.SendMessage(
+                      conversationId:
+                          _activeConversationId ?? widget.conversationId,
+                      otherUserId: widget.otherUserId,
+                      content: 'Check out this product!',
+                      type: domain.MessageType.productShare,
+                      metadata: {
+                        'product_id': 'demo-prod-123',
+                        'product_title': 'MacBook Pro 2020',
+                        'product_price': 500000,
+                        'product_image': 'https://placehold.co/400',
+                        'seller_id': widget.otherUserId,
+                      },
+                    ),
+                  );
+                },
+                tooltip: 'Share Product',
+              ),
+              IconButton(icon: const Icon(Icons.more_vert), onPressed: () {}),
+            ],
+          ),
+          body: Column(
+            children: [
+              Expanded(
+                child: BlocBuilder<chat.ChatBloc, chat.ChatState>(
+                  builder: (context, state) {
+                    if (state is chat.ChatLoading) {
+                      return const Center(child: CircularProgressIndicator());
+                    } else if (state is chat.ChatError) {
+                      return Center(child: Text('Error: ${state.message}'));
+                    } else if (state is chat.ChatLoaded) {
+                      final messages = state.messages;
+                      return ListView.builder(
+                        controller: _scrollController,
+                        padding: const EdgeInsets.all(16),
+                        itemCount: messages.length,
+                        itemBuilder: (context, index) {
+                          final message = messages[index];
+                          final authState = context.read<AuthBloc>().state;
+                          final currentUserId = authState is Authenticated
+                              ? authState.user.id
+                              : null;
+                          final isMe = message.senderId == currentUserId;
+
+                          // Auto-scroll to bottom on new messages
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            if (_scrollController.hasClients &&
+                                index == messages.length - 1) {
+                              _scrollController.animateTo(
+                                _scrollController.position.maxScrollExtent,
+                                duration: const Duration(milliseconds: 300),
+                                curve: Curves.easeOut,
+                              );
+                            }
+                          });
+
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 4),
+                            child: Align(
+                              alignment: isMe
+                                  ? Alignment.centerRight
+                                  : Alignment.centerLeft,
+                              child: _buildMessageContent(
+                                message,
+                                isMe,
+                                currentUserId,
+                              ),
+                            ),
+                          );
+                        },
+                      );
+                    }
+                    return const SizedBox.shrink();
+                  },
+                ),
+              ),
+              _buildInputArea(),
+            ],
+          ),
         ),
       ),
     );

@@ -9,6 +9,8 @@ import 'package:mwanachuo/features/auth/domain/usecases/sign_in.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_out.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/sign_up.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/reset_password.dart';
+import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/features/messages/domain/repositories/messages_repository.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
 
@@ -46,10 +48,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       SignInParams(email: event.email, password: event.password),
     );
 
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (user) => emit(Authenticated(user)),
-    );
+    result.fold((failure) => emit(AuthError(failure.message)), (user) {
+      sl<MessagesRepository>().updateUserPresence(true);
+      emit(Authenticated(user));
+    });
   }
 
   Future<void> _onSignUp(SignUpEvent event, Emitter<AuthState> emit) async {
@@ -77,6 +79,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // Registration is now complete with all required fields
       debugPrint('✅ User account created - ID: ${user.id}');
       debugPrint('✅ Registration complete - redirecting to home');
+      sl<MessagesRepository>().updateUserPresence(true);
       emit(Authenticated(user));
     });
   }
@@ -86,10 +89,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
     final result = await signOut(NoParams());
 
-    result.fold(
-      (failure) => emit(AuthError(failure.message)),
-      (_) => emit(const Unauthenticated()),
-    );
+    result.fold((failure) => emit(AuthError(failure.message)), (_) {
+      sl<MessagesRepository>().updateUserPresence(false);
+      emit(const Unauthenticated());
+    });
   }
 
   Future<void> _onCheckAuthStatus(
