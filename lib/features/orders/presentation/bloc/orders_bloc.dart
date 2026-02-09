@@ -1,6 +1,7 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mwanachuo/features/orders/domain/entities/order.dart';
+import 'package:mwanachuo/features/orders/domain/entities/campus_spot.dart';
 import 'package:mwanachuo/features/orders/domain/repositories/orders_repository.dart';
 
 // Events
@@ -38,6 +39,13 @@ class ClaimOrder extends OrdersEvent {
   const ClaimOrder(this.orderId);
   @override
   List<Object?> get props => [orderId];
+}
+
+class LoadCampusSpots extends OrdersEvent {
+  final String? universityId;
+  const LoadCampusSpots({this.universityId});
+  @override
+  List<Object?> get props => [universityId];
 }
 
 // State
@@ -101,6 +109,13 @@ class OrdersFailure extends OrdersState {
   List<Object?> get props => [message];
 }
 
+class CampusSpotsLoaded extends OrdersState {
+  final List<CampusSpot> spots;
+  const CampusSpotsLoaded(this.spots);
+  @override
+  List<Object?> get props => [spots];
+}
+
 // Bloc
 class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
   final OrdersRepository repository;
@@ -113,6 +128,7 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
     on<FetchVendorOrders>(_onFetchVendorOrders);
     on<UpdateOrder>(_onUpdateOrder);
     on<ClaimOrder>(_onClaimOrder);
+    on<LoadCampusSpots>(_onLoadCampusSpots);
   }
 
   Future<void> _onPlaceOrder(
@@ -201,5 +217,17 @@ class OrdersBloc extends Bloc<OrdersEvent, OrdersState> {
       add(FetchAvailableJobs());
       add(FetchRunnerActiveOrders());
     });
+  }
+
+  Future<void> _onLoadCampusSpots(
+    LoadCampusSpots event,
+    Emitter<OrdersState> emit,
+  ) async {
+    emit(OrdersLoading());
+    final result = await repository.getCampusSpots(event.universityId);
+    result.fold(
+      (failure) => emit(OrdersFailure(failure.message)),
+      (spots) => emit(CampusSpotsLoaded(spots)),
+    );
   }
 }

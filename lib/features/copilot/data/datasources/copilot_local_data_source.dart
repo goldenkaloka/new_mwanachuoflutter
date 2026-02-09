@@ -35,8 +35,19 @@ class CopilotLocalDataSourceImpl implements CopilotLocalDataSource {
   late Box<Map<dynamic, dynamic>> downloadsBox;
 
   Future<void> init() async {
-    notesBox = await Hive.openBox<Map>(notesBoxName);
-    downloadsBox = await Hive.openBox<Map>(downloadsBoxName);
+    if (!Hive.isBoxOpen(notesBoxName)) {
+      notesBox = await Hive.openBox<Map<dynamic, dynamic>>(notesBoxName);
+    } else {
+      notesBox = Hive.box<Map<dynamic, dynamic>>(notesBoxName);
+    }
+
+    if (!Hive.isBoxOpen(downloadsBoxName)) {
+      downloadsBox = await Hive.openBox<Map<dynamic, dynamic>>(
+        downloadsBoxName,
+      );
+    } else {
+      downloadsBox = Hive.box<Map<dynamic, dynamic>>(downloadsBoxName);
+    }
   }
 
   @override

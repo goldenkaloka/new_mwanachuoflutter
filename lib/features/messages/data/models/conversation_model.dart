@@ -1,53 +1,56 @@
-import 'package:mwanachuo/features/auth/domain/entities/user_entity.dart';
+import 'package:mwanachuo/features/auth/data/models/user_model.dart';
+import 'package:mwanachuo/features/messages/data/models/message_model.dart';
 import 'package:mwanachuo/features/messages/domain/entities/conversation.dart';
 
 class ConversationModel extends Conversation {
   const ConversationModel({
     required super.id,
-    required super.participants,
-    super.lastMessage,
+    super.lastMessageId,
     super.lastMessageAt,
-    required super.updatedAt,
+    super.lastMessage,
+    required super.participantIds,
     super.participantsData,
+    required super.createdAt,
+    required super.updatedAt,
+    super.unreadCount,
   });
 
-  factory ConversationModel.fromJson(Map<String, dynamic> json) {
+  factory ConversationModel.fromMap(
+    Map<String, dynamic> map, {
+    List<Map<String, dynamic>>? participants,
+  }) {
+    final participantListData =
+        participants?.map((p) => UserModel.fromJson(p)).toList() ?? [];
+    final participantIds = participantListData.map((p) => p.id).toList();
+
     return ConversationModel(
-      id: json['id'],
-      participants: List<String>.from(json['participants'] ?? []),
-      lastMessage: json['last_message'],
-      lastMessageAt: json['last_message_at'] != null
-          ? DateTime.parse(json['last_message_at'])
+      id: map['id'],
+      lastMessageId: map['last_message_id'],
+      lastMessageAt: map['last_message_at'] != null
+          ? DateTime.parse(map['last_message_at'])
           : null,
-      updatedAt: DateTime.parse(json['updated_at']),
+      lastMessage: map['last_message'] != null
+          ? MessageModel.fromMap(map['last_message'])
+          : null,
+      participantIds: participantIds,
+      participantsData: participantListData,
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'])
+          : DateTime.now(),
+      updatedAt: map['updated_at'] != null
+          ? DateTime.parse(map['updated_at'])
+          : DateTime.now(),
+      unreadCount: map['unread_count'] ?? 0,
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
-      'participants': participants,
-      'last_message': lastMessage,
+      'last_message_id': lastMessageId,
       'last_message_at': lastMessageAt?.toIso8601String(),
+      'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt.toIso8601String(),
     };
-  }
-
-  ConversationModel copyWith({
-    String? id,
-    List<String>? participants,
-    String? lastMessage,
-    DateTime? lastMessageAt,
-    DateTime? updatedAt,
-    List<UserEntity>? participantsData,
-  }) {
-    return ConversationModel(
-      id: id ?? this.id,
-      participants: participants ?? this.participants,
-      lastMessage: lastMessage ?? this.lastMessage,
-      lastMessageAt: lastMessageAt ?? this.lastMessageAt,
-      updatedAt: updatedAt ?? this.updatedAt,
-      participantsData: participantsData ?? this.participantsData,
-    );
   }
 }

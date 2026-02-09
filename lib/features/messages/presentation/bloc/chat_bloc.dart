@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import 'package:mwanachuo/features/messages/domain/entities/message.dart';
-
 import 'package:mwanachuo/features/messages/domain/repositories/messages_repository.dart';
 
 // Events
@@ -22,13 +21,13 @@ class LoadMessages extends ChatEvent {
 class SendMessage extends ChatEvent {
   final String conversationId;
   final String content;
-  final String type;
+  final MessageType type;
   final Map<String, dynamic> metadata;
 
   const SendMessage({
     required this.conversationId,
     required this.content,
-    this.type = 'text',
+    this.type = MessageType.text,
     this.metadata = const {},
   });
 
@@ -36,27 +35,25 @@ class SendMessage extends ChatEvent {
   List<Object> get props => [conversationId, content, type, metadata];
 }
 
-class StartConversation extends ChatEvent {
-  final List<String> participantIds;
-  const StartConversation(this.participantIds);
+class StartChat extends ChatEvent {
+  final String otherUserId;
+  const StartChat(this.otherUserId);
   @override
-  List<Object> get props => [participantIds];
+  List<Object> get props => [otherUserId];
 }
 
 class MessagesUpdated extends ChatEvent {
   final List<Message> messages;
-  final String conversationId;
-  const MessagesUpdated(this.messages, this.conversationId);
+  const MessagesUpdated(this.messages);
   @override
-  List<Object> get props => [messages, conversationId];
+  List<Object> get props => [messages];
 }
 
-class UpdateMessage extends ChatEvent {
-  final String messageId;
-  final Map<String, dynamic> metadata;
-  const UpdateMessage({required this.messageId, required this.metadata});
+class MarkAsRead extends ChatEvent {
+  final String conversationId;
+  const MarkAsRead(this.conversationId);
   @override
-  List<Object> get props => [messageId, metadata];
+  List<Object> get props => [conversationId];
 }
 
 // States
@@ -72,10 +69,9 @@ class ChatLoading extends ChatState {}
 
 class ChatLoaded extends ChatState {
   final List<Message> messages;
-  final String conversationId;
-  const ChatLoaded(this.messages, {required this.conversationId});
+  const ChatLoaded(this.messages);
   @override
-  List<Object> get props => [messages, conversationId];
+  List<Object> get props => [messages];
 }
 
 class ChatError extends ChatState {
@@ -88,36 +84,49 @@ class ChatError extends ChatState {
 // Bloc
 class ChatBloc extends Bloc<ChatEvent, ChatState> {
   final MessagesRepository _repository;
-  StreamSubscription? _messagesSubscription;
+  StreamSubscription? _subscription;
 
   ChatBloc(this._repository) : super(ChatInitial()) {
     on<LoadMessages>(_onLoadMessages);
     on<SendMessage>(_onSendMessage);
-    on<StartConversation>(_onStartConversation);
+    on<StartChat>(_onStartChat);
     on<MessagesUpdated>(_onMessagesUpdated);
-    on<UpdateMessage>(_onUpdateMessage);
+    on<MarkAsRead>(_onMarkAsRead);
   }
 
-  Future<void> _onLoadMessages(
-    LoadMessages event,
-    Emitter<ChatState> emit,
-  ) async {
+  void _onLoadMessages(LoadMessages event, Emitter<ChatState> emit) {
+    emit(ChatLoading());
+    _subscription?.cancel();
+    _subscription = _repository
+        .getMessagesStream(event.conversationId)
+        .listen(
+          (messages) {
+            add(MessagesUpdated(messages));
+          },
+          onError: (e) {
+            // Handle error
+          },
+        );
+  }
+
+  Future<void> _onStartChat(StartChat event, Emitter<ChatState> emit) async {
     emit(ChatLoading());
     try {
-      await _messagesSubscription?.cancel();
-
-      _messagesSubscription = _repository
-          .getMessagesStream(event.conversationId)
-          .listen((messages) {
-            add(MessagesUpdated(messages, event.conversationId));
-          });
+      final conversation = await _repository.initiateConversation(
+        event.otherUserId,
+      );
+      add(LoadMessages(conversation.id));
     } catch (e) {
       emit(ChatError(e.toString()));
     }
   }
 
   void _onMessagesUpdated(MessagesUpdated event, Emitter<ChatState> emit) {
-    emit(ChatLoaded(event.messages, conversationId: event.conversationId));
+    emit(ChatLoaded(event.messages));
+    // Automatically mark as read when messages are loaded/updated
+    if (event.messages.isNotEmpty) {
+      add(MarkAsRead(event.messages.first.conversationId));
+    }
   }
 
   Future<void> _onSendMessage(
@@ -132,42 +141,17 @@ class ChatBloc extends Bloc<ChatEvent, ChatState> {
         metadata: event.metadata,
       );
     } catch (e) {
-      // Handle error, maybe emit state with error but keep messages?
-      // For now just error state
-      emit(ChatError(e.toString()));
+      // Optionally emit error but usually optimistic UI handles this
     }
   }
 
-  Future<void> _onStartConversation(
-    StartConversation event,
-    Emitter<ChatState> emit,
-  ) async {
-    emit(ChatLoading());
-    try {
-      final conversation = await _repository.createConversation(
-        event.participantIds,
-      );
-      // Once created, load messages for it
-      add(LoadMessages(conversation.id));
-    } catch (e) {
-      emit(ChatError(e.toString()));
-    }
-  }
-
-  Future<void> _onUpdateMessage(
-    UpdateMessage event,
-    Emitter<ChatState> emit,
-  ) async {
-    try {
-      await _repository.updateMessage(event.messageId, event.metadata);
-    } catch (e) {
-      emit(ChatError(e.toString()));
-    }
+  Future<void> _onMarkAsRead(MarkAsRead event, Emitter<ChatState> emit) async {
+    await _repository.markAsRead(event.conversationId);
   }
 
   @override
   Future<void> close() {
-    _messagesSubscription?.cancel();
+    _subscription?.cancel();
     return super.close();
   }
 }

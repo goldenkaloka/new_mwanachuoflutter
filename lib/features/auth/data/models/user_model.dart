@@ -21,6 +21,8 @@ class UserModel extends UserEntity {
     super.programName,
     super.userType,
     super.freeListingsCount = 0,
+    super.isOnline = false,
+    super.lastSeenAt,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
@@ -46,6 +48,10 @@ class UserModel extends UserEntity {
       programName: json['program_name'] as String?,
       userType: json['user_type'] as String?,
       freeListingsCount: json['free_listings_count'] as int? ?? 0,
+      isOnline: json['is_online'] as bool? ?? false,
+      lastSeenAt: json['last_seen_at'] != null
+          ? DateTime.parse(json['last_seen_at'] as String)
+          : null,
     );
   }
 
@@ -69,6 +75,8 @@ class UserModel extends UserEntity {
       'program_name': programName,
       'user_type': userType,
       'free_listings_count': freeListingsCount,
+      'is_online': isOnline,
+      'last_seen_at': lastSeenAt?.toIso8601String(),
     };
   }
 
@@ -91,6 +99,8 @@ class UserModel extends UserEntity {
     String? programName,
     String? userType,
     int? freeListingsCount,
+    bool? isOnline,
+    DateTime? lastSeenAt,
   }) {
     return UserModel(
       id: id ?? this.id,
@@ -111,6 +121,8 @@ class UserModel extends UserEntity {
       programName: programName ?? this.programName,
       userType: userType ?? this.userType,
       freeListingsCount: freeListingsCount ?? this.freeListingsCount,
+      isOnline: isOnline ?? this.isOnline,
+      lastSeenAt: lastSeenAt ?? this.lastSeenAt,
     );
   }
 }

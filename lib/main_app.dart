@@ -13,14 +13,23 @@ import 'package:mwanachuo/features/admin/presentation/pages/admin_course_list_pa
 import 'package:mwanachuo/features/admin/presentation/pages/admin_create_business_user_page.dart';
 import 'package:mwanachuo/features/admin/presentation/pages/admin_runner_management_page.dart';
 import 'package:mwanachuo/features/home/home_page.dart';
+import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
+import 'package:mwanachuo/features/products/presentation/bloc/product_cart_bloc.dart';
+import 'package:mwanachuo/features/products/presentation/bloc/offers_bloc.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/conversations_bloc.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_bloc.dart';
 import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodation_bloc.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:mwanachuo/features/products/presentation/pages/product_details_page.dart';
 import 'package:mwanachuo/features/products/presentation/pages/post_product_screen.dart';
 import 'package:mwanachuo/features/products/presentation/pages/all_products_page.dart';
-
+import 'package:mwanachuo/features/products/presentation/pages/product_cart_page.dart';
+import 'package:mwanachuo/features/products/presentation/pages/product_checkout_page.dart';
+import 'package:mwanachuo/features/products/presentation/pages/my_product_orders_page.dart';
+import 'package:mwanachuo/features/products/presentation/pages/seller_product_orders_page.dart';
+import 'package:mwanachuo/features/products/presentation/bloc/product_orders_bloc.dart';
 import 'package:mwanachuo/features/profile/presentation/pages/profile_page.dart';
 import 'package:mwanachuo/features/profile/presentation/pages/edit_profile_screen.dart';
 import 'package:mwanachuo/features/profile/presentation/pages/my_listings_screen.dart';
@@ -57,6 +66,8 @@ import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 
 import 'package:mwanachuo/core/widgets/persistent_bottom_nav_wrapper.dart';
+import 'package:mwanachuo/features/messages/domain/repositories/messages_repository.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 
 import 'package:app_links/app_links.dart';
 import 'dart:async';
@@ -64,8 +75,6 @@ import 'dart:io';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:mwanachuo/features/messages/presentation/pages/conversations_page.dart';
 import 'package:mwanachuo/features/messages/presentation/pages/chat_page.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart';
-import 'package:mwanachuo/features/orders/presentation/bloc/cart_bloc.dart';
 import 'package:mwanachuo/features/orders/presentation/bloc/orders_bloc.dart';
 import 'package:mwanachuo/features/orders/presentation/pages/food_dashboard.dart';
 import 'package:mwanachuo/features/orders/presentation/pages/vendor_menu_page.dart';
@@ -81,7 +90,8 @@ class MwanachuoshopApp extends StatefulWidget {
   State<MwanachuoshopApp> createState() => _MwanachuoshopAppState();
 }
 
-class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
+class _MwanachuoshopAppState extends State<MwanachuoshopApp>
+    with WidgetsBindingObserver {
   final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
   AppLinks? _appLinks;
   StreamSubscription<Uri>? _linkSubscription;
@@ -89,6 +99,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
 
     // Set navigator key for OneSignal in-app notifications
     OneSignalConfig.navigatorKey = navigatorKey;
@@ -164,8 +175,25 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _linkSubscription?.cancel();
     super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+
+    final authState = sl<AuthBloc>().state;
+    if (authState is Authenticated) {
+      if (state == AppLifecycleState.resumed) {
+        sl<MessagesRepository>().updateUserPresence(true);
+      } else if (state == AppLifecycleState.paused ||
+          state == AppLifecycleState.inactive ||
+          state == AppLifecycleState.detached) {
+        sl<MessagesRepository>().updateUserPresence(false);
+      }
+    }
   }
 
   void _handlePendingNotification() {
@@ -241,8 +269,12 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         BlocProvider(
           create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
         ),
-        BlocProvider(create: (context) => sl<CartBloc>()),
         BlocProvider(create: (_) => sl<OrdersBloc>()),
+        BlocProvider(create: (_) => sl<ProductCartBloc>()),
+        BlocProvider(create: (_) => sl<ProductOrdersBloc>()),
+        BlocProvider(create: (_) => sl<OffersBloc>()),
+        BlocProvider(create: (_) => sl<ChatBloc>()),
+        BlocProvider(create: (_) => sl<ConversationsBloc>()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
@@ -271,7 +303,32 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               child: const HomePage(),
             ),
           ),
-          '/product-details': (context) => const ProductDetailsPage(),
+          '/product-details': (context) {
+            return MultiBlocProvider(
+              providers: [BlocProvider(create: (_) => sl<ProductBloc>())],
+              child: const ProductDetailsPage(),
+            );
+          },
+          '/product-cart': (context) => const ProductCartPage(),
+          '/product-checkout': (context) {
+            final args =
+                ModalRoute.of(context)!.settings.arguments
+                    as Map<String, dynamic>;
+            return MultiBlocProvider(
+              providers: [
+                BlocProvider(
+                  create: (_) => sl<OrdersBloc>(),
+                ), // For campus spots
+              ],
+              child: ProductCheckoutPage(
+                sellerId: args['sellerId'] as String,
+                items: args['items'] as List<CartItem>,
+              ),
+            );
+          },
+          '/my-product-orders': (context) => const MyProductOrdersPage(),
+          '/seller-product-orders': (context) =>
+              const SellerProductOrdersPage(),
           '/post-product': (context) => BlocProvider(
             create: (context) => sl<ProductBloc>(),
             child: const PostProductScreen(),
@@ -432,22 +489,14 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             final otherUserName = args['otherUserName'];
             final otherUserAvatar = args['otherUserAvatar'];
 
-            return BlocProvider(
-              create: (context) {
-                final bloc = sl<ChatBloc>();
-                if (conversationId == 'new' && otherUserId != null) {
-                  bloc.add(StartConversation([otherUserId]));
-                } else {
-                  bloc.add(LoadMessages(conversationId));
-                }
-                return bloc;
-              },
-              child: ChatPage(
-                conversationId: conversationId,
-                otherUserId: otherUserId,
-                otherUserName: otherUserName,
-                otherUserAvatar: otherUserAvatar,
-              ),
+            return ChatPage(
+              conversationId: conversationId,
+              otherUserId: otherUserId,
+              otherUserName: otherUserName,
+              otherUserAvatar: otherUserAvatar,
+              initialOffer: args['initialOffer'] as double?,
+              initialMessage: args['initialMessage'] as String?,
+              product: args['product'] as ProductEntity?,
             );
           },
           '/food-dashboard': (context) => const FoodDashboard(),

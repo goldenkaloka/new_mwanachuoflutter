@@ -7,34 +7,43 @@ class MessageModel extends Message {
     required super.senderId,
     required super.content,
     required super.type,
-    required super.metadata,
-    required super.isRead,
+    super.metadata,
+    super.replyToId,
     required super.createdAt,
+    super.isRead,
   });
 
-  factory MessageModel.fromJson(Map<String, dynamic> json) {
+  factory MessageModel.fromMap(Map<String, dynamic> map) {
     return MessageModel(
-      id: json['id'],
-      conversationId: json['conversation_id'],
-      senderId: json['sender_id'],
-      content: json['content'] ?? '',
-      type: json['type'] ?? 'text',
-      metadata: json['metadata'] ?? {},
-      isRead: json['is_read'] ?? false,
-      createdAt: DateTime.parse(json['created_at']),
+      id: map['id'],
+      conversationId: map['conversation_id'],
+      senderId: map['sender_id'],
+      content: map['content'] ?? '',
+      type: _mapToType(map['type']),
+      metadata: map['metadata'] ?? {},
+      replyToId: map['reply_to_id'],
+      createdAt: map['created_at'] != null
+          ? DateTime.parse(map['created_at'])
+          : DateTime.now(),
+      isRead: map['is_read'] ?? false,
     );
   }
 
-  Map<String, dynamic> toJson() {
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'conversation_id': conversationId,
       'sender_id': senderId,
       'content': content,
-      'type': type,
+      'type': _typeToString(type),
       'metadata': metadata,
-      'is_read': isRead,
+      'reply_to_id': replyToId,
       'created_at': createdAt.toIso8601String(),
+      'is_read': isRead,
     };
   }
+
+  static MessageType _mapToType(String? type) => MessageType.fromDbString(type);
+
+  static String _typeToString(MessageType type) => type.toDbString;
 }

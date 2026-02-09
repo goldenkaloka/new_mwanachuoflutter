@@ -12,8 +12,11 @@ import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart'
 import 'package:mwanachuo/features/products/presentation/bloc/product_event.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart';
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
+import 'package:mwanachuo/features/products/presentation/bloc/product_cart_bloc.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
+import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_state.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
+import 'package:mwanachuo/features/products/presentation/widgets/make_offer_dialog.dart';
 
 class ProductDetailsPage extends StatelessWidget {
   const ProductDetailsPage({super.key});
@@ -505,11 +508,15 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
   }
 
   void _showReviewSheet(BuildContext context, ProductEntity product) {
+    final reviewCubit = context.read<ReviewCubit>();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (context) => _ReviewSheet(product: product),
+      builder: (_) => BlocProvider.value(
+        value: reviewCubit,
+        child: _ReviewSheet(product: product),
+      ),
     );
   }
 
@@ -735,25 +742,123 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             top: false,
             child: Row(
               children: [
-                Container(
-                  height: 56,
-                  width: 56,
-                  decoration: BoxDecoration(
-                    color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
-                        .withValues(alpha: 0.05),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.shopping_bag_outlined,
-                      color: isDarkMode
-                          ? Colors.white
-                          : const Color(0xFF11221F),
-                    ),
-                    onPressed: () {},
-                  ),
+                // Cart icon with badge
+                BlocBuilder<ProductCartBloc, ProductCartState>(
+                  builder: (context, cartState) {
+                    return Stack(
+                      children: [
+                        Container(
+                          height: 56,
+                          width: 56,
+                          decoration: BoxDecoration(
+                            color:
+                                (isDarkMode
+                                        ? Colors.white
+                                        : const Color(0xFF11221F))
+                                    .withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: IconButton(
+                            icon: Icon(
+                              Icons.shopping_cart_outlined,
+                              color: isDarkMode
+                                  ? Colors.white
+                                  : const Color(0xFF11221F),
+                            ),
+                            onPressed: () {
+                              Navigator.pushNamed(context, '/product-cart');
+                            },
+                          ),
+                        ),
+                        if (cartState.totalItems > 0)
+                          Positioned(
+                            right: 0,
+                            top: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: Colors.red,
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDarkMode
+                                      ? kBackgroundColorDark
+                                      : Colors.white,
+                                  width: 2,
+                                ),
+                              ),
+                              constraints: const BoxConstraints(
+                                minWidth: 20,
+                                minHeight: 20,
+                              ),
+                              child: Text(
+                                '${cartState.totalItems}',
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 8),
+
+                // Chat button
+                _buildActionIcon(
+                  context: context,
+                  icon: Icons.chat_outlined,
+                  onPressed: () {
+                    Navigator.pushNamed(
+                      context,
+                      '/chat',
+                      arguments: {
+                        'conversationId': 'new',
+                        'otherUserId': product.sellerId,
+                        'otherUserName': product.sellerName,
+                        'otherUserAvatar':
+                            null, // Need avatar if available in product entity
+                      },
+                    );
+                  },
+                ),
+                const SizedBox(width: 8),
+
+                // Make Offer button
+                _buildActionIcon(
+                  context: context,
+                  icon: Icons.local_offer_outlined,
+                  onPressed: () {
+                    showDialog(
+                      context: context,
+                      builder: (context) => MakeOfferDialog(
+                        productTitle: product.title,
+                        originalPrice: product.price,
+                        onSendOffer: (amount, message) {
+                          Navigator.pushNamed(
+                            context,
+                            '/chat',
+                            arguments: {
+                              'conversationId': 'new',
+                              'otherUserId': product.sellerId,
+                              'otherUserName': product.sellerName,
+                              'otherUserAvatar': product.sellerAvatar,
+                              'initialOffer': amount,
+                              'initialMessage': message,
+                              'product': product,
+                            },
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+                const SizedBox(width: 12),
+
+                // Add to Cart button
                 Expanded(
                   child: Container(
                     height: 56,
@@ -770,22 +875,48 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
                     ),
                     child: TextButton(
                       onPressed: () {
-                        Navigator.pushNamed(
-                          context,
-                          '/chat',
-                          arguments: {
-                            'conversationId': 'new',
-                            'otherUserId': product.sellerId,
-                          },
+                        context.read<ProductCartBloc>().add(
+                          AddProductToCart(product: product, quantity: 1),
+                        );
+
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Text(
+                              'Added to cart',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            backgroundColor: Colors.green,
+                            duration: const Duration(seconds: 2),
+                            action: SnackBarAction(
+                              label: 'View Cart',
+                              textColor: Colors.white,
+                              onPressed: () {
+                                Navigator.pushNamed(context, '/product-cart');
+                              },
+                            ),
+                          ),
                         );
                       },
-                      child: const Text(
-                        'Buy Now',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Icon(
+                            Icons.add_shopping_cart,
+                            color: Colors.white,
+                            size: 20,
+                          ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'Add to Cart',
+                            style: GoogleFonts.inter(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -794,6 +925,26 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildActionIcon({
+    required BuildContext context,
+    required IconData icon,
+    required VoidCallback onPressed,
+  }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      width: 48,
+      height: 48,
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.white10 : Colors.grey[100],
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: IconButton(
+        onPressed: onPressed,
+        icon: Icon(icon, color: kPrimaryColor, size: 22),
       ),
     );
   }
@@ -897,119 +1048,150 @@ class _ReviewSheetState extends State<_ReviewSheet> {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: isDarkMode ? kBackgroundColorDark : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-      ),
-      padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomPadding),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Center(
-            child: Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: (isDarkMode ? Colors.white : Colors.black).withValues(
-                  alpha: 0.1,
-                ),
-                borderRadius: BorderRadius.circular(2),
-              ),
+    return BlocListener<ReviewCubit, ReviewState>(
+      listener: (context, state) {
+        if (state is ReviewSubmitted) {
+          Navigator.pop(context);
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Thank you for your review!'),
+              backgroundColor: Colors.green,
             ),
-          ),
-          const SizedBox(height: 24),
-          Text(
-            'Write a Review',
-            style: GoogleFonts.inter(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: isDarkMode ? Colors.white : const Color(0xFF11221F),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'How was your experience with this product?',
-            style: GoogleFonts.inter(
-              fontSize: 14,
-              color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
-                  .withValues(alpha: 0.6),
-            ),
-          ),
-          const SizedBox(height: 24),
-
-          // Star Selection
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: List.generate(5, (index) {
-              return GestureDetector(
-                onTap: () => setState(() => _userRating = index + 1.0),
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: Icon(
-                    index < _userRating ? Icons.star : Icons.star_border,
-                    color: kPrimaryColor,
-                    size: 40,
+          );
+        } else if (state is ReviewError) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.message), backgroundColor: Colors.red),
+          );
+        }
+      },
+      child: Container(
+        decoration: BoxDecoration(
+          color: isDarkMode ? kBackgroundColorDark : Colors.white,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: EdgeInsets.fromLTRB(24, 24, 24, 24 + bottomPadding),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: (isDarkMode ? Colors.white : Colors.black).withValues(
+                    alpha: 0.1,
                   ),
+                  borderRadius: BorderRadius.circular(2),
                 ),
-              );
-            }),
-          ),
-
-          const SizedBox(height: 24),
-          TextField(
-            controller: _commentController,
-            maxLines: 5,
-            decoration: InputDecoration(
-              hintText: 'Describe your experience...',
-              hintStyle: GoogleFonts.inter(
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              'Write a Review',
+              style: GoogleFonts.inter(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : const Color(0xFF11221F),
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'How was your experience with this product?',
+              style: GoogleFonts.inter(
+                fontSize: 14,
                 color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
-                    .withValues(alpha: 0.4),
-              ),
-              filled: true,
-              fillColor: kPrimaryColor.withValues(alpha: 0.05),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
-                borderSide: BorderSide.none,
+                    .withValues(alpha: 0.6),
               ),
             ),
-          ),
-          const SizedBox(height: 24),
-          SizedBox(
-            width: double.infinity,
-            height: 56,
-            child: ElevatedButton(
-              onPressed: _userRating == 0 || _commentController.text.isEmpty
-                  ? null
-                  : () {
-                      // Actually submit using Bloc/Cubit
-                      // For now we just close and show a snackbar
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Thank you for your review!'),
-                        ),
-                      );
-                    },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimaryColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+            const SizedBox(height: 24),
+
+            // Star Selection
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: List.generate(5, (index) {
+                return GestureDetector(
+                  onTap: () => setState(() => _userRating = index + 1.0),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: Icon(
+                      index < _userRating ? Icons.star : Icons.star_border,
+                      color: kPrimaryColor,
+                      size: 40,
+                    ),
+                  ),
+                );
+              }),
+            ),
+
+            const SizedBox(height: 24),
+            TextField(
+              controller: _commentController,
+              maxLines: 5,
+              decoration: InputDecoration(
+                hintText: 'Describe your experience...',
+                hintStyle: GoogleFonts.inter(
+                  color: (isDarkMode ? Colors.white : const Color(0xFF11221F))
+                      .withValues(alpha: 0.4),
                 ),
-                elevation: 0,
-              ),
-              child: Text(
-                'Submit Review',
-                style: GoogleFonts.inter(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
+                filled: true,
+                fillColor: kPrimaryColor.withValues(alpha: 0.05),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(20),
+                  borderSide: BorderSide.none,
                 ),
               ),
             ),
-          ),
-        ],
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: BlocBuilder<ReviewCubit, ReviewState>(
+                builder: (context, state) {
+                  return ElevatedButton(
+                    onPressed:
+                        _userRating == 0 ||
+                            _commentController.text.isEmpty ||
+                            state is ReviewSubmitting
+                        ? null
+                        : () {
+                            context.read<ReviewCubit>().submitNewReview(
+                              itemId: widget.product.id,
+                              itemType: ReviewType.product,
+                              rating: _userRating,
+                              comment: _commentController.text,
+                            );
+                          },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: state is ReviewSubmitting
+                        ? const SizedBox(
+                            height: 20,
+                            width: 20,
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
+                          )
+                        : Text(
+                            'Submit Review',
+                            style: GoogleFonts.inter(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

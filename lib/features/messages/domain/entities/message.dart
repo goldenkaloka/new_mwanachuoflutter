@@ -1,14 +1,51 @@
 import 'package:equatable/equatable.dart';
 
+enum MessageType {
+  text,
+  productShare,
+  offer,
+  dealConfirmed,
+  unknown;
+
+  String get toDbString {
+    switch (this) {
+      case MessageType.productShare:
+        return 'product_share';
+      case MessageType.offer:
+        return 'offer';
+      case MessageType.dealConfirmed:
+        return 'deal_confirmed';
+      case MessageType.text:
+      case MessageType.unknown:
+        return 'text';
+    }
+  }
+
+  static MessageType fromDbString(String? type) {
+    switch (type) {
+      case 'product_share':
+        return MessageType.productShare;
+      case 'offer':
+        return MessageType.offer;
+      case 'deal_confirmed':
+        return MessageType.dealConfirmed;
+      case 'text':
+      default:
+        return MessageType.text;
+    }
+  }
+}
+
 class Message extends Equatable {
   final String id;
   final String conversationId;
   final String senderId;
   final String content;
-  final String type; // 'text', 'offer', 'image'
+  final MessageType type;
   final Map<String, dynamic> metadata;
-  final bool isRead;
+  final String? replyToId;
   final DateTime createdAt;
+  final bool isRead;
 
   const Message({
     required this.id,
@@ -16,9 +53,10 @@ class Message extends Equatable {
     required this.senderId,
     required this.content,
     required this.type,
-    required this.metadata,
-    required this.isRead,
+    this.metadata = const {},
+    this.replyToId,
     required this.createdAt,
+    this.isRead = false,
   });
 
   @override
@@ -29,7 +67,8 @@ class Message extends Equatable {
     content,
     type,
     metadata,
-    isRead,
+    replyToId,
     createdAt,
+    isRead,
   ];
 }

@@ -15,6 +15,8 @@ class UserEntity extends Equatable {
   final DateTime createdAt;
   final DateTime updatedAt;
   final int freeListingsCount;
+  final bool isOnline;
+  final DateTime? lastSeenAt;
 
   const UserEntity({
     required this.id,
@@ -30,6 +32,8 @@ class UserEntity extends Equatable {
     required this.createdAt,
     required this.updatedAt,
     this.freeListingsCount = 0,
+    this.isOnline = false,
+    this.lastSeenAt,
     this.businessName,
     this.tinNumber,
     this.businessCategory,
@@ -68,5 +72,7 @@ class UserEntity extends Equatable {
     programName,
     userType,
     freeListingsCount,
+    isOnline,
+    lastSeenAt,
   ];
 }

@@ -66,7 +66,10 @@ class _MwanachuoAppWrapperState extends State<MwanachuoAppWrapper> {
       });
 
       // Run critical initializations in parallel
-      await Future.wait([SupabaseConfig.initialize(), Hive.initFlutter()]);
+      await Future.wait([
+        SupabaseConfig.initialize(),
+        Hive.initFlutter('hive'),
+      ]);
 
       await initializeDependencies();
 

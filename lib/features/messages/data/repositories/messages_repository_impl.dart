@@ -1,136 +1,157 @@
-import 'package:mwanachuo/config/supabase_config.dart';
+import 'dart:async';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mwanachuo/features/auth/data/models/user_model.dart';
 import 'package:mwanachuo/features/messages/data/models/conversation_model.dart';
 import 'package:mwanachuo/features/messages/data/models/message_model.dart';
 import 'package:mwanachuo/features/messages/domain/entities/conversation.dart';
 import 'package:mwanachuo/features/messages/domain/entities/message.dart';
 import 'package:mwanachuo/features/messages/domain/repositories/messages_repository.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 
 class MessagesRepositoryImpl implements MessagesRepository {
-  final SupabaseClient _client = SupabaseConfig.client;
+  final SupabaseClient _supabase;
+
+  MessagesRepositoryImpl(this._supabase);
+
+  String get _currentUserId => _supabase.auth.currentUser!.id;
 
   @override
-  Future<Conversation> createConversation(List<String> participantIds) async {
-    final userId = _client.auth.currentUser!.id;
-    // Sort participants to ensure consistent querying if needed,
-    // but here we rely on "contains" logic.
-    final allParticipants = {...participantIds, userId}.toList();
+  Future<Conversation> initiateConversation(String otherUserId) async {
+    final response = await _supabase.rpc(
+      'get_or_create_conversation',
+      params: {'other_user_id': otherUserId},
+    );
+    return await _fetchConversation(response as String);
+  }
 
-    // Check if conversation already exists
-    // This is tricky with simple queries.
-    // For now, we'll try to find one or create.
-    // A better approach is an RPC, but let's try standard query.
-    // Actually, finding an exact match of participants is hard without an RPC.
-    // We will just create a new one if not found, or maybe just create.
-    // For 1-on-1, typically we check if there is a conv with these 2 users.
-
-    if (allParticipants.length == 2) {
-      final otherUserId = allParticipants.firstWhere((id) => id != userId);
-      final response = await _client.from('conversations').select().contains(
-        'participants',
-        [userId, otherUserId],
-      ).maybeSingle();
-
-      if (response != null) {
-        return ConversationModel.fromJson(response);
-      }
-    }
-
-    final response = await _client
+  Future<Conversation> _fetchConversation(String convId) async {
+    final convData = await _supabase
         .from('conversations')
-        .insert({'participants': allParticipants})
-        .select()
+        .select(
+          '*, participants:participants(user:users(*), last_read_at), last_message:messages!last_message_id(*)',
+        )
+        .eq('id', convId)
         .single();
 
-    return ConversationModel.fromJson(response);
+    final participants = convData['participants'] as List;
+    final currentUserParticipant = participants.firstWhere(
+      (p) => p['user']['id'] == _currentUserId,
+      orElse: () => null,
+    );
+
+    int unreadCount = 0;
+    if (currentUserParticipant != null) {
+      final unreadData = await _supabase
+          .from('messages')
+          .select('id')
+          .eq('conversation_id', convId)
+          .neq('sender_id', _currentUserId)
+          .eq('is_read', false);
+      unreadCount = (unreadData as List).length;
+    }
+
+    return ConversationModel.fromMap(
+      {...convData, 'unread_count': unreadCount},
+      participants: participants
+          .map((p) => p['user'] as Map<String, dynamic>)
+          .toList(),
+    );
   }
 
   @override
   Future<List<Conversation>> getConversations() async {
-    final userId = _client.auth.currentUser!.id;
-    final response = await _client
+    // 1. Get IDs of conversations where user is a participant
+    final participantData = await _supabase
+        .from('participants')
+        .select('conversation_id')
+        .eq('user_id', _currentUserId);
+
+    final convIds = (participantData as List)
+        .map((p) => p['conversation_id'] as String)
+        .toList();
+
+    if (convIds.isEmpty) return [];
+
+    // 2. Fetch full conversation data for those IDs
+    final data = await _supabase
         .from('conversations')
-        .select()
-        .contains('participants', [userId])
-        .order('updated_at', ascending: false);
+        .select(
+          '*, participants:participants(user:users(*), last_read_at), last_message:messages!last_message_id(*)',
+        )
+        .inFilter('id', convIds)
+        .order('last_message_at', ascending: false);
 
-    final conversations = (response as List)
-        .map((e) => ConversationModel.fromJson(e))
-        .toList();
+    // 3. Parallelize unread count fetching
+    final results = await Future.wait(
+      (data as List).map((conv) async {
+        final participants = conv['participants'] as List;
 
-    if (conversations.isEmpty) return [];
+        // Calculate unread count using the is_read column
+        final unreadData = await _supabase
+            .from('messages')
+            .select('id')
+            .eq('conversation_id', conv['id'])
+            .neq('sender_id', _currentUserId)
+            .eq('is_read', false);
 
-    // Extract all unique participant IDs
-    final allParticipantIds = conversations
-        .expand((c) => c.participants)
-        .toSet()
-        .toList();
+        final unreadCount = (unreadData as List).length;
 
-    if (allParticipantIds.isEmpty) return conversations;
+        return ConversationModel.fromMap(
+          {...conv, 'unread_count': unreadCount},
+          participants: participants
+              .map((p) => p['user'] as Map<String, dynamic>)
+              .toList(),
+        );
+      }),
+    );
 
-    // Fetch profiles for these users
-    final profilesResponse = await _client
-        .from('profiles')
-        .select()
-        .inFilter('id', allParticipantIds);
+    return results;
+  }
 
-    final profiles = (profilesResponse as List)
-        .map((e) => UserModel.fromJson(e))
-        .toList();
-
-    // Map profiles to conversations
-    return conversations.map((conversation) {
-      final conversationParticipants = profiles
-          .where((user) => conversation.participants.contains(user.id))
-          .toList();
-
-      return conversation.copyWith(participantsData: conversationParticipants);
-    }).toList();
+  @override
+  Stream<List<Conversation>> getConversationsStream() {
+    // Listen to conversations table for updates.
+    // RLS "Users can see conversations they are part of" ensures we only get our own.
+    // This triggers when any of our conversations are updated (e.g. new message).
+    return _supabase.from('conversations').stream(primaryKey: ['id']).asyncMap((
+      event,
+    ) async {
+      return await getConversations();
+    });
   }
 
   @override
   Future<List<Message>> getMessages(String conversationId) async {
-    final response = await _client
+    final data = await _supabase
         .from('messages')
-        .select()
+        .select('*')
         .eq('conversation_id', conversationId)
         .order('created_at', ascending: true);
 
-    return (response as List).map((e) => MessageModel.fromJson(e)).toList();
+    return (data as List).map((m) => MessageModel.fromMap(m)).toList();
   }
 
   @override
   Stream<List<Message>> getMessagesStream(String conversationId) {
-    return _client
+    return _supabase
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('conversation_id', conversationId)
         .order('created_at', ascending: true)
-        .map((event) => event.map((e) => MessageModel.fromJson(e)).toList());
-  }
-
-  @override
-  Future<void> markAsRead(String messageId) async {
-    await _client
-        .from('messages')
-        .update({'is_read': true})
-        .eq('id', messageId);
+        .map((event) => event.map((m) => MessageModel.fromMap(m)).toList());
   }
 
   @override
   Future<Message> sendMessage({
     required String conversationId,
     required String content,
-    String type = 'text',
+    MessageType type = MessageType.text,
     Map<String, dynamic> metadata = const {},
   }) async {
-    final userId = _client.auth.currentUser!.id;
-    final response = await _client
+    final messageData = await _supabase
         .from('messages')
         .insert({
           'conversation_id': conversationId,
-          'sender_id': userId,
+          'sender_id': _currentUserId,
           'content': content,
           'type': type,
           'metadata': metadata,
@@ -138,17 +159,54 @@ class MessagesRepositoryImpl implements MessagesRepository {
         .select()
         .single();
 
-    return MessageModel.fromJson(response);
+    return MessageModel.fromMap(messageData);
   }
 
   @override
-  Future<void> updateMessage(
-    String messageId,
-    Map<String, dynamic> metadata,
-  ) async {
-    await _client
+  Future<void> markAsRead(String conversationId) async {
+    final now = DateTime.now().toIso8601String();
+
+    // 1. Update participant's last_read_at
+    await _supabase.from('participants').update({'last_read_at': now}).match({
+      'conversation_id': conversationId,
+      'user_id': _currentUserId,
+    });
+
+    // 2. Update all incoming messages as read
+    await _supabase
         .from('messages')
-        .update({'metadata': metadata})
-        .eq('id', messageId);
+        .update({'is_read': true})
+        .match({'conversation_id': conversationId})
+        .neq('sender_id', _currentUserId)
+        .eq('is_read', false);
+
+    // 3. Touch conversation to trigger realtime streams
+    await _supabase
+        .from('conversations')
+        .update({'updated_at': now})
+        .eq('id', conversationId);
+  }
+
+  @override
+  Future<void> updateUserPresence(bool isOnline) async {
+    final now = DateTime.now().toIso8601String();
+    await _supabase
+        .from('users')
+        .update({'is_online': isOnline, 'last_seen_at': now})
+        .eq('id', _currentUserId);
+  }
+
+  @override
+  Stream<UserModel> getUserStream(String userId) {
+    return _supabase
+        .from('users')
+        .stream(primaryKey: ['id'])
+        .eq('id', userId)
+        .map((data) {
+          if (data.isEmpty) {
+            throw Exception('User not found');
+          }
+          return UserModel.fromJson(data.first);
+        });
   }
 }

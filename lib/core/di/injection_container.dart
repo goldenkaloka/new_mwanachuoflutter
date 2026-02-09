@@ -5,6 +5,7 @@ import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/core/services/presence_service.dart';
 import 'package:http/http.dart' as http;
+import 'package:uuid/uuid.dart';
 
 // Wallet
 import 'package:mwanachuo/features/wallet/data/datasources/wallet_remote_data_source.dart';
@@ -126,6 +127,12 @@ import 'package:mwanachuo/features/products/domain/usecases/get_products.dart';
 import 'package:mwanachuo/features/products/domain/usecases/increment_view_count.dart';
 import 'package:mwanachuo/features/products/domain/usecases/update_product.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
+import 'package:mwanachuo/features/products/data/datasources/product_cart_remote_data_source.dart';
+import 'package:mwanachuo/features/products/data/repositories/product_cart_repository_impl.dart';
+import 'package:mwanachuo/features/products/domain/repositories/product_cart_repository.dart';
+import 'package:mwanachuo/features/products/presentation/bloc/product_cart_bloc.dart';
+import 'package:mwanachuo/features/products/presentation/bloc/product_orders_bloc.dart';
+import 'package:mwanachuo/features/products/presentation/bloc/offers_bloc.dart';
 import 'package:mwanachuo/features/services/data/datasources/service_local_data_source.dart';
 import 'package:mwanachuo/features/services/data/datasources/service_remote_data_source.dart';
 import 'package:mwanachuo/features/services/data/repositories/service_repository_impl.dart';
@@ -170,7 +177,6 @@ import 'package:mwanachuo/features/promotions/domain/repositories/promotion_repo
 import 'package:mwanachuo/features/promotions/domain/usecases/get_active_promotions.dart';
 import 'package:mwanachuo/features/promotions/domain/usecases/create_promotion.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
-import 'package:uuid/uuid.dart';
 
 import 'package:mwanachuo/features/copilot/data/datasources/copilot_local_data_source.dart';
 import 'package:mwanachuo/features/copilot/data/datasources/copilot_remote_data_source.dart';
@@ -184,9 +190,11 @@ import 'package:mwanachuo/features/copilot/domain/usecases/upload_note.dart';
 import 'package:mwanachuo/features/copilot/presentation/bloc/copilot_bloc.dart';
 
 import 'package:mwanachuo/features/messages/presentation/bloc/conversations_bloc.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/presence_cubit.dart';
 import 'package:mwanachuo/features/messages/data/repositories/messages_repository_impl.dart';
 import 'package:mwanachuo/features/messages/domain/repositories/messages_repository.dart';
-import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart';
+import 'package:mwanachuo/features/messages/presentation/bloc/chat_bloc.dart'
+    as chat;
 import 'package:mwanachuo/features/orders/presentation/bloc/cart_bloc.dart';
 import 'package:mwanachuo/features/orders/presentation/bloc/orders_bloc.dart';
 import 'package:mwanachuo/features/orders/data/datasources/orders_remote_data_source.dart';
@@ -210,6 +218,7 @@ Future<void> initializeDependencies() async {
   sl.registerLazySingleton(() => SupabaseConfig.client);
 
   sl.registerLazySingleton(() => http.Client());
+  sl.registerLazySingleton(() => const Uuid());
 
   // ============================================================================
   // Core
@@ -245,6 +254,7 @@ Future<void> initializeDependencies() async {
   await _initCopilotFeature();
   _initMessagesFeature();
   _initOrdersFeature();
+  _initProductCartFeature();
 
   // ============================================================================
   // Features - Authentication
@@ -339,9 +349,6 @@ void _initUniversityFeature() {
 // MEDIA FEATURE (SHARED)
 // ============================================
 void _initMediaFeature() {
-  // External (UUID for unique file names)
-  sl.registerLazySingleton(() => const Uuid());
-
   // Use Cases
   sl.registerLazySingleton(() => PickImage(sl()));
   sl.registerLazySingleton(() => PickMultipleImages(sl()));
@@ -739,11 +746,14 @@ void _initAccommodationsFeature() {
 // ============================================
 void _initMessagesFeature() {
   // Repository
-  sl.registerLazySingleton<MessagesRepository>(() => MessagesRepositoryImpl());
+  sl.registerLazySingleton<MessagesRepository>(
+    () => MessagesRepositoryImpl(sl()),
+  );
 
   // Blocs
   sl.registerFactory(() => ConversationsBloc(sl()));
-  sl.registerFactory(() => ChatBloc(sl()));
+  sl.registerFactory(() => chat.ChatBloc(sl()));
+  sl.registerFactory(() => PresenceCubit(sl()));
 }
 
 // ============================================
@@ -914,4 +924,21 @@ void _initWalletFeature() {
       initiateTopUp: sl(),
     ),
   );
+}
+
+void _initProductCartFeature() {
+  // Data Sources
+  sl.registerLazySingleton<ProductCartRemoteDataSource>(
+    () => ProductCartRemoteDataSourceImpl(supabaseClient: sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<ProductCartRepository>(
+    () => ProductCartRepositoryImpl(remoteDataSource: sl()),
+  );
+
+  // BLoCs
+  sl.registerLazySingleton(() => ProductCartBloc());
+  sl.registerFactory(() => ProductOrdersBloc(repository: sl()));
+  sl.registerFactory(() => OffersBloc(repository: sl()));
 }
