@@ -37,21 +37,11 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
             .from(DatabaseConstants.accommodationsTable)
             .select('id, updated_at')
             .eq('owner_id', currentUser.id),
-
-        // Query 4: Get last conversation time
-        supabaseClient
-            .from(DatabaseConstants.conversationsTable)
-            .select('last_message_time')
-            .or('user1_id.eq.${currentUser.id},user2_id.eq.${currentUser.id}')
-            .not('last_message_time', 'is', null)
-            .order('last_message_time', ascending: false)
-            .limit(1),
       ]);
 
       final products = results[0] as List;
       final services = results[1] as List;
       final accommodations = results[2] as List;
-      final conversations = results[3] as List;
 
       // Calculate stats from products
       final activeProducts = products
@@ -62,14 +52,8 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
         totalViews += (product['view_count'] as int? ?? 0);
       }
 
-      // Get last message time
+      // Messaging not currently active
       DateTime? lastMessageTime;
-      if (conversations.isNotEmpty &&
-          conversations[0]['last_message_time'] != null) {
-        lastMessageTime = DateTime.parse(
-          conversations[0]['last_message_time'],
-        ).toLocal();
-      }
 
       // Get last listing update time - find most recent from all three collections
       DateTime? lastListingUpdateTime;
