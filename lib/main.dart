@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart' show kDebugMode;
 import 'dart:io' show Platform;
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:fvp/fvp.dart' as fvp;
 import 'package:mwanachuo/config/supabase_config.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/main_app.dart';
@@ -12,6 +13,10 @@ import 'package:hive_flutter/hive_flutter.dart';
 void main() {
   // Preserve native splash screen until Flutter is ready to draw its first frame
   WidgetsBinding widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+
+  if (Platform.isWindows) {
+    fvp.registerWith();
+  }
 
   // Set global system UI style
   SystemChrome.setSystemUIOverlayStyle(

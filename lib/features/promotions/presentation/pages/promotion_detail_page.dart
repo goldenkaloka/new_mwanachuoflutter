@@ -69,7 +69,7 @@ class _PromotionDetailViewState extends State<_PromotionDetailView> {
     super.dispose();
   }
 
-  Future<void> _initializeVideoPlayer(String videoUrl) async {
+  Future<void> _initializeVideoPlayer(String videoUrl, String? imageUrl) async {
     if (_videoPlayerController != null) return;
 
     _videoPlayerController = VideoPlayerController.networkUrl(
@@ -82,7 +82,9 @@ class _PromotionDetailViewState extends State<_PromotionDetailView> {
       autoPlay: true,
       looping: false,
       aspectRatio: _videoPlayerController!.value.aspectRatio,
-      placeholder: const Center(child: CircularProgressIndicator()),
+      placeholder: imageUrl != null
+          ? NetworkImageWithFallback(imageUrl: imageUrl, fit: BoxFit.cover)
+          : const Center(child: CircularProgressIndicator()),
       materialProgressColors: ChewieProgressColors(
         playedColor: kPrimaryColor,
         handleColor: kPrimaryColor,
@@ -184,7 +186,7 @@ class _PromotionDetailViewState extends State<_PromotionDetailView> {
           }
 
           if (promotion.type == 'video' && promotion.videoUrl != null) {
-            _initializeVideoPlayer(promotion.videoUrl!);
+            _initializeVideoPlayer(promotion.videoUrl!, promotion.imageUrl);
           }
 
           return _buildPromotionContent(

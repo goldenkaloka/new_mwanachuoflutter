@@ -141,6 +141,7 @@ class _PromotionCardState extends State<PromotionCard>
                         widget.promotion.videoUrl != null)
                       PromotionVideoPlayer(
                         videoUrl: widget.promotion.videoUrl!,
+                        thumbnailUrl: widget.promotion.imageUrl,
                         isPlaying: widget.isActive,
                       )
                     else if (widget.promotion.imageUrl != null)
