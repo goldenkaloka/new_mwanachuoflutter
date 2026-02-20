@@ -347,11 +347,15 @@ class _ServicesViewState extends State<_ServicesView> {
                               ? service.images.first
                               : '',
                           title: service.title,
-                          price: 'TZS ${service.price.toStringAsFixed(2)}',
+                          price: 'TZS ${service.price.toStringAsFixed(0)}',
                           priceType: service.priceType,
                           category: service.category,
                           providerName: service.providerName,
+                          providerAvatar: service.providerAvatar,
                           location: service.location,
+                          rating: service.rating,
+                          reviewCount: service.reviewCount,
+                          isFeatured: service.isFeatured,
                           onTap: () => Navigator.pushNamed(
                             context,
                             '/service-details',

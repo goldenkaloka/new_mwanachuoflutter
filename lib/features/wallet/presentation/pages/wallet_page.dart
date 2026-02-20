@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/di/injection_container.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
-// import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_state.dart'; // Removed
+import 'package:mwanachuo/features/wallet/domain/entities/manual_payment_request_entity.dart';
+import 'package:mwanachuo/features/wallet/presentation/pages/manual_payment_page.dart';
+import 'package:mwanachuo/features/wallet/presentation/pages/wallet_admin_page.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:intl/intl.dart';
 
@@ -31,6 +35,9 @@ class _WalletPageState extends State<WalletPage>
 
   @override
   Widget build(BuildContext context) {
+    final authState = context.watch<AuthBloc>().state;
+    final isAdmin = authState is Authenticated && authState.user.isAdmin;
+
     return BlocProvider(
       create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
       child: Scaffold(
@@ -38,6 +45,24 @@ class _WalletPageState extends State<WalletPage>
           title: const Text('My Wallet'),
           centerTitle: true,
           elevation: 0,
+          actions: [
+            if (isAdmin)
+              IconButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (childContext) => BlocProvider.value(
+                        value: BlocProvider.of<WalletBloc>(context),
+                        child: const WalletAdminPage(),
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.admin_panel_settings),
+                tooltip: 'Verifications',
+              ),
+          ],
           bottom: TabBar(
             controller: _tabController,
             tabs: const [
@@ -100,7 +125,13 @@ class _WalletPageState extends State<WalletPage>
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             _buildBalanceCard(context, state),
-            const SizedBox(height: 24),
+            const SizedBox(height: kSpacing2xl),
+            if (state.manualRequests.any(
+              (r) => r.status == PaymentRequestStatus.pending,
+            )) ...[
+              _buildPendingRequests(state.manualRequests),
+              const SizedBox(height: 24),
+            ],
             Text(
               filter == 'all'
                   ? 'All Transactions'
@@ -114,6 +145,56 @@ class _WalletPageState extends State<WalletPage>
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildPendingRequests(List<ManualPaymentRequestEntity> requests) {
+    final pending = requests
+        .where((r) => r.status == PaymentRequestStatus.pending)
+        .toList();
+    if (pending.isEmpty) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Pending Verifications',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 12),
+        ...pending.map(
+          (req) => Card(
+            margin: const EdgeInsets.only(bottom: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(kRadiusMd),
+              side: BorderSide(color: kWarningColor.withValues(alpha: 0.5)),
+            ),
+            child: ListTile(
+              leading: const CircleAvatar(
+                backgroundColor: kWarningColorLight,
+                child: Icon(Icons.hourglass_empty, color: kWarningColor),
+              ),
+              title: Text('TZS ${req.amount.toStringAsFixed(0)}'),
+              subtitle: Text('Ref: ${req.transactionRef}'),
+              trailing: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: kWarningColorLight,
+                  borderRadius: BorderRadius.circular(kRadiusXs),
+                ),
+                child: const Text(
+                  'Pending',
+                  style: TextStyle(
+                    color: kWarningColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -329,29 +410,59 @@ class _WalletPageState extends State<WalletPage>
             ),
           ),
           actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(dialogContext),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: () {
-                if (formKey.currentState!.validate()) {
-                  context.read<WalletBloc>().add(
-                    InitiateWalletTopUp(
-                      amount: double.parse(
-                        amountController.text.replaceAll(',', ''),
-                      ),
-                      phone: phoneController.text.replaceAll(
-                        RegExp(r'\s+'),
-                        '',
-                      ),
-                      provider: selectedProvider!,
+            Column(
+              children: [
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      if (formKey.currentState!.validate()) {
+                        context.read<WalletBloc>().add(
+                          InitiateWalletTopUp(
+                            amount: double.parse(
+                              amountController.text.replaceAll(',', ''),
+                            ),
+                            phone: phoneController.text.replaceAll(
+                              RegExp(r'\s+'),
+                              '',
+                            ),
+                            provider: selectedProvider!,
+                          ),
+                        );
+                        Navigator.pop(dialogContext);
+                      }
+                    },
+                    child: const Text('Pay with ZenoPay (Automated)'),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    onPressed: () {
+                      Navigator.pop(dialogContext);
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => BlocProvider.value(
+                            value: BlocProvider.of<WalletBloc>(context),
+                            child: const ManualPaymentPage(),
+                          ),
+                        ),
+                      );
+                    },
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: kPrimaryColor,
+                      side: const BorderSide(color: kPrimaryColor),
                     ),
-                  );
-                  Navigator.pop(dialogContext);
-                }
-              },
-              child: const Text('Pay Now'),
+                    child: const Text('Use Manual Payment (M-Pesa/Tigo)'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(dialogContext),
+                  child: const Text('Cancel'),
+                ),
+              ],
             ),
           ],
         ),

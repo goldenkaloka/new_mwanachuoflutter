@@ -5,6 +5,7 @@ import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/features/wallet/data/datasources/wallet_remote_data_source.dart';
 import 'package:mwanachuo/features/wallet/domain/entities/wallet_entity.dart';
 import 'package:mwanachuo/features/wallet/domain/entities/wallet_transaction_entity.dart';
+import 'package:mwanachuo/features/wallet/domain/entities/manual_payment_request_entity.dart';
 import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.dart';
 
 class WalletRepositoryImpl implements WalletRepository {
@@ -77,6 +78,102 @@ class WalletRepositoryImpl implements WalletRepository {
         await remoteDataSource.deductBalance(
           amount: amount,
           description: description,
+        );
+        return const Right(null);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      }
+    } else {
+      return const Left(NetworkFailure('No Internet Connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, ManualPaymentRequestEntity>> submitPaymentProof({
+    required double amount,
+    required String transactionRef,
+    required String payerPhone,
+    required String type,
+    Map<String, dynamic>? metadata,
+  }) async {
+    if (await networkInfo.isConnected) {
+      try {
+        final result = await remoteDataSource.submitPaymentProof(
+          amount: amount,
+          transactionRef: transactionRef,
+          payerPhone: payerPhone,
+          type: type,
+          metadata: metadata,
+        );
+        return Right(result);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      }
+    } else {
+      return const Left(NetworkFailure('No Internet Connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ManualPaymentRequestEntity>>>
+  getManualPaymentRequests() async {
+    if (await networkInfo.isConnected) {
+      try {
+        final result = await remoteDataSource.getManualPaymentRequests();
+        return Right(result);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      }
+    } else {
+      return const Left(NetworkFailure('No Internet Connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, List<ManualPaymentRequestEntity>>>
+  getPendingManualPaymentRequests() async {
+    if (await networkInfo.isConnected) {
+      try {
+        final result = await remoteDataSource.getPendingManualPaymentRequests();
+        return Right(result);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      }
+    } else {
+      return const Left(NetworkFailure('No Internet Connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> approveManualPayment(
+    String requestId, {
+    String? adminNote,
+  }) async {
+    if (await networkInfo.isConnected) {
+      try {
+        await remoteDataSource.approveManualPayment(
+          requestId,
+          adminNote: adminNote,
+        );
+        return const Right(null);
+      } on ServerException catch (e) {
+        return Left(ServerFailure(e.message));
+      }
+    } else {
+      return const Left(NetworkFailure('No Internet Connection'));
+    }
+  }
+
+  @override
+  Future<Either<Failure, void>> rejectManualPayment(
+    String requestId, {
+    String? adminNote,
+  }) async {
+    if (await networkInfo.isConnected) {
+      try {
+        await remoteDataSource.rejectManualPayment(
+          requestId,
+          adminNote: adminNote,
         );
         return const Right(null);
       } on ServerException catch (e) {

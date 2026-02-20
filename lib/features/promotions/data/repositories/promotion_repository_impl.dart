@@ -8,18 +8,21 @@ import 'package:mwanachuo/features/promotions/data/datasources/promotion_remote_
 import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
 import 'package:mwanachuo/features/promotions/domain/repositories/promotion_repository.dart';
 import 'package:mwanachuo/features/shared/media/domain/usecases/upload_image.dart';
+import 'package:mwanachuo/features/shared/media/domain/usecases/upload_video.dart';
 import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.dart';
 
 class PromotionRepositoryImpl implements PromotionRepository {
   final PromotionRemoteDataSource remoteDataSource;
   final NetworkInfo networkInfo;
   final UploadImage uploadImage;
+  final UploadVideo uploadVideo;
   final WalletRepository walletRepository;
 
   PromotionRepositoryImpl({
     required this.remoteDataSource,
     required this.networkInfo,
     required this.uploadImage,
+    required this.uploadVideo,
     required this.walletRepository,
   });
 
@@ -70,9 +73,10 @@ class PromotionRepositoryImpl implements PromotionRepository {
     List<String>? terms,
     String type = 'banner',
     int priority = 0,
-    String buttonText = 'Shop Now',
+    String buttonText = 'View Detail',
     String? userId,
     String? externalLink,
+    String? videoUrl,
   }) async {
     if (!await networkInfo.isConnected) {
       return Left(NetworkFailure('No internet connection'));
@@ -97,7 +101,7 @@ class PromotionRepositoryImpl implements PromotionRepository {
       }
 
       String? imageUrl;
-      String? videoUrl;
+      String? finalVideoUrl = videoUrl;
 
       if (image != null) {
         final uploadResult = await uploadImage(
@@ -120,9 +124,9 @@ class PromotionRepositoryImpl implements PromotionRepository {
       }
 
       if (video != null) {
-        final uploadResult = await uploadImage(
-          UploadImageParams(
-            imageFile: video,
+        final uploadResult = await uploadVideo(
+          UploadVideoParams(
+            videoFile: video,
             bucket: DatabaseConstants.promotionBucket,
             folder: 'promotions',
           ),
@@ -136,7 +140,10 @@ class PromotionRepositoryImpl implements PromotionRepository {
             ),
           );
         }
-        videoUrl = uploadResult.fold((failure) => null, (media) => media.url);
+        finalVideoUrl = uploadResult.fold(
+          (failure) => null,
+          (media) => media.url,
+        );
       }
 
       final promotion = await remoteDataSource.createPromotion(
@@ -149,7 +156,7 @@ class PromotionRepositoryImpl implements PromotionRepository {
         targetUrl: targetUrl,
         terms: terms,
         type: type,
-        videoUrl: videoUrl,
+        videoUrl: finalVideoUrl,
         priority: priority,
         buttonText: buttonText,
         userId: userId,

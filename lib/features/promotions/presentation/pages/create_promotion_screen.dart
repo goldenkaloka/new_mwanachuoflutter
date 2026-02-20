@@ -36,6 +36,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
   final _termsController = TextEditingController();
   final _targetUrlController = TextEditingController();
   final _externalLinkController = TextEditingController();
+  final _streamUrlController = TextEditingController();
   final _buttonTextController = TextEditingController();
   final _priorityController = TextEditingController(text: '0');
   DateTime? _startDate;
@@ -52,6 +53,7 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
     _termsController.dispose();
     _targetUrlController.dispose();
     _externalLinkController.dispose();
+    _streamUrlController.dispose();
     _buttonTextController.dispose();
     _priorityController.dispose();
     super.dispose();
@@ -122,6 +124,19 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
         }
       },
       builder: (context, state) {
+        final authState = context.read<AuthBloc>().state;
+        final isAdmin =
+            authState is Authenticated && authState.user.role.value == 'admin';
+
+        if (!isAdmin) {
+          return Scaffold(
+            appBar: AppBar(title: const Text('Access Denied')),
+            body: const Center(
+              child: Text('Only administrators can create promotions.'),
+            ),
+          );
+        }
+
         return Scaffold(
           backgroundColor: isDarkMode
               ? kBackgroundColorDark
@@ -182,6 +197,29 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                                     secondaryTextColor: secondaryTextColor,
                                     borderColor: borderColor,
                                   ),
+                                if (_selectedType == 'video') ...[
+                                  const SizedBox(height: 20.0),
+                                  TextFormField(
+                                    controller: _streamUrlController,
+                                    decoration:
+                                        _buildInputDecoration(
+                                          'HLS Stream URL (.m3u8)',
+                                          'https://example.com/stream.m3u8',
+                                          borderColor,
+                                        ).copyWith(
+                                          helperText:
+                                              'Recommended for "YouTube-style" streaming performance.',
+                                          helperStyle: TextStyle(
+                                            color: kPrimaryColor,
+                                          ),
+                                        ),
+                                    onChanged: (val) {
+                                      if (val.isNotEmpty) {
+                                        setState(() => _selectedVideo = null);
+                                      }
+                                    },
+                                  ),
+                                ],
                                 const SizedBox(height: 24.0),
                                 TextFormField(
                                   controller: _titleController,
@@ -986,12 +1024,15 @@ class _CreatePromotionScreenState extends State<CreatePromotionScreen> {
                           endDate: _endDate!,
                           image: _selectedImage,
                           video: _selectedVideo,
+                          videoUrl: _streamUrlController.text.trim().isNotEmpty
+                              ? _streamUrlController.text.trim()
+                              : null,
                           type: _selectedType,
                           priority: int.tryParse(_priorityController.text) ?? 0,
                           buttonText:
                               _buttonTextController.text.trim().isNotEmpty
                               ? _buttonTextController.text.trim()
-                              : 'Visit',
+                              : 'View Detail',
                           targetUrl: _targetUrlController.text.trim(),
                           externalLink: _externalLinkController.text.trim(),
                           userId: userId,

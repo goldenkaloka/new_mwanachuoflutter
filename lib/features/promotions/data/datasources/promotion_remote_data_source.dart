@@ -18,7 +18,7 @@ abstract class PromotionRemoteDataSource {
     String type = 'banner',
     String? videoUrl,
     int priority = 0,
-    String buttonText = 'Shop Now',
+    String buttonText = 'View Detail',
     String? userId,
     String? externalLink,
   });
@@ -83,7 +83,7 @@ class PromotionRemoteDataSourceImpl implements PromotionRemoteDataSource {
     String type = 'banner',
     String? videoUrl,
     int priority = 0,
-    String buttonText = 'Shop Now',
+    String buttonText = 'View Detail',
     String? userId,
     String? externalLink,
   }) async {

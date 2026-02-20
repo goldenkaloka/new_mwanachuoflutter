@@ -21,6 +21,7 @@ class PromotionModel extends PromotionEntity {
     super.sellerName,
     super.sellerPhone,
     super.externalLink,
+    super.sellerAvatarUrl,
   });
 
   factory PromotionModel.fromJson(Map<String, dynamic> json) {
@@ -41,7 +42,7 @@ class PromotionModel extends PromotionEntity {
       type: json['type'] as String? ?? 'banner',
       videoUrl: json['video_url'] as String?,
       priority: (json['priority'] as num?)?.toInt() ?? 0,
-      buttonText: json['button_text'] as String? ?? 'Shop Now',
+      buttonText: json['button_text'] as String? ?? 'View Detail',
       userId: json['user_id'] as String?,
       sellerName:
           (json['users']?['full_name'] ?? json['users']?['name']) as String?,
@@ -49,6 +50,9 @@ class PromotionModel extends PromotionEntity {
           (json['users']?['phone_number'] ?? json['users']?['phone'])
               as String?,
       externalLink: json['external_link'] as String?,
+      sellerAvatarUrl:
+          (json['users']?['avatar_url'] ?? json['users']?['profile_picture'])
+              as String?,
     );
   }
 

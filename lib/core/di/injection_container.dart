@@ -13,6 +13,11 @@ import 'package:mwanachuo/features/wallet/domain/repositories/wallet_repository.
 import 'package:mwanachuo/features/wallet/domain/usecases/get_wallet.dart';
 import 'package:mwanachuo/features/wallet/domain/usecases/get_wallet_transactions.dart';
 import 'package:mwanachuo/features/wallet/domain/usecases/initiate_top_up.dart';
+import 'package:mwanachuo/features/wallet/domain/usecases/submit_payment_proof.dart';
+import 'package:mwanachuo/features/wallet/domain/usecases/get_manual_payment_requests.dart';
+import 'package:mwanachuo/features/wallet/domain/usecases/approve_manual_payment.dart';
+import 'package:mwanachuo/features/wallet/domain/usecases/reject_manual_payment.dart';
+import 'package:mwanachuo/features/wallet/domain/usecases/get_pending_manual_payment_requests.dart';
 import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
 
 // Auth
@@ -48,6 +53,7 @@ import 'package:mwanachuo/features/shared/media/domain/usecases/pick_image.dart'
 import 'package:mwanachuo/features/shared/media/domain/usecases/pick_multiple_images.dart';
 import 'package:mwanachuo/features/shared/media/domain/usecases/upload_image.dart';
 import 'package:mwanachuo/features/shared/media/domain/usecases/upload_multiple_images.dart';
+import 'package:mwanachuo/features/shared/media/domain/usecases/upload_video.dart';
 import 'package:mwanachuo/features/shared/media/presentation/cubit/media_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/data/datasources/review_local_data_source.dart';
 import 'package:mwanachuo/features/shared/reviews/data/datasources/review_remote_data_source.dart';
@@ -334,6 +340,7 @@ void _initMediaFeature() {
   sl.registerLazySingleton(() => PickMultipleImages(sl()));
   sl.registerLazySingleton(() => UploadImage(sl()));
   sl.registerLazySingleton(() => UploadMultipleImages(sl()));
+  sl.registerLazySingleton(() => UploadVideo(sl()));
   sl.registerLazySingleton(() => DeleteImage(sl()));
 
   // Repository
@@ -793,6 +800,7 @@ void _initPromotionsFeature() {
       remoteDataSource: sl(),
       networkInfo: sl(),
       uploadImage: sl(),
+      uploadVideo: sl(),
       walletRepository: sl(),
     ),
   );
@@ -855,6 +863,11 @@ void _initWalletFeature() {
   sl.registerLazySingleton(() => GetWallet(sl()));
   sl.registerLazySingleton(() => GetWalletTransactions(sl()));
   sl.registerLazySingleton(() => InitiateTopUp(sl()));
+  sl.registerLazySingleton(() => SubmitPaymentProof(sl()));
+  sl.registerLazySingleton(() => GetManualPaymentRequests(sl()));
+  sl.registerLazySingleton(() => ApproveManualPayment(sl()));
+  sl.registerLazySingleton(() => RejectManualPayment(sl()));
+  sl.registerLazySingleton(() => GetPendingManualPaymentRequests(sl()));
 
   // Repository
   sl.registerLazySingleton<WalletRepository>(
@@ -872,6 +885,11 @@ void _initWalletFeature() {
       getWallet: sl(),
       getWalletTransactions: sl(),
       initiateTopUp: sl(),
+      submitPaymentProof: sl(),
+      getManualPaymentRequests: sl(),
+      approveManualPayment: sl(),
+      rejectManualPayment: sl(),
+      getPendingManualPaymentRequests: sl(),
     ),
   );
 }

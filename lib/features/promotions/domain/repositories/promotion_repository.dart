@@ -18,8 +18,9 @@ abstract class PromotionRepository {
     List<String>? terms,
     String type = 'banner',
     int priority = 0,
-    String buttonText = 'Shop Now',
+    String buttonText = 'View Detail',
     String? userId,
     String? externalLink,
+    String? videoUrl,
   });
 }

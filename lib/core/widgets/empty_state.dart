@@ -127,6 +127,7 @@ class EmptyState extends StatelessWidget {
       case EmptyStateType.noServices:
         return const _EmptyStateConfig(
           icon: Icons.build_outlined,
+          svgAsset: 'assets/svgs/Instant information-cuate.svg',
           iconColor: kInfoColor,
           backgroundColor: kInfoColor,
           defaultTitle: 'No Services Available',
@@ -137,6 +138,7 @@ class EmptyState extends StatelessWidget {
       case EmptyStateType.noAccommodations:
         return const _EmptyStateConfig(
           icon: Icons.home_outlined,
+          svgAsset: 'assets/svgs/college students-amico.svg',
           iconColor: kSuccessColor,
           backgroundColor: kSuccessColor,
           defaultTitle: 'No Accommodations Found',

@@ -347,7 +347,12 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
               backgroundColor: kPrimaryColor,
             ),
           );
-          Navigator.pop(context);
+          // Redirect to the newly created service detail page
+          Navigator.pushReplacementNamed(
+            context,
+            '/service-details',
+            arguments: state.service.id,
+          );
         } else if (state is ServiceError) {
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
@@ -821,7 +826,8 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
     Color primaryTextColor,
     ScreenSize screenSize,
   ) {
-    final isLoading = context.watch<ServiceBloc>().state is ServiceLoading;
+    final state = context.watch<ServiceBloc>().state;
+    final isLoading = state is ServiceCreating || state is ServiceLoading;
 
     return Container(
       padding: EdgeInsets.all(

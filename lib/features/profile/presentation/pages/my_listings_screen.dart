@@ -45,9 +45,7 @@ class MyListingsScreen extends StatelessWidget {
               sl<AccommodationBloc>()
                 ..add(const LoadAccommodationsEvent(limit: 100)),
         ),
-        BlocProvider(
-          create: (context) => sl<CategoryCubit>()..loadAll(),
-        ),
+        BlocProvider(create: (context) => sl<CategoryCubit>()..loadAll()),
       ],
       child: const _MyListingsView(),
     );
@@ -99,6 +97,15 @@ class _MyListingsViewState extends State<_MyListingsView>
     return category == selectedCategory;
   }
 
+  Future<void> _refreshData() async {
+    if (!mounted) return;
+    context.read<ProductBloc>().add(const LoadProductsEvent(limit: 100));
+    context.read<ServiceBloc>().add(const LoadServicesEvent(limit: 100));
+    context.read<AccommodationBloc>().add(
+      const LoadAccommodationsEvent(limit: 100),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -145,8 +152,16 @@ class _MyListingsViewState extends State<_MyListingsView>
             child: TabBarView(
               controller: _tabController,
               children: [
-                _buildProductsTab(isDarkMode, primaryTextColor, secondaryTextColor),
-                _buildServicesTab(isDarkMode, primaryTextColor, secondaryTextColor),
+                _buildProductsTab(
+                  isDarkMode,
+                  primaryTextColor,
+                  secondaryTextColor,
+                ),
+                _buildServicesTab(
+                  isDarkMode,
+                  primaryTextColor,
+                  secondaryTextColor,
+                ),
                 _buildAccommodationsTab(
                   isDarkMode,
                   primaryTextColor,
@@ -165,7 +180,7 @@ class _MyListingsViewState extends State<_MyListingsView>
       animation: _tabController,
       builder: (context, child) {
         final currentIndex = _tabController.index;
-        
+
         if (currentIndex == 0) {
           // Products tab
           return CategoryChipsWithBloc(
@@ -206,7 +221,10 @@ class _MyListingsViewState extends State<_MyListingsView>
         padding: const EdgeInsets.symmetric(horizontal: 16),
         child: Row(
           children: [
-            _buildRoomTypeChipForMyListings('All', _selectedAccommodationType == null),
+            _buildRoomTypeChipForMyListings(
+              'All',
+              _selectedAccommodationType == null,
+            ),
             ...RoomTypes.all.map((roomType) {
               return _buildRoomTypeChipForMyListings(
                 roomType,
@@ -312,8 +330,15 @@ class _MyListingsViewState extends State<_MyListingsView>
               SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myProducts = state.products
               .where((p) => p.sellerId == currentUserId)
-              .where((p) => _matchesSearch(p.title) || _matchesSearch(p.description) || _matchesSearch(p.category))
-              .where((p) => _matchesCategory(p.category, _selectedProductCategory))
+              .where(
+                (p) =>
+                    _matchesSearch(p.title) ||
+                    _matchesSearch(p.description) ||
+                    _matchesSearch(p.category),
+              )
+              .where(
+                (p) => _matchesCategory(p.category, _selectedProductCategory),
+              )
               .toList();
 
           if (myProducts.isEmpty) {
@@ -342,8 +367,10 @@ class _MyListingsViewState extends State<_MyListingsView>
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/post-product'),
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/post-product');
+                      if (mounted) _refreshData();
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('Post Product'),
                     style: ElevatedButton.styleFrom(
@@ -378,150 +405,157 @@ class _MyListingsViewState extends State<_MyListingsView>
                 );
               }
             },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: myProducts.length,
-              itemBuilder: (context, index) {
-                final product = myProducts[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  color: isDarkMode ? Colors.grey[900] : Colors.white,
-                  child: Column(
-                    children: [
-                      ListTile(
-                        onTap: () => Navigator.pushNamed(
-                          context,
-                          '/product-details',
-                          arguments: product.id,
-                        ),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: NetworkImageWithFallback(
-                            imageUrl: product.images.isNotEmpty
-                                ? product.images.first
-                                : '',
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
+            child: RefreshIndicator(
+              onRefresh: _refreshData,
+              color: kPrimaryColor,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: myProducts.length,
+                itemBuilder: (context, index) {
+                  final product = myProducts[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    color: isDarkMode ? Colors.grey[900] : Colors.white,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/product-details',
+                            arguments: product.id,
                           ),
-                        ),
-                        title: Text(
-                          product.title,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.bold,
-                            color: primaryTextColor,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          'TZS ${product.price.toStringAsFixed(2)} • ${product.category}',
-                          style: TextStyle(color: secondaryTextColor),
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: product.isActive
-                                    ? kPrimaryColor.withValues(alpha: 0.2)
-                                    : Colors.grey.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                product.isActive ? 'Active' : 'Inactive',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: product.isActive
-                                      ? kPrimaryColor
-                                      : Colors.grey,
-                                ),
-                              ),
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: NetworkImageWithFallback(
+                              imageUrl: product.images.isNotEmpty
+                                  ? product.images.first
+                                  : '',
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.visibility,
-                                  size: 12,
-                                  color: secondaryTextColor,
+                          ),
+                          title: Text(
+                            product.title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.bold,
+                              color: primaryTextColor,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            'TZS ${product.price.toStringAsFixed(2)} • ${product.category}',
+                            style: TextStyle(color: secondaryTextColor),
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '${product.viewCount}',
-                                  style: TextStyle(
-                                    fontSize: 12,
+                                decoration: BoxDecoration(
+                                  color: product.isActive
+                                      ? kPrimaryColor.withValues(alpha: 0.2)
+                                      : Colors.grey.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  product.isActive ? 'Active' : 'Inactive',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: product.isActive
+                                        ? kPrimaryColor
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.visibility,
+                                    size: 12,
                                     color: secondaryTextColor,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Divider(
-                        height: 1,
-                        color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton.icon(
-                              onPressed: () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        _buildEditProductScreen(product),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${product.viewCount}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: secondaryTextColor,
+                                    ),
                                   ),
-                                );
-                                if (result == true) {
-                                  // Reload products if edit was successful
-                                  if (context.mounted) {
-                                    context.read<ProductBloc>().add(
-                                      const LoadProductsEvent(limit: 100),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.edit, size: 18),
-                              label: const Text('Edit'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: kPrimaryColor,
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            TextButton.icon(
-                              onPressed: () => _showDeleteProductConfirmation(
-                                context,
-                                product.id,
-                                product.title,
-                              ),
-                              icon: const Icon(Icons.delete, size: 18),
-                              label: const Text('Delete'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                        Divider(
+                          height: 1,
+                          color: isDarkMode
+                              ? Colors.grey[800]
+                              : Colors.grey[300],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          _buildEditProductScreen(product),
+                                    ),
+                                  );
+                                  if (result == true) {
+                                    // Reload products if edit was successful
+                                    if (context.mounted) {
+                                      context.read<ProductBloc>().add(
+                                        const LoadProductsEvent(limit: 100),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.edit, size: 18),
+                                label: const Text('Edit'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: kPrimaryColor,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton.icon(
+                                onPressed: () => _showDeleteProductConfirmation(
+                                  context,
+                                  product.id,
+                                  product.title,
+                                ),
+                                icon: const Icon(Icons.delete, size: 18),
+                                label: const Text('Delete'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           );
         }
@@ -566,8 +600,15 @@ class _MyListingsViewState extends State<_MyListingsView>
               SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myServices = state.services
               .where((s) => s.providerId == currentUserId)
-              .where((s) => _matchesSearch(s.title) || _matchesSearch(s.description) || _matchesSearch(s.category))
-              .where((s) => _matchesCategory(s.category, _selectedServiceCategory))
+              .where(
+                (s) =>
+                    _matchesSearch(s.title) ||
+                    _matchesSearch(s.description) ||
+                    _matchesSearch(s.category),
+              )
+              .where(
+                (s) => _matchesCategory(s.category, _selectedServiceCategory),
+              )
               .toList();
 
           if (myServices.isEmpty) {
@@ -596,8 +637,10 @@ class _MyListingsViewState extends State<_MyListingsView>
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/create-service'),
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/create-service');
+                      if (mounted) _refreshData();
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('Add Service'),
                     style: ElevatedButton.styleFrom(
@@ -632,150 +675,157 @@ class _MyListingsViewState extends State<_MyListingsView>
                 );
               }
             },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: myServices.length,
-              itemBuilder: (context, index) {
-                final service = myServices[index];
-                return Card(
-                  margin: const EdgeInsets.only(bottom: 12),
-                  color: isDarkMode ? Colors.grey[900] : Colors.white,
-                  child: Column(
-                    children: [
-                      ListTile(
-                        onTap: () => Navigator.pushNamed(
-                          context,
-                          '/service-details',
-                          arguments: service.id,
-                        ),
-                        leading: ClipRRect(
-                          borderRadius: BorderRadius.circular(8),
-                          child: NetworkImageWithFallback(
-                            imageUrl: service.images.isNotEmpty
-                                ? service.images.first
-                                : '',
-                            width: 60,
-                            height: 60,
-                            fit: BoxFit.cover,
+            child: RefreshIndicator(
+              onRefresh: _refreshData,
+              color: kPrimaryColor,
+              child: ListView.builder(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16),
+                itemCount: myServices.length,
+                itemBuilder: (context, index) {
+                  final service = myServices[index];
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    color: isDarkMode ? Colors.grey[900] : Colors.white,
+                    child: Column(
+                      children: [
+                        ListTile(
+                          onTap: () => Navigator.pushNamed(
+                            context,
+                            '/service-details',
+                            arguments: service.id,
                           ),
-                        ),
-                        title: Text(
-                          service.title,
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.bold,
-                            color: primaryTextColor,
-                          ),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                        subtitle: Text(
-                          'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
-                          style: TextStyle(color: secondaryTextColor),
-                        ),
-                        trailing: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                color: service.isActive
-                                    ? kPrimaryColor.withValues(alpha: 0.2)
-                                    : Colors.grey.withValues(alpha: 0.2),
-                                borderRadius: BorderRadius.circular(4),
-                              ),
-                              child: Text(
-                                service.isActive ? 'Active' : 'Inactive',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 10,
-                                  fontWeight: FontWeight.bold,
-                                  color: service.isActive
-                                      ? kPrimaryColor
-                                      : Colors.grey,
-                                ),
-                              ),
+                          leading: ClipRRect(
+                            borderRadius: BorderRadius.circular(8),
+                            child: NetworkImageWithFallback(
+                              imageUrl: service.images.isNotEmpty
+                                  ? service.images.first
+                                  : '',
+                              width: 60,
+                              height: 60,
+                              fit: BoxFit.cover,
                             ),
-                            const SizedBox(height: 4),
-                            Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.visibility,
-                                  size: 12,
-                                  color: secondaryTextColor,
+                          ),
+                          title: Text(
+                            service.title,
+                            style: GoogleFonts.plusJakartaSans(
+                              fontWeight: FontWeight.bold,
+                              color: primaryTextColor,
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
+                            style: TextStyle(color: secondaryTextColor),
+                          ),
+                          trailing: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            crossAxisAlignment: CrossAxisAlignment.end,
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 4,
                                 ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  '${service.viewCount}',
-                                  style: TextStyle(
-                                    fontSize: 12,
+                                decoration: BoxDecoration(
+                                  color: service.isActive
+                                      ? kPrimaryColor.withValues(alpha: 0.2)
+                                      : Colors.grey.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  service.isActive ? 'Active' : 'Inactive',
+                                  style: GoogleFonts.plusJakartaSans(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.bold,
+                                    color: service.isActive
+                                        ? kPrimaryColor
+                                        : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.visibility,
+                                    size: 12,
                                     color: secondaryTextColor,
                                   ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      Divider(
-                        height: 1,
-                        color: isDarkMode ? Colors.grey[800] : Colors.grey[300],
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 8,
-                          vertical: 4,
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            TextButton.icon(
-                              onPressed: () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) =>
-                                        _buildEditServiceScreen(service),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    '${service.viewCount}',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: secondaryTextColor,
+                                    ),
                                   ),
-                                );
-                                if (result == true) {
-                                  // Reload services if edit was successful
-                                  if (context.mounted) {
-                                    context.read<ServiceBloc>().add(
-                                      const LoadServicesEvent(limit: 100),
-                                    );
-                                  }
-                                }
-                              },
-                              icon: const Icon(Icons.edit, size: 18),
-                              label: const Text('Edit'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: kPrimaryColor,
+                                ],
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            TextButton.icon(
-                              onPressed: () => _showDeleteServiceConfirmation(
-                                context,
-                                service.id,
-                                service.title,
-                              ),
-                              icon: const Icon(Icons.delete, size: 18),
-                              label: const Text('Delete'),
-                              style: TextButton.styleFrom(
-                                foregroundColor: Colors.red,
-                              ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
-                );
-              },
+                        Divider(
+                          height: 1,
+                          color: isDarkMode
+                              ? Colors.grey[800]
+                              : Colors.grey[300],
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.end,
+                            children: [
+                              TextButton.icon(
+                                onPressed: () async {
+                                  final result = await Navigator.push(
+                                    context,
+                                    MaterialPageRoute(
+                                      builder: (context) =>
+                                          _buildEditServiceScreen(service),
+                                    ),
+                                  );
+                                  if (result == true) {
+                                    // Reload services if edit was successful
+                                    if (context.mounted) {
+                                      context.read<ServiceBloc>().add(
+                                        const LoadServicesEvent(limit: 100),
+                                      );
+                                    }
+                                  }
+                                },
+                                icon: const Icon(Icons.edit, size: 18),
+                                label: const Text('Edit'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: kPrimaryColor,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              TextButton.icon(
+                                onPressed: () => _showDeleteServiceConfirmation(
+                                  context,
+                                  service.id,
+                                  service.title,
+                                ),
+                                icon: const Icon(Icons.delete, size: 18),
+                                label: const Text('Delete'),
+                                style: TextButton.styleFrom(
+                                  foregroundColor: Colors.red,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                },
+              ),
             ),
           );
         }
@@ -820,8 +870,16 @@ class _MyListingsViewState extends State<_MyListingsView>
               SupabaseConfig.client.auth.currentUser?.id ?? '';
           final myAccommodations = state.accommodations
               .where((a) => a.ownerId == currentUserId)
-              .where((a) => _matchesSearch(a.name) || _matchesSearch(a.description) || _matchesSearch(a.roomType) || _matchesSearch(a.location))
-              .where((a) => _matchesCategory(a.roomType, _selectedAccommodationType))
+              .where(
+                (a) =>
+                    _matchesSearch(a.name) ||
+                    _matchesSearch(a.description) ||
+                    _matchesSearch(a.roomType) ||
+                    _matchesSearch(a.location),
+              )
+              .where(
+                (a) => _matchesCategory(a.roomType, _selectedAccommodationType),
+              )
               .toList();
 
           if (myAccommodations.isEmpty) {
@@ -850,8 +908,13 @@ class _MyListingsViewState extends State<_MyListingsView>
                   ),
                   const SizedBox(height: 24),
                   ElevatedButton.icon(
-                    onPressed: () =>
-                        Navigator.pushNamed(context, '/create-accommodation'),
+                    onPressed: () async {
+                      await Navigator.pushNamed(
+                        context,
+                        '/create-accommodation',
+                      );
+                      if (mounted) _refreshData();
+                    },
                     icon: const Icon(Icons.add),
                     label: const Text('Add Accommodation'),
                     style: ElevatedButton.styleFrom(

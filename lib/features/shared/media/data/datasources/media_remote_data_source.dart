@@ -5,6 +5,7 @@ import 'package:mwanachuo/features/shared/media/data/models/media_model.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:path/path.dart' as path;
 import 'package:uuid/uuid.dart';
+import 'package:mime/mime.dart';
 
 /// Abstract class defining media remote data source operations
 abstract class MediaRemoteDataSource {
@@ -86,17 +87,17 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
         'File size: ${(fileSize / 1024).toStringAsFixed(2)} KB',
       );
 
-      // Upload to Supabase Storage
-      LoggerService.info('Uploading to Supabase Storage...');
+      final contentType = _getContentType(imageFile.path);
+      LoggerService.info(
+        'Uploading to Supabase Storage with content type: $contentType',
+      );
+
       await supabaseClient.storage
           .from(bucket)
           .uploadBinary(
             filePath,
             fileBytes,
-            fileOptions: FileOptions(
-              contentType: _getContentType(extension),
-              upsert: false,
-            ),
+            fileOptions: FileOptions(contentType: contentType, upsert: false),
           );
 
       LoggerService.info('Upload successful on attempt $attempt!');
@@ -274,8 +275,15 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
     }
   }
 
-  String _getContentType(String extension) {
-    switch (extension.toLowerCase()) {
+  String _getContentType(String filePath) {
+    final mimeType = lookupMimeType(filePath);
+    if (mimeType != null) {
+      return mimeType;
+    }
+
+    // Fallback based on extension if lookup fails
+    final extension = path.extension(filePath).toLowerCase();
+    switch (extension) {
       case '.jpg':
       case '.jpeg':
         return 'image/jpeg';
@@ -291,8 +299,9 @@ class MediaRemoteDataSourceImpl implements MediaRemoteDataSource {
         return 'video/quicktime';
       case '.avi':
         return 'video/x-msvideo';
+      case '.m3u8':
+        return 'application/x-mpegURL';
       default:
-        // For other extensions, try to guess or use binary stream
         return 'application/octet-stream';
     }
   }

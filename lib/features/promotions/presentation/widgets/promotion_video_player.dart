@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 
 class PromotionVideoPlayer extends StatefulWidget {
   final String videoUrl;
@@ -64,25 +65,43 @@ class _PromotionVideoPlayerState extends State<PromotionVideoPlayer> {
 
   @override
   Widget build(BuildContext context) {
-    if (!_isInitialized) {
-      return const Center(
-        child: CircularProgressIndicator(
-          strokeWidth: 2,
-          valueColor: AlwaysStoppedAnimation<Color>(Colors.white24),
+    return Stack(
+      children: [
+        if (!_isInitialized)
+          const Center(
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              valueColor: AlwaysStoppedAnimation<Color>(Colors.white24),
+            ),
+          )
+        else
+          SizedBox.expand(
+            child: FittedBox(
+              fit: BoxFit.cover,
+              clipBehavior: Clip.hardEdge,
+              child: SizedBox(
+                width: _controller.value.size.width,
+                height: _controller.value.size.height,
+                child: VideoPlayer(_controller),
+              ),
+            ),
+          ),
+        // Buffering indicator
+        ValueListenableBuilder(
+          valueListenable: _controller,
+          builder: (context, VideoPlayerValue value, child) {
+            if (value.isBuffering && _isInitialized) {
+              return Center(
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  valueColor: AlwaysStoppedAnimation<Color>(kPrimaryColor),
+                ),
+              );
+            }
+            return const SizedBox.shrink();
+          },
         ),
-      );
-    }
-
-    return SizedBox.expand(
-      child: FittedBox(
-        fit: BoxFit.cover,
-        clipBehavior: Clip.hardEdge,
-        child: SizedBox(
-          width: _controller.value.size.width,
-          height: _controller.value.size.height,
-          child: VideoPlayer(_controller),
-        ),
-      ),
+      ],
     );
   }
 }

@@ -31,6 +31,7 @@ class CreatePromotion
       buttonText: params.buttonText,
       userId: params.userId,
       externalLink: params.externalLink,
+      videoUrl: params.videoUrl,
     );
   }
 }
@@ -50,6 +51,7 @@ class CreatePromotionParams extends Equatable {
   final String buttonText;
   final String? userId;
   final String? externalLink;
+  final String? videoUrl;
 
   const CreatePromotionParams({
     required this.title,
@@ -63,9 +65,10 @@ class CreatePromotionParams extends Equatable {
     this.terms,
     this.type = 'banner',
     this.priority = 0,
-    this.buttonText = 'Shop Now',
+    this.buttonText = 'View Detail',
     this.userId,
     this.externalLink,
+    this.videoUrl,
   });
 
   @override
@@ -84,5 +87,6 @@ class CreatePromotionParams extends Equatable {
     buttonText,
     userId,
     externalLink,
+    videoUrl,
   ];
 }

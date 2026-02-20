@@ -883,11 +883,12 @@ class _DashboardViewState extends State<_DashboardView> {
         'label': 'List Housing',
         'route': '/create-accommodation',
       },
-      {
-        'icon': Icons.campaign_outlined,
-        'label': 'Create Promo',
-        'route': '/create-promotion',
-      },
+      if (authState is Authenticated && authState.user.role.value == 'admin')
+        {
+          'icon': Icons.campaign_outlined,
+          'label': 'Create Promo',
+          'route': '/create-promotion',
+        },
       // DEBUG: Temporarily allowing access to everyone to verify UI exists
       // if (authState is Authenticated &&
       //     (authState).user.role.value == 'admin')

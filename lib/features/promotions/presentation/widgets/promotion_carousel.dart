@@ -48,63 +48,42 @@ class _PromotionCarouselState extends State<PromotionCarousel> {
     List<PromotionEntity> promotions,
     ScreenSize screenSize,
   ) {
-    return Column(
-      children: [
-        CarouselSlider.builder(
-          itemCount: promotions.length,
-          itemBuilder: (context, index, realIndex) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 2.0),
-              child: PromotionCard(
-                promotion: promotions[index],
-                index: index,
-                isActive: index == _currentPromotionPage,
-              ),
-            );
-          },
-          options: CarouselOptions(
-            height: ResponsiveBreakpoints.responsiveValue(
+    return CarouselSlider.builder(
+      itemCount: promotions.length,
+      itemBuilder: (context, index, realIndex) {
+        return Padding(
+          padding: EdgeInsets.symmetric(
+            horizontal: ResponsiveBreakpoints.responsiveHorizontalPadding(
               context,
-              compact: 160.0,
-              medium: 180.0,
-              expanded: 220.0,
             ),
-            autoPlay: true,
-            autoPlayInterval: const Duration(seconds: 5),
-            autoPlayAnimationDuration: const Duration(milliseconds: 800),
-            autoPlayCurve: Curves.fastOutSlowIn,
-            enlargeCenterPage: true,
-            scrollDirection: Axis.horizontal,
-            viewportFraction: 0.8,
-            onPageChanged: (index, reason) {
-              setState(() {
-                _currentPromotionPage = index;
-              });
-            },
           ),
+          child: PromotionCard(
+            promotion: promotions[index],
+            index: index,
+            isActive: _currentPromotionPage == index,
+          ),
+        );
+      },
+      options: CarouselOptions(
+        height: ResponsiveBreakpoints.responsiveValue(
+          context,
+          compact: 260.0,
+          medium: 300.0,
+          expanded: 360.0,
         ),
-        const SizedBox(height: 8),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(promotions.length, (index) {
-            return Container(
-              width: 8.0,
-              height: 8.0,
-              margin: const EdgeInsets.symmetric(horizontal: 4.0),
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: _currentPromotionPage == index
-                    ? PromotionCard
-                          .promotionGradients[index %
-                              PromotionCard.promotionGradients.length]
-                          .colors
-                          .first
-                    : Colors.grey[700]!,
-              ),
-            );
-          }),
-        ),
-      ],
+        autoPlay: true,
+        autoPlayInterval: const Duration(seconds: 5),
+        autoPlayAnimationDuration: const Duration(milliseconds: 800),
+        autoPlayCurve: Curves.fastOutSlowIn,
+        enlargeCenterPage: false,
+        scrollDirection: Axis.horizontal,
+        viewportFraction: 1.0,
+        onPageChanged: (index, reason) {
+          setState(() {
+            _currentPromotionPage = index;
+          });
+        },
+      ),
     );
   }
 

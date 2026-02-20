@@ -305,7 +305,11 @@ class ServiceCard extends StatelessWidget {
   final String priceType;
   final String? category;
   final String? providerName;
+  final String? providerAvatar;
   final String? location;
+  final double? rating;
+  final int? reviewCount;
+  final bool isFeatured;
   final VoidCallback onTap;
 
   const ServiceCard({
@@ -317,144 +321,233 @@ class ServiceCard extends StatelessWidget {
     required this.priceType,
     this.category,
     this.providerName,
+    this.providerAvatar,
     this.location,
+    this.rating,
+    this.reviewCount,
+    this.isFeatured = false,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final primaryTextColor = isDarkMode ? kTextPrimaryDark : kTextPrimary;
+    final secondaryTextColor = isDarkMode ? kTextSecondaryDark : kTextSecondary;
+    final borderColor = isDarkMode ? Colors.grey[800]! : Colors.grey[200]!;
+
     return GestureDetector(
       onTap: onTap,
       child: Container(
         decoration: BoxDecoration(
           color: isDarkMode ? kSurfaceColorDark : kSurfaceColorLight,
           borderRadius: BorderRadius.circular(kRadiusMd),
-          border: Border.all(
-            color: isDarkMode ? kBorderColorDark : kBorderColor,
-            width: 0.5,
-          ),
+          border: Border.all(color: borderColor, width: 1.5),
         ),
         clipBehavior: Clip.antiAlias,
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        child: Stack(
           children: [
-            // Image Section on Left
-            SizedBox(
-              width: 100,
-              height: 100,
-              child: Hero(
-                tag: 'service_$id',
-                child: NetworkImageWithFallback(
-                  imageUrl: imageUrl,
-                  width: 100,
-                  height: 100,
-                  fit: BoxFit.cover,
-                ),
-              ),
-            ),
-            const SizedBox(width: kSpacingMd),
-            // Text Section on Right
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(vertical: 4.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Image Section
+                Stack(
                   children: [
-                    Text(
-                      title,
-                      style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 15,
+                    Hero(
+                      tag: 'service_$id',
+                      child: NetworkImageWithFallback(
+                        imageUrl: imageUrl,
+                        width: 120,
+                        height: 120,
+                        fit: BoxFit.cover,
                       ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    if (category != null) ...[
-                      const SizedBox(height: 2),
-                      Text(
-                        category!,
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: kTextSecondary),
-                      ),
-                    ],
-                    const SizedBox(height: 6),
-                    Row(
-                      children: [
-                        Text(
-                          price,
-                          style: Theme.of(context).textTheme.titleSmall
-                              ?.copyWith(
-                                color: kPrimaryColor,
-                                fontWeight: FontWeight.w800,
-                                fontSize: 15,
-                              ),
-                        ),
-                        Flexible(
-                          child: Text(
-                            '/$priceType',
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(color: kTextSecondary, fontSize: 11),
-                            overflow: TextOverflow.ellipsis,
-                            maxLines: 1,
+                    if (isFeatured)
+                      Positioned(
+                        top: 8,
+                        left: 8,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
                           ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        if (providerName != null) ...[
-                          const Icon(
-                            Icons.person_outline,
-                            size: 14,
-                            color: kTextSecondary,
+                          decoration: BoxDecoration(
+                            color: kPrimaryColor,
+                            borderRadius: BorderRadius.circular(4),
                           ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              providerName!,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    fontSize: 11,
-                                    color: kTextSecondary,
-                                  ),
-                              overflow: TextOverflow.ellipsis,
+                          child: const Text(
+                            'FEATURED',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                        ],
-                        if (location != null) ...[
-                          if (providerName != null) const SizedBox(width: 12),
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 14,
-                            color: kTextSecondary,
-                          ),
-                          const SizedBox(width: 4),
-                          Flexible(
-                            child: Text(
-                              location!,
-                              style: Theme.of(context).textTheme.bodySmall
-                                  ?.copyWith(
-                                    fontSize: 11,
-                                    color: kTextSecondary,
-                                  ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
+                        ),
+                      ),
                   ],
                 ),
+                // Info Section
+                Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.all(kSpacingMd),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                title,
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: primaryTextColor,
+                                      fontSize: 14,
+                                    ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        if (category != null)
+                          Text(
+                            category!.toUpperCase(),
+                            style: TextStyle(
+                              color: kPrimaryColor,
+                              fontSize: 10,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        const SizedBox(height: 8),
+                        Row(
+                          children: [
+                            Text(
+                              price,
+                              style: const TextStyle(
+                                color: kPrimaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              '/$priceType',
+                              style: TextStyle(
+                                color: secondaryTextColor,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        // Provider and Rating Row
+                        Row(
+                          children: [
+                            if (providerAvatar != null)
+                              Container(
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: borderColor,
+                                    width: 1,
+                                  ),
+                                ),
+                                child: ClipOval(
+                                  child: NetworkImageWithFallback(
+                                    imageUrl: providerAvatar!,
+                                    width: 18,
+                                    height: 18,
+                                    fit: BoxFit.cover,
+                                  ),
+                                ),
+                              ),
+                            if (providerName != null) ...[
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  providerName!,
+                                  style: TextStyle(
+                                    color: secondaryTextColor,
+                                    fontSize: 11,
+                                  ),
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                            if (rating != null) ...[
+                              const SizedBox(width: 8),
+                              const Icon(
+                                Icons.star,
+                                size: 12,
+                                color: Colors.amber,
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                rating!.toStringAsFixed(1),
+                                style: TextStyle(
+                                  color: primaryTextColor,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                              if (reviewCount != null)
+                                Text(
+                                  ' ($reviewCount)',
+                                  style: TextStyle(
+                                    color: secondaryTextColor,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                            ],
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            // Location Badge
+            if (location != null)
+              Positioned(
+                bottom: 8,
+                right: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isDarkMode
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.grey[100],
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.location_on_outlined,
+                        size: 10,
+                        color: secondaryTextColor,
+                      ),
+                      const SizedBox(width: 2),
+                      Text(
+                        location!,
+                        style: TextStyle(
+                          color: secondaryTextColor,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ),
-            ),
-            const Padding(
-              padding: EdgeInsets.only(top: 8, right: 8),
-              child: Icon(Icons.chevron_right, color: kTextSecondary, size: 20),
-            ),
           ],
         ),
       ),
