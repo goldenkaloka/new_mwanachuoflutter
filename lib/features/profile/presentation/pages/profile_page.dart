@@ -477,6 +477,33 @@ class _ProfilePageState extends State<ProfilePage> {
             ),
             textAlign: TextAlign.center,
           ),
+          if (profile.userType == 'student' &&
+              profile.freeListingsCount > 0) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: kPrimaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: kPrimaryColor.withValues(alpha: 0.3)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.stars, color: kPrimaryColor, size: 18),
+                  const SizedBox(width: 8),
+                  Text(
+                    '${profile.freeListingsCount} Free Listings Left',
+                    style: GoogleFonts.plusJakartaSans(
+                      color: kPrimaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -508,6 +535,10 @@ class _ProfilePageState extends State<ProfilePage> {
         _MenuItem(
           icon: Icons.sell,
           title: 'My Listings',
+          subtitle:
+              (profile.userType == 'student' && profile.freeListingsCount > 0)
+              ? '${profile.freeListingsCount} free posts left'
+              : null,
           onTap: () {
             Navigator.pushNamed(context, '/my-listings');
           },
@@ -648,21 +679,45 @@ class _ProfilePageState extends State<ProfilePage> {
                           expanded: 24.0,
                         ),
                       ),
-                      // Title
+                      // Title & Subtitle
                       Expanded(
-                        child: Text(
-                          item.title,
-                          style: GoogleFonts.plusJakartaSans(
-                            color: primaryTextColor,
-                            fontSize: ResponsiveBreakpoints.responsiveValue(
-                              context,
-                              compact: 16.0,
-                              medium: 17.0,
-                              expanded: 18.0,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              item.title,
+                              style: GoogleFonts.plusJakartaSans(
+                                color: primaryTextColor,
+                                fontSize: ResponsiveBreakpoints.responsiveValue(
+                                  context,
+                                  compact: 16.0,
+                                  medium: 17.0,
+                                  expanded: 18.0,
+                                ),
+                                fontWeight: FontWeight.normal,
+                              ),
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            fontWeight: FontWeight.normal,
-                          ),
-                          overflow: TextOverflow.ellipsis,
+                            if (item.subtitle != null) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                item.subtitle!,
+                                style: GoogleFonts.plusJakartaSans(
+                                  color: Colors.teal,
+                                  fontSize:
+                                      ResponsiveBreakpoints.responsiveValue(
+                                        context,
+                                        compact: 12.0,
+                                        medium: 13.0,
+                                        expanded: 14.0,
+                                      ),
+                                  fontWeight: FontWeight.w500,
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ],
                         ),
                       ),
                       // Chevron Icon
@@ -1055,7 +1110,13 @@ class _ProfilePageState extends State<ProfilePage> {
 class _MenuItem {
   final IconData icon;
   final String title;
+  final String? subtitle;
   final VoidCallback onTap;
 
-  _MenuItem({required this.icon, required this.title, required this.onTap});
+  _MenuItem({
+    required this.icon,
+    required this.title,
+    this.subtitle,
+    required this.onTap,
+  });
 }

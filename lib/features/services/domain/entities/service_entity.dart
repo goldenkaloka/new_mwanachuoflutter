@@ -25,6 +25,7 @@ class ServiceEntity extends Equatable {
   final DateTime createdAt;
   final DateTime? updatedAt;
   final Map<String, dynamic>? metadata;
+  final DateTime? expiresAt;
 
   const ServiceEntity({
     required this.id,
@@ -50,6 +51,7 @@ class ServiceEntity extends Equatable {
     required this.createdAt,
     this.updatedAt,
     this.metadata,
+    this.expiresAt,
   });
 
   @override
@@ -77,6 +79,7 @@ class ServiceEntity extends Equatable {
         createdAt,
         updatedAt,
         metadata,
+        expiresAt,
       ];
 }
 

@@ -16,7 +16,7 @@ import 'package:mwanachuo/features/services/presentation/bloc/service_state.dart
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
+import 'package:mwanachuo/core/utils/contact_helper.dart';
 
 class ServiceDetailPage extends StatelessWidget {
   const ServiceDetailPage({super.key});
@@ -300,13 +300,24 @@ class _ServiceDetailView extends StatelessWidget {
             child: StickyActionBar(
               price:
                   'TZS ${service.price.toStringAsFixed(2)}/${service.priceType}',
-              actionButtonText: 'Contact Provider',
+              actionButtonText: 'WhatsApp',
               onActionTap: () {
                 final itemUrl =
                     'https://www.mwanachuoshop.com/services/${service.id}';
                 final message =
                     'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?';
-                WhatsAppContactHelper.contactSeller(
+                ContactHelper.contactSellerViaWhatsApp(
+                  context: context,
+                  phoneNumber: service.contactPhone,
+                  message: message,
+                );
+              },
+              onSmsTap: () {
+                final itemUrl =
+                    'https://www.mwanachuoshop.com/services/${service.id}';
+                final message =
+                    'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop. Angalia hapa: $itemUrl';
+                ContactHelper.contactSellerViaSMS(
                   context: context,
                   phoneNumber: service.contactPhone,
                   message: message,
@@ -591,20 +602,42 @@ class _ServiceDetailView extends StatelessWidget {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () {
-              // Dispatch event - navigation will be handled by parent BlocListener
-              final itemUrl =
-                  'https://www.mwanachuoshop.com/services/${service.id}';
-              final message =
-                  'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?';
-              WhatsAppContactHelper.contactSeller(
-                context: context,
-                phoneNumber: service.contactPhone,
-                message: message,
-              );
-            },
-            icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: () {
+                  final itemUrl =
+                      'https://www.mwanachuoshop.com/services/${service.id}';
+                  final message =
+                      'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop. Angalia hapa: $itemUrl';
+                  ContactHelper.contactSellerViaSMS(
+                    context: context,
+                    phoneNumber: service.contactPhone,
+                    message: message,
+                  );
+                },
+                icon: const Icon(Icons.sms_outlined, color: Colors.blue),
+              ),
+              IconButton(
+                onPressed: () {
+                  // Dispatch event - navigation will be handled by parent BlocListener
+                  final itemUrl =
+                      'https://www.mwanachuoshop.com/services/${service.id}';
+                  final message =
+                      'Habari ${service.providerName}, nimevutiwa na huduma ya ${service.title} uliyoweka Mwanachuoshop kwa bei ya TZS ${service.price.toStringAsFixed(2)}.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?';
+                  ContactHelper.contactSellerViaWhatsApp(
+                    context: context,
+                    phoneNumber: service.contactPhone,
+                    message: message,
+                  );
+                },
+                icon: const Icon(
+                  Icons.chat_bubble_outline,
+                  color: Color(0xFF25D366),
+                ),
+              ),
+            ],
           ),
         ],
       ),

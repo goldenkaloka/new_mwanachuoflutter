@@ -25,6 +25,7 @@ class UserProfileModel extends UserProfileEntity {
     super.userType,
     super.businessName,
     super.businessCategory,
+    super.freeListingsCount,
   });
 
   factory UserProfileModel.fromJson(Map<String, dynamic> json) {
@@ -56,6 +57,7 @@ class UserProfileModel extends UserProfileEntity {
       userType: json['user_type'] as String?,
       businessName: json['business_name'] as String?,
       businessCategory: json['business_category'] as String?,
+      freeListingsCount: json['free_listings_count'] as int? ?? 0,
     );
   }
 
@@ -83,6 +85,7 @@ class UserProfileModel extends UserProfileEntity {
       'user_type': userType,
       'business_name': businessName,
       'business_category': businessCategory,
+      'free_listings_count': freeListingsCount,
     };
   }
 }

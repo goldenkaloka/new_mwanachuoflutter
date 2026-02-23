@@ -11,7 +11,8 @@ import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_state.dart';
 import 'package:mwanachuo/features/promotions/domain/entities/promotion_entity.dart';
-import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
+import 'package:mwanachuo/core/utils/contact_helper.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 class PromotionDetailPage extends StatelessWidget {
@@ -572,34 +573,81 @@ class _PromotionDetailViewState extends State<_PromotionDetailView> {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (hasWhatsApp)
-              SizedBox(
-                width: double.infinity,
-                height: 52.0,
-                child: ElevatedButton.icon(
-                  onPressed: () {
-                    WhatsAppContactHelper.contactSeller(
-                      context: context,
-                      phoneNumber: promotion.sellerPhone!,
-                      message:
-                          'Hello, I am interested in your promotion: ${promotion.title}',
-                    );
-                  },
-                  icon: const Icon(Icons.call, size: 20),
-                  label: Text(
-                    'Call on WhatsApp',
-                    style: GoogleFonts.inter(
-                      fontSize: 16.0,
-                      fontWeight: FontWeight.w600,
+              Row(
+                children: [
+                  // SMS Button
+                  SizedBox(
+                    width: 52,
+                    height: 52,
+                    child: OutlinedButton(
+                      onPressed: () {
+                        ContactHelper.contactSellerViaSMS(
+                          context: context,
+                          phoneNumber: promotion.sellerPhone!,
+                          message:
+                              'Habari, nimevutiwa na promo ya ${promotion.title} niliyoiona Mwanachuoshop.',
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(color: Colors.blue),
+                        padding: EdgeInsets.zero,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12.0),
+                        ),
+                      ),
+                      child: SvgPicture.asset(
+                        'assets/svgs/call-receive-svgrepo-com.svg',
+                        width: 24,
+                        height: 24,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.blue,
+                          BlendMode.srcIn,
+                        ),
+                      ),
                     ),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF25D366),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12.0),
+                  const SizedBox(width: 8),
+                  // WhatsApp Button
+                  Expanded(
+                    child: SizedBox(
+                      height: 52.0,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          ContactHelper.contactSellerViaWhatsApp(
+                            context: context,
+                            phoneNumber: promotion.sellerPhone!,
+                            message:
+                                'Habari, nimevutiwa na promo ya ${promotion.title} niliyoiona Mwanachuoshop. Je tunaweza kuongea zaidi?',
+                          );
+                        },
+                        icon: SvgPicture.asset(
+                          'assets/svgs/whatsapp-color-svgrepo-com.svg',
+                          width: 20,
+                          height: 20,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.white,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                        label: Text(
+                          'WhatsApp',
+                          style: GoogleFonts.inter(
+                            fontSize: 16.0,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12.0),
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             if (hasWhatsApp && hasExternalLink) const SizedBox(height: 12),
             if (hasExternalLink)

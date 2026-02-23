@@ -36,19 +36,20 @@ abstract class BaseFilter extends Equatable {
 
   @override
   List<Object?> get props => [
-        searchQuery,
-        minPrice,
-        maxPrice,
-        location,
-        sortBy,
-        sortAscending,
-      ];
+    searchQuery,
+    minPrice,
+    maxPrice,
+    location,
+    sortBy,
+    sortAscending,
+  ];
 }
 
 /// Product filter model
 class ProductFilter extends BaseFilter {
   final String? category;
   final String? condition;
+  final bool onlyPriceDrops;
 
   const ProductFilter({
     super.searchQuery,
@@ -59,6 +60,7 @@ class ProductFilter extends BaseFilter {
     super.sortAscending,
     this.category,
     this.condition,
+    this.onlyPriceDrops = false,
   });
 
   ProductFilter copyWith({
@@ -70,6 +72,7 @@ class ProductFilter extends BaseFilter {
     bool? sortAscending,
     String? category,
     String? condition,
+    bool? onlyPriceDrops,
     bool clearSearch = false,
     bool clearPrice = false,
     bool clearLocation = false,
@@ -86,27 +89,33 @@ class ProductFilter extends BaseFilter {
       sortAscending: sortAscending ?? this.sortAscending,
       category: clearCategory ? null : (category ?? this.category),
       condition: clearCondition ? null : (condition ?? this.condition),
+      onlyPriceDrops: onlyPriceDrops ?? this.onlyPriceDrops,
     );
   }
 
   @override
   bool get hasFilters =>
-      super.hasFilters || category != null || condition != null;
+      super.hasFilters ||
+      category != null ||
+      condition != null ||
+      onlyPriceDrops;
 
   @override
   int get activeFilterCount {
     int count = super.activeFilterCount;
     if (category != null && category!.isNotEmpty) count++;
     if (condition != null && condition!.isNotEmpty) count++;
+    if (onlyPriceDrops) count++;
     return count;
   }
 
   @override
   List<Object?> get props => [
-        ...super.props,
-        category,
-        condition,
-      ];
+    ...super.props,
+    category,
+    condition,
+    onlyPriceDrops,
+  ];
 }
 
 /// Service filter model
@@ -166,11 +175,7 @@ class ServiceFilter extends BaseFilter {
   }
 
   @override
-  List<Object?> get props => [
-        ...super.props,
-        category,
-        serviceType,
-      ];
+  List<Object?> get props => [...super.props, category, serviceType];
 }
 
 /// Accommodation filter model
@@ -216,7 +221,9 @@ class AccommodationFilter extends BaseFilter {
       location: clearLocation ? null : (location ?? this.location),
       sortBy: clearSort ? null : (sortBy ?? this.sortBy),
       sortAscending: sortAscending ?? this.sortAscending,
-      accommodationType: clearType ? null : (accommodationType ?? this.accommodationType),
+      accommodationType: clearType
+          ? null
+          : (accommodationType ?? this.accommodationType),
       amenities: clearAmenities ? null : (amenities ?? this.amenities),
       priceType: clearPriceType ? null : (priceType ?? this.priceType),
     );
@@ -240,11 +247,11 @@ class AccommodationFilter extends BaseFilter {
 
   @override
   List<Object?> get props => [
-        ...super.props,
-        accommodationType,
-        amenities,
-        priceType,
-      ];
+    ...super.props,
+    accommodationType,
+    amenities,
+    priceType,
+  ];
 }
 
 /// Sort options for listings
@@ -290,11 +297,10 @@ class SortOption {
   );
 
   static List<SortOption> get all => [
-        priceLowHigh,
-        priceHighLow,
-        newest,
-        oldest,
-        popularity,
-      ];
+    priceLowHigh,
+    priceHighLow,
+    newest,
+    oldest,
+    popularity,
+  ];
 }
-

@@ -23,6 +23,8 @@ import 'package:mwanachuo/features/products/domain/entities/product_entity.dart'
 import 'package:mwanachuo/features/products/presentation/pages/edit_product_screen.dart';
 import 'package:mwanachuo/features/services/domain/entities/service_entity.dart';
 import 'package:mwanachuo/features/services/presentation/pages/edit_service_screen.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/config/supabase_config.dart';
 
 class MyListingsScreen extends StatelessWidget {
@@ -906,22 +908,29 @@ class _MyListingsViewState extends State<_MyListingsView>
                     'List student housing to help others',
                     style: TextStyle(color: secondaryTextColor),
                   ),
-                  const SizedBox(height: 24),
-                  ElevatedButton.icon(
-                    onPressed: () async {
-                      await Navigator.pushNamed(
-                        context,
-                        '/create-accommodation',
-                      );
-                      if (mounted) _refreshData();
-                    },
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add Accommodation'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: kPrimaryColor,
-                      foregroundColor: kBackgroundColorDark,
+                  if (context.read<AuthBloc>().state is Authenticated &&
+                      (context.read<AuthBloc>().state as Authenticated)
+                              .user
+                              .role
+                              .value ==
+                          'admin') ...[
+                    const SizedBox(height: 24),
+                    ElevatedButton.icon(
+                      onPressed: () async {
+                        await Navigator.pushNamed(
+                          context,
+                          '/create-accommodation',
+                        );
+                        if (mounted) _refreshData();
+                      },
+                      icon: const Icon(Icons.add),
+                      label: const Text('Add Accommodation'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: kPrimaryColor,
+                        foregroundColor: kBackgroundColorDark,
+                      ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             );

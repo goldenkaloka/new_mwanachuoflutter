@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 
-class WhatsAppContactHelper {
+class ContactHelper {
   /// Launches WhatsApp with a pre-filled message
-  static Future<void> contactSeller({
+  static Future<void> contactSellerViaWhatsApp({
     required BuildContext context,
     required String phoneNumber,
     required String message,
@@ -30,6 +30,36 @@ class WhatsAppContactHelper {
     } else {
       if (context.mounted) {
         _showError(context, 'Could not launch WhatsApp');
+      }
+    }
+  }
+
+  /// Launches SMS app with a pre-filled message
+  static Future<void> contactSellerViaSMS({
+    required BuildContext context,
+    required String phoneNumber,
+    required String message,
+  }) async {
+    if (phoneNumber.isEmpty) {
+      _showError(context, 'Seller phone number is not available');
+      return;
+    }
+
+    // Format phone number
+    final formattedPhone = phoneNumber.replaceAll(RegExp(r'\s+'), '');
+
+    // Create SMS URI
+    final Uri smsUri = Uri(
+      scheme: 'sms',
+      path: formattedPhone,
+      queryParameters: <String, String>{'body': message},
+    );
+
+    if (await canLaunchUrl(smsUri)) {
+      await launchUrl(smsUri);
+    } else {
+      if (context.mounted) {
+        _showError(context, 'Could not launch SMS app');
       }
     }
   }

@@ -146,6 +146,15 @@ class ProductRemoteDataSourceImpl implements ProductRemoteDataSource {
           queryBuilder = queryBuilder.ilike('location', '%${filter.location}%');
         }
 
+        // Price drop filter
+        if (filter.onlyPriceDrops) {
+          debugPrint(
+            '🏷️ Filtering for price drops only (metadata -> old_price)',
+          );
+          // Correct PostgREST syntax for nested JSON filtering
+          queryBuilder = queryBuilder.not('metadata->old_price', 'is', 'null');
+        }
+
         // Apply sorting
         if (filter.sortBy != null) {
           if (filter.sortBy == 'popularity') {

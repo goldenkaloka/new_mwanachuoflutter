@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/utils/responsive.dart';
 
@@ -8,6 +9,7 @@ class StickyActionBar extends StatelessWidget {
   final String? priceSubtitle;
   final String actionButtonText;
   final VoidCallback onActionTap;
+  final VoidCallback? onSmsTap;
   final List<Widget>? trailingActions;
 
   const StickyActionBar({
@@ -16,6 +18,7 @@ class StickyActionBar extends StatelessWidget {
     this.priceSubtitle,
     required this.actionButtonText,
     required this.onActionTap,
+    this.onSmsTap,
     this.trailingActions,
   });
 
@@ -53,7 +56,7 @@ class StickyActionBar extends StatelessWidget {
                   Text(
                     price,
                     style: TextStyle(
-                      fontSize: 20,
+                      fontSize: 18,
                       fontWeight: FontWeight.bold,
                       color: kPrimaryColor,
                     ),
@@ -62,28 +65,79 @@ class StickyActionBar extends StatelessWidget {
                     Text(
                       priceSubtitle!,
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 11,
                         color: isDarkMode ? Colors.grey[400] : Colors.grey[600],
                       ),
                     ),
                 ],
               ),
             ),
-            // Action button
-            ElevatedButton(
-              onPressed: onActionTap,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: kPrimaryColor,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 24,
-                  vertical: 12,
+            // Contact Buttons
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // SMS Button
+                if (onSmsTap != null)
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: ElevatedButton(
+                        onPressed: onSmsTap,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.blue.withValues(alpha: 0.1),
+                          foregroundColor: Colors.blue,
+                          padding: EdgeInsets.zero,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: SvgPicture.asset(
+                          'assets/svgs/call-receive-svgrepo-com.svg',
+                          width: 20,
+                          height: 20,
+                          colorFilter: const ColorFilter.mode(
+                            Colors.blue,
+                            BlendMode.srcIn,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                // WhatsApp Button
+                ElevatedButton.icon(
+                  onPressed: onActionTap,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF25D366),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  icon: SvgPicture.asset(
+                    'assets/svgs/whatsapp-color-svgrepo-com.svg',
+                    width: 20,
+                    height: 20,
+                    colorFilter: const ColorFilter.mode(
+                      Colors.white,
+                      BlendMode.srcIn,
+                    ),
+                  ),
+                  label: Text(
+                    actionButtonText,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-              child: Text(actionButtonText),
+              ],
             ),
             // Trailing actions
             if (trailingActions != null) ...trailingActions!,

@@ -14,7 +14,7 @@ import 'package:mwanachuo/features/accommodations/presentation/bloc/accommodatio
 import 'package:mwanachuo/features/accommodations/domain/entities/accommodation_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
+import 'package:mwanachuo/core/utils/contact_helper.dart';
 
 class AccommodationDetailPage extends StatelessWidget {
   const AccommodationDetailPage({super.key});
@@ -334,15 +334,25 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
             child: StickyActionBar(
               price:
                   'TZS ${accommodation.price.toStringAsFixed(2)}/${accommodation.priceType}',
-              actionButtonText: 'Contact Owner',
+              actionButtonText: 'WhatsApp',
               onActionTap: () {
                 final itemUrl =
                     'https://www.mwanachuoshop.com/accommodations/${accommodation.id}';
-                WhatsAppContactHelper.contactSeller(
+                ContactHelper.contactSellerViaWhatsApp(
                   context: context,
                   phoneNumber: accommodation.contactPhone,
                   message:
                       'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?',
+                );
+              },
+              onSmsTap: () {
+                final itemUrl =
+                    'https://www.mwanachuoshop.com/accommodations/${accommodation.id}';
+                ContactHelper.contactSellerViaSMS(
+                  context: context,
+                  phoneNumber: accommodation.contactPhone,
+                  message:
+                      'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop. Angalia hapa: $itemUrl',
                 );
               },
             ),
@@ -661,18 +671,39 @@ class _AccommodationDetailViewState extends State<_AccommodationDetailView> {
               ],
             ),
           ),
-          IconButton(
-            onPressed: () {
-              final itemUrl =
-                  'https://www.mwanachuoshop.com/accommodations/${accommodation.id}';
-              WhatsAppContactHelper.contactSeller(
-                context: context,
-                phoneNumber: accommodation.contactPhone,
-                message:
-                    'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?',
-              );
-            },
-            icon: Icon(Icons.chat_bubble_outline, color: kPrimaryColor),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              IconButton(
+                onPressed: () {
+                  final itemUrl =
+                      'https://www.mwanachuoshop.com/accommodations/${accommodation.id}';
+                  ContactHelper.contactSellerViaSMS(
+                    context: context,
+                    phoneNumber: accommodation.contactPhone,
+                    message:
+                        'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop. Angalia hapa: $itemUrl',
+                  );
+                },
+                icon: const Icon(Icons.sms_outlined, color: Colors.blue),
+              ),
+              IconButton(
+                onPressed: () {
+                  final itemUrl =
+                      'https://www.mwanachuoshop.com/accommodations/${accommodation.id}';
+                  ContactHelper.contactSellerViaWhatsApp(
+                    context: context,
+                    phoneNumber: accommodation.contactPhone,
+                    message:
+                        'Habari ${accommodation.ownerName}, nimevutiwa na ${accommodation.name} ulichoweka Mwanachuoshop kwa bei ya ${accommodation.price.toStringAsFixed(0)}/=.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?',
+                  );
+                },
+                icon: const Icon(
+                  Icons.chat_bubble_outline,
+                  color: Color(0xFF25D366),
+                ),
+              ),
+            ],
           ),
         ],
       ),

@@ -397,13 +397,60 @@ class _CreateServiceScreenState extends State<CreateServiceScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                SizedBox(
-                                  height: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 24.0,
-                                    medium: 32.0,
-                                    expanded: 40.0,
-                                  ),
+                                // Welcome Offer Indicator Chip
+                                BlocBuilder<AuthBloc, AuthState>(
+                                  builder: (context, authState) {
+                                    if (authState is Authenticated &&
+                                        authState.user.userType == 'student' &&
+                                        authState.user.freeListingsCount > 0) {
+                                      return Container(
+                                        width: double.infinity,
+                                        margin: const EdgeInsets.only(
+                                          bottom: 24,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.teal.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.teal.withValues(
+                                              alpha: 0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.celebration_outlined,
+                                              color: Colors.teal,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Welcome Offer: ${authState.user.freeListingsCount} free listings remaining!',
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.teal,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
                                 ),
 
                                 // Photo Upload

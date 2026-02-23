@@ -18,7 +18,8 @@ import 'package:mwanachuo/features/products/presentation/bloc/product_state.dart
 import 'package:mwanachuo/features/products/domain/entities/product_entity.dart';
 import 'package:mwanachuo/features/shared/reviews/presentation/cubit/review_cubit.dart';
 import 'package:mwanachuo/features/shared/reviews/domain/entities/review_entity.dart';
-import 'package:mwanachuo/core/utils/whatsapp_contact_helper.dart';
+import 'package:mwanachuo/core/utils/contact_helper.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 
 class ProductDetailsPage extends StatelessWidget {
   const ProductDetailsPage({super.key});
@@ -325,15 +326,25 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
               right: 0,
               child: StickyActionBar(
                 price: 'TZS ${product.price.toStringAsFixed(2)}',
-                actionButtonText: 'Contact Seller',
+                actionButtonText: 'WhatsApp',
                 onActionTap: () {
                   final itemUrl =
                       'https://www.mwanachuoshop.com/products/${product.id}';
-                  WhatsAppContactHelper.contactSeller(
+                  ContactHelper.contactSellerViaWhatsApp(
                     context: context,
                     phoneNumber: product.sellerPhone,
                     message:
                         'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop kwa bei ya ${product.price.toStringAsFixed(0)}/=.\n\nAngalia hapa: $itemUrl\n\nJe tunaweza kuongea zaidi?',
+                  );
+                },
+                onSmsTap: () {
+                  final itemUrl =
+                      'https://www.mwanachuoshop.com/products/${product.id}';
+                  ContactHelper.contactSellerViaSMS(
+                    context: context,
+                    phoneNumber: product.sellerPhone,
+                    message:
+                        'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop kwa bei ya ${product.price.toStringAsFixed(0)}/=. Angalia hapa: $itemUrl',
                   );
                 },
               ),
@@ -1090,66 +1101,86 @@ class _ProductDetailsViewState extends State<_ProductDetailsView> {
               maxWidth: ResponsiveBreakpoints.responsiveValue(
                 context,
                 compact: double.infinity,
-                medium: 400.0,
-                expanded: 450.0,
+                medium: 500.0,
+                expanded: 600.0,
               ),
             ),
-            child: SizedBox(
-              width: ResponsiveBreakpoints.isCompact(context)
-                  ? double.infinity
-                  : null,
-              height: buttonHeight,
-              child: ElevatedButton(
-                onPressed: () {
-                  WhatsAppContactHelper.contactSeller(
-                    context: context,
-                    phoneNumber: product.sellerPhone,
-                    message:
-                        'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop kwa bei ya ${product.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi?',
-                  );
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: kPrimaryColor,
-                  foregroundColor: kBackgroundColorDark,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(
-                      ResponsiveBreakpoints.responsiveValue(
-                        context,
-                        compact: 16.0,
-                        medium: 18.0,
-                        expanded: 20.0,
+            child: Row(
+              children: [
+                // SMS Button
+                Expanded(
+                  flex: 1,
+                  child: SizedBox(
+                    height: buttonHeight,
+                    child: OutlinedButton.icon(
+                      onPressed: () {
+                        final itemUrl =
+                            'https://www.mwanachuoshop.com/products/${product.id}';
+                        ContactHelper.contactSellerViaSMS(
+                          context: context,
+                          phoneNumber: product.sellerPhone,
+                          message:
+                              'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop. Angalia hapa: $itemUrl',
+                        );
+                      },
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.blue,
+                        side: const BorderSide(color: Colors.blue),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
-                    ),
-                  ),
-                  elevation: ResponsiveBreakpoints.responsiveValue(
-                    context,
-                    compact: 4.0,
-                    medium: 5.0,
-                    expanded: 6.0,
-                  ),
-                  padding: EdgeInsets.symmetric(
-                    horizontal: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 24.0,
-                      medium: 32.0,
-                      expanded: 36.0,
+                      icon: SvgPicture.asset(
+                        'assets/svgs/call-receive-svgrepo-com.svg',
+                        width: 20,
+                        height: 20,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.blue,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      label: const Text('SMS'),
                     ),
                   ),
                 ),
-                child: Text(
-                  'Contact Seller',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: ResponsiveBreakpoints.responsiveValue(
-                      context,
-                      compact: 16.0,
-                      medium: 17.0,
-                      expanded: 18.0,
+                const SizedBox(width: 12),
+                // WhatsApp Button
+                Expanded(
+                  flex: 2,
+                  child: SizedBox(
+                    height: buttonHeight,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        final itemUrl =
+                            'https://www.mwanachuoshop.com/products/${product.id}';
+                        ContactHelper.contactSellerViaWhatsApp(
+                          context: context,
+                          phoneNumber: product.sellerPhone,
+                          message:
+                              'Habari ${product.sellerName}, nimevutiwa na ${product.title} ulichoweka Mwanachuoshop kwa bei ya ${product.price.toStringAsFixed(0)}/=. Je tunaweza kuongea zaidi? Angalia hapa: $itemUrl',
+                        );
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF25D366),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: SvgPicture.asset(
+                        'assets/svgs/whatsapp-color-svgrepo-com.svg',
+                        width: 20,
+                        height: 20,
+                        colorFilter: const ColorFilter.mode(
+                          Colors.white,
+                          BlendMode.srcIn,
+                        ),
+                      ),
+                      label: const Text('WhatsApp'),
                     ),
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 0.5,
                   ),
                 ),
-              ),
+              ],
             ),
           ),
         ),

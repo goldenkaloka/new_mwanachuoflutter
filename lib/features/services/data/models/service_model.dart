@@ -25,6 +25,7 @@ class ServiceModel extends ServiceEntity {
     required super.createdAt,
     super.updatedAt,
     super.metadata,
+    super.expiresAt,
   });
 
   factory ServiceModel.fromJson(Map<String, dynamic> json) {
@@ -54,6 +55,9 @@ class ServiceModel extends ServiceEntity {
           ? DateTime.parse(json['updated_at'] as String)
           : null,
       metadata: json['metadata'] as Map<String, dynamic>?,
+      expiresAt: json['expires_at'] != null
+          ? DateTime.parse(json['expires_at'] as String)
+          : null,
     );
   }
 
@@ -82,6 +86,7 @@ class ServiceModel extends ServiceEntity {
       'created_at': createdAt.toIso8601String(),
       'updated_at': updatedAt?.toIso8601String(),
       'metadata': metadata,
+      'expires_at': expiresAt?.toIso8601String(),
     };
   }
 }

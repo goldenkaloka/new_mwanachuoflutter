@@ -1302,16 +1302,23 @@ class _HomePageState extends State<HomePage> {
                   isDarkMode,
                 ),
                 const SizedBox(height: 12),
-                _buildPostOptionItem(
-                  context,
-                  Icons.home_work_outlined,
-                  'List Accommodation',
-                  'Hostels, rooms, apartments...',
-                  '/create-accommodation',
-                  const Color(0xFFE53935),
-                  isDarkMode,
-                ),
-                const SizedBox(height: 12),
+                if (context.read<AuthBloc>().state is Authenticated &&
+                    (context.read<AuthBloc>().state as Authenticated)
+                            .user
+                            .role
+                            .value ==
+                        'admin') ...[
+                  _buildPostOptionItem(
+                    context,
+                    Icons.home_work_outlined,
+                    'List Accommodation',
+                    'Hostels, rooms, apartments...',
+                    '/create-accommodation',
+                    const Color(0xFFE53935),
+                    isDarkMode,
+                  ),
+                  const SizedBox(height: 12),
+                ],
                 _buildPostOptionItem(
                   context,
                   Icons.build_outlined,
@@ -1410,12 +1417,9 @@ class _HomePageState extends State<HomePage> {
                 product.oldPrice! > product.price;
           }).toList();
 
-          // Fallback to simulation if no real price drops exist (for demo purposes)
-          final displayProducts = saleProducts.isNotEmpty
-              ? saleProducts
-              : state.products.take(3).toList();
+          if (saleProducts.isEmpty) return const SizedBox.shrink();
 
-          if (displayProducts.isEmpty) return const SizedBox.shrink();
+          final displayProducts = saleProducts;
 
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1460,11 +1464,8 @@ class _HomePageState extends State<HomePage> {
   ) {
     final double? oldPrice = product.oldPrice;
     final int? discountPercent = product.discountPercentage;
-    final String discount = discountPercent != null
-        ? '-$discountPercent%'
-        : '-25%';
-
-    final displayOldPrice = oldPrice ?? product.price * 1.25;
+    final String discount = discountPercent != null ? '-$discountPercent%' : '';
+    final displayOldPrice = oldPrice ?? product.price;
 
     return GestureDetector(
       onTap: () {

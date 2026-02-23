@@ -60,10 +60,10 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
     for (var amenity in _amenities) {
       _selectedAmenities[amenity] = false;
     }
-    _checkSellerAccess();
+    _checkAdminAccess();
   }
 
-  void _checkSellerAccess() {
+  void _checkAdminAccess() {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
 
@@ -71,27 +71,20 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
       if (authState is Authenticated) {
         final userRole = authState.user.role.value;
 
-        if (userRole == 'buyer') {
+        if (userRole != 'admin') {
           debugPrint(
-            '❌ Buyer attempting to create accommodation - redirecting',
+            '❌ Non-admin attempting to create accommodation - redirecting',
           );
           Navigator.of(context).pop();
 
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(
-                'You need to become a seller to list accommodations',
+                'Only admins can list accommodations',
                 style: GoogleFonts.plusJakartaSans(),
               ),
               backgroundColor: Colors.orange,
               duration: const Duration(seconds: 4),
-              action: SnackBarAction(
-                label: 'Request Access',
-                textColor: Colors.white,
-                onPressed: () {
-                  Navigator.pushNamed(context, '/become-seller');
-                },
-              ),
             ),
           );
         }
@@ -432,13 +425,60 @@ class _CreateAccommodationScreenState extends State<CreateAccommodationScreen> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                SizedBox(
-                                  height: ResponsiveBreakpoints.responsiveValue(
-                                    context,
-                                    compact: 24.0,
-                                    medium: 32.0,
-                                    expanded: 40.0,
-                                  ),
+                                // Welcome Offer Indicator Chip
+                                BlocBuilder<AuthBloc, AuthState>(
+                                  builder: (context, authState) {
+                                    if (authState is Authenticated &&
+                                        authState.user.userType == 'student' &&
+                                        authState.user.freeListingsCount > 0) {
+                                      return Container(
+                                        width: double.infinity,
+                                        margin: const EdgeInsets.only(
+                                          bottom: 24,
+                                        ),
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 16,
+                                          vertical: 12,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.teal.withValues(
+                                            alpha: 0.1,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            12,
+                                          ),
+                                          border: Border.all(
+                                            color: Colors.teal.withValues(
+                                              alpha: 0.3,
+                                            ),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.celebration_outlined,
+                                              color: Colors.teal,
+                                              size: 20,
+                                            ),
+                                            const SizedBox(width: 8),
+                                            Expanded(
+                                              child: Text(
+                                                'Welcome Offer: ${authState.user.freeListingsCount} free listings remaining!',
+                                                style:
+                                                    GoogleFonts.plusJakartaSans(
+                                                      fontSize: 14,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color: Colors.teal,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    }
+                                    return const SizedBox.shrink();
+                                  },
                                 ),
 
                                 // Photo Upload
