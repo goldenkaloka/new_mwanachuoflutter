@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/features/profile/presentation/bloc/profile_bloc.dart';
 
 import 'package:mwanachuo/config/onesignal_config.dart';
@@ -9,7 +10,7 @@ import 'package:mwanachuo/core/di/injection_container.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/auth_pages.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/initial_route_handler.dart';
 
-import 'package:mwanachuo/features/admin/presentation/pages/admin_course_list_page.dart';
+
 import 'package:mwanachuo/features/home/home_page.dart';
 import 'package:mwanachuo/features/products/presentation/bloc/product_bloc.dart';
 import 'package:mwanachuo/features/services/presentation/bloc/service_bloc.dart';
@@ -31,6 +32,16 @@ import 'package:mwanachuo/features/shared/notifications/presentation/pages/notif
 import 'package:mwanachuo/features/dashboard/presentation/pages/dashboard_screen.dart';
 import 'package:mwanachuo/features/wallet/presentation/pages/wallet_page.dart';
 import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
+import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
+import 'package:mwanachuo/features/food/presentation/pages/restaurant_registration_page.dart';
+import 'package:mwanachuo/features/food/presentation/pages/restaurant_list_page.dart';
+import 'package:mwanachuo/features/food/presentation/pages/checkout_page.dart';
+import 'package:mwanachuo/features/food/presentation/pages/live_tracking_page.dart';
+import 'package:mwanachuo/features/food/presentation/pages/food_menu_page.dart';
+import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
+import 'package:mwanachuo/features/food/presentation/pages/restaurant_admin_dashboard.dart';
+import 'package:mwanachuo/features/food/presentation/pages/menu_management_page.dart';
+import 'package:mwanachuo/features/food/presentation/pages/delivery_qr_scanner_page.dart';
 // ... (Logic to skip other imports if using replace_file_content for import replacement is complex, I will just do exact match replace for import line and separate for route)
 
 // Wait, I can use multi_replace for main_app.dart or just replace_file_content if usage and import are close? No they are far.
@@ -43,12 +54,6 @@ import 'package:mwanachuo/features/services/presentation/pages/service_detail_pa
 import 'package:mwanachuo/features/services/presentation/pages/create_service_screen.dart';
 import 'package:mwanachuo/features/promotions/presentation/pages/create_promotion_screen.dart';
 import 'package:mwanachuo/features/promotions/presentation/pages/promotion_detail_page.dart';
-import 'package:mwanachuo/features/copilot/presentation/pages/copilot_wrapper_page.dart';
-import 'package:mwanachuo/features/copilot/presentation/pages/copilot_library_page.dart';
-import 'package:mwanachuo/features/copilot/presentation/pages/copilot_document_viewer_page.dart';
-import 'package:mwanachuo/features/copilot/presentation/pages/copilot_upload_page.dart';
-import 'package:mwanachuo/features/copilot/presentation/pages/copilot_chat_page.dart';
-import 'package:mwanachuo/features/copilot/presentation/bloc/copilot_bloc.dart';
 import 'package:mwanachuo/features/shared/notifications/presentation/pages/notification_settings_screen.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/pages/subscription_plans_page.dart';
 import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription_cubit.dart';
@@ -228,6 +233,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
         BlocProvider(
           create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
         ),
+        BlocProvider(create: (context) => sl<FoodBloc>()),
       ],
       child: MaterialApp(
         navigatorKey: navigatorKey,
@@ -241,7 +247,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           '/signup': (context) => const CreateAccountScreen(),
           '/onboarding': (context) => const OnboardingScreen(),
 
-          '/admin-courses': (context) => const AdminCourseListPage(),
+
           '/home': (context) => PersistentBottomNavWrapper(
             initialIndex: 0,
             child: MultiBlocProvider(
@@ -260,7 +266,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           ),
 
           '/profile': (context) => PersistentBottomNavWrapper(
-            initialIndex: 4,
+            initialIndex: 3,
             child: const ProfilePage(),
           ),
           '/search': (context) {
@@ -272,6 +278,10 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               ),
             );
           },
+          '/restaurant-register': (context) => BlocProvider(
+            create: (context) => sl<FoodBloc>(),
+            child: const RestaurantRegistrationPage(),
+          ),
           '/listings': (context) => PersistentBottomNavWrapper(
             initialIndex: 1,
             child: BlocProvider(
@@ -309,10 +319,74 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             child: const MyListingsScreen(),
           ),
           '/dashboard': (context) => PersistentBottomNavWrapper(
-            initialIndex: 3,
+            initialIndex: 2,
             child: const DashboardScreen(),
           ),
           '/wallet': (context) => const WalletPage(),
+          '/food-delivery': (context) => const RestaurantListPage(),
+          '/food-menu': (context) {
+            final restaurant = ModalRoute.of(context)!.settings.arguments as Restaurant;
+            final bloc = context.read<FoodBloc>();
+            
+            // Only load if not already loading and not already loaded for this restaurant
+            final currentState = bloc.state;
+            if (currentState.status != FoodStatus.loading) {
+              final isCurrentMenu = currentState.status == FoodStatus.loaded && 
+                                   currentState.restaurantId == restaurant.id;
+              
+              if (!isCurrentMenu) {
+                bloc.add(LoadMenu(restaurant.id));
+              }
+            }
+            
+            return BlocBuilder<FoodBloc, FoodState>(
+              builder: (context, state) {
+                if (state.status == FoodStatus.loaded && state.restaurantId == restaurant.id) {
+                  return FoodMenuPage(restaurant: restaurant, menuItems: state.menu);
+                }
+                
+                if (state.status == FoodStatus.error) {
+                  return Scaffold(
+                    body: Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(state.errorMessage ?? 'An error occurred'),
+                          const SizedBox(height: 16),
+                          ElevatedButton(
+                            onPressed: () => bloc.add(LoadMenu(restaurant.id)),
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
+
+                return Scaffold(
+                  backgroundColor: kBackgroundColorDark,
+                  body: const Center(child: CircularProgressIndicator(color: kPrimaryColor)),
+                );
+              },
+            );
+          },
+          '/food-checkout': (context) {
+            final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+            return CheckoutPage(
+              restaurant: args['restaurant'],
+              cartItems: args['cartItems'],
+              totalAmount: args['totalAmount'],
+            );
+          },
+          '/food-tracking': (context) {
+            final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+            return LiveTrackingPage(
+              orderId: args?['orderId'] ?? 'demo-id',
+            );
+          },
+          '/restaurant-dashboard': (context) => const RestaurantAdminDashboard(),
+          '/restaurant-menu-manage': (context) => const MenuManagementPage(),
+          '/delivery-qr-scan': (context) => const DeliveryQrScannerPage(),
           '/student-housing': (context) => BlocProvider(
             create: (context) => sl<AccommodationBloc>(),
             child: const StudentHousingScreen(),
@@ -354,56 +428,6 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             create: (context) => sl<SubscriptionCubit>(),
             child: const SubscriptionPlansPage(),
           ),
-          '/copilot': (context) => PersistentBottomNavWrapper(
-            initialIndex: 2,
-            child: const CopilotWrapperPage(),
-          ),
-          '/copilot-library': (context) {
-            final args =
-                ModalRoute.of(context)!.settings.arguments
-                    as Map<String, dynamic>;
-            return BlocProvider(
-              create: (context) => sl<CopilotBloc>(),
-              child: CopilotLibraryPage(
-                courseId: args['courseId'],
-                initialSearchQuery: args['initialSearchQuery'],
-              ),
-            );
-          },
-          '/copilot-viewer': (context) {
-            final args =
-                ModalRoute.of(context)!.settings.arguments
-                    as Map<String, dynamic>;
-            return BlocProvider(
-              create: (context) => sl<CopilotBloc>(),
-              child: CopilotDocumentViewerPage(
-                noteId: args['noteId'],
-                courseId: args['courseId'],
-              ),
-            );
-          },
-          '/copilot-upload': (context) {
-            final args =
-                ModalRoute.of(context)!.settings.arguments
-                    as Map<String, dynamic>;
-            return BlocProvider(
-              create: (context) => sl<CopilotBloc>(),
-              child: CopilotUploadPage(courseId: args['courseId']),
-            );
-          },
-          '/copilot-chat': (context) {
-            final args =
-                ModalRoute.of(context)!.settings.arguments
-                    as Map<String, dynamic>;
-            return BlocProvider(
-              create: (context) => sl<CopilotBloc>(),
-              child: CopilotChatPage(
-                courseId: args['courseId'],
-                initialQuery: args['initialQuery'],
-                noteId: args['noteId'],
-              ),
-            );
-          },
         },
       ),
     );

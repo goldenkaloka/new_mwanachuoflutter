@@ -586,13 +586,6 @@ class _HomePageState extends State<HomePage> {
           primaryTextColor,
           isDarkMode,
         ),
-        _buildNavItem(
-          Icons.smart_toy_outlined,
-          'Copilot',
-          5,
-          primaryTextColor,
-          isDarkMode,
-        ),
       ],
     );
   }
@@ -622,8 +615,7 @@ class _HomePageState extends State<HomePage> {
             // Reload university when returning from profile
             _loadSelectedUniversity();
           });
-        } else if (index == 5) {
-          Navigator.pushNamed(context, '/copilot');
+
         }
       },
       child: Container(

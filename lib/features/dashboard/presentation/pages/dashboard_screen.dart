@@ -884,28 +884,16 @@ class _DashboardViewState extends State<_DashboardView> {
           'label': 'List Housing',
           'route': '/create-accommodation',
         },
-      if (authState is Authenticated && authState.user.role.value == 'admin')
-        {
-          'icon': Icons.campaign_outlined,
-          'label': 'Create Promo',
-          'route': '/create-promotion',
-        },
-      // DEBUG: Temporarily allowing access to everyone to verify UI exists
-      // if (authState is Authenticated &&
-      //     (authState).user.role.value == 'admin')
       {
-        'icon': Icons.auto_awesome,
-        'label': 'Manage AI',
-        'route': '/admin-courses',
+        'icon': Icons.campaign_outlined,
+        'label': 'Create Promo',
+        'route': '/create-promotion',
       },
-      // Upload Note - only show if user has enrolled in a course
-      if (authState is Authenticated && authState.user.enrolledCourseId != null)
-        {
-          'icon': Icons.upload_file,
-          'label': 'Upload Note',
-          'route': '/copilot-upload',
-          'requiresCourseId': true,
-        },
+      {
+        'icon': Icons.restaurant_outlined,
+        'label': 'Food Delivery',
+        'route': '/food-delivery',
+      },
     ];
 
     return GridView.count(
@@ -919,18 +907,7 @@ class _DashboardViewState extends State<_DashboardView> {
         return InkWell(
           onTap: () {
             final route = action['route'] as String;
-            final requiresCourseId =
-                action['requiresCourseId'] as bool? ?? false;
-
-            if (requiresCourseId && authState is Authenticated) {
-              Navigator.pushNamed(
-                context,
-                route,
-                arguments: {'courseId': authState.user.enrolledCourseId},
-              );
-            } else {
-              Navigator.pushNamed(context, route);
-            }
+            Navigator.pushNamed(context, route);
           },
           child: Container(
             decoration: BoxDecoration(

@@ -20,6 +20,12 @@ import 'package:mwanachuo/features/wallet/domain/usecases/reject_manual_payment.
 import 'package:mwanachuo/features/wallet/domain/usecases/get_pending_manual_payment_requests.dart';
 import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
 
+// Food Delivery
+import 'package:mwanachuo/features/food/data/datasources/food_remote_data_source.dart';
+import 'package:mwanachuo/features/food/data/repositories/food_repository_impl.dart';
+import 'package:mwanachuo/features/food/domain/repositories/food_repository.dart';
+import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
+
 // Auth
 import 'package:mwanachuo/features/auth/data/datasources/auth_local_data_source.dart';
 import 'package:mwanachuo/features/auth/data/datasources/auth_remote_data_source.dart';
@@ -178,18 +184,7 @@ import 'package:mwanachuo/features/promotions/domain/usecases/create_promotion.d
 import 'package:mwanachuo/features/promotions/presentation/bloc/promotion_cubit.dart';
 import 'package:uuid/uuid.dart';
 
-import 'package:mwanachuo/features/copilot/data/datasources/copilot_local_data_source.dart';
-import 'package:mwanachuo/features/copilot/data/datasources/copilot_remote_data_source.dart';
-import 'package:mwanachuo/features/copilot/data/repositories/copilot_repository_impl.dart';
-import 'package:mwanachuo/features/copilot/domain/repositories/copilot_repository.dart';
-import 'package:mwanachuo/features/copilot/domain/usecases/download_note_for_offline.dart';
-import 'package:mwanachuo/features/copilot/domain/usecases/get_course_notes.dart';
-import 'package:mwanachuo/features/copilot/domain/usecases/query_note_with_rag.dart';
-import 'package:mwanachuo/features/copilot/domain/usecases/semantic_search_notes.dart';
-import 'package:mwanachuo/features/copilot/domain/usecases/upload_note.dart';
-import 'package:mwanachuo/features/copilot/presentation/bloc/copilot_bloc.dart';
 
-// Copilot Feature (Modern)
 
 final sl = GetIt.instance;
 
@@ -236,8 +231,7 @@ Future<void> initializeDependencies() async {
   _initDashboardFeature();
   _initPromotionsFeature();
   _initWalletFeature();
-  // _initMwanachuomindFeature(); // Removed
-  await _initCopilotFeature();
+  _initFoodFeature();
 
   // ============================================================================
   // Features - Authentication
@@ -815,46 +809,6 @@ void _initPromotionsFeature() {
 }
 
 // ============================================
-// MWANACHUO COPILOT FEATURE (NEW)
-// ============================================
-Future<void> _initCopilotFeature() async {
-  // Use Cases
-  sl.registerLazySingleton(() => UploadNote(sl()));
-  sl.registerLazySingleton(() => GetCourseNotes(sl()));
-  sl.registerLazySingleton(() => QueryNoteWithRag(sl()));
-  sl.registerLazySingleton(() => DownloadNoteForOffline(sl()));
-  sl.registerLazySingleton(() => SemanticSearchNotes(sl()));
-
-  // Repository
-  sl.registerLazySingleton<CopilotRepository>(
-    () => CopilotRepositoryImpl(remoteDataSource: sl(), localDataSource: sl()),
-  );
-
-  // Data Sources
-  sl.registerLazySingleton<CopilotRemoteDataSource>(
-    () => CopilotRemoteDataSourceImpl(supabase: sl(), httpClient: sl()),
-  );
-
-  final copilotLocalDataSource = CopilotLocalDataSourceImpl();
-  await copilotLocalDataSource.init();
-  sl.registerLazySingleton<CopilotLocalDataSource>(
-    () => copilotLocalDataSource,
-  );
-
-  // BLoC
-  sl.registerFactory(
-    () => CopilotBloc(
-      uploadNote: sl(),
-      getCourseNotes: sl(),
-      queryNoteWithRag: sl(),
-      downloadNoteForOffline: sl(),
-      semanticSearchNotes: sl(),
-      repository: sl(),
-    ),
-  );
-}
-
-// ============================================
 // WALLET FEATURE (NEW)
 // ============================================
 
@@ -892,4 +846,22 @@ void _initWalletFeature() {
       getPendingManualPaymentRequests: sl(),
     ),
   );
+}
+
+void _initFoodFeature() {
+  // Data Source
+  sl.registerLazySingleton<FoodRemoteDataSource>(
+    () => FoodRemoteDataSourceImpl(supabaseClient: sl()),
+  );
+
+  // Repository
+  sl.registerLazySingleton<FoodRepository>(
+    () => FoodRepositoryImpl(
+      remoteDataSource: sl(),
+      networkInfo: sl(),
+    ),
+  );
+
+  // Bloc
+  sl.registerFactory(() => FoodBloc(repository: sl()));
 }
