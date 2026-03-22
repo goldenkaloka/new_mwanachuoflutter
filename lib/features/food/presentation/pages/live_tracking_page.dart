@@ -1,11 +1,18 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/features/food/domain/entities/food_order.dart';
 import 'package:mwanachuo/features/food/domain/entities/rider.dart';
 import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 class LiveTrackingPage extends StatefulWidget {
   final String orderId;
@@ -19,6 +26,15 @@ class LiveTrackingPage extends StatefulWidget {
 class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProviderStateMixin {
   late AnimationController _pulseController;
   late AnimationController _slideController;
+  
+  // Real Tracking
+  final MapController _mapController = MapController();
+  StreamSubscription<List<Map<String, dynamic>>>? _locationSub;
+  LatLng? _riderLocation;
+  List<LatLng> _routePoints = [];
+  String? _eta;
+  String? _trackedRiderId;
+  bool _isInitFetch = true;
 
   @override
   void initState() {
@@ -37,8 +53,78 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
     context.read<FoodBloc>().add(LoadTracking(widget.orderId));
   }
 
+  void _startLocationTracking(String riderId, FoodOrder order) {
+    if (_trackedRiderId == riderId) return;
+    _trackedRiderId = riderId;
+    _locationSub?.cancel();
+
+    _locationSub = Supabase.instance.client
+        .from('rider_locations')
+        .stream(primaryKey: ['rider_id'])
+        .eq('rider_id', riderId)
+        .listen((data) {
+      if (data.isNotEmpty) {
+        final loc = data.first;
+        final lat = (loc['lat'] as num).toDouble();
+        final lng = (loc['lng'] as num).toDouble();
+        final location = LatLng(lat, lng);
+        
+        if (!mounted) return;
+        setState(() => _riderLocation = location);
+
+        _fetchRoute(location, order);
+
+        // Snap the map to rider position only for the first few updates to not annoy the user
+        if (_isInitFetch) {
+          _isInitFetch = false;
+          try {
+            _mapController.move(location, _mapController.camera.zoom);
+          } catch (_) {}
+        }
+      }
+    });
+  }
+
+  Future<void> _fetchRoute(LatLng from, FoodOrder order) async {
+    // If order is outForDelivery, target is delivery location. Otherwise, restaurant.
+    LatLng? to;
+    final isGoingToCustomer = order.status == FoodOrderStatus.pickedUp || 
+                              order.status == FoodOrderStatus.outForDelivery || 
+                              order.status == FoodOrderStatus.nearYou;
+
+    if (!isGoingToCustomer && order.restaurantLat != null) {
+      to = LatLng(order.restaurantLat!, order.restaurantLng!);
+    } else if (order.deliveryLat != null) {
+      to = LatLng(order.deliveryLat!, order.deliveryLng!);
+    }
+    
+    if (to == null) return;
+
+    try {
+      final url = 'https://router.project-osrm.org/route/v1/driving/${from.longitude},${from.latitude};${to.longitude},${to.latitude}?overview=full&geometries=geojson&steps=false';
+      final response = await http.get(Uri.parse(url));
+
+      if (response.statusCode == 200) {
+        final json = jsonDecode(response.body);
+        final route = json['routes']?[0];
+        if (route == null) return;
+
+        final coords = route['geometry']['coordinates'] as List;
+        final durationSecs = route['duration'] as num;
+        final etaMins = (durationSecs / 60).ceil();
+
+        if (!mounted) return;
+        setState(() {
+          _routePoints = coords.map<LatLng>((c) => LatLng(c[1] as double, c[0] as double)).toList();
+          _eta = '$etaMins min';
+        });
+      }
+    } catch (_) {}
+  }
+
   @override
   void dispose() {
+    _locationSub?.cancel();
     _pulseController.dispose();
     _slideController.dispose();
     super.dispose();
@@ -50,19 +136,21 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
 
     return Scaffold(
       backgroundColor: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
-      body: BlocBuilder<FoodBloc, FoodState>(
-        builder: (context, state) {
-          Rider? rider;
-          bool isLoading = state.status == FoodStatus.loading;
-
-          if (state.status == FoodStatus.loaded && state.rider != null) {
-            rider = state.rider;
+      body: BlocConsumer<FoodBloc, FoodState>(
+        listener: (context, state) {
+          if (state.trackingOrder != null && state.rider != null) {
+            _startLocationTracking(state.rider!.id, state.trackingOrder!);
           }
+        },
+        builder: (context, state) {
+          Rider? rider = state.rider;
+          FoodOrder? order = state.trackingOrder;
+          bool isLoading = state.status == FoodStatus.loading;
 
           return Stack(
             children: [
-              // Map Background with animated pulse
-              _buildMapBackground(isDarkMode, rider),
+              // Map Background 
+              _buildMapBackground(isDarkMode, order),
               
               // Top bar
               _buildTopBar(context, isDarkMode),
@@ -88,82 +176,109 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
     );
   }
 
-  Widget _buildMapBackground(bool isDarkMode, Rider? rider) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: isDarkMode
-              ? [const Color(0xFF0A2E1F), kBackgroundColorDark]
-              : [const Color(0xFFE8F5E9), const Color(0xFFF5F7FA)],
-        ),
+  Widget _buildMapBackground(bool isDarkMode, FoodOrder? order) {
+    LatLng? targetLocation;
+    bool isGoingToCustomer = false;
+    
+    if (order != null) {
+      isGoingToCustomer = order.status == FoodOrderStatus.pickedUp || 
+                          order.status == FoodOrderStatus.outForDelivery || 
+                          order.status == FoodOrderStatus.nearYou;
+      
+      if (!isGoingToCustomer && order.restaurantLat != null) {
+        targetLocation = LatLng(order.restaurantLat!, order.restaurantLng!);
+      } else if (order.deliveryLat != null) {
+        targetLocation = LatLng(order.deliveryLat!, order.deliveryLng!);
+      }
+    }
+
+    return FlutterMap(
+      mapController: _mapController,
+      options: MapOptions(
+        initialCenter: _riderLocation ?? targetLocation ?? const LatLng(-6.7924, 39.2023),
+        initialZoom: 15,
       ),
-      child: Stack(
-        children: [
-          // Simulated Grid
-          ...List.generate(10, (index) => Positioned(
-            top: index * 100.0,
-            left: 0,
-            right: 0,
-            child: Container(height: 0.5, color: isDarkMode ? Colors.white.withValues(alpha: 0.03) : Colors.black.withValues(alpha: 0.04)),
-          )),
-          
-          // Animated rider dot
-          Center(
-            child: AnimatedBuilder(
-              animation: _pulseController,
-              builder: (context, child) {
-                return Stack(
-                  alignment: Alignment.center,
+      children: [
+        TileLayer(
+          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+          userAgentPackageName: 'com.mwanachuo.app',
+        ),
+        if (_routePoints.isNotEmpty)
+          PolylineLayer(
+            polylines: [
+              Polyline(
+                points: _routePoints,
+                strokeWidth: 5,
+                color: kPrimaryColor,
+              ),
+            ],
+          ),
+        MarkerLayer(
+          markers: [
+            // Target Marker (Restaurant or Customer)
+            if (targetLocation != null)
+              Marker(
+                point: targetLocation,
+                width: 50,
+                height: 60,
+                child: Column(
                   children: [
                     Container(
-                      width: 80 + (_pulseController.value * 40),
-                      height: 80 + (_pulseController.value * 40),
+                      padding: const EdgeInsets.all(8),
                       decoration: BoxDecoration(
+                        color: isGoingToCustomer ? Colors.deepOrange : kPrimaryColor,
                         shape: BoxShape.circle,
-                        color: kPrimaryColor.withValues(alpha: 0.1 * (1 - _pulseController.value)),
+                        border: Border.all(color: Colors.white, width: 3),
+                      ),
+                      child: Icon(
+                        isGoingToCustomer ? Icons.person_pin_circle : Icons.store,
+                        color: Colors.white,
+                        size: 20,
                       ),
                     ),
-                    Container(
-                      width: 48,
-                      height: 48,
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [kPrimaryColor, kPrimaryColorLight]),
-                        shape: BoxShape.circle,
-                        boxShadow: [
-                          BoxShadow(color: kPrimaryColor.withValues(alpha: 0.4), blurRadius: 15, offset: const Offset(0, 5)),
-                        ],
-                      ),
-                      child: const Icon(Icons.delivery_dining_rounded, color: Colors.white, size: 24),
-                    ),
+                    Container(width: 2, height: 10, color: isGoingToCustomer ? Colors.deepOrange : kPrimaryColor),
                   ],
-                );
-              },
-            ),
-          ),
-          
-          // Attribution
-          Positioned(
-            bottom: 300,
-            left: 0,
-            right: 0,
-            child: Center(
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: (isDarkMode ? Colors.black : Colors.white).withValues(alpha: 0.5),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  'Mwanachuo Logistics • Live Tracking',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 10, color: isDarkMode ? Colors.white54 : kTextTertiary),
                 ),
               ),
-            ),
-          ),
-        ],
-      ),
+            // Rider Marker
+            if (_riderLocation != null)
+              Marker(
+                point: _riderLocation!,
+                width: 70,
+                height: 70,
+                child: AnimatedBuilder(
+                  animation: _pulseController,
+                  builder: (context, child) {
+                    return Stack(
+                      alignment: Alignment.center,
+                      children: [
+                        Container(
+                          width: 50 + (_pulseController.value * 20),
+                          height: 50 + (_pulseController.value * 20),
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: kPrimaryColor.withValues(alpha: 0.2 * (1 - _pulseController.value)),
+                          ),
+                        ),
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(colors: [kPrimaryColor, kPrimaryColorLight]),
+                            shape: BoxShape.circle,
+                            border: Border.all(color: Colors.white, width: 2),
+                            boxShadow: [BoxShadow(color: kPrimaryColor.withValues(alpha: 0.4), blurRadius: 10)],
+                          ),
+                          child: const Icon(Icons.delivery_dining_rounded, color: Colors.white, size: 20),
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
@@ -191,7 +306,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
               children: [
                 const Icon(Icons.radio_button_checked, color: kPrimaryColor, size: 14),
                 const SizedBox(width: 8),
-                Text('Real-time', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13, color: kPrimaryColor)),
+                Text('Real-time Map', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 13, color: kPrimaryColor)),
               ],
             ),
           ),
@@ -222,6 +337,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
   }
 
   Widget _buildEtaCard(bool isDarkMode) {
+    if (_eta == null) return const SizedBox.shrink();
     return Positioned(
       top: 120,
       left: 0,
@@ -232,7 +348,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
           decoration: BoxDecoration(
             color: (isDarkMode ? kSurfaceColorDark : Colors.white).withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: Colors.black12, blurRadius: 20, offset: const Offset(0, 10))],
+            boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 20, offset: Offset(0, 10))],
           ),
           child: Row(
             mainAxisSize: MainAxisSize.min,
@@ -240,7 +356,7 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
               const Icon(Icons.timer_outlined, color: kPrimaryColor, size: 20),
               const SizedBox(width: 10),
               Text('Arriving in ', style: GoogleFonts.plusJakartaSans(fontSize: 14, color: isDarkMode ? Colors.white70 : kTextSecondary)),
-              Text('15 - 20 min', style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: kPrimaryColor)),
+              Text(_eta!, style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w800, color: kPrimaryColor)),
             ],
           ),
         ),
@@ -280,13 +396,16 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
     final statusMap = {
       'pending': 0,
       'confirmed': 1,
+      'riderAssigned': 1,
       'preparing': 2,
-      'picked_up': 3,
-      'on_way': 3, // Alias for picked_up
+      'readyForPickup': 2,
+      'pickedUp': 3,
+      'outForDelivery': 3,
+      'nearYou': 3,
       'delivered': 4,
     };
     
-    int currentStep = statusMap[currentStatus?.toLowerCase()] ?? 0;
+    int currentStep = statusMap[currentStatus] ?? 0;
 
     final steps = [
       {'icon': Icons.check_circle_rounded, 'label': 'Order'},

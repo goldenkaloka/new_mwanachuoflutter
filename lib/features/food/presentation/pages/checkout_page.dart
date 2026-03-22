@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
-import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_item.dart';
-import 'package:intl/intl.dart';
+import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
 
 class CheckoutPage extends StatelessWidget {
   final Restaurant restaurant;
@@ -22,64 +24,86 @@ class CheckoutPage extends StatelessWidget {
     final currencyFormat = NumberFormat.currency(symbol: 'TZS ', decimalDigits: 0);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
-    return Scaffold(
-      backgroundColor: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
-      body: CustomScrollView(
-        physics: const BouncingScrollPhysics(),
-        slivers: [
-          // App Bar
-          SliverAppBar(
-            pinned: true,
-            elevation: 0,
-            backgroundColor: isDarkMode ? kSurfaceColorDark : Colors.white,
-            leading: Padding(
-              padding: const EdgeInsets.all(8),
-              child: Container(
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(14),
-                ),
-                child: IconButton(
-                  icon: Icon(Icons.arrow_back_rounded, color: isDarkMode ? Colors.white : kTextPrimary),
-                  onPressed: () => Navigator.pop(context),
-                ),
-              ),
-            ),
-            title: Text(
-              'Checkout',
-              style: GoogleFonts.plusJakartaSans(
-                fontWeight: FontWeight.w800,
-                color: isDarkMode ? Colors.white : kTextPrimary,
-              ),
-            ),
-            centerTitle: true,
-          ),
-          // Escrow trust banner
-          SliverToBoxAdapter(child: _buildEscrowBanner(isDarkMode)),
-          // Body content
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildSectionTitle('Delivery Address', isDarkMode),
-                  _buildAddressCard(isDarkMode),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('Order Summary', isDarkMode),
-                  _buildOrderSummary(currencyFormat, isDarkMode),
-                  const SizedBox(height: 24),
-                  _buildSectionTitle('Payment Method', isDarkMode),
-                  _buildPaymentCard(isDarkMode),
-                  const SizedBox(height: 32),
-                  _buildPlaceOrderButton(context, currencyFormat, isDarkMode),
-                  const SizedBox(height: 32),
+    return BlocConsumer<FoodBloc, FoodState>(
+      listener: (context, state) {
+        if (state.orderSuccess) {
+          _showConfirmation(context, isDarkMode, state.lastOrderId);
+        } else if (state.status == FoodStatus.error) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(state.errorMessage ?? 'Order failed'), backgroundColor: Colors.red),
+          );
+        }
+      },
+      builder: (context, state) {
+        return Scaffold(
+          backgroundColor: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
+          body: Stack(
+            children: [
+              CustomScrollView(
+                physics: const BouncingScrollPhysics(),
+                slivers: [
+                  // App Bar
+                  SliverAppBar(
+                    pinned: true,
+                    elevation: 0,
+                    backgroundColor: isDarkMode ? kSurfaceColorDark : Colors.white,
+                    leading: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Container(
+                        decoration: BoxDecoration(
+                          color: isDarkMode ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade100,
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: IconButton(
+                          icon: Icon(Icons.arrow_back_rounded, color: isDarkMode ? Colors.white : kTextPrimary),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ),
+                    ),
+                    title: Text(
+                      'Checkout',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.w800,
+                        color: isDarkMode ? Colors.white : kTextPrimary,
+                      ),
+                    ),
+                    centerTitle: true,
+                  ),
+                  // Escrow trust banner
+                  SliverToBoxAdapter(child: _buildEscrowBanner(isDarkMode)),
+                  // Body content
+                  SliverToBoxAdapter(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildSectionTitle('Delivery Address', isDarkMode),
+                          _buildAddressCard(isDarkMode),
+                          const SizedBox(height: 24),
+                          _buildSectionTitle('Order Summary', isDarkMode),
+                          _buildOrderSummary(currencyFormat, isDarkMode),
+                          const SizedBox(height: 24),
+                          _buildSectionTitle('Payment Method', isDarkMode),
+                          _buildPaymentCard(isDarkMode),
+                          const SizedBox(height: 32),
+                          _buildPlaceOrderButton(context, state, currencyFormat, isDarkMode, state.status == FoodStatus.loading),
+                          const SizedBox(height: 32),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
-            ),
+              if (state.status == FoodStatus.loading)
+                Container(
+                  color: Colors.black26,
+                  child: const Center(child: CircularProgressIndicator(color: kPrimaryColor)),
+                ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -198,6 +222,10 @@ class CheckoutPage extends StatelessWidget {
   }
 
   Widget _buildOrderSummary(NumberFormat format, bool isDarkMode) {
+    final bool isBolt = restaurant.distanceMeters != null && restaurant.distanceMeters! > 2000;
+    final double baseFee = restaurant.deliveryFee ?? 2000;
+    final double finalDeliveryFee = isBolt ? baseFee * 1.5 : baseFee;
+
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
@@ -239,7 +267,7 @@ class CheckoutPage extends StatelessWidget {
           const Divider(height: 24),
           _buildPriceRow('Subtotal', format.format(totalAmount), isDarkMode, false),
           const SizedBox(height: 8),
-          _buildPriceRow('Delivery', format.format(restaurant.deliveryFee ?? 2000), isDarkMode, false),
+          _buildPriceRow(isBolt ? 'Bolt Delivery' : 'Delivery', format.format(finalDeliveryFee), isDarkMode, false),
           const SizedBox(height: 14),
           Container(
             padding: const EdgeInsets.all(14),
@@ -252,7 +280,7 @@ class CheckoutPage extends StatelessWidget {
               children: [
                 Text('Total', style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: isDarkMode ? Colors.white : kTextPrimary)),
                 Text(
-                  format.format(totalAmount + (restaurant.deliveryFee ?? 2000)),
+                  format.format(totalAmount + finalDeliveryFee),
                   style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: kPrimaryColor),
                 ),
               ],
@@ -321,12 +349,31 @@ class CheckoutPage extends StatelessWidget {
     );
   }
 
-  Widget _buildPlaceOrderButton(BuildContext context, NumberFormat format, bool isDarkMode) {
+  Widget _buildPlaceOrderButton(BuildContext context, FoodState state, NumberFormat format, bool isDarkMode, bool isLoading) {
+    final bool isBolt = restaurant.distanceMeters != null && restaurant.distanceMeters! > 2000;
+    final String logisticsType = isBolt ? 'BOLT' : 'INTERNAL';
+    final double baseFee = restaurant.deliveryFee ?? 2000;
+    final double finalDeliveryFee = isBolt ? baseFee * 1.5 : baseFee;
+
     return SizedBox(
       width: double.infinity,
       height: 58,
       child: ElevatedButton(
-        onPressed: () => _showConfirmation(context, isDarkMode),
+        onPressed: isLoading ? null : () {
+          context.read<FoodBloc>().add(PlaceOrderEvent(
+            restaurantId: restaurant.id,
+            items: cartItems.map((e) => {
+              'food_item_id': e.id,
+              'name': e.name,
+              'price': e.price,
+              'quantity': 1,
+            }).toList(),
+            totalAmount: totalAmount,
+            lat: state.userLat ?? -6.7924, // Use real location or fallback to UDSM
+            lng: state.userLng ?? 39.2023,
+            logisticsType: logisticsType,
+          ));
+        },
         style: ElevatedButton.styleFrom(
           padding: EdgeInsets.zero,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
@@ -353,7 +400,7 @@ class CheckoutPage extends StatelessWidget {
                 const Icon(Icons.lock_rounded, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
                 Text(
-                  'Confirm & Lock ${format.format(totalAmount + (restaurant.deliveryFee ?? 2000))}',
+                  'Confirm & Lock ${format.format(totalAmount + finalDeliveryFee)}',
                   style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ],
@@ -364,7 +411,7 @@ class CheckoutPage extends StatelessWidget {
     );
   }
 
-  void _showConfirmation(BuildContext context, bool isDarkMode) {
+  void _showConfirmation(BuildContext context, bool isDarkMode, String? orderId) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -408,8 +455,9 @@ class CheckoutPage extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () {
                   Navigator.pop(ctx);
-                  // Pass a more realistic order ID or a map with more info
-                  Navigator.pushNamed(context, '/food-tracking', arguments: {'orderId': 'tracking-${DateTime.now().millisecondsSinceEpoch}'});
+                  if (orderId != null) {
+                    Navigator.pushNamed(context, '/food-tracking', arguments: {'orderId': orderId});
+                  }
                 },
                 style: ElevatedButton.styleFrom(
                   padding: EdgeInsets.zero,

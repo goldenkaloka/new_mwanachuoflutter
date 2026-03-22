@@ -19,6 +19,9 @@ abstract class AuthRemoteDataSource {
     String? enrolledCourseId,
     int? yearOfStudy,
     int? currentSemester,
+    String? vehicleType,
+    String? vehiclePlate,
+    String? studentIdNumber,
   });
   Future<void> signOut();
   Future<UserModel?> getCurrentUser();
@@ -112,6 +115,9 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? enrolledCourseId,
     int? yearOfStudy,
     int? currentSemester,
+    String? vehicleType,
+    String? vehiclePlate,
+    String? studentIdNumber,
   }) async {
     try {
       final Map<String, dynamic> data = {
@@ -176,6 +182,23 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
             .from('users')
             .update(dbUpdates)
             .eq('id', response.user!.id);
+      }
+
+      if (userType == 'rider') {
+        final riderData = {
+          'user_id': response.user!.id,
+          'vehicle_type': vehicleType ?? 'Foot',
+          'is_approved': false,
+        };
+        if (vehiclePlate != null) riderData['vehicle_plate'] = vehiclePlate;
+        if (studentIdNumber != null) riderData['student_id_number'] = studentIdNumber;
+        
+        try {
+          // Use upsert to prevent errors if trigger fired or multiple clicks
+          await supabase.from('riders').upsert(riderData);
+        } catch (e) {
+          // Ignore error to not block sign up, since rider can be updated later
+        }
       }
 
       // Fetch final user data

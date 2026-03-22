@@ -7,6 +7,7 @@ class DashboardStatsEntity extends Equatable {
   final int activeListings;
   final int totalViews;
   final double averageRating;
+  final bool hasRestaurant;
   final int totalReviews;
   final int unreadMessages;
   final DateTime? lastMessageTime;
@@ -20,6 +21,7 @@ class DashboardStatsEntity extends Equatable {
     this.activeListings = 0,
     this.totalViews = 0,
     this.averageRating = 0.0,
+    this.hasRestaurant = false,
     this.totalReviews = 0,
     this.unreadMessages = 0,
     this.lastMessageTime,
@@ -35,6 +37,7 @@ class DashboardStatsEntity extends Equatable {
         activeListings,
         totalViews,
         averageRating,
+        hasRestaurant,
         totalReviews,
         unreadMessages,
         lastMessageTime,

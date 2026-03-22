@@ -36,6 +36,12 @@ class _RestaurantListPageState extends State<RestaurantListPage>
       if (bloc.state.restaurants.isEmpty && bloc.state.status != FoodStatus.loading) {
         bloc.add(LoadRestaurants());
       }
+      if (bloc.state.userRestaurant == null) {
+        bloc.add(CheckUserRestaurant());
+      }
+      if (bloc.state.userUniversityId == null) {
+        bloc.add(LoadUserUniversity());
+      }
     });
 
     _fadeController = AnimationController(
@@ -103,7 +109,8 @@ class _RestaurantListPageState extends State<RestaurantListPage>
                 _buildGradientAppBar(isDarkMode),
                 SliverToBoxAdapter(child: _buildSearchBar(isDarkMode)),
                 SliverToBoxAdapter(child: _buildCategoryScroll(isDarkMode)),
-                SliverToBoxAdapter(child: _buildBecomePartnerCard(context, isDarkMode)),
+                if (state.userRestaurant == null)
+                  SliverToBoxAdapter(child: _buildBecomePartnerCard(context, isDarkMode)),
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
@@ -532,7 +539,22 @@ class _RestaurantListPageState extends State<RestaurantListPage>
                                 color: isDarkMode ? Colors.white38 : Colors.grey.shade400),
                               const SizedBox(width: 2),
                               Text(
-                                '0.8 km',
+                                restaurant.distanceMeters != null
+                                    ? '${(restaurant.distanceMeters! / 1000).toStringAsFixed(1)} km'
+                                    : '...',
+                                style: GoogleFonts.plusJakartaSans(
+                                  fontSize: 12,
+                                  color: isDarkMode ? Colors.white54 : kTextTertiary,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Icon(Icons.delivery_dining_outlined, size: 14,
+                                color: isDarkMode ? Colors.white38 : Colors.grey.shade400),
+                              const SizedBox(width: 2),
+                              Text(
+                                restaurant.deliveryFee != null 
+                                  ? 'TZS ${restaurant.deliveryFee!.toInt()}' 
+                                  : 'Free',
                                 style: GoogleFonts.plusJakartaSans(
                                   fontSize: 12,
                                   color: isDarkMode ? Colors.white54 : kTextTertiary,

@@ -32,6 +32,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }) : super(const AuthInitial()) {
     on<SignInEvent>(_onSignIn);
     on<SignUpEvent>(_onSignUp);
+    on<RegisterRiderEvent>(_onRegisterRider);
     on<SignOutEvent>(_onSignOut);
     on<CheckAuthStatusEvent>(_onCheckAuthStatus);
     on<CompleteRegistrationEvent>(_onCompleteRegistration);
@@ -76,6 +77,29 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     result.fold((failure) => emit(AuthError(failure.message)), (user) {
       // Registration is now complete with all required fields
       debugPrint('✅ User account created - ID: ${user.id}');
+      debugPrint('✅ Registration complete - redirecting to home');
+      emit(Authenticated(user));
+    });
+  }
+
+  Future<void> _onRegisterRider(RegisterRiderEvent event, Emitter<AuthState> emit) async {
+    emit(const AuthLoading());
+
+    final result = await signUp(
+      SignUpParams(
+        email: event.email,
+        password: event.password,
+        name: event.name,
+        phone: event.phone,
+        userType: 'rider',
+        vehicleType: event.vehicleType,
+        vehiclePlate: event.vehiclePlate,
+        studentIdNumber: event.studentIdNumber,
+      ),
+    );
+
+    result.fold((failure) => emit(AuthError(failure.message)), (user) {
+      debugPrint('✅ Rider account created - ID: ${user.id}');
       debugPrint('✅ Registration complete - redirecting to home');
       emit(Authenticated(user));
     });

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/business_registration_screen.dart';
+import 'package:mwanachuo/features/auth/presentation/pages/rider_registration_screen.dart';
 import 'package:mwanachuo/features/auth/presentation/pages/student_registration_screen.dart';
 
 class RegistrationTypeScreen extends StatelessWidget {
@@ -49,7 +50,8 @@ class RegistrationTypeScreen extends StatelessWidget {
                 ),
                 const SizedBox(height: 40),
                 Expanded(
-                  child: Column(
+                  child: ListView(
+                    physics: const BouncingScrollPhysics(),
                     children: [
                       _buildTypeCard(
                         context,
@@ -83,6 +85,25 @@ class RegistrationTypeScreen extends StatelessWidget {
                             MaterialPageRoute(
                               builder: (context) =>
                                   const BusinessRegistrationScreen(),
+                            ),
+                          );
+                        },
+                        isDarkMode: isDarkMode,
+                      ),
+                      const SizedBox(height: 20),
+                      _buildTypeCard(
+                        context,
+                        title: 'Delivery Rider',
+                        description:
+                            'Deliver orders on campus and earn money on your schedule.',
+                        icon: Icons.moped_outlined,
+                        color: const Color(0xFF2E7D32),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  const RiderRegistrationScreen(),
                             ),
                           );
                         },

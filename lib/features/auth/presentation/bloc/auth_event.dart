@@ -66,6 +66,37 @@ class SignUpEvent extends AuthEvent {
   ];
 }
 
+class RegisterRiderEvent extends AuthEvent {
+  final String email;
+  final String password;
+  final String name;
+  final String phone;
+  final String vehicleType;
+  final String? vehiclePlate;
+  final String? studentIdNumber;
+
+  const RegisterRiderEvent({
+    required this.email,
+    required this.password,
+    required this.name,
+    required this.phone,
+    required this.vehicleType,
+    this.vehiclePlate,
+    this.studentIdNumber,
+  });
+
+  @override
+  List<Object?> get props => [
+    email,
+    password,
+    name,
+    phone,
+    vehicleType,
+    vehiclePlate,
+    studentIdNumber,
+  ];
+}
+
 class SignOutEvent extends AuthEvent {
   const SignOutEvent();
 }

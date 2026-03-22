@@ -1,9 +1,13 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
+import 'package:mwanachuo/features/auth/presentation/bloc/auth_bloc.dart';
 
 class RestaurantRegistrationPage extends StatefulWidget {
   const RestaurantRegistrationPage({super.key});
@@ -22,6 +26,8 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
   String _selectedCategory = 'Fast Food';
   bool _isBusinessUser = false;
   int _currentStep = 0;
+  XFile? _imageFile;
+  final ImagePicker _picker = ImagePicker();
   late AnimationController _animController;
   late Animation<double> _fadeAnim;
 
@@ -57,11 +63,23 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
   }
 
   void _checkBusinessStatus() {
-    final user = Supabase.instance.client.auth.currentUser;
-    if (user != null) {
-      final role = user.userMetadata?['role'] as String?;
+    final authState = context.read<AuthBloc>().state;
+    if (authState is Authenticated) {
+      final userType = authState.user.userType;
       setState(() {
-        _isBusinessUser = (role == 'seller' || role == 'business');
+        _isBusinessUser = (userType == 'business');
+      });
+    }
+  }
+
+  Future<void> _pickImage() async {
+    final XFile? image = await _picker.pickImage(
+      source: ImageSource.gallery,
+      imageQuality: 70,
+    );
+    if (image != null) {
+      setState(() {
+        _imageFile = image;
       });
     }
   }
@@ -447,7 +465,55 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
               icon: Icons.store_rounded,
               isDarkMode: isDarkMode,
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
+            Text('Restaurant Photo', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDarkMode ? Colors.white54 : kTextTertiary)),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _pickImage,
+              child: Container(
+                height: 180,
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: isDarkMode ? kSurfaceColorDark : Colors.white,
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: isDarkMode ? Colors.white10 : Colors.grey.shade200),
+                  image: _imageFile != null
+                      ? DecorationImage(
+                          image: FileImage(File(_imageFile!.path)),
+                          fit: BoxFit.cover,
+                        )
+                      : null,
+                ),
+                child: _imageFile == null
+                    ? Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.add_a_photo_rounded, size: 40, color: kPrimaryColor.withValues(alpha: 0.5)),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Tap to upload restaurant image',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              color: isDarkMode ? Colors.white38 : kTextTertiary,
+                            ),
+                          ),
+                        ],
+                      )
+                    : Container(
+                        alignment: Alignment.bottomRight,
+                        padding: const EdgeInsets.all(12),
+                        child: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: const BoxDecoration(
+                            color: Colors.black54,
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(Icons.edit_rounded, color: Colors.white, size: 20),
+                        ),
+                      ),
+              ),
+            ),
+            const SizedBox(height: 20),
             // Category grid
             Text('Category', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDarkMode ? Colors.white54 : kTextTertiary)),
             const SizedBox(height: 12),
@@ -697,6 +763,7 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
             address: _addressController.text,
             phone: _phoneController.text,
             category: _selectedCategory,
+            imageFile: _imageFile != null ? File(_imageFile!.path) : null,
           ),
         );
   }

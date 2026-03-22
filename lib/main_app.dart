@@ -42,6 +42,8 @@ import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
 import 'package:mwanachuo/features/food/presentation/pages/restaurant_admin_dashboard.dart';
 import 'package:mwanachuo/features/food/presentation/pages/menu_management_page.dart';
 import 'package:mwanachuo/features/food/presentation/pages/delivery_qr_scanner_page.dart';
+import 'package:mwanachuo/features/food/presentation/pages/rider_dashboard_screen.dart';
+import 'package:mwanachuo/features/food/presentation/pages/rider_jobs_screen.dart';
 // ... (Logic to skip other imports if using replace_file_content for import replacement is complex, I will just do exact match replace for import line and separate for route)
 
 // Wait, I can use multi_replace for main_app.dart or just replace_file_content if usage and import are close? No they are far.
@@ -339,35 +341,48 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               }
             }
             
-            return BlocBuilder<FoodBloc, FoodState>(
-              builder: (context, state) {
-                if (state.status == FoodStatus.loaded && state.restaurantId == restaurant.id) {
-                  return FoodMenuPage(restaurant: restaurant, menuItems: state.menu);
-                }
-                
-                if (state.status == FoodStatus.error) {
-                  return Scaffold(
-                    body: Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(state.errorMessage ?? 'An error occurred'),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () => bloc.add(LoadMenu(restaurant.id)),
-                            child: const Text('Retry'),
-                          ),
-                        ],
-                      ),
-                    ),
+            return BlocListener<FoodBloc, FoodState>(
+              listenWhen: (prev, curr) => curr.orderSuccess && curr.lastOrderId != null && !prev.orderSuccess,
+              listener: (context, state) {
+                if (state.orderSuccess && state.lastOrderId != null) {
+                  Navigator.pushNamed(
+                    context,
+                    '/food-tracking',
+                    arguments: {'orderId': state.lastOrderId},
                   );
+                  context.read<FoodBloc>().add(ClearOrderSuccess());
                 }
-
-                return Scaffold(
-                  backgroundColor: kBackgroundColorDark,
-                  body: const Center(child: CircularProgressIndicator(color: kPrimaryColor)),
-                );
               },
+              child: BlocBuilder<FoodBloc, FoodState>(
+                builder: (context, state) {
+                  if (state.status == FoodStatus.loaded && state.restaurantId == restaurant.id) {
+                    return FoodMenuPage(restaurant: restaurant, menuItems: state.menu);
+                  }
+                  
+                  if (state.status == FoodStatus.error) {
+                    return Scaffold(
+                      body: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(state.errorMessage ?? 'An error occurred'),
+                            const SizedBox(height: 16),
+                            ElevatedButton(
+                              onPressed: () => bloc.add(LoadMenu(restaurant.id)),
+                              child: const Text('Retry'),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+  
+                  return Scaffold(
+                    backgroundColor: kBackgroundColorDark,
+                    body: const Center(child: CircularProgressIndicator(color: kPrimaryColor)),
+                  );
+                },
+              ),
             );
           },
           '/food-checkout': (context) {
@@ -387,6 +402,8 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
           '/restaurant-dashboard': (context) => const RestaurantAdminDashboard(),
           '/restaurant-menu-manage': (context) => const MenuManagementPage(),
           '/delivery-qr-scan': (context) => const DeliveryQrScannerPage(),
+          '/rider-dashboard': (context) => const RiderDashboardScreen(),
+          '/rider-jobs': (context) => const RiderJobsScreen(),
           '/student-housing': (context) => BlocProvider(
             create: (context) => sl<AccommodationBloc>(),
             child: const StudentHousingScreen(),

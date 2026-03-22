@@ -571,6 +571,7 @@ class _DashboardViewState extends State<_DashboardView> {
                         const SizedBox(height: 12),
                         _buildQuickActions(
                           context,
+                          stats, // Pass stats here
                           cardBgColor,
                           borderColor,
                           primaryTextColor,
@@ -851,6 +852,7 @@ class _DashboardViewState extends State<_DashboardView> {
 
   Widget _buildQuickActions(
     BuildContext context,
+    dynamic stats, // Accept stats
     Color cardBgColor,
     Color borderColor,
     Color primaryTextColor,
@@ -866,6 +868,8 @@ class _DashboardViewState extends State<_DashboardView> {
         'Admin Check - Role: ${authState.user.role.value}, Is Admin: ${authState.user.role.value == 'admin'}',
       );
     }
+
+    final isBusinessUser = authState is Authenticated && authState.user.userType == 'business';
 
     final actions = [
       {
@@ -889,6 +893,18 @@ class _DashboardViewState extends State<_DashboardView> {
         'label': 'Create Promo',
         'route': '/create-promotion',
       },
+      if (isBusinessUser && stats.hasRestaurant == false)
+        {
+          'icon': Icons.add_business_outlined,
+          'label': 'Register Restaurant',
+          'route': '/register-restaurant',
+        },
+      if (isBusinessUser && stats.hasRestaurant == true)
+        {
+          'icon': Icons.storefront_outlined,
+          'label': 'Manage Restaurant',
+          'route': '/manage-restaurant',
+        },
       {
         'icon': Icons.restaurant_outlined,
         'label': 'Food Delivery',

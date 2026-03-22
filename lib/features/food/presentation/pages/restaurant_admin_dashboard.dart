@@ -1,9 +1,28 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:mwanachuo/features/food/domain/entities/food_order.dart';
+import 'package:mwanachuo/features/food/domain/entities/order_item.dart';
+import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
+import 'package:intl/intl.dart';
 
-class RestaurantAdminDashboard extends StatelessWidget {
+class RestaurantAdminDashboard extends StatefulWidget {
   const RestaurantAdminDashboard({super.key});
+
+  @override
+  State<RestaurantAdminDashboard> createState() => _RestaurantAdminDashboardState();
+}
+
+class _RestaurantAdminDashboardState extends State<RestaurantAdminDashboard> {
+  @override
+  void initState() {
+    super.initState();
+    final restaurant = context.read<FoodBloc>().state.userRestaurant;
+    if (restaurant != null) {
+      context.read<FoodBloc>().add(LoadRestaurantOrders(restaurant.id));
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -23,29 +42,75 @@ class RestaurantAdminDashboard extends StatelessWidget {
         elevation: 0,
         actions: [
           IconButton(
-            icon: Icon(Icons.settings_outlined, color: isDarkMode ? Colors.white : Colors.black), 
-            onPressed: () {},
+            icon: Icon(Icons.refresh, color: isDarkMode ? Colors.white : Colors.black), 
+            onPressed: () {
+              final restaurant = context.read<FoodBloc>().state.userRestaurant;
+              if (restaurant != null) {
+                context.read<FoodBloc>().add(LoadRestaurantOrders(restaurant.id));
+              }
+            },
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildStatsGrid(isDarkMode),
-            const SizedBox(height: 32),
-            _buildSectionHeader('Live Orders', 'View All', isDarkMode),
-            _buildOrderList(isDarkMode),
-            const SizedBox(height: 32),
-            _buildQuickActions(context, isDarkMode),
-          ],
-        ),
+      body: BlocBuilder<FoodBloc, FoodState>(
+        builder: (context, state) {
+          if (state.status == FoodStatus.loading && state.restaurantOrders.isEmpty) {
+            return const Center(child: CircularProgressIndicator());
+          }
+
+          return RefreshIndicator(
+            onRefresh: () async {
+              if (state.userRestaurant != null) {
+                context.read<FoodBloc>().add(LoadRestaurantOrders(state.userRestaurant!.id));
+              }
+            },
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                   _buildStatsGrid(state, isDarkMode),
+                  const SizedBox(height: 32),
+                  _buildSectionHeader('Live Orders', '${state.restaurantOrders.length} active', isDarkMode),
+                  const SizedBox(height: 16),
+                  if (state.restaurantOrders.isEmpty)
+                    _buildEmptyOrders(isDarkMode)
+                  else
+                    _buildOrderList(state.restaurantOrders, isDarkMode),
+                  const SizedBox(height: 32),
+                  _buildQuickActions(context, isDarkMode),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
 
-  Widget _buildStatsGrid(bool isDarkMode) {
+  Widget _buildEmptyOrders(bool isDarkMode) {
+    return Center(
+      child: Column(
+        children: [
+          Icon(Icons.shopping_bag_outlined, size: 64, color: isDarkMode ? Colors.white24 : Colors.grey[300]),
+          const SizedBox(height: 16),
+          Text(
+            'No orders yet',
+            style: GoogleFonts.plusJakartaSans(
+              color: isDarkMode ? Colors.white38 : Colors.grey[500],
+              fontSize: 16,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStatsGrid(FoodState state, bool isDarkMode) {
+    final totalIncome = state.restaurantOrders
+        .where((o) => o.status == FoodOrderStatus.completed)
+        .fold(0.0, (sum, o) => sum + o.totalAmount);
+
     return GridView.count(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
@@ -54,10 +119,10 @@ class RestaurantAdminDashboard extends StatelessWidget {
       crossAxisSpacing: 16,
       childAspectRatio: 1.5,
       children: [
-        _buildStatCard('Income', 'TZS 450k', Icons.payments_outlined, kSuccessColor),
-        _buildStatCard('Orders', '24', Icons.shopping_bag_outlined, kInfoColor),
-        _buildStatCard('Rating', '4.8', Icons.star_outline, kWarningColor),
-        _buildStatCard('Status', 'Open', Icons.access_time, kPrimaryColor),
+        _buildStatCard('Income', 'TZS ${NumberFormat('#,###').format(totalIncome)}', Icons.payments_outlined, kSuccessColor),
+        _buildStatCard('All Orders', state.restaurantOrders.length.toString(), Icons.shopping_bag_outlined, kInfoColor),
+        _buildStatCard('Active', state.restaurantOrders.where((o) => o.status != FoodOrderStatus.completed && o.status != FoodOrderStatus.cancelled && o.status != FoodOrderStatus.rejected).length.toString(), Icons.pending_actions, kWarningColor),
+        _buildStatCard('Status', state.userRestaurant?.isActive ?? false ? 'Open' : 'Closed', Icons.access_time, kPrimaryColor),
       ],
     );
   }
@@ -78,12 +143,14 @@ class RestaurantAdminDashboard extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                value, 
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 20, 
-                  fontWeight: FontWeight.bold, 
-                  color: color,
+              FittedBox(
+                child: Text(
+                  value, 
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: 20, 
+                    fontWeight: FontWeight.bold, 
+                    color: color,
+                  ),
                 ),
               ),
               Text(
@@ -100,92 +167,285 @@ class RestaurantAdminDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title, String action, bool isDarkMode) {
+  Widget _buildSectionHeader(String title, String subtitle, bool isDarkMode) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title, 
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 20, 
-            fontWeight: FontWeight.bold,
-            color: isDarkMode ? Colors.white : Colors.black87,
-          ),
-        ),
-        TextButton(
-          onPressed: () {}, 
-          child: Text(action, style: const TextStyle(color: kPrimaryColor)),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title, 
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 20, 
+                fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black87,
+              ),
+            ),
+            Text(
+              subtitle,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 12,
+                color: isDarkMode ? Colors.white38 : Colors.grey[600],
+              ),
+            ),
+          ],
         ),
       ],
     );
   }
 
-  Widget _buildOrderList(bool isDarkMode) {
+  Widget _buildOrderList(List<FoodOrder> orders, bool isDarkMode) {
     return ListView.builder(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      itemCount: 3,
-      itemBuilder: (context, index) => _buildOrderItem(index, isDarkMode),
+      itemCount: orders.length,
+      itemBuilder: (context, index) => _buildOrderItem(orders[index], isDarkMode),
     );
   }
 
-  Widget _buildOrderItem(int index, bool isDarkMode) {
-    final statuses = ['Preparing', 'New', 'Ready'];
-    final status = statuses[index % 3];
+  Widget _buildOrderItem(FoodOrder order, bool isDarkMode) {
+    final statusColor = _getStatusColor(order.status);
+    
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
+      margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isDarkMode ? kSurfaceColorDark : Colors.grey[50],
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: isDarkMode ? Colors.white10 : Colors.grey[200]!),
       ),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            backgroundColor: kPrimaryColor.withValues(alpha: 0.1), 
-            child: Text('#$index', style: const TextStyle(color: kPrimaryColor)),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'John Doe', 
+          Row(
+            children: [
+              CircleAvatar(
+                backgroundColor: kPrimaryColor.withValues(alpha: 0.1), 
+                child: Text('#${order.id.substring(0, 3)}', style: const TextStyle(color: kPrimaryColor, fontSize: 10)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      order.studentName ?? 'Customer', 
+                      style: GoogleFonts.plusJakartaSans(
+                        fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    Text(
+                      DateFormat('HH:mm, dd MMM').format(order.createdAt),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11, 
+                        color: isDarkMode ? Colors.white38 : Colors.grey[600],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: statusColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  order.status.name.toUpperCase(), 
                   style: GoogleFonts.plusJakartaSans(
+                    fontSize: 10, 
                     fontWeight: FontWeight.bold,
-                    color: isDarkMode ? Colors.white : Colors.black87,
+                    color: statusColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const Divider(height: 24),
+          ...order.items?.map((item) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    '${item.quantity}x ${item.foodName}',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 13,
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                    ),
                   ),
                 ),
                 Text(
-                  '2x Burger, 1x Coke', 
+                  'TZS ${NumberFormat('#,###').format(item.subtotal)}',
                   style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12, 
-                    color: isDarkMode ? Colors.white38 : Colors.grey[600],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
+          )).toList() ?? [],
+          const SizedBox(height: 8),
+          Text(
+            'Total: TZS ${NumberFormat('#,###').format(order.totalAmount)}',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.bold,
+              fontSize: 15,
+              color: kPrimaryColor,
+            ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: status == 'New' ? kInfoColor.withValues(alpha: 0.1) : kWarningColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Text(
-              status, 
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12, 
-                fontWeight: FontWeight.bold,
-                color: status == 'New' ? kInfoColor : kWarningColor,
+          if (order.rejectionReason != null)
+             Padding(
+               padding: const EdgeInsets.only(top: 8),
+               child: Text(
+                 'Reason: ${order.rejectionReason}',
+                 style: const TextStyle(color: Colors.red, fontSize: 12, fontStyle: FontStyle.italic),
+               ),
+             ),
+          const SizedBox(height: 16),
+          _buildActionButtons(order, isDarkMode),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionButtons(FoodOrder order, bool isDarkMode) {
+    if (order.status == FoodOrderStatus.completed || order.status == FoodOrderStatus.cancelled || order.status == FoodOrderStatus.rejected) {
+      return const SizedBox.shrink();
+    }
+
+    return Row(
+      children: [
+        if (order.status == FoodOrderStatus.pending) ...[
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _updateStatus(order, FoodOrderStatus.confirmed),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kSuccessColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
+              child: const Text('Accept'),
             ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: OutlinedButton(
+              onPressed: () => _showRejectDialog(order),
+              style: OutlinedButton.styleFrom(
+                foregroundColor: Colors.red,
+                side: const BorderSide(color: Colors.red),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Reject'),
+            ),
+          ),
+        ],
+        if (order.status == FoodOrderStatus.confirmed)
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _updateStatus(order, FoodOrderStatus.preparing),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimaryColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Start Processing'),
+            ),
+          ),
+        if (order.status == FoodOrderStatus.preparing)
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _updateStatus(order, FoodOrderStatus.pickedUp),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kInfoColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Out for Delivery'),
+            ),
+          ),
+        if (order.status == FoodOrderStatus.pickedUp || order.status == FoodOrderStatus.nearYou || order.status == FoodOrderStatus.readyForPickup)
+          Expanded(
+            child: ElevatedButton(
+              onPressed: () => _updateStatus(order, FoodOrderStatus.completed),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kSuccessColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+              child: const Text('Mark Completed'),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _updateStatus(FoodOrder order, FoodOrderStatus status, {String? reason}) {
+    context.read<FoodBloc>().add(UpdateOrderStatusEvent(
+      orderId: order.id,
+      status: status,
+      rejectionReason: reason,
+      restaurantId: order.restaurantId,
+    ));
+
+    // Automatically dispatch nearby rider if food is being prepared or ready
+    if (status == FoodOrderStatus.preparing || status == FoodOrderStatus.readyForPickup) {
+      if (order.deliveryLat != null && order.deliveryLng != null) {
+        context.read<FoodBloc>().add(DispatchRiderEvent(order));
+      }
+    }
+  }
+
+  Future<void> _showRejectDialog(FoodOrder order) async {
+    final controller = TextEditingController();
+    return showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Reject Order'),
+        content: TextField(
+          controller: controller,
+          decoration: const InputDecoration(
+            hintText: 'Enter reason for rejection',
+            border: OutlineInputBorder(),
+          ),
+          maxLines: 2,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () {
+              if (controller.text.isNotEmpty) {
+                _updateStatus(order, FoodOrderStatus.rejected, reason: controller.text);
+                Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            child: const Text('Reject Order'),
           ),
         ],
       ),
     );
+  }
+
+  Color _getStatusColor(FoodOrderStatus status) {
+    switch (status) {
+      case FoodOrderStatus.pending: return kInfoColor;
+      case FoodOrderStatus.confirmed: return kSuccessColor;
+      case FoodOrderStatus.riderAssigned: return Colors.teal;
+      case FoodOrderStatus.preparing: return kWarningColor;
+      case FoodOrderStatus.readyForPickup: return kPrimaryColor;
+      case FoodOrderStatus.pickedUp: return Colors.orange;
+      case FoodOrderStatus.outForDelivery: return Colors.deepOrange;
+      case FoodOrderStatus.nearYou: return Colors.blue;
+      case FoodOrderStatus.delivered: return Colors.indigo;
+      case FoodOrderStatus.completed: return kSuccessColor;
+      case FoodOrderStatus.cancelled:
+      case FoodOrderStatus.rejected: return Colors.red;
+    }
   }
 
   Widget _buildQuickActions(BuildContext context, bool isDarkMode) {
@@ -239,4 +499,8 @@ class RestaurantAdminDashboard extends StatelessWidget {
       trailing: const Icon(Icons.chevron_right, color: Colors.grey),
     );
   }
+}
+
+extension OrderItemExtension on OrderItem {
+  double get subtotal => quantity * unitPrice;
 }

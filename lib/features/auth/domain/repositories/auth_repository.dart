@@ -24,6 +24,9 @@ abstract class AuthRepository {
     String? enrolledCourseId,
     int? yearOfStudy,
     int? currentSemester,
+    String? vehicleType,
+    String? vehiclePlate,
+    String? studentIdNumber,
   });
 
   /// Sign out current user

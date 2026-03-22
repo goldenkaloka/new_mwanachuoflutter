@@ -19,7 +19,7 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
       if (currentUser == null) throw ServerException('User not authenticated');
 
       // Parallelize the main data fetching operations
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         // Query 1: Get products with only required fields
         supabaseClient
             .from(DatabaseConstants.productsTable)
@@ -37,11 +37,20 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
             .from(DatabaseConstants.accommodationsTable)
             .select('id, updated_at')
             .eq('owner_id', currentUser.id),
+            
+        // Query 4: Check if user has a restaurant
+        supabaseClient
+            .from('restaurants')
+            .select('id')
+            .eq('owner_id', currentUser.id)
+            .maybeSingle(),
       ]);
 
       final products = results[0] as List;
       final services = results[1] as List;
       final accommodations = results[2] as List;
+      final restaurant = results[3];
+      final hasRestaurant = restaurant != null;
 
       // Calculate stats from products
       final activeProducts = products
@@ -167,6 +176,7 @@ class DashboardRemoteDataSourceImpl implements DashboardRemoteDataSource {
         totalAccommodations: accommodations.length,
         activeListings: activeProducts,
         totalViews: totalViews,
+        hasRestaurant: hasRestaurant,
         lastMessageTime: lastMessageTime,
         lastListingUpdateTime: lastListingUpdateTime,
         lastReviewTime: lastReviewTime,

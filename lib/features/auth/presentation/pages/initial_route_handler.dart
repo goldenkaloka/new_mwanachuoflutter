@@ -35,7 +35,7 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
     });
   }
 
-  void _handleAuthState(BuildContext context, AuthState state) {
+  void _handleAuthState(BuildContext context, AuthState state) async {
     if (_hasNavigated) return; // Prevent multiple navigations
 
     if (state is Authenticated) {
@@ -72,9 +72,35 @@ class _InitialRouteHandlerState extends State<InitialRouteHandler> {
 
       // Registration is always complete now, go to home
       debugPrint('✅ Registration complete, going to home');
+
+      // Capture context-dependent references BEFORE any awaits
+      final authBloc = context.read<AuthBloc>();
+      final navigator = Navigator.of(context);
+
+      // Check user type before routing
+      final supabaseUser = SupabaseConfig.client.auth.currentUser;
+      String? routeOverride;
+      if (supabaseUser != null) {
+        try {
+          final userData = await SupabaseConfig.client
+              .from('users')
+              .select('user_type')
+              .eq('id', supabaseUser.id)
+              .single();
+          final userType = userData['user_type'] as String?;
+          if (userType == 'rider') {
+            debugPrint('🏍️ Rider account detected, going to rider dashboard');
+            routeOverride = '/rider-dashboard';
+          }
+        } catch (e) {
+          // ignore - default to /home
+        }
+      }
+
+      if (!mounted) return;
       // Restore Authenticated state so the rest of the app can access user data
-      context.read<AuthBloc>().add(const CheckAuthStatusEvent());
-      Navigator.of(context).pushReplacementNamed('/home');
+      authBloc.add(const CheckAuthStatusEvent());
+      navigator.pushReplacementNamed(routeOverride ?? '/home');
     } else if (state is AuthError) {
       if (_hasNavigated) return;
       _hasNavigated = true;

@@ -59,6 +59,9 @@ class AuthRepositoryImpl implements AuthRepository {
     String? enrolledCourseId,
     int? yearOfStudy,
     int? currentSemester,
+    String? vehicleType,
+    String? vehiclePlate,
+    String? studentIdNumber,
   }) async {
     if (!await networkInfo.isConnected) {
       return const Left(NetworkFailure('No internet connection'));
@@ -79,6 +82,9 @@ class AuthRepositoryImpl implements AuthRepository {
         enrolledCourseId: enrolledCourseId,
         yearOfStudy: yearOfStudy,
         currentSemester: currentSemester,
+        vehicleType: vehicleType,
+        vehiclePlate: vehiclePlate,
+        studentIdNumber: studentIdNumber,
       );
       await localDataSource.cacheUser(user);
       return Right(user);

@@ -14,6 +14,7 @@ class Restaurant extends Equatable {
   final bool isActive;
   final String? deliveryTime;
   final double? deliveryFee;
+  final double? distanceMeters;
 
   const Restaurant({
     required this.id,
@@ -29,6 +30,7 @@ class Restaurant extends Equatable {
     this.isActive = true,
     this.deliveryTime,
     this.deliveryFee,
+    this.distanceMeters,
   });
 
   @override
@@ -46,5 +48,6 @@ class Restaurant extends Equatable {
         isActive,
         deliveryTime,
         deliveryFee,
+        distanceMeters,
       ];
 }

@@ -4,6 +4,7 @@ import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_item.dart';
+import 'package:mwanachuo/features/food/presentation/widgets/order_sheet.dart';
 
 class FoodMenuPage extends StatefulWidget {
   final Restaurant restaurant;
@@ -16,51 +17,6 @@ class FoodMenuPage extends StatefulWidget {
 }
 
 class _FoodMenuPageState extends State<FoodMenuPage> with TickerProviderStateMixin {
-  final Map<String, int> _cart = {};
-  late AnimationController _cartBounce;
-
-  @override
-  void initState() {
-    super.initState();
-    _cartBounce = AnimationController(
-      vsync: this,
-      duration: const Duration(milliseconds: 300),
-    );
-  }
-
-  @override
-  void dispose() {
-    _cartBounce.dispose();
-    super.dispose();
-  }
-
-  int get _totalItems => _cart.values.fold(0, (sum, qty) => sum + qty);
-  double get _totalPrice {
-    double total = 0;
-    for (final item in widget.menuItems) {
-      if (_cart.containsKey(item.id)) {
-        total += item.price * _cart[item.id]!;
-      }
-    }
-    return total;
-  }
-
-  void _addToCart(String itemId) {
-    setState(() {
-      _cart[itemId] = (_cart[itemId] ?? 0) + 1;
-    });
-    _cartBounce.forward().then((_) => _cartBounce.reverse());
-  }
-
-  void _removeFromCart(String itemId) {
-    setState(() {
-      if (_cart[itemId] != null && _cart[itemId]! > 0) {
-        _cart[itemId] = _cart[itemId]! - 1;
-        if (_cart[itemId] == 0) _cart.remove(itemId);
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
@@ -139,7 +95,6 @@ class _FoodMenuPageState extends State<FoodMenuPage> with TickerProviderStateMix
           const SliverToBoxAdapter(child: SizedBox(height: 120)),
         ],
       ),
-      bottomNavigationBar: _totalItems > 0 ? _buildCartBar(context, isDarkMode) : null,
     );
   }
 
@@ -320,8 +275,6 @@ class _FoodMenuPageState extends State<FoodMenuPage> with TickerProviderStateMix
   }
 
   Widget _buildFoodItemCard(FoodItem item, bool isDarkMode, int index) {
-    final qty = _cart[item.id] ?? 0;
-
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
       duration: Duration(milliseconds: 350 + (index * 80)),
@@ -334,224 +287,110 @@ class _FoodMenuPageState extends State<FoodMenuPage> with TickerProviderStateMix
       },
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
-        padding: const EdgeInsets.all(14),
-        decoration: BoxDecoration(
-          color: isDarkMode ? kSurfaceColorDark : Colors.white,
+        child: InkWell(
+          onTap: () {
+            showModalBottomSheet(
+              context: context,
+              isScrollControlled: true,
+              backgroundColor: Colors.transparent,
+              builder: (context) => OrderSheet(item: item, restaurant: widget.restaurant),
+            );
+          },
           borderRadius: BorderRadius.circular(20),
-          border: qty > 0
-              ? Border.all(color: kPrimaryColor.withValues(alpha: 0.5), width: 1.5)
-              : Border.all(color: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.transparent),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withValues(alpha: isDarkMode ? 0.15 : 0.04),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            // Food image
-            ClipRRect(
-              borderRadius: BorderRadius.circular(16),
-              child: Image.network(
-                item.imageUrl ?? 'https://via.placeholder.com/100',
-                width: 85,
-                height: 85,
-                fit: BoxFit.cover,
-                errorBuilder: (_, _, _) => Container(
-                  width: 85,
-                  height: 85,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [kPrimaryColor.withValues(alpha: 0.2), kPrimaryColorLight.withValues(alpha: 0.1)],
-                    ),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(Icons.fastfood_rounded, color: kPrimaryColor, size: 32),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isDarkMode ? kSurfaceColorDark : Colors.white,
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.transparent),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDarkMode ? 0.15 : 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 4),
                 ),
-              ),
+              ],
             ),
-            const SizedBox(width: 14),
-            // Info
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    item.name,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
-                      color: isDarkMode ? Colors.white : kTextPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    item.description ?? '',
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
-                      color: isDarkMode ? Colors.white54 : kTextTertiary,
-                      height: 1.3,
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  Text(
-                    'TZS ${item.price.toStringAsFixed(0)}',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w800,
-                      color: kPrimaryColor,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            // Quantity controls
-            qty > 0
-                ? Container(
-                    decoration: BoxDecoration(
-                      color: kPrimaryColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Column(
-                      children: [
-                        _buildQtyButton(Icons.add, () => _addToCart(item.id)),
-                        Padding(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: Text(
-                            '$qty',
-                            style: GoogleFonts.plusJakartaSans(
-                              fontWeight: FontWeight.w800,
-                              color: kPrimaryColor,
-                              fontSize: 15,
-                            ),
-                          ),
-                        ),
-                        _buildQtyButton(Icons.remove, () => _removeFromCart(item.id)),
-                      ],
-                    ),
-                  )
-                : GestureDetector(
-                    onTap: () => _addToCart(item.id),
-                    child: Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [kPrimaryColor, kPrimaryColorLight]),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: kPrimaryColor.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
-                    ),
-                  ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildQtyButton(IconData icon, VoidCallback onTap) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(6),
-        decoration: BoxDecoration(
-          color: kPrimaryColor,
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: Colors.white, size: 16),
-      ),
-    );
-  }
-
-  Widget _buildCartBar(BuildContext context, bool isDarkMode) {
-    return Container(
-      padding: const EdgeInsets.fromLTRB(20, 14, 20, 28),
-      decoration: BoxDecoration(
-        color: isDarkMode ? kSurfaceColorDark : Colors.white,
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 20,
-            offset: const Offset(0, -6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Text(
-                  '$_totalItems items',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
-                    color: isDarkMode ? Colors.white54 : kTextTertiary,
+                // Food image
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    item.imageUrl ?? 'https://via.placeholder.com/100',
+                    width: 85,
+                    height: 85,
+                    fit: BoxFit.cover,
+                    errorBuilder: (_, _, _) => Container(
+                      width: 85,
+                      height: 85,
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [kPrimaryColor.withValues(alpha: 0.2), kPrimaryColorLight.withValues(alpha: 0.1)],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(Icons.fastfood_rounded, color: kPrimaryColor, size: 32),
+                    ),
                   ),
                 ),
-                Text(
-                  'TZS ${_totalPrice.toStringAsFixed(0)}',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: isDarkMode ? Colors.white : kTextPrimary,
+                const SizedBox(width: 14),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        item.name,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                          color: isDarkMode ? Colors.white : kTextPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        item.description ?? '',
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 12,
+                          color: isDarkMode ? Colors.white54 : kTextTertiary,
+                          height: 1.3,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      Text(
+                        'TZS ${item.price.toStringAsFixed(0)}',
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w800,
+                          color: kPrimaryColor,
+                        ),
+                      ),
+                    ],
                   ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [kPrimaryColor, kPrimaryColorLight]),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: kPrimaryColor.withValues(alpha: 0.3),
+                        blurRadius: 8,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
                 ),
               ],
             ),
           ),
-          GestureDetector(
-            onTap: () {
-              Navigator.pushNamed(context, '/food-checkout', arguments: {
-                'restaurant': widget.restaurant,
-                'cartItems': _cart.entries.map((e) {
-                  return widget.menuItems.firstWhere((item) => item.id == e.key);
-                }).toList(),
-                'totalAmount': _totalPrice,
-              });
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 16),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [kPrimaryColor, kPrimaryColorLight]),
-                borderRadius: BorderRadius.circular(18),
-                boxShadow: [
-                  BoxShadow(
-                    color: kPrimaryColor.withValues(alpha: 0.4),
-                    blurRadius: 14,
-                    offset: const Offset(0, 6),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.shopping_bag_rounded, color: Colors.white, size: 20),
-                  const SizedBox(width: 10),
-                  Text(
-                    'View Cart',
-                    style: GoogleFonts.plusJakartaSans(
-                      color: Colors.white,
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
+        ),
       ),
     );
   }
