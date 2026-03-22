@@ -20,10 +20,23 @@ class UserModel extends UserEntity {
     super.businessCategory,
     super.programName,
     super.userType,
+    super.vehicleType,
+    super.vehiclePlate,
     super.freeListingsCount = 0,
   });
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
+    // Handle nested data from specialized tables (joins)
+    final studentData = json['students'] is List 
+        ? (json['students'] as List).firstOrNull 
+        : json['students'];
+    final sellerData = json['sellers'] is List 
+        ? (json['sellers'] as List).firstOrNull 
+        : json['sellers'];
+    final riderData = json['riders'] is List 
+        ? (json['riders'] as List).firstOrNull 
+        : json['riders'];
+
     return UserModel(
       id: json['id'] as String,
       email: json['email'] as String,
@@ -31,8 +44,8 @@ class UserModel extends UserEntity {
       role: UserRole.fromString(json['role'] as String? ?? 'buyer'),
       universityId: json['primary_university_id'] as String?,
       enrolledCourseId: json['enrolled_course_id'] as String?,
-      yearOfStudy: json['year_of_study'] as int?,
-      currentSemester: json['current_semester'] as int?,
+      yearOfStudy: json['year_of_study'] as int? ?? studentData?['year_of_study'] as int?,
+      currentSemester: json['current_semester'] as int? ?? studentData?['current_semester'] as int?,
       profilePicture:
           json['avatar_url'] as String? ?? json['profile_picture'] as String?,
       phone: json['phone_number'] as String? ?? json['phone'] as String?,
@@ -40,11 +53,13 @@ class UserModel extends UserEntity {
       updatedAt: json['updated_at'] != null
           ? DateTime.parse(json['updated_at'] as String)
           : DateTime.parse(json['created_at'] as String),
-      businessName: json['business_name'] as String?,
-      tinNumber: json['tin_number'] as String?,
-      businessCategory: json['business_category'] as String?,
-      programName: json['program_name'] as String?,
+      businessName: json['business_name'] as String? ?? sellerData?['business_name'] as String?,
+      tinNumber: json['tin_number'] as String? ?? sellerData?['tin_number'] as String?,
+      businessCategory: json['business_category'] as String? ?? sellerData?['business_category'] as String?,
+      programName: json['program_name'] as String? ?? studentData?['program_name'] as String?,
       userType: json['user_type'] as String?,
+      vehicleType: json['vehicle_type'] as String? ?? riderData?['vehicle_type'] as String?,
+      vehiclePlate: json['vehicle_plate'] as String? ?? riderData?['vehicle_plate'] as String?,
       freeListingsCount: json['free_listings_count'] as int? ?? 0,
     );
   }
@@ -68,6 +83,8 @@ class UserModel extends UserEntity {
       'business_category': businessCategory,
       'program_name': programName,
       'user_type': userType,
+      'vehicle_type': vehicleType,
+      'vehicle_plate': vehiclePlate,
       'free_listings_count': freeListingsCount,
     };
   }
@@ -90,6 +107,8 @@ class UserModel extends UserEntity {
     String? businessCategory,
     String? programName,
     String? userType,
+    String? vehicleType,
+    String? vehiclePlate,
     int? freeListingsCount,
   }) {
     return UserModel(
@@ -110,6 +129,8 @@ class UserModel extends UserEntity {
       businessCategory: businessCategory ?? this.businessCategory,
       programName: programName ?? this.programName,
       userType: userType ?? this.userType,
+      vehicleType: vehicleType ?? this.vehicleType,
+      vehiclePlate: vehiclePlate ?? this.vehiclePlate,
       freeListingsCount: freeListingsCount ?? this.freeListingsCount,
     );
   }

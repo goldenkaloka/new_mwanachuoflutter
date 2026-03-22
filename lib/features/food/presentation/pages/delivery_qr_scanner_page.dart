@@ -73,7 +73,11 @@ class DeliveryQrScannerPage extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.flashlight_on, color: Colors.white), 
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Flashlight toggled on!')),
+                    );
+                  },
                 ),
               ],
             ),

@@ -15,48 +15,63 @@ import 'package:mwanachuo/features/subscriptions/presentation/cubit/subscription
 import 'package:mwanachuo/core/widgets/app_background.dart';
 import 'package:mwanachuo/core/widgets/shimmer_loading.dart';
 import 'package:mwanachuo/features/wallet/presentation/bloc/wallet_bloc.dart';
+import 'package:mwanachuo/features/food/presentation/pages/rider_dashboard_screen.dart';
+import 'package:mwanachuo/features/food/presentation/pages/restaurant_admin_dashboard.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
-    // Get current user from AuthBloc
-    final authState = context.read<AuthBloc>().state;
-    final userId = authState is Authenticated ? authState.user.id : null;
-    final userType = authState is Authenticated
-        ? authState.user.userType
-        : null;
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        if (state is! Authenticated) {
+          return const Scaffold(body: Center(child: CircularProgressIndicator()));
+        }
 
-    // Only load subscription for business users
-    final isBusinessUser = userType == 'business';
+        final userType = state.user.userType;
+        final userId = state.user.id;
 
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(create: (context) => sl<DashboardCubit>()..loadStats()),
-        // Only create SubscriptionCubit for business users
-        if (isBusinessUser)
-          BlocProvider(
-            create: (context) =>
-                sl<SubscriptionCubit>()..loadSellerSubscription(userId ?? ''),
-          ),
-        BlocProvider(
-          create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
-        ),
-      ],
-      child: const _DashboardView(),
+        // 1. Rider Dispatch
+        if (userType == 'rider') {
+          return const RiderDashboardScreen();
+        }
+
+        // 2. Restaurant Admin Dispatch
+        if (userType == 'restaurant') {
+          return const RestaurantAdminDashboard();
+        }
+
+        // 3. Default (Student/Seller/Business)
+        final isBusinessUser = userType == 'business';
+
+        return MultiBlocProvider(
+          providers: [
+            BlocProvider(create: (context) => sl<DashboardCubit>()..loadStats()),
+            if (isBusinessUser)
+              BlocProvider(
+                create: (context) => sl<SubscriptionCubit>()
+                  ..loadSellerSubscription(userId),
+              ),
+            BlocProvider(
+              create: (context) => sl<WalletBloc>()..add(LoadWalletData()),
+            ),
+          ],
+          child: const _StudentDashboardView(),
+        );
+      },
     );
   }
 }
 
-class _DashboardView extends StatefulWidget {
-  const _DashboardView();
+class _StudentDashboardView extends StatefulWidget {
+  const _StudentDashboardView();
 
   @override
-  State<_DashboardView> createState() => _DashboardViewState();
+  State<_StudentDashboardView> createState() => _StudentDashboardViewState();
 }
 
-class _DashboardViewState extends State<_DashboardView> {
+class _StudentDashboardViewState extends State<_StudentDashboardView> {
   @override
   void initState() {
     super.initState();
@@ -888,15 +903,16 @@ class _DashboardViewState extends State<_DashboardView> {
           'label': 'List Housing',
           'route': '/create-accommodation',
         },
-      {
-        'icon': Icons.campaign_outlined,
-        'label': 'Create Promo',
-        'route': '/create-promotion',
-      },
-      if (isBusinessUser && stats.hasRestaurant == false)
+      if (authState is Authenticated && authState.user.role.value == 'admin')
+        {
+          'icon': Icons.campaign_outlined,
+          'label': 'Create Promo',
+          'route': '/create-promotion',
+        },
+      if (authState is Authenticated && authState.user.role.value == 'admin')
         {
           'icon': Icons.add_business_outlined,
-          'label': 'Register Restaurant',
+          'label': 'Add Restaurant',
           'route': '/register-restaurant',
         },
       if (isBusinessUser && stats.hasRestaurant == true)

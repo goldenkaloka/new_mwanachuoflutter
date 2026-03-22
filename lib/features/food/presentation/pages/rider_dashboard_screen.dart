@@ -3,10 +3,13 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:intl/intl.dart';
+import 'dart:async';
 import 'package:mwanachuo/core/constants/app_constants.dart';
+import 'package:mwanachuo/features/food/domain/entities/rider_job.dart';
 import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
 import 'package:mwanachuo/features/food/presentation/pages/rider_active_delivery_screen.dart';
 import 'package:mwanachuo/features/food/presentation/pages/rider_jobs_screen.dart';
+import 'package:mwanachuo/features/food/domain/entities/food_order.dart';
 
 class RiderDashboardScreen extends StatefulWidget {
   const RiderDashboardScreen({super.key});
@@ -15,14 +18,32 @@ class RiderDashboardScreen extends StatefulWidget {
   State<RiderDashboardScreen> createState() => _RiderDashboardScreenState();
 }
 
-class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
+class _RiderDashboardScreenState extends State<RiderDashboardScreen> with WidgetsBindingObserver {
+  FoodOrder? _previousActiveJob;
+
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     final bloc = context.read<FoodBloc>();
     bloc.add(LoadRiderProfileEvent());
     bloc.add(LoadRiderActiveJobEvent());
     bloc.add(StreamRiderJobsEvent());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.detached || state == AppLifecycleState.paused) {
+      // Gracefully take rider offline if app is killed or sent to background
+      // This prevents ghost riders getting dispatch requests they can't see
+      context.read<FoodBloc>().add(const ToggleRiderOnlineEvent(false));
+    }
   }
 
   @override
@@ -45,6 +66,19 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(content: Text(state.errorMessage!), backgroundColor: Colors.red),
             );
+          }
+          if (state.activeJob != null && (_previousActiveJob == null || _previousActiveJob!.id != state.activeJob!.id)) {
+            _previousActiveJob = state.activeJob;
+            // Auto open navigation for new active jobs
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => RiderActiveDeliveryScreen(order: state.activeJob!)),
+            ).then((_) {
+               // Sync previous if it finished
+               if (context.mounted && context.read<FoodBloc>().state.activeJob == null) {
+                  _previousActiveJob = null;
+               }
+            });
           }
         },
         builder: (context, state) {
@@ -243,9 +277,9 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
 
           // Pending jobs
           if (state.pendingJobs.isNotEmpty) ...[
-            _buildSectionTitle('Incoming Jobs (${state.pendingJobs.length})', isDarkMode),
+            _buildSectionTitle('Incoming Delivery Requests', isDarkMode),
             const SizedBox(height: 12),
-            _buildPendingJobsBanner(context, state, isDarkMode),
+            ...state.pendingJobs.map((job) => _inlineJobCard(job: job)),
             const SizedBox(height: 24),
           ],
 
@@ -364,44 +398,6 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
     );
   }
 
-  Widget _buildPendingJobsBanner(BuildContext context, FoodState state, bool isDarkMode) {
-    return GestureDetector(
-      onTap: () => Navigator.push(
-        context,
-        MaterialPageRoute(builder: (_) => const RiderJobsScreen()),
-      ),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.orange.shade50,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.orange.shade300),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.delivery_dining, color: Colors.orange, size: 40),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '${state.pendingJobs.length} new delivery request${state.pendingJobs.length > 1 ? 's' : ''}!',
-                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, color: Colors.orange.shade800),
-                  ),
-                  Text(
-                    'Tap to view and accept',
-                    style: GoogleFonts.plusJakartaSans(color: Colors.orange.shade600, fontSize: 12),
-                  ),
-                ],
-              ),
-            ),
-            const Icon(Icons.chevron_right, color: Colors.orange),
-          ],
-        ),
-      ),
-    );
-  }
 
   Widget _buildIdleState(FoodState state, bool isDarkMode) {
     return Center(
@@ -484,6 +480,182 @@ class _RiderDashboardScreenState extends State<RiderDashboardScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _inlineJobCard({required RiderJob job}) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    
+    // Calculate expiry (30 seconds from creation)
+    final expiresAt = job.createdAt.add(const Duration(seconds: 30));
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? kSurfaceColorDark : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.orange.withValues(alpha: 0.3)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.orange.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.timer_outlined, size: 14, color: Colors.orange),
+                    const SizedBox(width: 4),
+                    _CountdownTimer(expiresAt: expiresAt),
+                  ],
+                ),
+              ),
+              Text(
+                'TZS ${NumberFormat('#,###').format(job.totalAmount ?? 0)}',
+                style: GoogleFonts.plusJakartaSans(
+                  fontWeight: FontWeight.bold,
+                  color: kPrimaryColor,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            job.restaurantName ?? 'Food Order',
+            style: GoogleFonts.plusJakartaSans(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.location_on_outlined, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Pickup: ${job.restaurantAddress ?? "Restaurant"}',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              const Icon(Icons.person_pin_circle_outlined, size: 14, color: Colors.grey),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  'Deliver to: ${job.customerName ?? "Customer"} (${job.droppingPoint ?? "Point"})',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          if (job.distanceKm != null) ...[
+            const SizedBox(height: 4),
+            Row(
+              children: [
+                const Icon(Icons.directions_bike, size: 14, color: Colors.grey),
+                const SizedBox(width: 4),
+                Text(
+                  'Distance: ${job.distanceKm} km',
+                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: Colors.grey),
+                ),
+              ],
+            ),
+          ],
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: () => context.read<FoodBloc>().add(DeclineJobEvent(job.id)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.red,
+                    side: const BorderSide(color: Colors.red),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Decline'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => context.read<FoodBloc>().add(AcceptJobEvent(orderId: job.orderId, jobId: job.id)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: kPrimaryColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: const Text('Accept'),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CountdownTimer extends StatefulWidget {
+  final DateTime expiresAt;
+  const _CountdownTimer({required this.expiresAt});
+
+  @override
+  State<_CountdownTimer> createState() => _CountdownTimerState();
+}
+
+class _CountdownTimerState extends State<_CountdownTimer> {
+  late Timer _timer;
+  late Duration _timeLeft;
+
+  @override
+  void initState() {
+    super.initState();
+    _timeLeft = widget.expiresAt.difference(DateTime.now());
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      setState(() {
+        _timeLeft = widget.expiresAt.difference(DateTime.now());
+        if (_timeLeft.isNegative) {
+          _timer.cancel();
+        }
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_timeLeft.isNegative) return const Text('Expired', style: TextStyle(color: Colors.red, fontSize: 12, fontWeight: FontWeight.bold));
+    return Text(
+      '${_timeLeft.inSeconds}s',
+      style: const TextStyle(color: Colors.orange, fontSize: 12, fontWeight: FontWeight.bold),
     );
   }
 }

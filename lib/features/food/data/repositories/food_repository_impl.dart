@@ -5,6 +5,7 @@ import 'package:mwanachuo/core/network/network_info.dart';
 import 'package:mwanachuo/features/food/data/datasources/food_remote_data_source.dart';
 import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_item.dart';
+import 'package:mwanachuo/features/food/domain/entities/food_additive.dart';
 import 'package:mwanachuo/features/food/domain/entities/rider.dart';
 import 'package:mwanachuo/features/food/domain/entities/rider_job.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_order.dart';
@@ -84,6 +85,9 @@ class FoodRepositoryImpl implements FoodRepository {
     required String phone,
     required String category,
     String? imageUrl,
+    String? ownerId,
+    double? lat,
+    double? lng,
   }) => _guard(() => remoteDataSource.registerRestaurant(
         name: name,
         description: description,
@@ -91,7 +95,14 @@ class FoodRepositoryImpl implements FoodRepository {
         phone: phone,
         category: category,
         imageUrl: imageUrl,
+        ownerId: ownerId,
+        lat: lat,
+        lng: lng,
       ));
+
+  @override
+  Future<Either<Failure, List<Map<String, dynamic>>>> getSellers() =>
+      _guard(() => remoteDataSource.getSellers());
 
   @override
   Stream<Map<String, dynamic>> watchOrder(String orderId) =>
@@ -157,4 +168,29 @@ class FoodRepositoryImpl implements FoodRepository {
   @override
   Future<Either<Failure, void>> findAndAssignNearbyRider(FoodOrder order) =>
       _guard(() => remoteDataSource.findAndAssignNearbyRider(order));
+
+  // ─── Menu Management ───────────────────────────────────────────────────────
+  @override
+  Future<Either<Failure, void>> addFoodItem(FoodItem item) =>
+      _guard(() => remoteDataSource.addFoodItem(item));
+
+  @override
+  Future<Either<Failure, void>> updateFoodItem(FoodItem item) =>
+      _guard(() => remoteDataSource.updateFoodItem(item));
+
+  @override
+  Future<Either<Failure, void>> deleteFoodItem(String itemId) =>
+      _guard(() => remoteDataSource.deleteFoodItem(itemId));
+
+  @override
+  Future<Either<Failure, void>> addFoodAdditive(FoodAdditive additive) =>
+      _guard(() => remoteDataSource.addFoodAdditive(additive));
+
+  @override
+  Future<Either<Failure, void>> updateFoodAdditive(FoodAdditive additive) =>
+      _guard(() => remoteDataSource.updateFoodAdditive(additive));
+
+  @override
+  Future<Either<Failure, void>> deleteFoodAdditive(String additiveId) =>
+      _guard(() => remoteDataSource.deleteFoodAdditive(additiveId));
 }

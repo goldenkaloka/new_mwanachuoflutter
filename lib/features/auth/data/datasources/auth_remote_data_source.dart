@@ -64,15 +64,27 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         throw const AuthenticationException('Sign in failed');
       }
 
-      // Fetch user data from users table
+      // Fetch user data from users table with specialized extensions
       final userData = await supabase
           .from('users')
-          .select()
+          .select('*, students(*), sellers(*), riders(*)')
           .eq('id', response.user!.id)
           .maybeSingle();
 
       if (userData == null) {
-        // Profile missing, try to create it from metadata
+        // Profile might be being created by trigger, wait briefly and retry once
+        await Future.delayed(const Duration(milliseconds: 500));
+        final retriedData = await supabase
+            .from('users')
+            .select('*, students(*), sellers(*), riders(*)')
+            .eq('id', response.user!.id)
+            .maybeSingle();
+        
+        if (retriedData != null) {
+          return UserModel.fromJson(retriedData);
+        }
+
+        // Fallback: Create user manually if trigger failed even after retry
         final metadata = response.user!.userMetadata ?? {};
         final insertData = {
           'id': response.user!.id,
@@ -87,7 +99,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
         final createdData = await supabase
             .from('users')
             .insert(insertData)
-            .select()
+            .select('*, students(*), sellers(*), riders(*)')
             .single();
         return UserModel.fromJson(createdData);
       }
@@ -120,92 +132,76 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
     String? studentIdNumber,
   }) async {
     try {
-      final Map<String, dynamic> data = {
+      final Map<String, dynamic> metadata = {
         'name': name,
         'phone_number': phone,
         'user_type': userType ?? 'student',
       };
 
-      if (businessName != null) data['business_name'] = businessName;
-      if (tinNumber != null) data['tin_number'] = tinNumber;
-      if (businessCategory != null) {
-        data['business_category'] = businessCategory;
-      }
-      if (programName != null) data['program_name'] = programName;
-      if (universityId != null) data['primary_university_id'] = universityId;
-      if (enrolledCourseId != null) {
-        data['enrolled_course_id'] = enrolledCourseId;
-      }
-      if (yearOfStudy != null) data['year_of_study'] = yearOfStudy;
-      if (currentSemester != null) data['current_semester'] = currentSemester;
-
       final response = await supabase.auth.signUp(
         email: email,
         password: password,
-        data: data,
+        data: metadata,
       );
 
       if (response.user == null) {
         throw const AuthenticationException('Sign up failed');
       }
 
-      // Prepare database updates from metadata
-      final dbUpdates = Map<String, dynamic>.from(data);
-      // Map 'name' to 'full_name' for database column
-      if (dbUpdates.containsKey('name')) {
-        dbUpdates['full_name'] = dbUpdates.remove('name');
-      }
-      dbUpdates['updated_at'] = DateTime.now().toIso8601String();
+      final userId = response.user!.id;
 
-      // Wait for the trigger to create user record (give it a moment)
-      await Future.delayed(const Duration(milliseconds: 1500));
+      // Prepare database updates for core profile
+      final coreUpdates = {
+        'full_name': name,
+        'phone_number': phone,
+        'user_type': userType ?? 'student',
+        'updated_at': DateTime.now().toIso8601String(),
+      };
 
-      // Check if user exists
-      final userData = await supabase
-          .from('users')
-          .select()
-          .eq('id', response.user!.id)
-          .maybeSingle();
+      // Wait a tiny bit for the trigger to at least create the base user record
+      await Future.delayed(const Duration(milliseconds: 200));
 
-      if (userData == null) {
-        // Create user manually if trigger failed
-        final insertData = Map<String, dynamic>.from(dbUpdates);
-        insertData['id'] = response.user!.id;
-        insertData['email'] = email;
-        insertData['role'] = 'buyer'; // Default role
+      // 1. Update Core Profile (ensures sync if trigger was slow or metadata missed)
+      await supabase.from('users').upsert({
+        'id': userId,
+        'email': email,
+        ...coreUpdates,
+      });
 
-        await supabase.from('users').insert(insertData);
-      } else {
-        // Update existing user to ensure all metadata fields are synced
-        // This is crucial because the trigger might missed some fields
-        await supabase
-            .from('users')
-            .update(dbUpdates)
-            .eq('id', response.user!.id);
-      }
-
-      if (userType == 'rider') {
+      // 2. Handle specialized table inserts based on user type
+      if (userType == 'student') {
+        final studentData = {
+          'user_id': userId,
+          'program_name': programName,
+          'year_of_study': yearOfStudy,
+          'current_semester': currentSemester,
+          'student_id_number': studentIdNumber,
+        };
+        await supabase.from('students').upsert(studentData);
+      } else if (userType == 'business' || businessName != null) {
+        final sellerData = {
+          'user_id': userId,
+          'business_name': businessName,
+          'tin_number': tinNumber,
+          'business_category': businessCategory,
+        };
+        await supabase.from('sellers').upsert(sellerData);
+      } else if (userType == 'rider') {
         final riderData = {
-          'user_id': response.user!.id,
+          'user_id': userId,
           'vehicle_type': vehicleType ?? 'Foot',
+          'vehicle_plate': vehiclePlate,
+          'student_id_number': studentIdNumber,
           'is_approved': false,
         };
-        if (vehiclePlate != null) riderData['vehicle_plate'] = vehiclePlate;
-        if (studentIdNumber != null) riderData['student_id_number'] = studentIdNumber;
-        
-        try {
-          // Use upsert to prevent errors if trigger fired or multiple clicks
-          await supabase.from('riders').upsert(riderData);
-        } catch (e) {
-          // Ignore error to not block sign up, since rider can be updated later
-        }
+        await supabase.from('riders').upsert(riderData);
       }
 
-      // Fetch final user data
+      // 3. Fetch final user data with all extensions
       final finalUserData = await supabase
           .from('users')
-          .select()
-          .eq('id', response.user!.id)
+          .select('*, students(*), sellers(*), riders(*)')
+          .eq('id', userId)
           .single();
 
       return UserModel.fromJson(finalUserData);
@@ -238,7 +234,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
 
       final userData = await supabase
           .from('users')
-          .select()
+          .select('*, students(*), sellers(*), riders(*)')
           .eq('id', user.id)
           .maybeSingle();
 
@@ -343,7 +339,7 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
       try {
         final userData = await supabase
             .from('users')
-            .select()
+            .select('*, students(*), sellers(*), riders(*)')
             .eq('id', user.id)
             .maybeSingle();
 

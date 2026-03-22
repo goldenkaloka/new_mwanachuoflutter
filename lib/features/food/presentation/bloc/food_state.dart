@@ -18,6 +18,7 @@ class FoodState extends Equatable {
   final Restaurant? userRestaurant;
   final List<FoodOrder> restaurantOrders;
   final String? userUniversityId;
+  final List<Map<String, dynamic>> sellers;
   final double? userLat;
   final double? userLng;
   // Rider-specific state
@@ -43,6 +44,7 @@ class FoodState extends Equatable {
     this.registrationSuccess = false,
     this.userRestaurant,
     this.restaurantOrders = const [],
+    this.sellers = const [],
     this.userUniversityId,
     this.userLat,
     this.userLng,
@@ -70,6 +72,7 @@ class FoodState extends Equatable {
     Restaurant? userRestaurant,
     List<FoodOrder>? restaurantOrders,
     String? userUniversityId,
+    List<Map<String, dynamic>>? sellers,
     double? userLat,
     double? userLng,
     Rider? riderProfile,
@@ -96,6 +99,7 @@ class FoodState extends Equatable {
       userRestaurant: userRestaurant ?? this.userRestaurant,
       restaurantOrders: restaurantOrders ?? this.restaurantOrders,
       userUniversityId: userUniversityId ?? this.userUniversityId,
+      sellers: sellers ?? this.sellers,
       userLat: userLat ?? this.userLat,
       userLng: userLng ?? this.userLng,
       riderProfile: riderProfile ?? this.riderProfile,
@@ -113,5 +117,6 @@ class FoodState extends Equatable {
     lastOrderId, status, errorMessage, orderSuccess, registrationSuccess,
     userRestaurant, restaurantOrders, userUniversityId, userLat, userLng,
     riderProfile, isRiderOnline, activeJob, pendingJobs, jobAcceptSuccess, deliverySuccess,
+    sellers,
   ];
 }

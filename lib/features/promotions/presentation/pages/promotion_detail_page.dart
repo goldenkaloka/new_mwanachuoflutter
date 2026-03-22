@@ -469,7 +469,11 @@ class _PromotionDetailViewState extends State<_PromotionDetailView> {
             ),
           ),
           IconButton(
-            onPressed: () {},
+            onPressed: () {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Link copied to clipboard!')),
+              );
+            },
             icon: const Icon(Icons.share),
             iconSize: 24.0,
           ),

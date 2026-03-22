@@ -41,6 +41,7 @@ import 'package:mwanachuo/features/food/presentation/pages/food_menu_page.dart';
 import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
 import 'package:mwanachuo/features/food/presentation/pages/restaurant_admin_dashboard.dart';
 import 'package:mwanachuo/features/food/presentation/pages/menu_management_page.dart';
+import 'package:mwanachuo/features/food/presentation/pages/add_food_item_page.dart';
 import 'package:mwanachuo/features/food/presentation/pages/delivery_qr_scanner_page.dart';
 import 'package:mwanachuo/features/food/presentation/pages/rider_dashboard_screen.dart';
 import 'package:mwanachuo/features/food/presentation/pages/rider_jobs_screen.dart';
@@ -280,7 +281,7 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               ),
             );
           },
-          '/restaurant-register': (context) => BlocProvider(
+          '/register-restaurant': (context) => BlocProvider(
             create: (context) => sl<FoodBloc>(),
             child: const RestaurantRegistrationPage(),
           ),
@@ -321,11 +322,14 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             child: const MyListingsScreen(),
           ),
           '/dashboard': (context) => PersistentBottomNavWrapper(
-            initialIndex: 2,
+            initialIndex: 3,
             child: const DashboardScreen(),
           ),
           '/wallet': (context) => const WalletPage(),
-          '/food-delivery': (context) => const RestaurantListPage(),
+          '/food-delivery': (context) => const PersistentBottomNavWrapper(
+            initialIndex: 2, // Assuming Index 2 is Food/Services in your nav
+            child: RestaurantListPage(),
+          ),
           '/food-menu': (context) {
             final restaurant = ModalRoute.of(context)!.settings.arguments as Restaurant;
             final bloc = context.read<FoodBloc>();
@@ -341,47 +345,50 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
               }
             }
             
-            return BlocListener<FoodBloc, FoodState>(
-              listenWhen: (prev, curr) => curr.orderSuccess && curr.lastOrderId != null && !prev.orderSuccess,
-              listener: (context, state) {
-                if (state.orderSuccess && state.lastOrderId != null) {
-                  Navigator.pushNamed(
-                    context,
-                    '/food-tracking',
-                    arguments: {'orderId': state.lastOrderId},
-                  );
-                  context.read<FoodBloc>().add(ClearOrderSuccess());
-                }
-              },
-              child: BlocBuilder<FoodBloc, FoodState>(
-                builder: (context, state) {
-                  if (state.status == FoodStatus.loaded && state.restaurantId == restaurant.id) {
-                    return FoodMenuPage(restaurant: restaurant, menuItems: state.menu);
-                  }
-                  
-                  if (state.status == FoodStatus.error) {
-                    return Scaffold(
-                      body: Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(state.errorMessage ?? 'An error occurred'),
-                            const SizedBox(height: 16),
-                            ElevatedButton(
-                              onPressed: () => bloc.add(LoadMenu(restaurant.id)),
-                              child: const Text('Retry'),
-                            ),
-                          ],
-                        ),
-                      ),
+            return PersistentBottomNavWrapper(
+              initialIndex: 2,
+              child: BlocListener<FoodBloc, FoodState>(
+                listenWhen: (prev, curr) => curr.orderSuccess && curr.lastOrderId != null && !prev.orderSuccess,
+                listener: (context, state) {
+                  if (state.orderSuccess && state.lastOrderId != null) {
+                    Navigator.pushNamed(
+                      context,
+                      '/food-tracking',
+                      arguments: {'orderId': state.lastOrderId},
                     );
+                    context.read<FoodBloc>().add(ClearOrderSuccess());
                   }
-  
-                  return Scaffold(
-                    backgroundColor: kBackgroundColorDark,
-                    body: const Center(child: CircularProgressIndicator(color: kPrimaryColor)),
-                  );
                 },
+                child: BlocBuilder<FoodBloc, FoodState>(
+                  builder: (context, state) {
+                    if (state.status == FoodStatus.loaded && state.restaurantId == restaurant.id) {
+                      return FoodMenuPage(restaurant: restaurant, menuItems: state.menu);
+                    }
+                    
+                    if (state.status == FoodStatus.error) {
+                      return Scaffold(
+                        body: Center(
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(state.errorMessage ?? 'An error occurred'),
+                              const SizedBox(height: 16),
+                              ElevatedButton(
+                                onPressed: () => bloc.add(LoadMenu(restaurant.id)),
+                                child: const Text('Retry'),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+    
+                    return Scaffold(
+                      backgroundColor: kBackgroundColorDark,
+                      body: const Center(child: CircularProgressIndicator(color: kPrimaryColor)),
+                    );
+                  },
+                ),
               ),
             );
           },
@@ -400,7 +407,15 @@ class _MwanachuoshopAppState extends State<MwanachuoshopApp> {
             );
           },
           '/restaurant-dashboard': (context) => const RestaurantAdminDashboard(),
+          '/manage-restaurant': (context) => const RestaurantAdminDashboard(),
           '/restaurant-menu-manage': (context) => const MenuManagementPage(),
+          '/restaurant-food-add': (context) {
+            final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+            return AddFoodItemPage(
+              restaurantId: args['restaurant_id'],
+              item: args['item'],
+            );
+          },
           '/delivery-qr-scan': (context) => const DeliveryQrScannerPage(),
           '/rider-dashboard': (context) => const RiderDashboardScreen(),
           '/rider-jobs': (context) => const RiderJobsScreen(),

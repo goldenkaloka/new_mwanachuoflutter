@@ -29,6 +29,7 @@ class FoodOrder extends Equatable {
   final String? rejectionReason;
   final List<OrderItem>? items;
   final String? studentName;
+  final String? studentPhone;
   // Location data
   final double? deliveryLat;   // Customer's delivery location
   final double? deliveryLng;
@@ -47,6 +48,7 @@ class FoodOrder extends Equatable {
     required this.status,
     this.trackingLink,
     required this.createdAt,
+    this.studentPhone,
     this.rejectionReason,
     this.items,
     this.studentName,
@@ -61,7 +63,7 @@ class FoodOrder extends Equatable {
   @override
   List<Object?> get props => [
     id, studentId, restaurantId, totalAmount, logisticsType,
-    status, trackingLink, createdAt, rejectionReason, items, studentName,
+    status, trackingLink, createdAt, rejectionReason, items, studentName, studentPhone,
     deliveryLat, deliveryLng, restaurantLat, restaurantLng, deliveryOtp, droppingPoint,
   ];
 }

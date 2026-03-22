@@ -297,6 +297,63 @@ class _RestaurantAdminDashboardState extends State<RestaurantAdminDashboard> {
               color: kPrimaryColor,
             ),
           ),
+          if (order.droppingPoint != null || (order.deliveryLat != null && order.deliveryLng != null))
+            Padding(
+              padding: const EdgeInsets.only(top: 12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: kPrimaryColor.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: kPrimaryColor.withValues(alpha: 0.1)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.location_on_rounded, color: kPrimaryColor, size: 20),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            order.droppingPoint ?? 'GPS Coordinates',
+                            style: GoogleFonts.plusJakartaSans(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : kTextPrimary,
+                            ),
+                          ),
+                          if (order.deliveryLat != null)
+                            Text(
+                              '${order.deliveryLat?.toStringAsFixed(4)}, ${order.deliveryLng?.toStringAsFixed(4)}',
+                              style: GoogleFonts.plusJakartaSans(
+                                fontSize: 11,
+                                color: isDarkMode ? Colors.white38 : kTextTertiary,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    TextButton.icon(
+                      onPressed: () {
+                        if (order.deliveryLat != null && order.deliveryLng != null) {
+                           // This would normally open a map or navigation
+                           ScaffoldMessenger.of(context).showSnackBar(
+                             SnackBar(content: Text('Opening navigation to ${order.deliveryLat}, ${order.deliveryLng}')),
+                           );
+                        }
+                      },
+                      icon: const Icon(Icons.map_rounded, size: 16),
+                      label: const Text('Map', style: TextStyle(fontSize: 12)),
+                      style: TextButton.styleFrom(
+                        visualDensity: VisualDensity.compact,
+                        foregroundColor: kPrimaryColor,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
           if (order.rejectionReason != null)
              Padding(
                padding: const EdgeInsets.only(top: 8),
@@ -465,7 +522,6 @@ class _RestaurantAdminDashboardState extends State<RestaurantAdminDashboard> {
           Navigator.pushNamed(context, '/restaurant-menu-manage');
         }, isDarkMode),
         _buildActionTile(context, Icons.history, 'Order History', 'View past transactions', () {}, isDarkMode),
-        _buildActionTile(context, Icons.campaign_outlined, 'Promotions', 'Create special offers', () {}, isDarkMode),
       ],
     );
   }

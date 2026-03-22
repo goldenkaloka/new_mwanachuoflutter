@@ -2,8 +2,8 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:geolocator/geolocator.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/features/auth/presentation/bloc/auth_state.dart';
 import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
@@ -24,7 +24,11 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
   final _addressController = TextEditingController();
   final _phoneController = TextEditingController();
   String _selectedCategory = 'Fast Food';
-  bool _isBusinessUser = false;
+  bool _isAdmin = false;
+  String? _selectedSellerId;
+  double? _selectedLat;
+  double? _selectedLng;
+  bool _isFetchingLocation = false;
   int _currentStep = 0;
   XFile? _imageFile;
   final ImagePicker _picker = ImagePicker();
@@ -43,7 +47,7 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
   @override
   void initState() {
     super.initState();
-    _checkBusinessStatus();
+    _checkPermissions();
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 500),
@@ -62,13 +66,17 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
     super.dispose();
   }
 
-  void _checkBusinessStatus() {
+  void _checkPermissions() {
     final authState = context.read<AuthBloc>().state;
     if (authState is Authenticated) {
-      final userType = authState.user.userType;
+      final user = authState.user;
       setState(() {
-        _isBusinessUser = (userType == 'business');
+        _isAdmin = user.isAdmin;
       });
+
+      if (_isAdmin) {
+        context.read<FoodBloc>().add(LoadSellersEvent());
+      }
     }
   }
 
@@ -102,9 +110,59 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
         backgroundColor: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
         body: FadeTransition(
           opacity: _fadeAnim,
-          child: _isBusinessUser
+          child: _isAdmin
               ? _buildRegistrationFlow(isDarkMode)
-              : _buildBusinessUpgradePrompt(isDarkMode),
+              : _buildAccessDenied(isDarkMode),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAccessDenied(bool isDarkMode) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.lock_person_rounded, size: 64, color: Colors.red),
+            ),
+            const SizedBox(height: 32),
+            Text(
+              'Access Denied',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 28,
+                fontWeight: FontWeight.w800,
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Only administrators can register new restaurants to ensure student safety and platform health.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 16,
+                color: isDarkMode ? Colors.white70 : Colors.black54,
+                height: 1.5,
+              ),
+            ),
+            const SizedBox(height: 40),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: kPrimaryColor,
+                minimumSize: const Size(200, 56),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+              child: const Text('Go Back', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+            ),
+          ],
         ),
       ),
     );
@@ -162,188 +220,6 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
           ),
         );
       },
-    );
-  }
-
-  // ========================
-  // UPGRADE PROMPT (Non-Business)
-  // ========================
-  Widget _buildBusinessUpgradePrompt(bool isDarkMode) {
-    return SafeArea(
-      child: Column(
-        children: [
-          // Custom header
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              children: [
-                GestureDetector(
-                  onTap: () => Navigator.pop(context),
-                  child: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: isDarkMode ? kSurfaceColorDark : Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: isDarkMode ? Colors.white10 : Colors.grey.shade200),
-                    ),
-                    child: Icon(Icons.arrow_back_rounded, color: isDarkMode ? Colors.white : kTextPrimary),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Center(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 32),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    // Animated icon with gradient ring
-                    Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        gradient: LinearGradient(
-                          colors: [kPrimaryColor, kPrimaryColorLight, const Color(0xFF06B6D4)],
-                        ),
-                      ),
-                      child: Container(
-                        padding: const EdgeInsets.all(28),
-                        decoration: BoxDecoration(
-                          color: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
-                          shape: BoxShape.circle,
-                        ),
-                        child: ShaderMask(
-                          shaderCallback: (bounds) => const LinearGradient(
-                            colors: [kPrimaryColor, kPrimaryColorLight],
-                          ).createShader(bounds),
-                          child: const Icon(Icons.storefront_rounded, size: 56, color: Colors.white),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-                    Text(
-                      'Partner with\nMwanachuo',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 28,
-                        fontWeight: FontWeight.w800,
-                        color: isDarkMode ? Colors.white : kTextPrimary,
-                        height: 1.2,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Business accounts unlock restaurant registration, menu management, and campus-wide visibility.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 15,
-                        color: isDarkMode ? Colors.white54 : kTextTertiary,
-                        height: 1.5,
-                      ),
-                    ),
-                    const SizedBox(height: 36),
-                    // Feature pills
-                    ...[
-                      _buildFeaturePill(Icons.people_rounded, 'Reach 10,000+ students', isDarkMode),
-                      _buildFeaturePill(Icons.analytics_rounded, 'Real-time order analytics', isDarkMode),
-                      _buildFeaturePill(Icons.delivery_dining_rounded, 'Built-in delivery system', isDarkMode),
-                    ],
-                    const SizedBox(height: 40),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 56,
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          try {
-                            await Supabase.instance.client.auth.updateUser(
-                              UserAttributes(data: {'role': 'seller'}),
-                            );
-                            _checkBusinessStatus();
-                          } catch (e) {
-                            if (mounted) {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(content: Text('Upgrade failed: $e'), backgroundColor: Colors.red),
-                              );
-                            }
-                          }
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.zero,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-                          elevation: 0,
-                        ),
-                        child: Ink(
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(colors: [kPrimaryColor, kPrimaryColorLight]),
-                            borderRadius: BorderRadius.circular(18),
-                            boxShadow: [
-                              BoxShadow(
-                                color: kPrimaryColor.withValues(alpha: 0.4),
-                                blurRadius: 16,
-                                offset: const Offset(0, 8),
-                              ),
-                            ],
-                          ),
-                          child: Container(
-                            alignment: Alignment.center,
-                            height: 56,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                const Icon(Icons.rocket_launch_rounded, color: Colors.white, size: 20),
-                                const SizedBox(width: 10),
-                                Text(
-                                  'Upgrade to Business',
-                                  style: GoogleFonts.plusJakartaSans(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildFeaturePill(IconData icon, String text, bool isDarkMode) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
-      decoration: BoxDecoration(
-        color: isDarkMode ? kSurfaceColorDark : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDarkMode ? Colors.white10 : Colors.grey.shade200),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: kPrimaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Icon(icon, color: kPrimaryColor, size: 20),
-          ),
-          const SizedBox(width: 14),
-          Text(
-            text,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w600,
-              color: isDarkMode ? Colors.white : kTextPrimary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 
@@ -464,6 +340,42 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
               hint: 'e.g. Campus Grill',
               icon: Icons.store_rounded,
               isDarkMode: isDarkMode,
+            ),
+            const SizedBox(height: 20),
+            Text('Assign Owner (Business User)', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDarkMode ? Colors.white54 : kTextTertiary)),
+            const SizedBox(height: 12),
+            BlocBuilder<FoodBloc, FoodState>(
+              builder: (context, state) {
+                if (state.status == FoodStatus.loading && state.sellers.isEmpty) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? kSurfaceColorDark : Colors.white,
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(color: isDarkMode ? Colors.white10 : Colors.grey.shade200),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButtonFormField<String>(
+                      value: _selectedSellerId,
+                      hint: Text('Select a business user', style: GoogleFonts.plusJakartaSans(color: isDarkMode ? Colors.white24 : kTextDisabled, fontSize: 14)),
+                      dropdownColor: isDarkMode ? kSurfaceColorDark : Colors.white,
+                      items: state.sellers.map((seller) {
+                        return DropdownMenuItem<String>(
+                          value: seller['id'] as String,
+                          child: Text(
+                            '${seller['full_name']} (${seller['email']})',
+                            style: GoogleFonts.plusJakartaSans(color: isDarkMode ? Colors.white : kTextPrimary, fontSize: 14),
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) => setState(() => _selectedSellerId = val),
+                      validator: (val) => val == null ? 'Please select an owner' : null,
+                    ),
+                  ),
+                );
+              },
             ),
             const SizedBox(height: 20),
             Text('Restaurant Photo', style: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w600, color: isDarkMode ? Colors.white54 : kTextTertiary)),
@@ -600,29 +512,77 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
             isDarkMode: isDarkMode,
           ),
           const SizedBox(height: 24),
-          // Map placeholder
+          // Map Selection / Location Picker
           Container(
-            height: 160,
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
               color: isDarkMode ? kSurfaceColorDark : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(color: isDarkMode ? Colors.white10 : Colors.grey.shade200),
             ),
-            child: Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.map_rounded, size: 40, color: isDarkMode ? Colors.white24 : Colors.grey.shade300),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Map picker coming soon',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: isDarkMode ? Colors.white38 : kTextDisabled,
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: kPrimaryColor.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.location_searching_rounded, color: kPrimaryColor, size: 20),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text('Exact Coordinates', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 15)),
+                          Text(
+                            _selectedLat != null 
+                              ? '${_selectedLat!.toStringAsFixed(6)}, ${_selectedLng!.toStringAsFixed(6)}'
+                              : 'No coordinates selected',
+                            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: kTextTertiary),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (_isFetchingLocation)
+                      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                    else
+                      TextButton(
+                        onPressed: _getCurrentLocation,
+                        child: Text(_selectedLat == null ? 'Get Current' : 'Refresh'),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade50,
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: isDarkMode ? Colors.white10 : Colors.grey.shade200),
+                  ),
+                  child: Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.map_rounded, size: 32, color: isDarkMode ? Colors.white24 : Colors.grey.shade300),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Location marked on grid',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 12,
+                            color: isDarkMode ? Colors.white38 : kTextDisabled,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -755,6 +715,32 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
     );
   }
 
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isFetchingLocation = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) throw 'Location services are disabled.';
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) throw 'Permission denied.';
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _selectedLat = position.latitude;
+        _selectedLng = position.longitude;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(e.toString())));
+      }
+    } finally {
+      if (mounted) setState(() => _isFetchingLocation = false);
+    }
+  }
+
   void _handleSubmit() {
     context.read<FoodBloc>().add(
           RegisterRestaurantEvent(
@@ -764,6 +750,9 @@ class _RestaurantRegistrationPageState extends State<RestaurantRegistrationPage>
             phone: _phoneController.text,
             category: _selectedCategory,
             imageFile: _imageFile != null ? File(_imageFile!.path) : null,
+            ownerId: _selectedSellerId,
+            lat: _selectedLat,
+            lng: _selectedLng,
           ),
         );
   }

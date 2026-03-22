@@ -11,6 +11,7 @@ import 'package:mwanachuo/features/auth/domain/usecases/sign_up.dart';
 import 'package:mwanachuo/features/auth/domain/usecases/reset_password.dart';
 import 'auth_event.dart';
 import 'auth_state.dart';
+import 'package:mwanachuo/config/onesignal_config.dart';
 
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final SignIn signIn;
@@ -107,6 +108,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onSignOut(SignOutEvent event, Emitter<AuthState> emit) async {
     emit(const AuthLoading());
+
+    try {
+      // Explicitly logout from OneSignal so the next login on the same device 
+      // doesn't trigger a 409 Alias Conflict error in OneSignal's HTTP client.
+      await OneSignalConfig.logout();
+    } catch (_) {}
 
     final result = await signOut(NoParams());
 

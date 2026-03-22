@@ -7,7 +7,9 @@ import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_item.dart';
 import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
 
-class CheckoutPage extends StatelessWidget {
+import 'package:geolocator/geolocator.dart';
+
+class CheckoutPage extends StatefulWidget {
   final Restaurant restaurant;
   final List<FoodItem> cartItems;
   final double totalAmount;
@@ -18,6 +20,79 @@ class CheckoutPage extends StatelessWidget {
     required this.cartItems,
     required this.totalAmount,
   });
+
+  @override
+  State<CheckoutPage> createState() => _CheckoutPageState();
+}
+
+class _CheckoutPageState extends State<CheckoutPage> {
+  double? _selectedLat;
+  double? _selectedLng;
+  String? _selectedAddress;
+  bool _isLocationLoading = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Default to university if not set
+    _selectedLat = context.read<FoodBloc>().state.userLat;
+    _selectedLng = context.read<FoodBloc>().state.userLng;
+  }
+
+  Future<void> _getCurrentLocation() async {
+    setState(() => _isLocationLoading = true);
+    try {
+      bool serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location services are disabled.')),
+          );
+        }
+        setState(() => _isLocationLoading = false);
+        return;
+      }
+
+      LocationPermission permission = await Geolocator.checkPermission();
+      if (permission == LocationPermission.denied) {
+        permission = await Geolocator.requestPermission();
+        if (permission == LocationPermission.denied) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Location permissions are denied.')),
+            );
+          }
+          setState(() => _isLocationLoading = false);
+          return;
+        }
+      }
+
+      if (permission == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Location permissions are permanently denied.')),
+          );
+        }
+        setState(() => _isLocationLoading = false);
+        return;
+      }
+
+      final position = await Geolocator.getCurrentPosition();
+      setState(() {
+        _selectedLat = position.latitude;
+        _selectedLng = position.longitude;
+        _selectedAddress = "Custom Drop-off Point Set";
+        _isLocationLoading = false;
+      });
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+      setState(() => _isLocationLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -181,50 +256,64 @@ class CheckoutPage extends StatelessWidget {
           ),
         ],
       ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: kPrimaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        onTap: _isLocationLoading ? null : _getCurrentLocation,
+        borderRadius: BorderRadius.circular(20),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: kPrimaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: _isLocationLoading 
+                  ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(strokeWidth: 2))
+                  : const Icon(Icons.location_on_rounded, color: kPrimaryColor, size: 22),
             ),
-            child: const Icon(Icons.location_on_rounded, color: kPrimaryColor, size: 22),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'University Hub',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: isDarkMode ? Colors.white : kTextPrimary),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  'Mlimani Campus, Block B Room 302',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 13, color: isDarkMode ? Colors.white54 : kTextTertiary),
-                ),
-              ],
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _selectedAddress ?? 'Set Drop-off Point',
+                    style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, color: isDarkMode ? Colors.white : kTextPrimary),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _selectedLat != null && _selectedLng != null 
+                        ? '${_selectedLat!.toStringAsFixed(4)}, ${_selectedLng!.toStringAsFixed(4)}'
+                        : 'Tap to pick your current location',
+                    style: GoogleFonts.plusJakartaSans(fontSize: 13, color: isDarkMode ? Colors.white54 : kTextTertiary),
+                  ),
+                ],
+              ),
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: kPrimaryColor.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: kPrimaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                _selectedLat != null ? 'Change' : 'Pick', 
+                style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: kPrimaryColor),
+              ),
             ),
-            child: Text('Change', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600, color: kPrimaryColor)),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildOrderSummary(NumberFormat format, bool isDarkMode) {
-    final bool isBolt = restaurant.distanceMeters != null && restaurant.distanceMeters! > 2000;
-    final double baseFee = restaurant.deliveryFee ?? 2000;
-    final double finalDeliveryFee = isBolt ? baseFee * 1.5 : baseFee;
+    // Granular delivery fee: Base 1500 + 700 per km
+    final double distanceKm = (widget.restaurant.distanceMeters ?? 0) / 1000;
+    final double baseFee = 1500;
+    final double distanceFee = (distanceKm * 700).clamp(0, 10000); // Cap distance fee at 10k
+    final double finalDeliveryFee = baseFee + distanceFee;
+    final bool isBolt = distanceKm > 2.5;
 
     return Container(
       padding: const EdgeInsets.all(18),
@@ -241,7 +330,7 @@ class CheckoutPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          ...cartItems.map((item) => Padding(
+          ...widget.cartItems.map((item) => Padding(
             padding: const EdgeInsets.only(bottom: 12),
             child: Row(
               children: [
@@ -265,7 +354,7 @@ class CheckoutPage extends StatelessWidget {
             ),
           )),
           const Divider(height: 24),
-          _buildPriceRow('Subtotal', format.format(totalAmount), isDarkMode, false),
+          _buildPriceRow('Subtotal', format.format(widget.totalAmount), isDarkMode, false),
           const SizedBox(height: 8),
           _buildPriceRow(isBolt ? 'Bolt Delivery' : 'Delivery', format.format(finalDeliveryFee), isDarkMode, false),
           const SizedBox(height: 14),
@@ -280,7 +369,7 @@ class CheckoutPage extends StatelessWidget {
               children: [
                 Text('Total', style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: isDarkMode ? Colors.white : kTextPrimary)),
                 Text(
-                  format.format(totalAmount + finalDeliveryFee),
+                  format.format(widget.totalAmount + finalDeliveryFee),
                   style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800, color: kPrimaryColor),
                 ),
               ],
@@ -350,27 +439,29 @@ class CheckoutPage extends StatelessWidget {
   }
 
   Widget _buildPlaceOrderButton(BuildContext context, FoodState state, NumberFormat format, bool isDarkMode, bool isLoading) {
-    final bool isBolt = restaurant.distanceMeters != null && restaurant.distanceMeters! > 2000;
+    final bool isBolt = widget.restaurant.distanceMeters != null && widget.restaurant.distanceMeters! > 2000;
     final String logisticsType = isBolt ? 'BOLT' : 'INTERNAL';
-    final double baseFee = restaurant.deliveryFee ?? 2000;
-    final double finalDeliveryFee = isBolt ? baseFee * 1.5 : baseFee;
+    
+    // Delivery fee from state summary
+    final double distanceKm = (widget.restaurant.distanceMeters ?? 0) / 1000;
+    final double finalDeliveryFee = 1500 + (distanceKm * 700).clamp(0, 10000);
 
     return SizedBox(
       width: double.infinity,
       height: 58,
       child: ElevatedButton(
-        onPressed: isLoading ? null : () {
+        onPressed: (isLoading || _selectedLat == null) ? null : () {
           context.read<FoodBloc>().add(PlaceOrderEvent(
-            restaurantId: restaurant.id,
-            items: cartItems.map((e) => {
+            restaurantId: widget.restaurant.id,
+            items: widget.cartItems.map((e) => {
               'food_item_id': e.id,
               'name': e.name,
               'price': e.price,
               'quantity': 1,
             }).toList(),
-            totalAmount: totalAmount,
-            lat: state.userLat ?? -6.7924, // Use real location or fallback to UDSM
-            lng: state.userLng ?? 39.2023,
+            totalAmount: widget.totalAmount + finalDeliveryFee,
+            lat: _selectedLat!, 
+            lng: _selectedLng!,
             logisticsType: logisticsType,
           ));
         },
@@ -400,7 +491,7 @@ class CheckoutPage extends StatelessWidget {
                 const Icon(Icons.lock_rounded, color: Colors.white, size: 20),
                 const SizedBox(width: 10),
                 Text(
-                  'Confirm & Lock ${format.format(totalAmount + finalDeliveryFee)}',
+                  'Confirm & Lock ${format.format(widget.totalAmount + finalDeliveryFee)}',
                   style: GoogleFonts.plusJakartaSans(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w700),
                 ),
               ],

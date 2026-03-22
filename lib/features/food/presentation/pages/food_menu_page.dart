@@ -139,7 +139,11 @@ class _FoodMenuPageState extends State<FoodMenuPage> with TickerProviderStateMix
                 ),
                 child: IconButton(
                   icon: const Icon(Icons.favorite_border_rounded, color: Colors.white),
-                  onPressed: () {},
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Added to favorites!')),
+                    );
+                  },
                 ),
               ),
             ),

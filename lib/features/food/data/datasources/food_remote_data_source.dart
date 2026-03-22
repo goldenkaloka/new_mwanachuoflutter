@@ -30,7 +30,12 @@ abstract class FoodRemoteDataSource {
     required String phone,
     required String category,
     String? imageUrl,
+    String? ownerId,
+    double? lat,
+    double? lng,
   });
+
+  Future<List<Map<String, dynamic>>> getSellers();
   Future<Rider> getRiderForOrder(String orderId);
   Future<FoodOrder> getOrderDetails(String orderId);
   Stream<Map<String, dynamic>> watchOrder(String orderId);
@@ -52,6 +57,14 @@ abstract class FoodRemoteDataSource {
   Future<void> updateRiderLocation(double lat, double lng);
   Future<void> updateOrderStatusAsRider(String orderId, FoodOrderStatus status);
   Future<void> markDelivered(String orderId, String otp);
+  
+  // ─── Menu Management ───────────────────────────────────────────────────────
+  Future<void> addFoodItem(FoodItem item);
+  Future<void> updateFoodItem(FoodItem item);
+  Future<void> deleteFoodItem(String itemId);
+  Future<void> addFoodAdditive(FoodAdditive additive);
+  Future<void> updateFoodAdditive(FoodAdditive additive);
+  Future<void> deleteFoodAdditive(String additiveId);
   
   // ─── Dispatch method ─────────────────────────────────────────────────────────
   Future<void> findAndAssignNearbyRider(FoodOrder order);
@@ -75,6 +88,15 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
   }
 
   // ─── Existing implementations ───────────────────────────────────────────────
+  @override
+  Future<List<Map<String, dynamic>>> getSellers() async {
+    final response = await supabaseClient
+        .from('users')
+        .select('id, full_name, email')
+        .eq('role', 'seller');
+    return List<Map<String, dynamic>>.from(response);
+  }
+
   @override
   Future<Rider> getRiderForOrder(String orderId) async {
     try {
@@ -116,7 +138,7 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
   Future<FoodOrder> getOrderDetails(String orderId) async {
     final response = await supabaseClient
         .from('orders')
-        .select('*, order_items(*, food_items(name)), student:student_id(full_name), restaurants(lat, lng)')
+        .select('*, order_items(*, food_items(name)), student:student_id(full_name, phone_number), restaurants(lat, lng)')
         .eq('id', orderId)
         .single();
     return _parseOrder(response);
@@ -292,8 +314,8 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
 
   @override
   Future<String> uploadRestaurantImage(dynamic imageFile) async {
-    final fileName = 'restaurant_${DateTime.now().millisecondsSinceEpoch}.jpg';
-    final path = 'restaurants/$_currentUserId/$fileName';
+    final fileName = 'upload_${DateTime.now().millisecondsSinceEpoch}.jpg';
+    final path = 'food/$_currentUserId/$fileName';
     await supabaseClient.storage.from('food').upload(path, imageFile);
     return supabaseClient.storage.from('food').getPublicUrl(path);
   }
@@ -306,7 +328,13 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
     required String phone,
     required String category,
     String? imageUrl,
+    String? ownerId,
+    double? lat,
+    double? lng,
   }) async {
+    final latitude = lat ?? -6.7924;
+    final longitude = lng ?? 39.2023;
+    
     await supabaseClient.from('restaurants').insert({
       'name': name,
       'description': description,
@@ -315,8 +343,10 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
       'category': category,
       'image_url': imageUrl,
       'is_active': false,
-      'owner_id': _currentUserId,
-      'location': 'POINT(39.2023 -6.7924)',
+      'owner_id': ownerId ?? _currentUserId,
+      'lat': latitude,
+      'lng': longitude,
+      'location': 'POINT($longitude $latitude)',
     });
   }
 
@@ -333,7 +363,7 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
   Future<List<FoodOrder>> getOrdersForRestaurant(String restaurantId) async {
     final response = await supabaseClient
         .from('orders')
-        .select('*, order_items(*, food_items(name)), student:student_id(full_name), restaurants(lat, lng)')
+        .select('*, order_items(*, food_items(name)), student:student_id(full_name, phone_number), restaurants(lat, lng)')
         .eq('restaurant_id', restaurantId)
         .order('created_at', ascending: false);
 
@@ -450,7 +480,7 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
 
     final data = await supabaseClient
         .from('orders')
-        .select('*, order_items(*, food_items(name)), restaurants(name, address, lat, lng)')
+        .select('*, order_items(*, food_items(name)), restaurants(name, address, lat, lng), student:student_id(full_name, phone_number)')
         .eq('rider_id', riderId)
         .inFilter('status', ['riderAssigned', 'preparing', 'readyForPickup', 'pickedUp', 'outForDelivery', 'nearYou'])
         .order('created_at', ascending: false)
@@ -462,33 +492,67 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
   }
 
   @override
-  Stream<List<RiderJob>> streamPendingJobs() {
-    return supabaseClient.auth.currentUser == null
-        ? const Stream.empty()
-        : supabaseClient
-            .from('rider_jobs')
-            .stream(primaryKey: ['id'])
-            .eq('rider_id', _currentUserId)
-            .map((rows) => rows
-                .where((r) => r['status'] == 'pending')
-                .map((r) => RiderJob(
-                      id: r['id'].toString(),
-                      orderId: r['order_id'].toString(),
-                      riderId: r['rider_id'].toString(),
-                      status: RiderJobStatus.pending,
-                      createdAt: DateTime.parse(r['created_at']),
-                      restaurantName: r['restaurant_name']?.toString(),
-                      restaurantAddress: r['restaurant_address']?.toString(),
-                      restaurantLat: r['restaurant_lat'] != null ? (r['restaurant_lat'] as num).toDouble() : null,
-                      restaurantLng: r['restaurant_lng'] != null ? (r['restaurant_lng'] as num).toDouble() : null,
-                      deliveryLat: r['delivery_lat'] != null ? (r['delivery_lat'] as num).toDouble() : null,
-                      deliveryLng: r['delivery_lng'] != null ? (r['delivery_lng'] as num).toDouble() : null,
-                      totalAmount: r['total_amount'] != null ? (r['total_amount'] as num).toDouble() : null,
-                      estimatedEarnings: r['estimated_earnings'] != null ? (r['estimated_earnings'] as num).toDouble() : null,
-                      distanceKm: r['distance_km'] != null ? (r['distance_km'] as num).toDouble() : null,
-                      droppingPoint: r['dropping_point']?.toString(),
-                    ))
-                .toList());
+  Stream<List<RiderJob>> streamPendingJobs() async* {
+    if (supabaseClient.auth.currentUser == null) {
+      yield [];
+      return;
+    }
+
+    final riderId = await _getRiderId();
+    if (riderId == null) {
+      yield [];
+      return;
+    }
+
+    // Since stream() doesn't support joins, we fetch job IDs and then enrich them
+    yield* supabaseClient
+        .from('rider_jobs')
+        .stream(primaryKey: ['id'])
+        .eq('rider_id', riderId)
+        .asyncMap((rows) async {
+          final pendingRows = rows.where((r) => r['status'] == 'pending').toList();
+          if (pendingRows.isEmpty) return [];
+
+          final List<RiderJob> jobs = [];
+          for (var r in pendingRows) {
+            try {
+              final orderId = r['order_id'];
+              // Join with orders, restaurants and users to get normalized data
+              final orderData = await supabaseClient
+                  .from('orders')
+                  .select('*, restaurants(name, address, lat, lng), student:student_id(full_name, phone_number)')
+                  .eq('id', orderId)
+                  .single();
+
+              final restaurant = orderData['restaurants'];
+              final student = orderData['student'];
+
+              jobs.add(RiderJob(
+                id: r['id'].toString(),
+                orderId: orderId.toString(),
+                riderId: r['rider_id'].toString(),
+                status: RiderJobStatus.pending,
+                createdAt: DateTime.parse(r['created_at']),
+                restaurantName: restaurant?['name']?.toString(),
+                restaurantAddress: restaurant?['address']?.toString(),
+                restaurantLat: restaurant?['lat'] != null ? (restaurant!['lat'] as num).toDouble() : null,
+                restaurantLng: restaurant?['lng'] != null ? (restaurant!['lng'] as num).toDouble() : null,
+                deliveryLat: orderData['delivery_lat'] != null ? (orderData['delivery_lat'] as num).toDouble() : null,
+                deliveryLng: orderData['delivery_lng'] != null ? (orderData['delivery_lng'] as num).toDouble() : null,
+                totalAmount: orderData['total_amount'] != null ? (orderData['total_amount'] as num).toDouble() : null,
+                estimatedEarnings: r['estimated_earnings'] != null ? (r['estimated_earnings'] as num).toDouble() : null,
+                distanceKm: r['distance_km'] != null ? (r['distance_km'] as num).toDouble() : null,
+                droppingPoint: orderData['dropping_point']?.toString(),
+                customerName: student?['full_name']?.toString(),
+                customerPhone: student?['phone_number']?.toString(),
+              ));
+            } catch (_) {
+              // If order details fail to fetch, skip this job
+              continue;
+            }
+          }
+          return jobs;
+        });
   }
 
   @override
@@ -521,12 +585,9 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
   Future<void> updateRiderLocation(double lat, double lng) async {
     final riderId = await _getRiderId();
     if (riderId == null) return;
-    await supabaseClient.from('rider_locations').upsert({
-      'rider_id': riderId,
-      'lat': lat,
-      'lng': lng,
-      'updated_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'rider_id');
+    await supabaseClient.from('riders').update({
+      'current_location': 'POINT($lng $lat)',
+    }).eq('id', riderId);
   }
 
   @override
@@ -579,7 +640,7 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
       createdAt: DateTime.parse(json['created_at']),
       rejectionReason: json['rejection_reason'],
       items: items,
-      studentName: json['student']?['full_name'],
+      studentPhone: json['student']?['phone_number'],
       deliveryLat: json['delivery_lat'] != null ? (json['delivery_lat'] as num).toDouble() : null,
       deliveryLng: json['delivery_lng'] != null ? (json['delivery_lng'] as num).toDouble() : null,
       restaurantLat: restaurant?['lat'] != null ? (restaurant!['lat'] as num).toDouble() : null,
@@ -616,29 +677,19 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
     final closestRiderId = closestRider['rider_id'].toString();
     final distanceKm = (closestRider['distance_km'] as num).toDouble();
 
-    // 2. Fetch restaurant details for the job card
-    final restResp = await supabaseClient.from('restaurants').select('name, address').eq('id', order.restaurantId).single();
-
-    // 3. Insert into rider_jobs
+    // 3. Insert into rider_jobs (Normalized: only order_id, rider_id, status and calculated earnings)
     await supabaseClient.from('rider_jobs').insert({
       'order_id': order.id,
       'rider_id': closestRiderId,
       'status': 'pending',
-      'restaurant_name': restResp['name'],
-      'restaurant_address': restResp['address'],
-      'restaurant_lat': order.restaurantLat,
-      'restaurant_lng': order.restaurantLng,
-      'delivery_lat': order.deliveryLat,
-      'delivery_lng': order.deliveryLng,
-      'total_amount': order.totalAmount,
       // Rough estimation: 1000 TZS base + 500 TZS per km
       'estimated_earnings': 1000 + (distanceKm * 500),
       'distance_km': double.parse(distanceKm.toStringAsFixed(1)),
-      'dropping_point': order.droppingPoint,
     });
 
     // 4. Notify rider via push notification
     try {
+      final restResp = await supabaseClient.from('restaurants').select('name').eq('id', order.restaurantId).single();
       await supabaseClient.rpc('send_immediate_push_notification', params: {
         'p_user_id': closestRiderId,
         'p_title': 'New Delivery Request!',
@@ -648,5 +699,60 @@ class FoodRemoteDataSourceImpl implements FoodRemoteDataSource {
         'p_metadata': {'order_id': order.id, 'type': 'delivery'},
       });
     } catch (_) {}
+  }
+
+  // ─── Menu Management Implementations ────────────────────────────────────────
+  @override
+  Future<void> addFoodItem(FoodItem item) async {
+    await supabaseClient.from('food_items').insert({
+      'restaurant_id': item.restaurantId,
+      'name': item.name,
+      'description': item.description,
+      'price': item.price,
+      'image_url': item.imageUrl,
+      'category': item.category,
+      'is_available': item.isAvailable,
+    });
+  }
+
+  @override
+  Future<void> updateFoodItem(FoodItem item) async {
+    await supabaseClient.from('food_items').update({
+      'name': item.name,
+      'description': item.description,
+      'price': item.price,
+      'image_url': item.imageUrl,
+      'category': item.category,
+      'is_available': item.isAvailable,
+    }).eq('id', item.id);
+  }
+
+  @override
+  Future<void> deleteFoodItem(String itemId) async {
+    await supabaseClient.from('food_items').delete().eq('id', itemId);
+  }
+
+  @override
+  Future<void> addFoodAdditive(FoodAdditive additive) async {
+    await supabaseClient.from('food_additives').insert({
+      'food_item_id': additive.foodItemId,
+      'name': additive.name,
+      'price': additive.price,
+      'is_available': additive.isAvailable,
+    });
+  }
+
+  @override
+  Future<void> updateFoodAdditive(FoodAdditive additive) async {
+    await supabaseClient.from('food_additives').update({
+      'name': additive.name,
+      'price': additive.price,
+      'is_available': additive.isAvailable,
+    }).eq('id', additive.id);
+  }
+
+  @override
+  Future<void> deleteFoodAdditive(String additiveId) async {
+    await supabaseClient.from('food_additives').delete().eq('id', additiveId);
   }
 }

@@ -35,6 +35,8 @@ class UserEntity extends Equatable {
     this.businessCategory,
     this.programName,
     this.userType,
+    this.vehicleType,
+    this.vehiclePlate,
   });
 
   final String? businessName;
@@ -42,6 +44,8 @@ class UserEntity extends Equatable {
   final String? businessCategory;
   final String? programName;
   final String? userType;
+  final String? vehicleType;
+  final String? vehiclePlate;
 
   bool get isBuyer => role == UserRole.buyer;
   bool get isSeller => role == UserRole.seller || role == UserRole.admin;

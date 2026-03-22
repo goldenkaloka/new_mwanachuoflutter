@@ -2,6 +2,7 @@ import 'package:dartz/dartz.dart';
 import 'package:mwanachuo/core/errors/failures.dart';
 import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_item.dart';
+import 'package:mwanachuo/features/food/domain/entities/food_additive.dart';
 import 'package:mwanachuo/features/food/domain/entities/rider.dart';
 import 'package:mwanachuo/features/food/domain/entities/rider_job.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_order.dart';
@@ -28,7 +29,11 @@ abstract class FoodRepository {
     required String phone,
     required String category,
     String? imageUrl,
+    String? ownerId,
+    double? lat,
+    double? lng,
   });
+  Future<Either<Failure, List<Map<String, dynamic>>>> getSellers();
   Future<Either<Failure, Rider>> getRiderForOrder(String orderId);
   Future<Either<Failure, FoodOrder>> getOrderDetails(String orderId);
   Stream<Map<String, dynamic>> watchOrder(String orderId);
@@ -52,4 +57,12 @@ abstract class FoodRepository {
   Future<Either<Failure, void>> updateOrderStatusAsRider(String orderId, FoodOrderStatus status);
   Future<Either<Failure, void>> markDelivered(String orderId, String otp);
   Future<Either<Failure, void>> findAndAssignNearbyRider(FoodOrder order);
+
+  // ─── Menu Management ───────────────────────────────────────────────────────
+  Future<Either<Failure, void>> addFoodItem(FoodItem item);
+  Future<Either<Failure, void>> updateFoodItem(FoodItem item);
+  Future<Either<Failure, void>> deleteFoodItem(String itemId);
+  Future<Either<Failure, void>> addFoodAdditive(FoodAdditive additive);
+  Future<Either<Failure, void>> updateFoodAdditive(FoodAdditive additive);
+  Future<Either<Failure, void>> deleteFoodAdditive(String additiveId);
 }

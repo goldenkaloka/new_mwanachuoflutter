@@ -19,6 +19,8 @@ class LoadRestaurants extends FoodEvent {
 
 class CheckUserRestaurant extends FoodEvent {}
 
+class LoadSellersEvent extends FoodEvent {}
+
 class LoadMenu extends FoodEvent {
   final String restaurantId;
   const LoadMenu(this.restaurantId);
@@ -59,6 +61,9 @@ class RegisterRestaurantEvent extends FoodEvent {
   final String phone;
   final String category;
   final Object? imageFile;
+  final String? ownerId;
+  final double? lat;
+  final double? lng;
 
   const RegisterRestaurantEvent({
     required this.name,
@@ -67,10 +72,13 @@ class RegisterRestaurantEvent extends FoodEvent {
     required this.phone,
     required this.category,
     this.imageFile,
+    this.ownerId,
+    this.lat,
+    this.lng,
   });
 
   @override
-  List<Object?> get props => [name, description, address, phone, category, imageFile];
+  List<Object?> get props => [name, description, address, phone, category, imageFile, ownerId, lat, lng];
 }
 
 class LoadTracking extends FoodEvent {
@@ -183,4 +191,45 @@ class DispatchRiderEvent extends FoodEvent {
   const DispatchRiderEvent(this.order);
   @override
   List<Object?> get props => [order];
+}
+
+// ─── Menu Management Events ──────────────────────────────────────────────────
+class AddFoodItemEvent extends FoodEvent {
+  final FoodItem item;
+  final Object? imageFile;
+  const AddFoodItemEvent(this.item, {this.imageFile});
+  @override
+  List<Object?> get props => [item, imageFile];
+}
+
+class UpdateFoodItemEvent extends FoodEvent {
+  final FoodItem item;
+  final Object? imageFile;
+  const UpdateFoodItemEvent(this.item, {this.imageFile});
+  @override
+  List<Object?> get props => [item, imageFile];
+}
+
+class DeleteFoodItemEvent extends FoodEvent {
+  final String itemId;
+  final String restaurantId;
+  const DeleteFoodItemEvent(this.itemId, this.restaurantId);
+  @override
+  List<Object?> get props => [itemId, restaurantId];
+}
+
+class AddFoodAdditiveEvent extends FoodEvent {
+  final FoodAdditive additive;
+  final String restaurantId;
+  const AddFoodAdditiveEvent(this.additive, this.restaurantId);
+  @override
+  List<Object?> get props => [additive, restaurantId];
+}
+
+class DeleteFoodAdditiveEvent extends FoodEvent {
+  final String additiveId;
+  final String restaurantId;
+  const DeleteFoodAdditiveEvent(this.additiveId, this.restaurantId);
+  @override
+  List<Object?> get props => [additiveId, restaurantId];
 }

@@ -17,4 +17,20 @@ class FoodAdditive extends Equatable {
 
   @override
   List<Object?> get props => [id, foodItemId, name, price, isAvailable];
+
+  FoodAdditive copyWith({
+    String? id,
+    String? foodItemId,
+    String? name,
+    double? price,
+    bool? isAvailable,
+  }) {
+    return FoodAdditive(
+      id: id ?? this.id,
+      foodItemId: foodItemId ?? this.foodItemId,
+      name: name ?? this.name,
+      price: price ?? this.price,
+      isAvailable: isAvailable ?? this.isAvailable,
+    );
+  }
 }

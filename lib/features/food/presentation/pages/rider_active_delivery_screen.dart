@@ -11,6 +11,7 @@ import 'dart:convert';
 import 'package:mwanachuo/core/constants/app_constants.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_order.dart';
 import 'package:mwanachuo/features/food/presentation/bloc/food_bloc.dart';
+import 'package:url_launcher/url_launcher.dart' as url_launcher;
 
 class RiderActiveDeliveryScreen extends StatefulWidget {
   final FoodOrder order;
@@ -323,7 +324,33 @@ class _RiderActiveDeliveryScreenState extends State<RiderActiveDeliveryScreen> {
                     ),
                   ],
                 ),
-                if (order.deliveryOtp != null)
+                if (order.studentName != null)
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text('Customer', style: GoogleFonts.plusJakartaSans(color: Colors.grey, fontSize: 11)),
+                      Row(
+                        children: [
+                          Text(
+                            order.studentName!,
+                            style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.bold, fontSize: 14, color: isDarkMode ? Colors.white : Colors.black87),
+                          ),
+                          if (order.studentPhone != null) ...[
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: () => url_launcher.launchUrl(Uri.parse('tel:${order.studentPhone}')),
+                              child: Container(
+                                padding: const EdgeInsets.all(4),
+                                decoration: BoxDecoration(color: Colors.green.withValues(alpha: 0.1), shape: BoxShape.circle),
+                                child: const Icon(Icons.phone, size: 16, color: Colors.green),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ],
+                  ),
+                if (order.studentName == null && order.deliveryOtp != null)
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [

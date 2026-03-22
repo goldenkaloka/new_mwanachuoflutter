@@ -18,19 +18,20 @@ class _RestaurantListPageState extends State<RestaurantListPage>
   int _selectedCategoryIndex = 0;
   late AnimationController _fadeController;
   late Animation<double> _fadeAnimation;
+  final TextEditingController _searchController = TextEditingController();
 
   final List<Map<String, dynamic>> _categories = [
-    {'icon': Icons.restaurant_menu, 'label': 'All'},
-    {'icon': Icons.local_fire_department, 'label': 'Fast Food'},
-    {'icon': Icons.emoji_food_beverage, 'label': 'Local'},
-    {'icon': Icons.coffee, 'label': 'Cafe'},
-    {'icon': Icons.eco, 'label': 'Healthy'},
+    {'icon': Icons.flash_on_rounded, 'label': 'All'},
+    {'icon': Icons.fastfood_rounded, 'label': 'Fast Food'},
+    {'icon': Icons.restaurant_rounded, 'label': 'Local'},
+    {'icon': Icons.coffee_rounded, 'label': 'Cafe'},
+    {'icon': Icons.eco_rounded, 'label': 'Healthy'},
   ];
 
   @override
   void initState() {
     super.initState();
-    // Fetch restaurants if not already loaded
+    // Fetch data in parallel
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final bloc = context.read<FoodBloc>();
       if (bloc.state.restaurants.isEmpty && bloc.state.status != FoodStatus.loading) {
@@ -46,35 +47,45 @@ class _RestaurantListPageState extends State<RestaurantListPage>
 
     _fadeController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 800),
     );
-    _fadeAnimation = CurvedAnimation(parent: _fadeController, curve: Curves.easeOutCubic);
+    _fadeAnimation = CurvedAnimation(
+      parent: _fadeController,
+      curve: Curves.easeOutQuart,
+    );
     _fadeController.forward();
   }
 
   @override
   void dispose() {
     _fadeController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final spotifyBlack = const Color(0xFF121212);
+    final bgColor = isDarkMode ? spotifyBlack : const Color(0xFFF8FAFC);
 
     return BlocBuilder<FoodBloc, FoodState>(
       builder: (context, state) {
         if (state.status == FoodStatus.error) {
           return Scaffold(
-            backgroundColor: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
+            backgroundColor: bgColor,
             body: Center(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Text('Error: ${state.errorMessage}'),
+                  Text('Error: ${state.errorMessage}', style: GoogleFonts.inter(color: isDarkMode ? Colors.white70 : Colors.black87)),
                   const SizedBox(height: 16),
                   ElevatedButton(
                     onPressed: () => context.read<FoodBloc>().add(LoadRestaurants()),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: kPrimaryColor,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
                     child: const Text('Retry'),
                   ),
                 ],
@@ -85,58 +96,77 @@ class _RestaurantListPageState extends State<RestaurantListPage>
 
         if (state.restaurants.isEmpty && state.status == FoodStatus.loading) {
           return Scaffold(
-            backgroundColor: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
-            body: const Center(child: CircularProgressIndicator(color: kPrimaryColor)),
+            backgroundColor: bgColor,
+            body: const Center(child: CircularProgressIndicator(color: kPrimaryColor, strokeWidth: 2)),
           );
         }
 
         final restaurants = state.restaurants;
-        // If we are here and restaurants is empty (and not loading), it might be initial or empty list.
         if (restaurants.isEmpty && state.status != FoodStatus.loading) {
            return Scaffold(
-            backgroundColor: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
-            body: const Center(child: Text('No restaurants found.')),
+            backgroundColor: bgColor,
+            body: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.restaurant_rounded, size: 64, color: isDarkMode ? Colors.white10 : Colors.black12),
+                  const SizedBox(height: 16),
+                  Text(
+                    'No restaurants nearby yet.',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w600,
+                      color: isDarkMode ? Colors.white38 : Colors.grey,
+                    ),
+                  ),
+                ],
+              ),
+            ),
           );
         }
 
         return Scaffold(
-          backgroundColor: isDarkMode ? kBackgroundColorDark : const Color(0xFFF5F7FA),
+          backgroundColor: bgColor,
           body: FadeTransition(
             opacity: _fadeAnimation,
             child: CustomScrollView(
               physics: const BouncingScrollPhysics(),
               slivers: [
-                _buildGradientAppBar(isDarkMode),
-                SliverToBoxAdapter(child: _buildSearchBar(isDarkMode)),
-                SliverToBoxAdapter(child: _buildCategoryScroll(isDarkMode)),
+                _buildMinimalAppBar(isDarkMode),
+                SliverToBoxAdapter(child: _buildMinimalSearchBar(isDarkMode)),
+                SliverPersistentHeader(
+                  pinned: true,
+                  delegate: _CategoryDelegate(
+                    child: _buildMinimalCategoryScroll(isDarkMode),
+                    isDarkMode: isDarkMode,
+                  ),
+                ),
                 if (state.userRestaurant == null)
-                  SliverToBoxAdapter(child: _buildBecomePartnerCard(context, isDarkMode)),
+                  SliverToBoxAdapter(child: _buildModernPartnerCard(context, isDarkMode)),
                 SliverToBoxAdapter(
                   child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 12),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Text(
-                          'Popular Nearby',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 20,
+                          'Nearby Selection',
+                          style: GoogleFonts.montserrat(
+                            fontSize: 22,
                             fontWeight: FontWeight.w800,
+                            letterSpacing: -0.5,
                             color: isDarkMode ? Colors.white : kTextPrimary,
                           ),
                         ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: kPrimaryColor.withValues(alpha: 0.1),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
+                        const SizedBox(width: 8),
+                        Padding(
+                          padding: const EdgeInsets.only(bottom: 4),
                           child: Text(
-                            '${restaurants.length} places',
-                            style: GoogleFonts.plusJakartaSans(
+                            '• ${restaurants.length} places',
+                            style: GoogleFonts.inter(
                               fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: kPrimaryColor,
+                              fontWeight: FontWeight.w500,
+                              color: isDarkMode ? Colors.white38 : Colors.grey,
                             ),
                           ),
                         ),
@@ -145,10 +175,10 @@ class _RestaurantListPageState extends State<RestaurantListPage>
                   ),
                 ),
                 SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
                   sliver: SliverList(
                     delegate: SliverChildBuilderDelegate(
-                      (context, index) => _buildRestaurantCard(
+                      (context, index) => _buildMinimalRestaurantCard(
                         context,
                         restaurants[index],
                         isDarkMode,
@@ -158,7 +188,7 @@ class _RestaurantListPageState extends State<RestaurantListPage>
                     ),
                   ),
                 ),
-                const SliverToBoxAdapter(child: SizedBox(height: 100)),
+                const SliverToBoxAdapter(child: SizedBox(height: 120)),
               ],
             ),
           ),
@@ -167,187 +197,100 @@ class _RestaurantListPageState extends State<RestaurantListPage>
     );
   }
 
-  Widget _buildGradientAppBar(bool isDarkMode) {
+  Widget _buildMinimalAppBar(bool isDarkMode) {
     return SliverAppBar(
-      expandedHeight: 140.0,
-      floating: true,
+      expandedHeight: 120.0,
+      floating: false,
       pinned: true,
       elevation: 0,
-      backgroundColor: isDarkMode ? kSurfaceColorDark : Colors.white,
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
       flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDarkMode
-                  ? [const Color(0xFF0A3D2F), kSurfaceColorDark]
-                  : [kPrimaryColor.withValues(alpha: 0.08), Colors.white],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [kPrimaryColor, kPrimaryColorLight],
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: const Icon(Icons.restaurant, color: Colors.white, size: 20),
-                      ),
-                      const SizedBox(width: 12),
-                      Text(
-                        'Campus Cravings',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 26,
-                          fontWeight: FontWeight.w800,
-                          color: isDarkMode ? Colors.white : kTextPrimary,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  Padding(
-                    padding: const EdgeInsets.only(left: 44),
-                    child: Text(
-                      'Delicious food, delivered to your door 🍕',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        color: isDarkMode ? Colors.white54 : kTextTertiary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        titlePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        expandedTitleScale: 1.3,
+        centerTitle: false,
+        title: Text(
+          'Campus Cravings',
+          style: GoogleFonts.montserrat(
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            letterSpacing: -0.5,
+            color: isDarkMode ? Colors.white : kTextPrimary,
           ),
         ),
       ),
     );
   }
 
-  Widget _buildSearchBar(bool isDarkMode) {
+  Widget _buildMinimalSearchBar(bool isDarkMode) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 20, 4),
+      padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
       child: Container(
-        height: 52,
+        height: 54,
         decoration: BoxDecoration(
-          color: isDarkMode ? kSurfaceColorDark : Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: isDarkMode ? Colors.white10 : Colors.grey.shade200,
+            color: isDarkMode ? Colors.white.withValues(alpha: 0.1) : Colors.grey.shade200,
           ),
-          boxShadow: [
-            if (!isDarkMode)
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
-              ),
-          ],
         ),
-        child: Row(
-          children: [
-            const SizedBox(width: 16),
-            Icon(Icons.search_rounded, color: isDarkMode ? Colors.white38 : Colors.grey.shade400),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                'Search restaurants, dishes...',
-                style: GoogleFonts.plusJakartaSans(
-                  color: isDarkMode ? Colors.white30 : Colors.grey.shade400,
-                  fontSize: 15,
-                ),
-              ),
+        child: TextField(
+          controller: _searchController,
+          style: GoogleFonts.inter(color: isDarkMode ? Colors.white : kTextPrimary),
+          decoration: InputDecoration(
+            hintText: 'Search for flavors...',
+            hintStyle: GoogleFonts.inter(
+              color: isDarkMode ? Colors.white24 : Colors.grey.shade400,
+              fontSize: 15,
             ),
-            Container(
-              margin: const EdgeInsets.all(6),
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                gradient: const LinearGradient(colors: [kPrimaryColor, kPrimaryColorLight]),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: const Icon(Icons.tune_rounded, color: Colors.white, size: 18),
+            prefixIcon: Icon(
+              Icons.search_rounded,
+              color: isDarkMode ? Colors.white38 : Colors.grey.shade400,
             ),
-          ],
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 15),
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildCategoryScroll(bool isDarkMode) {
+  Widget _buildMinimalCategoryScroll(bool isDarkMode) {
     return Container(
-      height: 100,
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      height: 60,
+      color: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _categories.length,
         physics: const BouncingScrollPhysics(),
-        padding: const EdgeInsets.only(left: 20),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         itemBuilder: (context, index) {
           final isSelected = index == _selectedCategoryIndex;
           return GestureDetector(
             onTap: () => setState(() => _selectedCategoryIndex = index),
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 300),
-              curve: Curves.easeOutCubic,
-              margin: const EdgeInsets.only(right: 14),
-              width: 76,
-              decoration: BoxDecoration(
-                gradient: isSelected
-                    ? const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [kPrimaryColor, kPrimaryColorLight],
-                      )
-                    : null,
-                color: isSelected
-                    ? null
-                    : isDarkMode ? kSurfaceColorDark : Colors.white,
-                borderRadius: BorderRadius.circular(18),
-                border: isSelected
-                    ? null
-                    : Border.all(
-                        color: isDarkMode ? Colors.white10 : Colors.grey.shade200,
-                      ),
-                boxShadow: isSelected
-                    ? [
-                        BoxShadow(
-                          color: kPrimaryColor.withValues(alpha: 0.35),
-                          blurRadius: 12,
-                          offset: const Offset(0, 6),
-                        ),
-                      ]
-                    : null,
-              ),
+              margin: const EdgeInsets.only(right: 24),
               child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    _categories[index]['icon'] as IconData,
-                    color: isSelected
-                        ? Colors.white
-                        : isDarkMode ? Colors.white54 : Colors.grey.shade500,
-                    size: 24,
-                  ),
-                  const SizedBox(height: 6),
                   Text(
                     _categories[index]['label'] as String,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
+                    style: GoogleFonts.inter(
+                      fontSize: 15,
                       fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                       color: isSelected
-                          ? Colors.white
-                          : isDarkMode ? Colors.white60 : Colors.grey.shade600,
+                          ? kPrimaryColor
+                          : (isDarkMode ? Colors.white60 : Colors.grey.shade600),
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    height: 2,
+                    width: isSelected ? 12 : 0,
+                    decoration: BoxDecoration(
+                      color: kPrimaryColor,
+                      borderRadius: BorderRadius.circular(1),
                     ),
                   ),
                 ],
@@ -359,229 +302,121 @@ class _RestaurantListPageState extends State<RestaurantListPage>
     );
   }
 
-  Widget _buildRestaurantCard(BuildContext context, Restaurant restaurant, bool isDarkMode, int index) {
+  Widget _buildMinimalRestaurantCard(BuildContext context, Restaurant restaurant, bool isDarkMode, int index) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0.0, end: 1.0),
-      duration: Duration(milliseconds: 400 + (index * 100)),
-      curve: Curves.easeOutCubic,
+      duration: Duration(milliseconds: 500 + (index * 80)),
+      curve: Curves.easeOutQuart,
       builder: (context, value, child) {
         return Transform.translate(
-          offset: Offset(0, 30 * (1 - value)),
+          offset: Offset(0, 20 * (1 - value)),
           child: Opacity(opacity: value, child: child),
         );
       },
       child: GestureDetector(
-        onTap: () {
-          Navigator.pushNamed(context, '/food-menu', arguments: restaurant);
-        },
+        onTap: () => Navigator.pushNamed(context, '/food-menu', arguments: restaurant),
         child: Container(
-          margin: const EdgeInsets.only(bottom: 20),
-          decoration: BoxDecoration(
-            color: isDarkMode ? kSurfaceColorDark : Colors.white,
-            borderRadius: BorderRadius.circular(24),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDarkMode ? 0.25 : 0.06),
-                blurRadius: 24,
-                offset: const Offset(0, 10),
-              ),
-            ],
-          ),
+          margin: const EdgeInsets.only(bottom: 24),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Image section
-              Stack(
-                children: [
-                  Hero(
-                    tag: 'restaurant_image_${restaurant.id}',
-                    child: ClipRRect(
-                      borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                      child: Image.network(
-                        restaurant.imageUrl ?? 'https://via.placeholder.com/400x200',
-                        height: 180,
-                        width: double.infinity,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => Container(
-                          height: 180,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [kPrimaryColor.withValues(alpha: 0.3), kPrimaryColorLight.withValues(alpha: 0.2)],
-                            ),
-                          ),
-                          child: const Center(
-                            child: Icon(Icons.restaurant, size: 48, color: Colors.white54),
+              ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: AspectRatio(
+                  aspectRatio: 16 / 9,
+                  child: Stack(
+                    children: [
+                      Hero(
+                        tag: 'restaurant_image_${restaurant.id}',
+                        child: Image.network(
+                          restaurant.imageUrl ?? 'https://via.placeholder.com/600x400',
+                          width: double.infinity,
+                          height: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(
+                            color: isDarkMode ? Colors.white.withValues(alpha:0.05) : Colors.grey.shade100,
+                            child: const Icon(Icons.restaurant_rounded, size: 48, color: Colors.white12),
                           ),
                         ),
                       ),
-                    ),
-                  ),
-                  // Top gradient overlay
-                  Positioned.fill(
-                    child: Container(
-                      decoration: BoxDecoration(
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.center,
-                          colors: [Colors.black.withValues(alpha: 0.25), Colors.transparent],
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Rating badge (glassmorphism)
-                  Positioned(
-                    top: 14,
-                    right: 14,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFBBF24)),
-                              const SizedBox(width: 4),
-                              Text(
-                                restaurant.rating?.toStringAsFixed(1) ?? 'New',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                ),
+                      // Rating & Distance badge overlay
+                      Positioned(
+                        bottom: 12,
+                        left: 12,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: BackdropFilter(
+                            filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.3),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                               ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                  // Delivery time badge
-                  Positioned(
-                    bottom: 14,
-                    left: 14,
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(14),
-                      child: BackdropFilter(
-                        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.35),
-                            borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.15)),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.schedule_rounded, size: 14, color: Colors.white70),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${restaurant.deliveryTime ?? '20-30'} min',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              // Info section
-              Padding(
-                padding: const EdgeInsets.fromLTRB(18, 16, 18, 18),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            restaurant.name,
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 18,
-                              fontWeight: FontWeight.w700,
-                              color: isDarkMode ? Colors.white : kTextPrimary,
-                            ),
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            children: [
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: kPrimaryColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(6),
-                                ),
-                                child: Text(
-                                  restaurant.category ?? 'Variety',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w600,
-                                    color: kPrimaryColor,
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.star_rounded, size: 14, color: Color(0xFFFBBF24)),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    restaurant.rating?.toStringAsFixed(1) ?? 'New',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Colors.white,
+                                    ),
                                   ),
-                                ),
+                                  const SizedBox(width: 8),
+                                  Container(width: 1, height: 10, color: Colors.white24),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    '${restaurant.deliveryTime ?? '20'}m',
+                                    style: GoogleFonts.inter(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 8),
-                              Icon(Icons.location_on_outlined, size: 14,
-                                color: isDarkMode ? Colors.white38 : Colors.grey.shade400),
-                              const SizedBox(width: 2),
-                              Text(
-                                restaurant.distanceMeters != null
-                                    ? '${(restaurant.distanceMeters! / 1000).toStringAsFixed(1)} km'
-                                    : '...',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  color: isDarkMode ? Colors.white54 : kTextTertiary,
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Icon(Icons.delivery_dining_outlined, size: 14,
-                                color: isDarkMode ? Colors.white38 : Colors.grey.shade400),
-                              const SizedBox(width: 2),
-                              Text(
-                                restaurant.deliveryFee != null 
-                                  ? 'TZS ${restaurant.deliveryFee!.toInt()}' 
-                                  : 'Free',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
-                                  color: isDarkMode ? Colors.white54 : kTextTertiary,
-                                ),
-                              ),
-                            ],
+                            ),
                           ),
-                        ],
+                        ),
                       ),
-                    ),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        gradient: const LinearGradient(colors: [kPrimaryColor, kPrimaryColorLight]),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: kPrimaryColor.withValues(alpha: 0.3),
-                            blurRadius: 8,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          restaurant.name,
+                          style: GoogleFonts.montserrat(
+                            fontSize: 18,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: -0.2,
+                            color: isDarkMode ? Colors.white : kTextPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${restaurant.category ?? 'Variety'} • TZS ${restaurant.deliveryFee?.toInt() ?? 0} delivery',
+                          style: GoogleFonts.inter(
+                            fontSize: 13,
+                            color: isDarkMode ? Colors.white38 : Colors.grey.shade600,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.more_horiz_rounded, color: Colors.white24),
+                ],
               ),
             ],
           ),
@@ -590,117 +425,52 @@ class _RestaurantListPageState extends State<RestaurantListPage>
     );
   }
 
-  Widget _buildBecomePartnerCard(BuildContext context, bool isDarkMode) {
+  Widget _buildModernPartnerCard(BuildContext context, bool isDarkMode) {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(24),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0D9488), Color(0xFF06B6D4), Color(0xFF2DD4BF)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: kPrimaryColor.withValues(alpha: 0.35),
-            blurRadius: 20,
-            offset: const Offset(0, 10),
-          ),
-        ],
+        color: kPrimaryColor,
+        borderRadius: BorderRadius.circular(16),
       ),
-      child: Stack(
+      child: Row(
         children: [
-          // Decorative circles
-          Positioned(
-            right: -20,
-            top: -20,
-            child: Container(
-              width: 100,
-              height: 100,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.08),
-              ),
-            ),
-          ),
-          Positioned(
-            left: -10,
-            bottom: -10,
-            child: Container(
-              width: 60,
-              height: 60,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.06),
-              ),
-            ),
-          ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(22),
-            child: Row(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Container(
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                  ),
-                  child: const Icon(Icons.storefront_rounded, color: Colors.white, size: 28),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Own a Restaurant?',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 17,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Reach thousands of students on campus.',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 13,
-                          color: Colors.white.withValues(alpha: 0.85),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Container(
-                  decoration: BoxDecoration(
+                Text(
+                  'Own a Restaurant?',
+                  style: GoogleFonts.montserrat(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w800,
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.1),
-                        blurRadius: 8,
-                        offset: const Offset(0, 4),
-                      ),
-                    ],
+                    letterSpacing: -0.5,
                   ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () => Navigator.pushNamed(context, '/restaurant-register'),
-                      borderRadius: BorderRadius.circular(14),
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                        child: Text(
-                          'Join',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontWeight: FontWeight.w800,
-                            color: kPrimaryColor,
-                            fontSize: 14,
-                          ),
-                        ),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Join the network and reach students across campus.',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    color: Colors.white.withValues(alpha: 0.9),
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 16),
+                InkWell(
+                  onTap: () => Navigator.pushNamed(context, '/register-restaurant'),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: Text(
+                      'Get Started',
+                      style: GoogleFonts.inter(
+                        fontWeight: FontWeight.w700,
+                        color: kPrimaryColor,
                       ),
                     ),
                   ),
@@ -708,8 +478,44 @@ class _RestaurantListPageState extends State<RestaurantListPage>
               ],
             ),
           ),
+          const SizedBox(width: 16),
+          const Icon(Icons.storefront_rounded, size: 64, color: Colors.white24),
         ],
       ),
     );
   }
+}
+
+class _CategoryDelegate extends SliverPersistentHeaderDelegate {
+  final Widget child;
+  final bool isDarkMode;
+
+  _CategoryDelegate({required this.child, required this.isDarkMode});
+
+  @override
+  Widget build(BuildContext context, double shrinkOffset, bool overlapsContent) {
+    return Container(
+      decoration: BoxDecoration(
+        color: isDarkMode ? const Color(0xFF121212) : const Color(0xFFF8FAFC),
+        boxShadow: [
+          if (shrinkOffset > 0)
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDarkMode ? 0.3 : 0.05),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+            ),
+        ],
+      ),
+      child: child,
+    );
+  }
+
+  @override
+  double get maxExtent => 60;
+
+  @override
+  double get minExtent => 60;
+
+  @override
+  bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) => false;
 }

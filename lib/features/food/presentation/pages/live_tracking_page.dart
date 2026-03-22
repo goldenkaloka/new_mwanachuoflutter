@@ -59,9 +59,9 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
     _locationSub?.cancel();
 
     _locationSub = Supabase.instance.client
-        .from('rider_locations')
-        .stream(primaryKey: ['rider_id'])
-        .eq('rider_id', riderId)
+        .from('riders')
+        .stream(primaryKey: ['id'])
+        .eq('id', riderId)
         .listen((data) {
       if (data.isNotEmpty) {
         final loc = data.first;
@@ -92,9 +92,9 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
                               order.status == FoodOrderStatus.outForDelivery || 
                               order.status == FoodOrderStatus.nearYou;
 
-    if (!isGoingToCustomer && order.restaurantLat != null) {
+    if (!isGoingToCustomer && order.restaurantLat != null && order.restaurantLng != null) {
       to = LatLng(order.restaurantLat!, order.restaurantLng!);
-    } else if (order.deliveryLat != null) {
+    } else if (order.deliveryLat != null && order.deliveryLng != null) {
       to = LatLng(order.deliveryLat!, order.deliveryLng!);
     }
     
@@ -185,9 +185,9 @@ class _LiveTrackingPageState extends State<LiveTrackingPage> with TickerProvider
                           order.status == FoodOrderStatus.outForDelivery || 
                           order.status == FoodOrderStatus.nearYou;
       
-      if (!isGoingToCustomer && order.restaurantLat != null) {
+      if (!isGoingToCustomer && order.restaurantLat != null && order.restaurantLng != null) {
         targetLocation = LatLng(order.restaurantLat!, order.restaurantLng!);
-      } else if (order.deliveryLat != null) {
+      } else if (order.deliveryLat != null && order.deliveryLng != null) {
         targetLocation = LatLng(order.deliveryLat!, order.deliveryLng!);
       }
     }

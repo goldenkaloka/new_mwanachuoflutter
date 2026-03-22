@@ -20,6 +20,9 @@ class RiderJob extends Equatable {
   final double? distanceKm;
   final String? droppingPoint;
 
+  final String? customerName;
+  final String? customerPhone;
+
   const RiderJob({
     required this.id,
     required this.orderId,
@@ -36,11 +39,14 @@ class RiderJob extends Equatable {
     this.estimatedEarnings,
     this.distanceKm,
     this.droppingPoint,
+    this.customerName,
+    this.customerPhone,
   });
 
   @override
   List<Object?> get props => [
     id, orderId, riderId, status, createdAt,
     restaurantName, restaurantAddress, totalAmount, distanceKm,
+    customerName, customerPhone,
   ];
 }

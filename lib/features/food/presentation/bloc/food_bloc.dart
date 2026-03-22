@@ -4,6 +4,7 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter/material.dart';
 import 'package:mwanachuo/features/food/domain/entities/restaurant.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_item.dart';
+import 'package:mwanachuo/features/food/domain/entities/food_additive.dart';
 import 'package:mwanachuo/features/food/domain/entities/rider.dart';
 import 'package:mwanachuo/features/food/domain/entities/rider_job.dart';
 import 'package:mwanachuo/features/food/domain/entities/food_order.dart';
@@ -12,6 +13,8 @@ import 'package:geolocator/geolocator.dart';
 
 part 'food_event.dart';
 part 'food_state.dart';
+
+typedef SellerMap = Map<String, dynamic>;
 
 class FoodBloc extends Bloc<FoodEvent, FoodState> {
   final FoodRepository repository;
@@ -41,7 +44,13 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
     on<UpdateRiderLocationEvent>(_onUpdateRiderLocation);
     on<UpdateOrderStatusAsRiderEvent>(_onUpdateOrderStatusAsRider);
     on<MarkDeliveredEvent>(_onMarkDelivered);
+    on<LoadSellersEvent>(_onLoadSellers);
     on<DispatchRiderEvent>(_onDispatchRider);
+    on<AddFoodItemEvent>(_onAddFoodItem);
+    on<UpdateFoodItemEvent>(_onUpdateFoodItem);
+    on<DeleteFoodItemEvent>(_onDeleteFoodItem);
+    on<AddFoodAdditiveEvent>(_onAddFoodAdditive);
+    on<DeleteFoodAdditiveEvent>(_onDeleteFoodAdditive);
   }
 
   @override
@@ -175,6 +184,9 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
       phone: event.phone,
       category: event.category,
       imageUrl: imageUrl,
+      ownerId: event.ownerId,
+      lat: event.lat,
+      lng: event.lng,
     );
     result.fold(
       (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
@@ -188,6 +200,15 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
     result.fold(
       (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
       (restaurant) => emit(state.copyWith(status: FoodStatus.loaded, userRestaurant: restaurant)),
+    );
+  }
+
+  Future<void> _onLoadSellers(LoadSellersEvent event, Emitter<FoodState> emit) async {
+    emit(state.copyWith(status: FoodStatus.loading));
+    final result = await repository.getSellers();
+    result.fold(
+      (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
+      (sellers) => emit(state.copyWith(status: FoodStatus.loaded, sellers: sellers)),
     );
   }
 
@@ -327,5 +348,85 @@ class FoodBloc extends Bloc<FoodEvent, FoodState> {
 
   Future<void> _onDispatchRider(DispatchRiderEvent event, Emitter<FoodState> emit) async {
     await repository.findAndAssignNearbyRider(event.order);
+  }
+
+  // ─── Menu Management Handlers ─────────────────────────────────────────────
+  Future<void> _onAddFoodItem(AddFoodItemEvent event, Emitter<FoodState> emit) async {
+    emit(state.copyWith(status: FoodStatus.loading));
+    String? imageUrl = event.item.imageUrl;
+
+    if (event.imageFile != null) {
+      final uploadResult = await repository.uploadRestaurantImage(event.imageFile!);
+      uploadResult.fold(
+        (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
+        (url) => imageUrl = url,
+      );
+      if (state.status == FoodStatus.error) return;
+    }
+
+    final itemWithImage = event.item.copyWith(imageUrl: imageUrl);
+    final result = await repository.addFoodItem(itemWithImage);
+    result.fold(
+      (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(status: FoodStatus.success));
+      },
+    );
+  }
+
+  Future<void> _onUpdateFoodItem(UpdateFoodItemEvent event, Emitter<FoodState> emit) async {
+    emit(state.copyWith(status: FoodStatus.loading));
+    String? imageUrl = event.item.imageUrl;
+
+    if (event.imageFile != null) {
+      final uploadResult = await repository.uploadRestaurantImage(event.imageFile!);
+      uploadResult.fold(
+        (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
+        (url) => imageUrl = url,
+      );
+      if (state.status == FoodStatus.error) return;
+    }
+
+    final itemWithImage = event.item.copyWith(imageUrl: imageUrl);
+    final result = await repository.updateFoodItem(itemWithImage);
+    result.fold(
+      (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(status: FoodStatus.success));
+      },
+    );
+  }
+
+  Future<void> _onDeleteFoodItem(DeleteFoodItemEvent event, Emitter<FoodState> emit) async {
+    emit(state.copyWith(status: FoodStatus.loading));
+    final result = await repository.deleteFoodItem(event.itemId);
+    result.fold(
+      (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(status: FoodStatus.success));
+      },
+    );
+  }
+
+  Future<void> _onAddFoodAdditive(AddFoodAdditiveEvent event, Emitter<FoodState> emit) async {
+    emit(state.copyWith(status: FoodStatus.loading));
+    final result = await repository.addFoodAdditive(event.additive);
+    result.fold(
+      (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(status: FoodStatus.success));
+      },
+    );
+  }
+
+  Future<void> _onDeleteFoodAdditive(DeleteFoodAdditiveEvent event, Emitter<FoodState> emit) async {
+    emit(state.copyWith(status: FoodStatus.loading));
+    final result = await repository.deleteFoodAdditive(event.additiveId);
+    result.fold(
+      (failure) => emit(state.copyWith(status: FoodStatus.error, errorMessage: failure.message)),
+      (_) {
+        emit(state.copyWith(status: FoodStatus.success));
+      },
+    );
   }
 }

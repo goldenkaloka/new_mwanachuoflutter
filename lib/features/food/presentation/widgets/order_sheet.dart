@@ -25,6 +25,8 @@ class _OrderSheetState extends State<OrderSheet> {
   final _locationController = TextEditingController();
   final _notesController = TextEditingController();
   bool _isLoadingLocation = false;
+  double? _selectedLat;
+  double? _selectedLng;
 
   double get _totalPrice {
     double base = widget.item.price * _quantity;
@@ -55,6 +57,8 @@ class _OrderSheetState extends State<OrderSheet> {
         final p = placemarks.first;
         if (!mounted) return;
         setState(() {
+          _selectedLat = position.latitude;
+          _selectedLng = position.longitude;
           _locationController.text = "${p.street}, ${p.subLocality}, ${p.locality}";
         });
       }
@@ -192,18 +196,45 @@ class _OrderSheetState extends State<OrderSheet> {
               controller: _locationController,
               decoration: InputDecoration(
                 hintText: 'Hostel, Room Number, or Landmark',
-                prefixIcon: const Icon(Icons.location_on_outlined, color: kPrimaryColor),
-                suffixIcon: IconButton(
-                  onPressed: _isLoadingLocation ? null : _getCurrentLocation,
-                  icon: _isLoadingLocation 
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                    : const Icon(Icons.my_location_rounded, color: kPrimaryColor),
+                prefixIcon: Icon(
+                  _selectedLat != null ? Icons.gps_fixed_rounded : Icons.location_on_outlined, 
+                  color: _selectedLat != null ? const Color(0xFF22C55E) : kPrimaryColor
+                ),
+                suffixIcon: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (_selectedLat != null)
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        margin: const EdgeInsets.only(right: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          'PINNED',
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: const Color(0xFF22C55E),
+                          ),
+                        ),
+                      ),
+                    IconButton(
+                      onPressed: _isLoadingLocation ? null : _getCurrentLocation,
+                      icon: _isLoadingLocation 
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                        : Icon(Icons.my_location_rounded, color: _selectedLat != null ? const Color(0xFF22C55E) : kPrimaryColor),
+                    ),
+                  ],
                 ),
                 filled: true,
                 fillColor: isDarkMode ? Colors.white.withValues(alpha: 0.05) : Colors.grey.shade100,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(16),
-                  borderSide: BorderSide.none,
+                  borderSide: _selectedLat != null 
+                    ? const BorderSide(color: Color(0xFF22C55E), width: 1.5)
+                    : BorderSide.none,
                 ),
               ),
             ),
@@ -265,8 +296,8 @@ class _OrderSheetState extends State<OrderSheet> {
                       }).toList(),
                     }],
                     totalAmount: _totalPrice,
-                    lat: 0.0,
-                    lng: 0.0,
+                    lat: _selectedLat ?? 0.0,
+                    lng: _selectedLng ?? 0.0,
                     droppingPoint: _locationController.text,
                     notes: _notesController.text,
                     logisticsType: logisticsType,
